@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>vtkfitstoolswidget</class>
+ <widget class="QWidget" name="vtkfitstoolswidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>564</width>
+    <height>713</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="selectButton">
+       <property name="text">
+        <string>start select</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="noSelectButton">
+       <property name="text">
+        <string>stop select</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Sources</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QPushButton" name="addLocalSourcesPushButton">
+       <property name="text">
+        <string>Add Local </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="addRemoteSourcesPushButton">
+       <property name="text">
+        <string>Add Remote</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Datacube</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <item>
+      <widget class="QPushButton" name="datacubeButton">
+       <property name="text">
+        <string>Add Remote</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="addedSourcesListWidget">
+     <column>
+      <property name="text">
+       <string>Selected</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Opacity</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Palette</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="lutComboBox">
+       <property name="currentIndex">
+        <number>3</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>Default</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Default Step</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>EField</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Glow</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gray</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>MinMax</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PhysicsContour</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PureRed</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PureGreen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PureBlue</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Run1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Run2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Sar</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Temperature</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>TenStep</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenGlow</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenGreen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenRGB</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenTwoLev</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllYellow</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllCyan</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllViolet</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllWhite</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllBlack</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllRed</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllGreen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllBlu</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Scale</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="scaleComboBox">
+       <property name="currentText">
+        <string>Linear</string>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>Linear</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Log</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="Line" name="line_3">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Wcs</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox">
+       <property name="title">
+        <string/>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <widget class="QRadioButton" name="galacticRadioButton">
+          <property name="text">
+           <string>Galactic</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="eclipticRadioButton">
+          <property name="text">
+           <string>Ecliptic</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

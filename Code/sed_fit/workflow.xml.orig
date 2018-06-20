@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<workflow download="all" export="proj" mainabst="" maingraf="sed_fit_2015-12-21-172628" mainreal="sed_fit_2015-12-21-172628" name="sed_fit_2015-12-21-172628">
+   <graf name="sed_fit_2015-12-21-172628" text="Description of Graph">
+      <job name="executable" text="Description of Job" x="66" y="113">
+         <input name="scripts.zip" prejob="" preoutput="" seq="0" text="Description of Port" x="65" y="98"/>
+         <output name="output.zip" seq="1" text="Description of Port" x="81" y="98"/>
+      </job>
+   </graf>
+   <real abst="" graf="sed_fit_2015-12-21-172628" name="sed_fit_2015-12-21-172628" text="2015-4-2">
+      <job name="executable" text="Description of Job" x="66" y="113">
+         <input name="scripts.zip" prejob="" preoutput="" seq="0" text="Description of Port" x="65" y="98">
+            <port_prop desc="null" inh="null" key="eparam" label="null" value="0"/>
+            <port_prop desc="null" inh="null" key="file" label="null" value="C:/fakepath/scripts.zip"/>
+            <port_prop desc="null" inh="null" key="intname" label="null" value="scripts.zip"/>
+            <port_prop desc="null" inh="null" key="dpid" label="null" value="0"/>
+            <port_prop desc="null" inh="null" key="pequaltype" label="null" value="0"/>
+         </input>
+         <output name="output.zip" seq="1" text="Description of Port" x="81" y="98">
+            <port_prop desc="null" inh="null" key="maincount0" label="null" value="1"/>
+            <port_prop desc="null" inh="null" key="type0" label="null" value="permament"/>
+            <port_prop desc="null" inh="null" key="intname" label="null" value="output.zip"/>
+            <port_prop desc="null" inh="null" key="maincount" label="null" value="1"/>
+         </output>
+         <execute desc="" inh="" key="module" label="" value="true"/>
+         <execute desc="null" inh="null" key="binary" label="null" value="C:/fakepath/execute.bin"/>
+         <execute desc="null" inh="null" key="gridtype" label="null" value="pbs"/>
+         <execute desc="null" inh="null" key="jobmanager" label="null" value="-"/>
+         <execute desc="null" inh="null" key="jobistype" label="null" value="binary"/>
+         <execute desc="null" inh="null" key="resource" label="null" value="vialactea"/>
+         <execute desc="null" inh="null" key="grid" label="null" value="muoni-server-02.oact.inaf.it"/>
+         <execute desc="null" inh="null" key="type" label="null" value="Sequence"/>
+         <history mdyid="modify.input.file" nvalue="C:/fakepath/scripts.zip" ovalue="C:/fakepath/input.zip" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="modify.job.binary" nvalue="C:/fakepath/execute.bin" ovalue="C:/fakepath/script.sh" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="modify.input.file" nvalue="C:/fakepath/input.zip" ovalue="C:/fakepath/script.sh" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="modify.input.file" nvalue="C:/fakepath/script.sh" ovalue="C:/fakepath/input.zip" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="modify.job.breaktimeout" nvalue="0" ovalue="60" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.output.maincount" nvalue="1" ovalue="" port="1" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.output.type0" nvalue="permament" ovalue="" port="1" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.output.intname" nvalue="output.zip" ovalue="" port="1" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.output.maincount0" nvalue="1" ovalue="" port="1" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.input.pequaltype" nvalue="0" ovalue="" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.input.dpid" nvalue="0" ovalue="" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.input.intname" nvalue="scripts.zip" ovalue="" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.input.file" nvalue="C:/fakepath/input.zip" ovalue="" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.input.eparam" nvalue="0" ovalue="" port="0" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.breaktimeout" nvalue="60" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.type" nvalue="Sequence" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.grid" nvalue="muoni-server-02.oact.inaf.it" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.resource" nvalue="vialactea" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.breakpoint" nvalue="none" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.jobistype" nvalue="binary" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.jobmanager" nvalue="-" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.binary" nvalue="C:/fakepath/script.sh" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+         <history mdyid="new.job.gridtype" nvalue="pbs" ovalue="" port="-" tim="2015-12-21-17:26:28" user="10812"/>
+      </job>
+      <instances>
+         <instance name="text" rtid="857454547494zentest" value="2015-12-21 17:27"/>
+         <instance name="wftype" rtid="*" value="null"/>
+         <instance name="appmain" rtid="*" value="true"/>
+         <instance name="storage" rtid="857454547494zentest" value="http://muoni-server-01.oact.inaf.it:8081/storage"/>
+         <instance name="status" rtid="857454547494zentest" value="6"/>
+         <jobstatus job="executable" pid="0" resource="muoni-server-02.oact.inaf.it/vialactea" rtid="857454547494zentest" status="6"/>
+      </instances>
+   </real>
+</workflow>

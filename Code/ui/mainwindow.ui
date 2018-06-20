@@ -1,0 +1,1589 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>755</width>
+    <height>1000</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>VisIVO Desktop</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <item>
+     <widget class="QFrame" name="frame">
+      <property name="maximumSize">
+       <size>
+        <width>326</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QToolButton" name="buttonUndo">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Undo</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/OP_UNDO.bmp</normaloff>:/icons/OP_UNDO.bmp</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonResetCameraAll">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Reset camera to fit all</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/ZOOM_ALL.bmp</normaloff>:/icons/ZOOM_ALL.bmp</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonResetCameraObject">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Reset camera to fit selected object</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/ZOOM.bmp</normaloff>:/icons/ZOOM.bmp</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonCreateDO">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Create a visual object from the selected Data Object</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/VBT_CLOUD.bmp</normaloff>:/icons/VBT_CLOUD.bmp</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonFilter">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/filter.png</normaloff>:/icons/filter.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonCreateGrid">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Create a grid object from the selected Data Object</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/VBT_Volume.bmp</normaloff>:/icons/VBT_Volume.bmp</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonDefineVector">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Define a vector in the Data Object</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/OPAddVector.png</normaloff>:/icons/OPAddVector.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonMathOp">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Perform a mathematical operation on a Data Object</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/OP_Parser.png</normaloff>:/icons/OP_Parser.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonPlot">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Create a plot from the Data Object</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/OP_MakePlot.png</normaloff>:/icons/OP_MakePlot.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="buttonMergeDO">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Merge two Data Objects to a new one</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../visivo.qrc">
+           <normaloff>:/icons/OP_Merger.png</normaloff>:/icons/OP_Merger.png</iconset>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>2</number>
+      </property>
+      <widget class="QWidget" name="tabObjectTree">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
+       <attribute name="title">
+        <string>Object Tree</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout_14">
+        <item>
+         <widget class="QSplitter" name="splitter">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <widget class="QTreeView" name="treeView"/>
+          <widget class="QTabWidget" name="dataEntity">
+           <property name="toolTip">
+            <string/>
+           </property>
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tabObjectInfo">
+            <property name="toolTip">
+             <string notr="true"/>
+            </property>
+            <attribute name="title">
+             <string>Object Info</string>
+            </attribute>
+            <widget class="QWidget" name="layoutWidget">
+             <property name="geometry">
+              <rect>
+               <x>21</x>
+               <y>20</y>
+               <width>271</width>
+               <height>131</height>
+              </rect>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_3">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_13">
+                <item>
+                 <widget class="QLabel" name="typeLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="valueTypeLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_10">
+                <item>
+                 <widget class="QLabel" name="nameLabel_2">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="valueNameLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_11">
+                <item>
+                 <widget class="QLabel" name="elementLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="valueElementLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_12">
+                <item>
+                 <widget class="QLabel" name="fieldLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="valueFieldLabel">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+           <widget class="QWidget" name="tabRendering">
+            <attribute name="title">
+             <string>Rendering</string>
+            </attribute>
+           </widget>
+           <widget class="QWidget" name="tabObjectFields">
+            <attribute name="title">
+             <string>Object Fields</string>
+            </attribute>
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <item>
+              <widget class="QTableWidget" name="fieldTable"/>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabViewSettings">
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
+       <property name="accessibleDescription">
+        <string/>
+       </property>
+       <attribute name="title">
+        <string>View Settings</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_7">
+        <item>
+         <widget class="QScrollArea" name="viewSettingArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>683</width>
+             <height>808</height>
+            </rect>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_2">
+                <item>
+                 <widget class="QLabel" name="nameLabel">
+                  <property name="text">
+                   <string>Name</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="namelineEdit">
+                  <property name="toolTip">
+                   <string>Choose a name for the Visual Object</string>
+                  </property>
+                  <property name="text">
+                   <string>Visual Object</string>
+                  </property>
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_3">
+                <item>
+                 <widget class="QLabel" name="Xlabel">
+                  <property name="text">
+                   <string>X</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="XcomboBox"/>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="XLogCheckBox">
+                  <property name="text">
+                   <string>Log</string>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_4">
+                <item>
+                 <widget class="QLabel" name="Ylabel">
+                  <property name="text">
+                   <string>Y</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="YcomboBox"/>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="YLogCheckBox">
+                  <property name="text">
+                   <string>Log</string>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_5">
+                <item>
+                 <widget class="QLabel" name="label">
+                  <property name="text">
+                   <string>Z</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="ZcomboBox"/>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="ZLogCheckBox">
+                  <property name="text">
+                   <string>Log</string>
+                  </property>
+                  <property name="checkable">
+                   <bool>true</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="ShowPointsCheckBox">
+                <property name="text">
+                 <string>Show Points</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QPushButton" name="ViewSettingspushButton">
+              <property name="text">
+               <string>OK</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_5">
+              <item>
+               <widget class="QCheckBox" name="ScaleCheckBox">
+                <property name="text">
+                 <string>Scale</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="ShowAxesCheckBox">
+                <property name="text">
+                 <string>Show Axes</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="ShowBoxCheckBox">
+                <property name="text">
+                 <string>Show Box</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="VectorLayout">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_8">
+                <item>
+                 <widget class="QLabel" name="XVectorsLabel">
+                  <property name="text">
+                   <string>Vector X</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="XVectorsComboBox"/>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_7">
+                <item>
+                 <widget class="QLabel" name="YVectorsLabel">
+                  <property name="text">
+                   <string>Vector Y</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="YVectorsComboBox"/>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_6">
+                <item>
+                 <widget class="QLabel" name="ZVectorsLabel">
+                  <property name="text">
+                   <string>Vector Z</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="ZVectorsComboBox"/>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="ShowVectorsCheckBox">
+                <property name="text">
+                 <string>Show Vectors</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabOpParameters">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>412</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::TabFocus</enum>
+       </property>
+       <attribute name="title">
+        <string>Op. Parameters</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_999">
+        <item>
+         <widget class="QGroupBox" name="importerGroupBox">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="title">
+           <string>Importer</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_15">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Missing Value</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="missingValueLineEdit"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_16">
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Text Value      </string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="textValueLineEdit"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_17">
+             <item>
+              <widget class="QRadioButton" name="tableRadioButton">
+               <property name="text">
+                <string>Table</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="volumeRadioButton">
+               <property name="text">
+                <string>Volume</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="volumeGroupBox">
+             <property name="title">
+              <string>Volume</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_8">
+              <item>
+               <widget class="QLabel" name="label_4">
+                <property name="text">
+                 <string>Number of computational cells:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QGridLayout" name="gridLayout">
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_6">
+                  <property name="text">
+                   <string>Y</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="xComputationaCellLineEdit"/>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_5">
+                  <property name="text">
+                   <string>X</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLineEdit" name="yComputationaCellLineEdit"/>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="label_7">
+                  <property name="text">
+                   <string>Z</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QLineEdit" name="zComputationaCellLineEdit"/>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_8">
+                <property name="text">
+                 <string>Cell sizes:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_10">
+                  <property name="text">
+                   <string>Y dim</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="label_11">
+                  <property name="text">
+                   <string>Z dim</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_9">
+                  <property name="text">
+                   <string>X dim</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="xCellSizeLineEdit"/>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLineEdit" name="yCellSizeLineEdit"/>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QLineEdit" name="zCellSizeLineEdit"/>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="importPushButton">
+             <property name="text">
+              <string>Import</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="filterGroupBox">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="title">
+           <string>Filter</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_9">
+           <item>
+            <widget class="QComboBox" name="selectFilterComboBox">
+             <item>
+              <property name="text">
+               <string>Add Identifier</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Append</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Cartesian 2 Polar</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Cut</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Decimator</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Extract List</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Extraction</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Grid 2 Point</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Include</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Math Op</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Merge</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Module</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Multi Resolution</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Point distribute</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Point Property</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Randomizer</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Scalar Distribution</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Select Columns</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Select Rows</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Sigma Contours</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Split Table</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Write VO Table</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTextBrowser" name="filterDescriptionTextBrowser">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="html">
+              <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.SF NS Text'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Arial'; color:#232323;&quot;&gt;This filter adds a new column to the input table. The column name is given in Column Name field, with a sequence of value starting from a Start Number value (Default value is 0).&lt;/span&gt; &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="addIdentifierParameterGroupBox">
+             <property name="title">
+              <string>Parameter</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_3">
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="addIdNewColName">
+                <property name="text">
+                 <string>NewColumnName</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_12">
+                <property name="text">
+                 <string>Start Number:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>New Column:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="addIdStartNumber">
+                <property name="text">
+                 <string>0</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="appendParameterGroupBox">
+             <property name="title">
+              <string>Parameter</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_11">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_19">
+                <item>
+                 <widget class="QLabel" name="selectedVBT">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_18">
+                <item>
+                 <widget class="QListWidget" name="availableVBTlistWidget"/>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_10">
+                  <item>
+                   <widget class="QPushButton" name="addVBTpushButton">
+                    <property name="text">
+                     <string>&gt;&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="removeVBTpushButton">
+                    <property name="text">
+                     <string>&lt;&lt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QListWidget" name="selectedVBTlistWidget"/>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="runFilterPushButton">
+             <property name="text">
+              <string>Run filter</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>755</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuImport">
+     <property name="title">
+      <string>Import</string>
+     </property>
+     <addaction name="actionImportAscii"/>
+     <addaction name="actionCsv"/>
+     <addaction name="actionImportBinary"/>
+     <addaction name="actionImportVoTable"/>
+     <addaction name="actionImportRawGrid"/>
+     <addaction name="actionImportRawPoints"/>
+     <addaction name="actionImportFlyOutput"/>
+     <addaction name="actionImportHDF5"/>
+     <addaction name="actionImportGadget"/>
+     <addaction name="actionImportFits"/>
+     <addaction name="actionImportFitsImage"/>
+     <addaction name="actionDatacube"/>
+     <addaction name="separator"/>
+     <addaction name="actionVTK_ImageData"/>
+     <addaction name="actionVTK_PolyData"/>
+     <addaction name="actionTEST_DC3D"/>
+    </widget>
+    <widget class="QMenu" name="menuExport">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Export</string>
+     </property>
+     <addaction name="actionExportAscii"/>
+     <addaction name="actionExportBinary"/>
+     <addaction name="actionExportVoTable"/>
+    </widget>
+    <addaction name="actionNew"/>
+    <addaction name="separator"/>
+    <addaction name="actionOpen"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSaveAs"/>
+    <addaction name="separator"/>
+    <addaction name="menuImport"/>
+    <addaction name="menuExport"/>
+    <addaction name="separator"/>
+    <addaction name="actionPrint"/>
+    <addaction name="actionPrintPreview"/>
+    <addaction name="actionClose"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionUndo"/>
+    <addaction name="actionDelete"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>View</string>
+    </property>
+    <widget class="QMenu" name="menuAddView">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Add View</string>
+     </property>
+     <addaction name="action2DView"/>
+     <addaction name="action3DView"/>
+     <addaction name="actionOrthoSlices"/>
+     <addaction name="actionPlotVIew"/>
+    </widget>
+    <addaction name="menuAddView"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionVialactea"/>
+   </widget>
+   <widget class="QMenu" name="menuWindow">
+    <property name="title">
+     <string>Window</string>
+    </property>
+    <addaction name="actionOperation_queue"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuView"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuWindow"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionNew">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>New</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Save</string>
+   </property>
+  </action>
+  <action name="actionSaveAs">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Save as</string>
+   </property>
+  </action>
+  <action name="actionPrint">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Print</string>
+   </property>
+  </action>
+  <action name="actionPrintPreview">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Print Preview</string>
+   </property>
+  </action>
+  <action name="actionPage_Setup">
+   <property name="text">
+    <string>Page Setup</string>
+   </property>
+  </action>
+  <action name="actionRecent_Files">
+   <property name="text">
+    <string>Recent Files</string>
+   </property>
+  </action>
+  <action name="actionImportAscii">
+   <property name="text">
+    <string>Ascii</string>
+   </property>
+  </action>
+  <action name="actionImportBinary">
+   <property name="text">
+    <string>Binary</string>
+   </property>
+  </action>
+  <action name="actionImportRawGrid">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Raw Grid</string>
+   </property>
+  </action>
+  <action name="actionImportRawPoints">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Raw Points</string>
+   </property>
+  </action>
+  <action name="actionImportFlyOutput">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Fly Output</string>
+   </property>
+  </action>
+  <action name="actionImportHDF5">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>HDF5</string>
+   </property>
+  </action>
+  <action name="actionImportGadget">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Gadget</string>
+   </property>
+  </action>
+  <action name="actionImportFits">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Fits</string>
+   </property>
+  </action>
+  <action name="actionImportVoTable">
+   <property name="text">
+    <string>VoTable</string>
+   </property>
+  </action>
+  <action name="actionExportAscii">
+   <property name="text">
+    <string>Ascii</string>
+   </property>
+  </action>
+  <action name="actionExportBinary">
+   <property name="text">
+    <string>Binary</string>
+   </property>
+  </action>
+  <action name="actionExportVoTable">
+   <property name="text">
+    <string>VoTable</string>
+   </property>
+  </action>
+  <action name="actionUndo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Undo</string>
+   </property>
+  </action>
+  <action name="actionDelete">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Delete</string>
+   </property>
+  </action>
+  <action name="action2DView">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>2D View</string>
+   </property>
+  </action>
+  <action name="action3DView">
+   <property name="text">
+    <string>3D View</string>
+   </property>
+  </action>
+  <action name="actionOrthoSlices">
+   <property name="text">
+    <string>Ortho Slices</string>
+   </property>
+  </action>
+  <action name="actionPlotVIew">
+   <property name="text">
+    <string>Plot VIew</string>
+   </property>
+  </action>
+  <action name="action2DFunctions">
+   <property name="text">
+    <string>2D Functions</string>
+   </property>
+  </action>
+  <action name="actionSendVOTable">
+   <property name="text">
+    <string>Send VOTable</string>
+   </property>
+  </action>
+  <action name="actionShowObjects">
+   <property name="text">
+    <string>Show Objects</string>
+   </property>
+  </action>
+  <action name="actionPointDistribute">
+   <property name="text">
+    <string>Point Distribute</string>
+   </property>
+  </action>
+  <action name="actionSubsampler">
+   <property name="text">
+    <string>Subsampler</string>
+   </property>
+  </action>
+  <action name="actionPicker">
+   <property name="text">
+    <string>Picker</string>
+   </property>
+  </action>
+  <action name="actionExtractCluster">
+   <property name="text">
+    <string>Extract Cluster</string>
+   </property>
+  </action>
+  <action name="actionSmoothSurface">
+   <property name="text">
+    <string>Smooth Surface</string>
+   </property>
+  </action>
+  <action name="actionRandomize">
+   <property name="text">
+    <string>Randomize</string>
+   </property>
+  </action>
+  <action name="actionCreateVisualObject">
+   <property name="text">
+    <string>Create Visual Object</string>
+   </property>
+  </action>
+  <action name="actionCreateGridObject">
+   <property name="text">
+    <string>Create Grid Object</string>
+   </property>
+  </action>
+  <action name="actionCreateImageObject">
+   <property name="text">
+    <string>Create Image Object</string>
+   </property>
+  </action>
+  <action name="actionAddVector">
+   <property name="text">
+    <string>Add Vector</string>
+   </property>
+  </action>
+  <action name="actionMathOp">
+   <property name="text">
+    <string>Math Op.</string>
+   </property>
+  </action>
+  <action name="actionCreatePlot">
+   <property name="text">
+    <string>Create Plot</string>
+   </property>
+  </action>
+  <action name="actionExtractIsoSurfaces">
+   <property name="text">
+    <string>Extract IsoSurfaces</string>
+   </property>
+  </action>
+  <action name="actionAboutVisIVO">
+   <property name="text">
+    <string>about VisIVO</string>
+   </property>
+  </action>
+  <action name="actionVTK_ImageData">
+   <property name="text">
+    <string>VTK ImageData </string>
+   </property>
+  </action>
+  <action name="actionVTK_PolyData">
+   <property name="text">
+    <string>VTK PolyData</string>
+   </property>
+  </action>
+  <action name="actionBye">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionCiao">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="actionHi_Gal">
+   <property name="text">
+    <string>Hi-Gal</string>
+   </property>
+  </action>
+  <action name="actionOperation_queue">
+   <property name="text">
+    <string>Operation queue</string>
+   </property>
+  </action>
+  <action name="actionImportFitsImage">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Fits Image</string>
+   </property>
+  </action>
+  <action name="actionVialactea">
+   <property name="text">
+    <string>Vialactea</string>
+   </property>
+  </action>
+  <action name="actionDatacube">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Datacube</string>
+   </property>
+  </action>
+  <action name="actionCsv">
+   <property name="text">
+    <string>Csv</string>
+   </property>
+  </action>
+  <action name="actionTEST_DC3D">
+   <property name="text">
+    <string>TEST DC3D</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="../visivo.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>buttonCreateDO</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>viewSetting()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>140</x>
+     <y>60</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>268</x>
+     <y>446</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>treeView</sender>
+   <signal>doubleClicked(QModelIndex)</signal>
+   <receiver>treeView</receiver>
+   <slot>expand(QModelIndex)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>174</x>
+     <y>247</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>268</x>
+     <y>307</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>ViewSettingspushButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>viewSettingOk()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>123</x>
+     <y>721</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>268</x>
+     <y>446</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tabWidget</sender>
+   <signal>currentChanged(int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>switchTab(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>268</x>
+     <y>479</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>268</x>
+     <y>446</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>treeView</sender>
+   <signal>clicked(QModelIndex)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>itemSelected()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>174</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>174</x>
+     <y>345</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

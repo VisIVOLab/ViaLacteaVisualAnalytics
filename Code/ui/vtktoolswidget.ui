@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+<class>vtktoolswidget</class>
+<widget class="QWidget" name="vtktoolswidget">
+<property name="geometry">
+<rect>
+<x>0</x>
+<y>0</y>
+<width>496</width>
+<height>628</height>
+</rect>
+</property>
+<property name="windowTitle">
+<string>View Setting</string>
+</property>
+<layout class="QVBoxLayout" name="verticalLayout_2">
+<item>
+<widget class="QLabel" name="label_3">
+<property name="text">
+<string>Camera</string>
+</property>
+</widget>
+</item>
+<item>
+<layout class="QHBoxLayout" name="horizontalLayout">
+<item>
+<widget class="QPushButton" name="cameraLeft">
+<property name="text">
+<string/>
+</property>
+<property name="icon">
+<iconset resource="../visivo.qrc">
+<normaloff>:/icons/PIC_LEFT.bmp</normaloff>:/icons/PIC_LEFT.bmp</iconset>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QPushButton" name="cameraBack">
+<property name="text">
+<string/>
+</property>
+<property name="icon">
+<iconset resource="../visivo.qrc">
+<normaloff>:/icons/PIC_BACK.bmp</normaloff>:/icons/PIC_BACK.bmp</iconset>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QPushButton" name="cameraRight">
+<property name="text">
+<string/>
+</property>
+<property name="icon">
+<iconset resource="../visivo.qrc">
+<normaloff>:/icons/PIC_RIGHT.bmp</normaloff>:/icons/PIC_RIGHT.bmp</iconset>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QPushButton" name="frontCamera">
+<property name="text">
+<string/>
+</property>
+<property name="icon">
+<iconset resource="../visivo.qrc">
+<normaloff>:/icons/PIC_FRONT.bmp</normaloff>:/icons/PIC_FRONT.bmp</iconset>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QPushButton" name="topCamera">
+<property name="text">
+<string/>
+</property>
+<property name="icon">
+<iconset resource="../visivo.qrc">
+<normaloff>:/icons/PIC_TOP.bmp</normaloff>:/icons/PIC_TOP.bmp</iconset>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QPushButton" name="bottomCamera">
+<property name="text">
+<string/>
+</property>
+<property name="icon">
+<iconset resource="../visivo.qrc">
+<normaloff>:/icons/PIC_BOTTOM.bmp</normaloff>:/icons/PIC_BOTTOM.bmp</iconset>
+</property>
+</widget>
+</item>
+</layout>
+</item>
+<item>
+<widget class="Line" name="line">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+</widget>
+</item>
+<item>
+<layout class="QHBoxLayout" name="horizontalLayout_2">
+<item>
+<widget class="QCheckBox" name="ShowBoxCheckBox">
+<property name="text">
+<string>Show Box</string>
+</property>
+<property name="checked">
+<bool>true</bool>
+</property>
+</widget>
+</item>
+<item>
+<spacer name="horizontalSpacer_2">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+<property name="sizeHint" stdset="0">
+<size>
+<width>40</width>
+<height>20</height>
+</size>
+</property>
+</spacer>
+</item>
+<item>
+<widget class="QCheckBox" name="ShowAxesCheckBox">
+<property name="text">
+<string>Show Axes</string>
+</property>
+<property name="checked">
+<bool>true</bool>
+</property>
+</widget>
+</item>
+<item>
+<spacer name="horizontalSpacer">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+<property name="sizeHint" stdset="0">
+<size>
+<width>40</width>
+<height>20</height>
+</size>
+</property>
+</spacer>
+</item>
+<item>
+<widget class="QCheckBox" name="ShowColorbarCheckBox">
+<property name="text">
+<string>Show Colorbar</string>
+</property>
+</widget>
+</item>
+</layout>
+</item>
+<item>
+<widget class="Line" name="line_2">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+</widget>
+</item>
+<item>
+<layout class="QHBoxLayout" name="horizontalLayout_6">
+<item>
+<widget class="QCheckBox" name="scaleCheckBox">
+<property name="text">
+<string>Scale</string>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QCheckBox" name="gridCheckBox">
+<property name="text">
+<string>Grid</string>
+</property>
+</widget>
+</item>
+</layout>
+</item>
+<item>
+<widget class="Line" name="line_4">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QLabel" name="label_5">
+<property name="text">
+<string>Look Up Table</string>
+</property>
+</widget>
+</item>
+<item>
+<layout class="QHBoxLayout" name="horizontalLayout_3">
+<item>
+<widget class="QCheckBox" name="activateLutCheckBox">
+<property name="text">
+<string>Activate LUT</string>
+</property>
+</widget>
+</item>
+<item>
+<spacer name="horizontalSpacer_4">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+<property name="sizeHint" stdset="0">
+<size>
+<width>40</width>
+<height>20</height>
+</size>
+</property>
+</spacer>
+</item>
+<item>
+<widget class="QLabel" name="scalarLabel">
+<property name="enabled">
+<bool>false</bool>
+</property>
+<property name="text">
+<string>Scalar</string>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QComboBox" name="scalarComboBox">
+<property name="enabled">
+<bool>false</bool>
+</property>
+</widget>
+</item>
+<item>
+<spacer name="horizontalSpacer_3">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+<property name="sizeHint" stdset="0">
+<size>
+<width>40</width>
+<height>20</height>
+</size>
+</property>
+</spacer>
+</item>
+<item>
+<widget class="QLabel" name="lutLabel">
+<property name="enabled">
+<bool>false</bool>
+</property>
+<property name="text">
+<string>LUT</string>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QComboBox" name="lutComboBox">
+<property name="enabled">
+<bool>false</bool>
+</property>
+<item>
+<property name="text">
+<string>Default</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Default Step</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>EField</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Glow</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Gray</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>MinMax</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>PhysicsContour</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>PureRed</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>PureGreen</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Blue</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Run1</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Run2</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Sar</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>Temperature</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>TenStep</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>VolRenGlow</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>VolRenGreen</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>VolRenRGB</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>VolRenTwoLev</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllYellow</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllCyan</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllViolet</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllWhite</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllBlack</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllRed</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllGreen</string>
+</property>
+</item>
+<item>
+<property name="text">
+<string>AllBlue</string>
+</property>
+</item>
+</widget>
+</item>
+</layout>
+</item>
+<item>
+<layout class="QVBoxLayout" name="verticalLayout">
+<item>
+<widget class="QCustomPlot" name="histogramWidget" native="true">
+<property name="sizePolicy">
+<sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+<horstretch>0</horstretch>
+<verstretch>0</verstretch>
+</sizepolicy>
+</property>
+</widget>
+</item>
+</layout>
+</item>
+<item>
+<widget class="QLabel" name="label_4">
+<property name="text">
+<string>Range</string>
+</property>
+</widget>
+</item>
+<item>
+<layout class="QVBoxLayout" name="verticalLayout_3">
+<item>
+<layout class="QHBoxLayout" name="horizontalLayout_4">
+<item>
+<widget class="QLabel" name="label">
+<property name="text">
+<string>Min:</string>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QSlider" name="fromSlider">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QLineEdit" name="fromValue"/>
+</item>
+</layout>
+</item>
+<item>
+<layout class="QHBoxLayout" name="horizontalLayout_5">
+<item>
+<widget class="QLabel" name="label_2">
+<property name="text">
+<string>Max:</string>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QSlider" name="toSlider">
+<property name="sliderPosition">
+<number>99</number>
+</property>
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+</widget>
+</item>
+<item>
+<widget class="QLineEdit" name="toValue"/>
+</item>
+</layout>
+</item>
+</layout>
+</item>
+<item>
+<widget class="Line" name="line_3">
+<property name="orientation">
+<enum>Qt::Horizontal</enum>
+</property>
+</widget>
+</item>
+<item>
+<spacer name="verticalSpacer">
+<property name="orientation">
+<enum>Qt::Vertical</enum>
+</property>
+<property name="sizeHint" stdset="0">
+<size>
+<width>20</width>
+<height>40</height>
+</size>
+</property>
+</spacer>
+</item>
+</layout>
+</widget>
+<customwidgets>
+<customwidget>
+<class>QCustomPlot</class>
+<extends>QWidget</extends>
+<header>src/qcustomplot.h</header>
+<container>1</container>
+</customwidget>
+</customwidgets>
+<resources>
+<include location="../visivo.qrc"/>
+</resources>
+<connections/>
+</ui>
