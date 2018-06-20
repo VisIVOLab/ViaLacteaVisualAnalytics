@@ -1,2 +1,0 @@
-scripts.zip=sed_fit_2015-12-21-172628/executable/0
-execute.bin=sed_fit_2015-12-21-172628/executable

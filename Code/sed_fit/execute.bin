@@ -1,4 +1,0 @@
-#!/bin/bash
-unzip scripts.zip
-/usr/local/bin/idl -e "sedpar=vialactea_tap_sedfit_v3([160,250,350,500],[4.82534,4.65167,4.04317,3.5252],[0.571259,0.392511,0.337027,0.526754],[1,1,1,1],2000.,0.8,sed_weights=[1.,1.,1.],use_wave=[160,160,500])" &> log.dat
-zip output.zip *dat
