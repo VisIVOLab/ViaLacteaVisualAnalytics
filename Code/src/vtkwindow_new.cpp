@@ -140,7 +140,7 @@ virtual void OnLeftButtonUp()
         {
             const vtkVector2i &v = points[j];
             int pos[2] = {v[0], v[1]};
-            polygonPointsArray->SetTupleValue(j, pos);
+            polygonPointsArray->SetTypedTuple(j, pos);
         }
 
         vtkNew<vtkHardwareSelector> hardSel;

@@ -1,7 +1,7 @@
 #include "vialactea.h"
 #include "ui_vialactea.h"
-#include <QWebFrame>
-#include <QWebElement>
+//#include <QWebFrame>
+//#include <QWebElement>
 #include "vialacteainitialquery.h"
 #include <QFileDialog>
 #include <QMessageBox>
@@ -225,8 +225,8 @@ void ViaLactea::on_noneRadioButton_clicked(bool checked)
 {
     if(checked)
     {
-        ui->webView->page()->mainFrame()->evaluateJavaScript( "activatePointSelection(false)" );
-        ui->webView->page()->mainFrame()->evaluateJavaScript( "activateRectangularSelection(false)" );
+        ui->webView->page()->runJavaScript( "activatePointSelection(false)" );
+        ui->webView->page()->runJavaScript( "activateRectangularSelection(false)" );
     }
 }
 
@@ -251,29 +251,43 @@ void ViaLactea::on_selectFsPushButton_clicked()
 void ViaLactea::on_webView_statusBarMessage(const QString &text)
 {
 
-    QWebElement e = ui->webView->page()->mainFrame()->findFirstElement("div#selected_point");
+//    QObject e = ui->webView->page()-> ( ->findChild("div#selected_point");
+    QString result;
+    ui->webView->page()->runJavaScript("function myFunction() {"
+                                        "var el = document.getElementById('div#selected_point');"
+                                        "return el;} myFunction();",
+                                        [] (const QVariant &result) {
+                   return result.toString();
+      });
+            QString e=result;
+             if (e!="")
+             {
+                 QStringList pieces = e.split( "," );
+                 ui->glatLineEdit->setText(QString::number( pieces[1].toDouble(), 'f', 4 ));
+                 ui->glonLineEdit->setText(QString::number( pieces[0].toDouble(), 'f', 4 ));
+                 if(ui->radiumLineEdit->text()=="")
+                     ui->radiumLineEdit->setText("0.1");
+                 ui->dlLineEdit->setText("");
+                 ui->dbLineEdit->setText("");
 
-    //  qDebug()<<"e: "<<e.toPlainText();
+                 ui->noneRadioButton->setChecked(true);
+                 on_noneRadioButton_clicked(true);
+             }
+    qDebug()<<"e: "<<e;
+    ui->webView->page()->runJavaScript("function myFunction() {"
+                                        "var el = document.getElementById('div#selected_radius');"
+                                        "return el;} myFunction();",
+                                        [] (const QVariant &result) {
+                   return result.toString();
+      });
+            QString e_radius=result;
 
-    if (e.toPlainText()!="")
-    {
-        QStringList pieces = e.toPlainText().split( "," );
-        ui->glatLineEdit->setText(QString::number( pieces[1].toDouble(), 'f', 4 ));
-        ui->glonLineEdit->setText(QString::number( pieces[0].toDouble(), 'f', 4 ));
-        if(ui->radiumLineEdit->text()=="")
-            ui->radiumLineEdit->setText("0.1");
-        ui->dlLineEdit->setText("");
-        ui->dbLineEdit->setText("");
+//    QWebElement e_radius = ui->webView->page()->mainFrame()->findFirstElement("div#selected_radius");
 
-        ui->noneRadioButton->setChecked(true);
-        on_noneRadioButton_clicked(true);
-    }
-
-    QWebElement e_radius = ui->webView->page()->mainFrame()->findFirstElement("div#selected_radius");
     // qDebug()<<"e_radius: "<<e_radius.toPlainText();
-    if (e_radius.toPlainText()!="")
+    if (e_radius!="")
     {
-        QStringList pieces = e_radius.toPlainText().split( "," );
+        QStringList pieces = e_radius.split( "," );
         // qDebug()<<pieces;
         QString dl=QString::number( pieces[0].toDouble(), 'f', 4 );
         if(dl.toDouble()>4.0)
@@ -440,7 +454,7 @@ void ViaLactea::on_pointRadioButton_clicked(bool checked)
 {
     if(checked)
     {
-        ui->webView->page()->mainFrame()->evaluateJavaScript( "activatePointSelection(true)" );
+        ui->webView->page()->runJavaScript( "activatePointSelection(true)" );
     }
 }
 
@@ -448,7 +462,7 @@ void ViaLactea::on_rectRadioButton_clicked(bool checked)
 {
     if(checked)
     {
-        ui->webView->page()->mainFrame()->evaluateJavaScript( "activateRectangularSelection(true)" );
+        ui->webView->page()->runJavaScript("activateRectangularSelection(true)" );
     }
 }
 

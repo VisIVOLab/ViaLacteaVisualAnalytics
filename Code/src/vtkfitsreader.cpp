@@ -12,7 +12,7 @@
 #include <qmath.h>
 
 
-vtkCxxRevisionMacro(vtkFitsReader, "$Revision: 1.1 $");
+//vtkCxxRevisionMacro(vtkFitsReader, "$Revision: 1.1 $");
 vtkStandardNewMacro(vtkFitsReader);
 
 //----------------------------------------------------------------------------
