@@ -21,25 +21,26 @@ ICON = logo.icns
 
 
 #INCLUDEPATH +=   /opt/vtk6.20/include/vtk-6.2/
-INCLUDEPATH += /usr/local/Cellar/vtk/8.2.0_10/include/vtk-8.2/
-#INCLUDEPATH +=   /opt/cfitsio3_1_0/include/ \
-INCLUDEPATH +=   /usr/local/Cellar/cfitsio/3.480/include/ \
+INCLUDEPATH += /opt/vtk-9.0.0/include/vtk-9.0/
+INCLUDEPATH +=   /opt/cfitsio3_1_0/include/ \
                 /opt/local/include \
-                /usr/local/Cellar/boost/1.72.0_2/include/
+                /opt/boost_1_63_0/include/
 
 #INCLUDEPATH += /Users/fxbio6600/OACT/VisIVOServer_svn_locale/branches/2.3/
 INCLUDEPATH += /Users/eva/Projects/NEANIAS/Code/VisIVOServer
 INCLUDEPATH +=/opt/hdf5-1.10.0-patch1/include
-LIBS  +=  /usr/local/Cellar/cfitsio/3.480/lib/libcfitsio.a
+LIBS  +=  /opt/cfitsio3_1_0/lib/libcfitsio.a
 
 
-LIBS += -L/usr/local/Cellar/vtk/8.2.0_10/lib
-LIBS += -lvtkChartsCore-8.2 -lvtkCommonColor-8.2 -lvtkCommonComputationalGeometry-8.2 -lvtkCommonCore-8.2 -lvtkCommonDataModel-8.2 -lvtkCommonExecutionModel-8.2 -lvtkCommonMath-8.2 -lvtkCommonMisc-8.2 -lvtkCommonSystem-8.2 -lvtkCommonTransforms-8.2 -lvtkDICOMParser-8.2 -lvtkDomainsChemistry-8.2 -lvtkFiltersAMR-8.2 -lvtkFiltersCore-8.2 -lvtkFiltersExtraction-8.2 -lvtkFiltersFlowPaths-8.2 -lvtkFiltersGeneral-8.2 -lvtkFiltersGeneric-8.2 -lvtkFiltersGeometry-8.2 -lvtkFiltersHybrid-8.2 -lvtkFiltersHyperTree-8.2 -lvtkFiltersImaging-8.2 -lvtkFiltersModeling-8.2 -lvtkFiltersParallel-8.2 -lvtkFiltersParallelImaging-8.2 -lvtkFiltersProgrammable-8.2 -lvtkFiltersSMP-8.2 -lvtkFiltersSelection-8.2 -lvtkFiltersSources-8.2 -lvtkFiltersStatistics-8.2 -lvtkFiltersTexture-8.2 -lvtkFiltersVerdict-8.2 -lvtkGUISupportQt-8.2 -lvtkGUISupportQtSQL-8.2 -lvtkGeovisCore-8.2 -lvtkIOAMR-8.2 -lvtkIOCore-8.2 -lvtkIOEnSight-8.2 -lvtkIOExodus-8.2 -lvtkIOExport-8.2 -lvtkIOGeometry-8.2 -lvtkIOImage-8.2 -lvtkIOImport-8.2 -lvtkIOInfovis-8.2 -lvtkIOLSDyna-8.2 -lvtkIOLegacy-8.2 -lvtkIOMINC-8.2 -lvtkIOMovie-8.2 -lvtkIOPLY-8.2 -lvtkIOParallel-8.2 -lvtkIOParallelXML-8.2 -lvtkIOSQL-8.2 -lvtkIOVideo-8.2 -lvtkIOXML-8.2 -lvtkIOXMLParser-8.2 -lvtkImagingColor-8.2 -lvtkImagingCore-8.2 -lvtkImagingFourier-8.2 -lvtkImagingGeneral-8.2 -lvtkImagingHybrid-8.2 -lvtkImagingMath-8.2 -lvtkImagingMorphological-8.2 -lvtkImagingSources-8.2 -lvtkImagingStatistics-8.2 -lvtkImagingStencil-8.2 -lvtkInfovisCore-8.2 -lvtkInfovisLayout-8.2 -lvtkInteractionImage-8.2 -lvtkInteractionStyle-8.2 -lvtkInteractionWidgets-8.2 -lvtkParallelCore-8.2 -lvtkRenderingAnnotation-8.2 -lvtkRenderingContext2D-8.2 -lvtkRenderingContextOpenGL2-8.2 -lvtkRenderingCore-8.2 -lvtkRenderingFreeType-8.2 -lvtkRenderingFreeType-8.2 -lvtkRenderingGL2PSOpenGL2-8.2 -lvtkRenderingImage-8.2 -lvtkRenderingLOD-8.2 -lvtkRenderingLabel-8.2 -lvtkRenderingOpenGL2-8.2 -lvtkRenderingQt-8.2 -lvtkRenderingVolume-8.2 -lvtkRenderingVolumeOpenGL2-8.2 -lvtkViewsContext2D-8.2 -lvtkViewsCore-8.2 -lvtkViewsInfovis-8.2 -lvtkViewsQt-8.2 -lvtkexodusII-8.2 -lvtkfreetype-8.2 -lvtkgl2ps-8.2  -lvtkjsoncpp-8.2 -lvtkmetaio-8.2 -lvtkogg-8.2 -lvtkproj-8.2 -lvtksqlite-8.2 -lvtksys-8.2 -lvtkverdict-8.2
+LIBS += -L/opt/vtk-9.0.0/lib
+LIBS += -lvtkChartsCore-9.0 -lvtkCommonColor-9.0 -lvtkCommonComputationalGeometry-9.0 -lvtkCommonCore-9.0 -lvtkCommonDataModel-9.0 -lvtkCommonExecutionModel-9.0 -lvtkCommonMath-9.0 -lvtkCommonMisc-9.0 -lvtkCommonSystem-9.0 -lvtkCommonTransforms-9.0 -lvtkDICOMParser-9.0 -lvtkDomainsChemistry-9.0 -lvtkFiltersAMR-9.0 -lvtkFiltersCore-9.0 -lvtkFiltersExtraction-9.0 -lvtkFiltersFlowPaths-9.0 -lvtkFiltersGeneral-9.0 -lvtkFiltersGeneric-9.0 -lvtkFiltersGeometry-9.0 -lvtkFiltersHybrid-9.0 -lvtkFiltersHyperTree-9.0 -lvtkFiltersImaging-9.0 -lvtkFiltersModeling-9.0 -lvtkFiltersParallel-9.0 -lvtkFiltersParallelImaging-9.0 -lvtkFiltersProgrammable-9.0 -lvtkFiltersSMP-9.0 -lvtkFiltersSelection-9.0 -lvtkFiltersSources-9.0 -lvtkFiltersStatistics-9.0 -lvtkFiltersTexture-9.0 -lvtkFiltersVerdict-9.0 -lvtkGUISupportQt-9.0 -lvtkGUISupportQtSQL-9.0 -lvtkGeovisCore-9.0 -lvtkIOAMR-9.0 -lvtkIOCore-9.0 -lvtkIOEnSight-9.0 -lvtkIOExodus-9.0 -lvtkIOExport-9.0 -lvtkIOGeometry-9.0 -lvtkIOImage-9.0 -lvtkIOImport-9.0 -lvtkIOInfovis-9.0 -lvtkIOLSDyna-9.0 -lvtkIOLegacy-9.0 -lvtkIOMINC-9.0 -lvtkIOMovie-9.0 -lvtkIOPLY-9.0 -lvtkIOParallel-9.0 -lvtkIOParallelXML-9.0 -lvtkIOSQL-9.0 -lvtkIOVideo-9.0 -lvtkIOXML-9.0 -lvtkIOXMLParser-9.0 -lvtkImagingColor-9.0 -lvtkImagingCore-9.0 -lvtkImagingFourier-9.0 -lvtkImagingGeneral-9.0 -lvtkImagingHybrid-9.0 -lvtkImagingMath-9.0 -lvtkImagingMorphological-9.0 -lvtkImagingSources-9.0 -lvtkImagingStatistics-9.0 -lvtkImagingStencil-9.0 -lvtkInfovisCore-9.0 -lvtkInfovisLayout-9.0 -lvtkInteractionImage-9.0 -lvtkInteractionStyle-9.0 -lvtkInteractionWidgets-9.0 -lvtkParallelCore-9.0 -lvtkRenderingAnnotation-9.0 -lvtkRenderingContext2D-9.0  -lvtkRenderingCore-9.0 -lvtkRenderingFreeType-9.0 -lvtkRenderingFreeType-9.0 -lvtkRenderingGL2PSOpenGL2-9.0 -lvtkRenderingImage-9.0 -lvtkRenderingLOD-9.0 -lvtkRenderingLabel-9.0 -lvtkRenderingOpenGL2-9.0 -lvtkRenderingQt-9.0 -lvtkRenderingVolume-9.0 -lvtkRenderingVolumeOpenGL2-9.0 -lvtkViewsContext2D-9.0 -lvtkViewsCore-9.0 -lvtkViewsInfovis-9.0 -lvtkViewsQt-9.0 -lvtkexodusII-9.0 -lvtkfreetype-9.0 -lvtkgl2ps-9.0  -lvtkjsoncpp-9.0 -lvtkmetaio-9.0 -lvtkogg-9.0  -lvtksqlite-9.0 -lvtksys-9.0 -lvtkverdict-9.0
+#LIBS REMOVED
+#-lvtkRenderingContextOpenGL2-9.0 -lvtkproj-9.0
+
 #LIBS += -lvtkChartsCore-6.2 -lvtkCommonColor-6.2 -lvtkCommonComputationalGeometry-6.2 -lvtkCommonCore-6.2 -lvtkCommonDataModel-6.2 -lvtkCommonExecutionModel-6.2 -lvtkCommonMath-6.2 -lvtkCommonMisc-6.2 -lvtkCommonSystem-6.2 -lvtkCommonTransforms-6.2 -lvtkDICOMParser-6.2 -lvtkDomainsChemistry-6.2 -lvtkFiltersAMR-6.2 -lvtkFiltersCore-6.2 -lvtkFiltersExtraction-6.2 -lvtkFiltersFlowPaths-6.2 -lvtkFiltersGeneral-6.2 -lvtkFiltersGeneric-6.2 -lvtkFiltersGeometry-6.2 -lvtkFiltersHybrid-6.2 -lvtkFiltersHyperTree-6.2 -lvtkFiltersImaging-6.2 -lvtkFiltersModeling-6.2 -lvtkFiltersParallel-6.2 -lvtkFiltersParallelImaging-6.2 -lvtkFiltersProgrammable-6.2 -lvtkFiltersSMP-6.2 -lvtkFiltersSelection-6.2 -lvtkFiltersSources-6.2 -lvtkFiltersStatistics-6.2 -lvtkFiltersTexture-6.2 -lvtkFiltersVerdict-6.2 -lvtkGUISupportQt-6.2 -lvtkGUISupportQtOpenGL-6.2 -lvtkGUISupportQtSQL-6.2 -lvtkGUISupportQtWebkit-6.2 -lvtkGeovisCore-6.2 -lvtkIOAMR-6.2 -lvtkIOCore-6.2 -lvtkIOEnSight-6.2 -lvtkIOExodus-6.2 -lvtkIOExport-6.2 -lvtkIOGeometry-6.2 -lvtkIOImage-6.2 -lvtkIOImport-6.2 -lvtkIOInfovis-6.2 -lvtkIOLSDyna-6.2 -lvtkIOLegacy-6.2 -lvtkIOMINC-6.2 -lvtkIOMovie-6.2 -lvtkIONetCDF-6.2 -lvtkIOPLY-6.2 -lvtkIOParallel-6.2 -lvtkIOParallelXML-6.2 -lvtkIOSQL-6.2 -lvtkIOVideo-6.2 -lvtkIOXML-6.2 -lvtkIOXMLParser-6.2 -lvtkImagingColor-6.2 -lvtkImagingCore-6.2 -lvtkImagingFourier-6.2 -lvtkImagingGeneral-6.2 -lvtkImagingHybrid-6.2 -lvtkImagingMath-6.2 -lvtkImagingMorphological-6.2 -lvtkImagingSources-6.2 -lvtkImagingStatistics-6.2 -lvtkImagingStencil-6.2 -lvtkInfovisCore-6.2 -lvtkInfovisLayout-6.2 -lvtkInteractionImage-6.2 -lvtkInteractionStyle-6.2 -lvtkInteractionWidgets-6.2 -lvtkNetCDF-6.2 -lvtkNetCDF_cxx-6.2 -lvtkParallelCore-6.2 -lvtkRenderingAnnotation-6.2 -lvtkRenderingContext2D-6.2 -lvtkRenderingContextOpenGL-6.2 -lvtkRenderingCore-6.2 -lvtkRenderingFreeType-6.2 -lvtkRenderingFreeTypeFontConfig-6.2 -lvtkRenderingFreeTypeOpenGL-6.2 -lvtkRenderingGL2PS-6.2 -lvtkRenderingImage-6.2 -lvtkRenderingLIC-6.2 -lvtkRenderingLOD-6.2 -lvtkRenderingLabel-6.2 -lvtkRenderingOpenGL-6.2 -lvtkRenderingQt-6.2 -lvtkRenderingVolume-6.2 -lvtkRenderingVolumeOpenGL-6.2 -lvtkViewsContext2D-6.2 -lvtkViewsCore-6.2 -lvtkViewsInfovis-6.2 -lvtkViewsQt-6.2 -lvtkalglib-6.2 -lvtkexoIIc-6.2 -lvtkexpat-6.2 -lvtkfreetype-6.2 -lvtkftgl-6.2 -lvtkgl2ps-6.2 -lvtkhdf5-6.2 -lvtkhdf5_hl-6.2 -lvtkjpeg-6.2 -lvtkjsoncpp-6.2 -lvtklibxml2-6.2 -lvtkmetaio-6.2 -lvtkoggtheora-6.2 -lvtkpng-6.2 -lvtkproj4-6.2 -lvtksqlite-6.2 -lvtksys-6.2 -lvtktiff-6.2 -lvtkverdict-6.2 -lvtkzlib-6.2
 #LIBS += -L/Users/fxbio6600/OACT/develop/VisIVODesktop6/trunk/lib/ -lsamp -lVOApps -lVO -lVOTable -lVOClient
 LIBS += -lm -lc  -lpthread -lcurl
-LIBS += /Users/eva/Projects/NEANIAS/Code/VisIVOServer/API_LIGHT/libVisIVOApi.a
-LIBS += -L/usr/local/Cellar/hdf5/1.12.0/lib -lhdf5
+LIBS += -L/opt/hdf5-1.10.0-patch1/lib -lhdf5
 LIBS += /usr/lib/libc++.dylib
 
 macx:LIBS +=  -framework \
@@ -143,7 +144,6 @@ SOURCES += src/main.cpp\
     src/vstabledesktop.cpp \
     src/visivoutilsdesktop.cpp \
     src/vsobjectdesktop.cpp \
-    src/visivofilterdesktop.cpp \
     src/filtercustomize.cpp \
     src/vialacteastringdictwidget.cpp
 

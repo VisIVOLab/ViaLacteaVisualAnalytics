@@ -263,7 +263,7 @@ void contour::createContour()
     labelScalars->SetNumberOfComponents(1);
     labelScalars->SetName("Isovalues");
 
-    vtkIdType *indices;
+    const vtkIdType *indices;
     vtkIdType numberOfPoints;
     unsigned int lineCount = 0;
     for (cells->InitTraversal();
@@ -726,7 +726,7 @@ void contour::addContours()
     labelScalars->SetNumberOfComponents(1);
     labelScalars->SetName("Isovalues");
 
-    vtkIdType *indices;
+    const vtkIdType *indices;
     vtkIdType numberOfPoints;
     unsigned int lineCount = 0;
     for (cells->InitTraversal();

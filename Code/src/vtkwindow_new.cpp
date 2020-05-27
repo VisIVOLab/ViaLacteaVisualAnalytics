@@ -92,6 +92,7 @@
 
 
 
+
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
 VTK_MODULE_INIT(vtkRenderingFreeType)
@@ -100,9 +101,7 @@ VTK_MODULE_INIT(vtkRenderingVolumeOpenGL2)
 
 #define VTK_NEW(type, instance)  vtkSmartPointer<type> instance = vtkSmartPointer<type>::New();
 
-#ifdef Q_OS_OSX
-#include "osxHelper.h"
-#endif
+
 
 class InteractorStyleFreeHandOn3DVisualization : public vtkInteractorStyleDrawPolygon
 {
@@ -1015,10 +1014,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 {
 
     ui->setupUi(this);
-#ifdef Q_OS_OSX
-    disableGLHiDPI(ui->qVTK1->winId());
-#endif
-
 
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
 
@@ -1060,7 +1055,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
     renwin = vtkRenderWindow::New();
     renwin->AddRenderer(m_Ren1);
     renwin->SetInteractor(ui->qVTK1->GetInteractor());
-    ui->qVTK1->SetRenderWindow(renwin);
+    ui->qVTK1->setRenderWindow(renwin);
 
     m_Ren1->GlobalWarningDisplayOff();
     loadObservedObject(vis);
@@ -1172,14 +1167,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
 
-#ifdef Q_OS_OSX
-        disableGLHiDPI(ui->qVTK1->winId());
-#endif
-
         m_Ren1 = vtkRenderer::New();
         renwin = vtkRenderWindow::New();
         renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->SetRenderWindow(renwin);
+        ui->qVTK1->setRenderWindow(renwin);
 
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren1->SetBackground(0.21,0.23,0.25);
@@ -1295,15 +1286,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         isDatacube=true;
         ui->setupUi(this);
 
-#ifdef Q_OS_OSX
-        disableGLHiDPI(ui->qVTK1->winId());
-        disableGLHiDPI(ui->isocontourVtkWin->winId());
-#endif
 
         m_Ren1 = vtkRenderer::New();
         renwin = vtkRenderWindow::New();
         renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->SetRenderWindow(renwin);
+        ui->qVTK1->setRenderWindow(renwin);
 
         m_Ren2 = vtkRenderer::New();
         renwin2 = vtkRenderWindow::New();

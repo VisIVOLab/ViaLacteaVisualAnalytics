@@ -3,7 +3,6 @@
 #include <QInputDialog>
 #include "sedplotpointcustom.h"
 #include "loadingwidget.h"
-#include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
 #include <QFileDialog>
 #include "sedfitgrid_thin.h"

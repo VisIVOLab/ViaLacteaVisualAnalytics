@@ -38,15 +38,15 @@
 #include "vialactea.h"
 #include "sed.h"
 //#include "vosamp.h"
-#include "visivofilterdesktop.h"
+//#include "visivofilterdesktop.h"
 #include "customprocess.h"
 
-
+/*
 extern "C" {
 #include "visivo.h"
 }
 
-
+*/
 #include "vtkwindow_new.h"
 
 /*
@@ -917,6 +917,8 @@ void MainWindow::on_volumeRadioButton_toggled(bool checked)
 
 void MainWindow::on_importPushButton_clicked()
 {
+    //Removed VisIVO Integrations
+    /*
     qDebug()<<"filename: "<<fileName;
     qDebug()<<"type: "<<type;
     int errorCode;
@@ -951,12 +953,13 @@ void MainWindow::on_importPushButton_clicked()
     errorCode=VI_SetAtt(&envVI1,VI_SET_OUTFILEVBT,outputPath);
 
     VI_Import(&envVI1);
-
+*/
 
 }
 
 void MainWindow::on_buttonFilter_clicked()
 {
+
     ui->importerGroupBox->hide();
     ui->filterGroupBox->show();
     ui->addIdentifierParameterGroupBox->show();
@@ -1096,5 +1099,5 @@ void MainWindow::hideAllFilterParameter()
 
 void MainWindow::on_runFilterPushButton_clicked()
 {
-    VisIVOFilterDesktop::runFilter(ui->selectFilterComboBox->currentIndex());
+    //VisIVOFilterDesktop::runFilter(ui->selectFilterComboBox->currentIndex());
 }

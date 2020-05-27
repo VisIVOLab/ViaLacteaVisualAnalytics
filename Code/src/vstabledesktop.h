@@ -33,10 +33,11 @@
 #include <QWidget>
 #include <QProcess>
 #include <QHash>
-
+/*
 extern "C" {
     #include "visivo.h"
 }
+*/
 
 class VSTableDesktop : public VSObjectDesktop, QWidget
 {
@@ -76,9 +77,9 @@ private:
     QHash <QString, int> n160;
     QHash <QString, int> n70;
     int m_vialactea_wavelen;
-
+/*
     VBT myVBT;
-
+*/
 public:
     VSTableDesktop();
     VSTableDesktop(std::string locator, std::string name = "", std::string description = "", bool statistic=true);
