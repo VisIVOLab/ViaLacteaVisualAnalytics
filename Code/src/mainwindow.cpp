@@ -30,7 +30,7 @@
 #include <QFont>
 #include <QFileSystemModel>
 #include "vtkwindow_new.h"
-#include "VisIVOImporterDesktop.h"
+#include "visivoimporterdesktop.h"
 #include "vispoint.h"
 #include "singleton.h"
 #include "vtkfitsreader.h"

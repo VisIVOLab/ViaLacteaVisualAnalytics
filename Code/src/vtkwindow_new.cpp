@@ -62,11 +62,11 @@
 #include "vialacteainitialquery.h"
 #include "selectedsourcesform.h"
 #include "vtkContourFilter.h"
-#include "vtkLegendScaleActor.h"
+#include "vtklegendscaleactor.h"
 #include "vtkAxisActor2D.h"
 #include "vtkCubeAxesActor.h"
 #include "lutcustomize.h"
-#include "vtkExtractHistogram.h"
+#include "vtkextracthistogram.h"
 #include "vtkDoubleArray.h"
 #include "vtkTable.h"
 #include <vtkGlyph2D.h>

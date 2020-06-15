@@ -12,7 +12,7 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#include "vtkExtractHistogram.h"
+#include "vtkextracthistogram.h"
 
 #include "vtkCellData.h"
 #include "vtkCompositeDataIterator.h"

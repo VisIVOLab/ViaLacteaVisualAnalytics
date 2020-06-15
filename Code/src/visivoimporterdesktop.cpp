@@ -19,7 +19,7 @@
  ***************************************************************************/
 
 #include "visivoimporterdesktop.h"
-#include <//qDebug>
+#include <QDebug>
 #include <QDialog>
 #include <QFileDialog>
 #include <QTreeView>
@@ -1154,10 +1154,10 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool i
 
 
     char *filepath = new char[f.toStdString().length() + 1];
-    std::strcpy(filepath,f.toStdString().c_str());
+    strcpy(filepath,f.toStdString().c_str());
 
     char *fileformat = new char[type.toStdString().length() + 1];
-    std::strcpy(fileformat,type.toStdString().c_str());
+    strcpy(fileformat,type.toStdString().c_str());
 
  //   VisIVOImporter envVI1;
  //   VI_Init(&envVI1);
@@ -1165,7 +1165,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool i
     QString outputPathString=QDir::homePath()+"/VisIVODesktopTemp/tmp_download/"+infoFile.baseName()+".bin";
 
     char *outputPath = new char[outputPathString.toStdString().length() + 1];
-    std::strcpy(outputPath,outputPathString.toStdString().c_str());
+    strcpy(outputPath,outputPathString.toStdString().c_str());
 
  //   errorCode=VI_SetAtt(&envVI1,VI_SET_FFORMAT,fileformat);
  //   errorCode=VI_SetAtt(&envVI1,VI_SET_FILEPATH, filepath);
@@ -1435,10 +1435,10 @@ void VisIVOImporterDesktop::doImport(QString wavelen, bool usingAPI)
 
 
             char *filepath = new char[fileName.toStdString().length() + 1];
-            std::strcpy(filepath,fileName.toStdString().c_str());
+            strcpy(filepath,fileName.toStdString().c_str());
 
             char *fileformat = new char[type.toStdString().length() + 1];
-            std::strcpy(fileformat,type.toStdString().c_str());
+            strcpy(fileformat,type.toStdString().c_str());
             /*
             VisIVOImporter envVI1;
             VI_Init(&envVI1);
