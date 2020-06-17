@@ -710,7 +710,7 @@ public:
         lineActor->GetProperty()->SetLineWidth(1);
         lineActor->GetProperty()->SetColor(102,0,102);
         vtkwin->addActor(lineActor);
-        vtkwin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();
+        vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->Render();
 
 
 
@@ -1054,7 +1054,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
     m_Ren1 = vtkRenderer::New();
     renwin = vtkRenderWindow::New();
     renwin->AddRenderer(m_Ren1);
-    renwin->SetInteractor(ui->qVTK1->GetInteractor());
+    renwin->SetInteractor(ui->qVTK1->interactor());
     ui->qVTK1->setRenderWindow(renwin);
 
     m_Ren1->GlobalWarningDisplayOff();
@@ -1072,7 +1072,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     vtkAxes = vtkSmartPointer<vtkAxesActor>::New();
     vtkAxesWidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
-    vtkAxesWidget->SetInteractor(ui->qVTK1->GetRenderWindow()->GetInteractor());
+    vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
 
     vtkAxesWidget->SetOrientationMarker(vtkAxes);
 
@@ -1301,7 +1301,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren2->GlobalWarningDisplayOff();
-        ui->isocontourVtkWin->SetRenderWindow(renwin2);
+        ui->isocontourVtkWin->setRenderWindow(renwin2);
 
         ui->splitter->hide();
         ui->ElementListWidget->hide();
@@ -1417,7 +1417,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
         vtkAxesWidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
-        vtkAxesWidget->SetInteractor(ui->qVTK1->GetRenderWindow()->GetInteractor());
+        vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
 
         vtkAxesWidget->SetOrientationMarker(vtkAxes);
 
@@ -1455,8 +1455,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         viewer->GetWindowLevel()->SetLookupTable(lutSlice);
         viewer->GetImageActor()->InterpolateOff();
 
-        viewer->SetRenderer(ui->isocontourVtkWin->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
-        viewer->SetRenderWindow(ui->isocontourVtkWin->GetRenderWindow());
+        viewer->SetRenderer(ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer());
+        viewer->SetRenderWindow(ui->isocontourVtkWin->renderWindow());
 
         m_Ren2->SetBackground(0.21,0.23,0.25);
         currentContourActor = vtkSmartPointer<vtkLODActor>::New();
@@ -1500,7 +1500,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->GlobalWarningDisplayOff();
         renwin = vtkRenderWindow::New();
         renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->SetRenderWindow(renwin);
+        ui->qVTK1->setRenderWindow(renwin);
         ui->filamentsGroupBox->hide();
         ui->bubbleGroupBox->hide();
 
@@ -1570,7 +1570,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         imageViewer->SetColorLevel(0.5* (range[1]+range[0]));
         imageViewer->SetColorWindow(range[1]-range[0]);
 
-        imageViewer->SetupInteractor(ui->qVTK1->GetRenderWindow()->GetInteractor());
+        imageViewer->SetupInteractor(ui->qVTK1->renderWindow()->GetInteractor());
         imageViewer->GetInteractorStyle()->AutoAdjustCameraClippingRangeOn();
 
         imageViewer->SetRenderer(m_Ren1);
@@ -1580,9 +1580,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
         viewer  =vtkSmartPointer<vtkResliceImageViewer>::New();
-        viewer->SetRenderer(ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
-        viewer->SetRenderWindow(ui->qVTK1->GetRenderWindow());
-        viewer->SetupInteractor(ui->qVTK1->GetRenderWindow()->GetInteractor());
+        viewer->SetRenderer(ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer());
+        viewer->SetRenderWindow(ui->qVTK1->renderWindow());
+        viewer->SetupInteractor(ui->qVTK1->renderWindow()->GetInteractor());
         viewer->SetInputData(vis->GetOutput());
         viewer->SetSlice(1);
 
@@ -2693,8 +2693,8 @@ ellipse_list=ellipse;
 
 void vtkwindow_new::removeActor(vtkProp *actor)
 {
-    ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor2D(actor);
-    ui->qVTK1->GetRenderWindow()->Render();
+    ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor2D(actor);
+    ui->qVTK1->renderWindow()->Render();
 
 }
 
@@ -2734,9 +2734,9 @@ void vtkwindow_new::slot_clicked(vtkObject*, unsigned long, void*, void*)
     // Forward events
     vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();
-    coordinate->SetValue(ui->qVTK1->GetRenderWindow()->GetInteractor()->GetEventPosition()[0],ui->qVTK1->GetRenderWindow()->GetInteractor()->GetEventPosition()[1],0);
+    coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[1],0);
 
-    double* world_coord = coordinate->GetComputedWorldValue(ui->qVTK1->GetRenderWindow()->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+    double* world_coord = coordinate->GetComputedWorldValue(ui->qVTK1->renderWindow()->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
 
 
@@ -2767,9 +2767,9 @@ void vtkwindow_new::slot_clicked(vtkObject*, unsigned long, void*, void*)
         // Forward events
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
-        coordinate->SetValue(ui->qVTK1->GetInteractor()->GetEventPosition()[0],ui->qVTK1->GetInteractor()->GetEventPosition()[1],0);
+        coordinate->SetValue(ui->qVTK1->interactor()->GetEventPosition()[0],ui->qVTK1->interactor()->GetEventPosition()[1],0);
 
-        double* world_coord = coordinate->GetComputedWorldValue(ui->qVTK1->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+        double* world_coord = coordinate->GetComputedWorldValue(ui->qVTK1->interactor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double *sky_coord_gal = new double[2];
 
@@ -3145,7 +3145,7 @@ void vtkwindow_new::on_actionTools_triggered()
 void vtkwindow_new::on_resetPushButton_clicked()
 {
     setVtkInteractorStyle3DPicker(pp->getPolyData());
-    ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(selectedActor);
+    ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(selectedActor);
 
 }
 
@@ -3181,8 +3181,8 @@ void vtkwindow_new::setVtkInteractorStyleImageContour()
 
     vtkSmartPointer<myVtkInteractorStyleImage> style =vtkSmartPointer<myVtkInteractorStyleImage>::New();
 
-    ui->isocontourVtkWin->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
-    ui->isocontourVtkWin->GetRenderWindow()->GetInteractor()->SetRenderWindow(  ui->isocontourVtkWin->GetRenderWindow() );
+    ui->isocontourVtkWin->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->isocontourVtkWin->renderWindow()->GetInteractor()->SetRenderWindow(  ui->isocontourVtkWin->renderWindow() );
     style->setVtkWin(this);
     style->setIsSlice();
     ui->isocontourVtkWin->setCursor(Qt::ArrowCursor);
@@ -3203,8 +3203,8 @@ void vtkwindow_new::setVtkInteractorStyleImage()
 
     vtkSmartPointer<myVtkInteractorStyleImage> style =vtkSmartPointer<myVtkInteractorStyleImage>::New();
 
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->GetRenderWindow() );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->renderWindow() );
 
 
     style->setVtkWin(this);
@@ -3219,7 +3219,7 @@ void vtkwindow_new::setSkyRegionSelectorInteractorStyleFor3D()
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
     style->setIs3D();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 
 }
@@ -3239,7 +3239,7 @@ void vtkwindow_new::setSkyRegionSelectorInteractorStyle()
 
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 
 
@@ -3277,8 +3277,8 @@ void vtkwindow_new::setVtkInteractorContourWindow()
     vtkSmartPointer<myVtkInteractorContourWindow> style =vtkSmartPointer<myVtkInteractorContourWindow>::New();
 
     //style->AutoAdjustCameraClippingRangeOn();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->GetRenderWindow() );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->renderWindow() );
     style->setVtkWin(this);
     ui->qVTK1->setCursor(Qt::ArrowCursor);
 
@@ -3294,13 +3294,13 @@ void vtkwindow_new::setVtkInteractorStyle3DPicker(vtkSmartPointer<vtkPolyData> p
 
 
     vtkSmartPointer<vtkAreaPicker> areaPicker = vtkSmartPointer<vtkAreaPicker>::New();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetPicker(areaPicker);
+    ui->qVTK1->renderWindow()->GetInteractor()->SetPicker(areaPicker);
 
     vtkSmartPointer<InteractorStyleSelctionPointOn3DVisualization> style =vtkSmartPointer<InteractorStyleSelctionPointOn3DVisualization>::New();
     style->setVtkWin(this);
     style->SetPoints(points);
 
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
 
     update();
 
@@ -3312,8 +3312,8 @@ void vtkwindow_new::setVtkInteractorStyleFreehand()
 
     vtkSmartPointer<vtkInteractorStyleDrawPolygon> style =vtkSmartPointer<vtkInteractorStyleDrawPolygon>::New();
 
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->GetRenderWindow() );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->renderWindow() );
     // style->setVtkWin(this);
     //  ui->qVTK1->setCursor(Qt::ArrowCursor);
 
@@ -3333,13 +3333,13 @@ void vtkwindow_new::setVtkInteractorStyle3DFreehand(vtkSmartPointer<vtkPolyData>
 
 
     vtkSmartPointer<vtkCellPicker> areaPicker = vtkSmartPointer<vtkCellPicker>::New();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetPicker(areaPicker);
+    ui->qVTK1->renderWindow()->GetInteractor()->SetPicker(areaPicker);
 
     vtkSmartPointer<InteractorStyleFreeHandOn3DVisualization> style =vtkSmartPointer<InteractorStyleFreeHandOn3DVisualization>::New();
     style->setVtkWin(this);
     style->SetPoints(points);
 
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
 
     update();
 
@@ -3357,7 +3357,7 @@ void vtkwindow_new::setSelectionFitsViewerInteractorStyle()
 
     style->setVtkWin(this);
 
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 
     //update();
@@ -3381,10 +3381,10 @@ void vtkwindow_new::showBox(bool checked)
 void vtkwindow_new::addActor(vtkProp *actor)
 {
     //back_ren->AddActor2D(actor);
-    ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(actor);
-    ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors2D();
+    ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(actor);
+    ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->GetActors2D();
 
-    ui->qVTK1->GetRenderWindow()->Render();
+    ui->qVTK1->renderWindow()->Render();
 
 }
 
@@ -3651,7 +3651,7 @@ void vtkwindow_new::on_fil_rectPushButton_clicked()
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
     style->setIsFilament();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 }
 
@@ -3963,7 +3963,7 @@ void vtkwindow_new::on_tdRectPushButton_clicked()
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
     style->setIs3dSelections();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 }
 
@@ -4026,7 +4026,7 @@ void vtkwindow_new::goContour()
     currentContourActor->SetMapper(contourLineMapperer);
     currentContourActor->GetProperty()->SetLineWidth(1);
 
-    ui->isocontourVtkWin->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
+    ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
 
     //TEST FV
 
@@ -4247,7 +4247,7 @@ void vtkwindow_new::on_glyphActivateCheckBox_clicked(bool checked)
             ui->glyphScalingLineEdit->setEnabled(false);
             m_Ren1->RemoveActor(glyph_actor);
             glyph_actor=0;
-            ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();
+            ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->Render();
             ui->qVTK1->update();
         }
     }
@@ -4736,7 +4736,7 @@ void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int source
         for(int i=sourceStart-1;i>=destinationRow;i--)
         {
             vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(i))->GetProperty()->SetLayerNumber(i+1);
-            imgLayerList.swap(i,i+1);
+            imgLayerList.swapItemsAt(i,i+1);
         }
 
         vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(sourceStart))->GetProperty()->SetLayerNumber(destinationRow);
@@ -4748,7 +4748,7 @@ void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int source
         for(int i=sourceStart+1;i<destinationRow;i++)
         {
             vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(i))->GetProperty()->SetLayerNumber(i-1);
-            imgLayerList.swap(i,i-1);
+            imgLayerList.swapItemsAt(i,i-1);
 
         }
         vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(sourceStart))->GetProperty()->SetLayerNumber(destinationRow-1);
@@ -4871,7 +4871,7 @@ void vtkwindow_new::on_bubblePushButton_clicked()
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
     style->setIsBubble();
-    ui->qVTK1->GetRenderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 }
 

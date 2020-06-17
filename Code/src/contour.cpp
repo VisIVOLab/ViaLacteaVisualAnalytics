@@ -362,14 +362,14 @@ void contour::createContour()
 
     // Add the actors to the scene
 
-    vtkWin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(isolines);
-    vtkWin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(isolabels);
+    vtkWin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(isolines);
+    vtkWin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(isolabels);
 
     //renderer->AddActor(isolabels);
     //renderer->AddActor(surface);
 
     // Render the scene (lights and cameras are created automatically)
-    vtkWin->ui->qVTK1->GetRenderWindow()->Render();
+    vtkWin->ui->qVTK1->renderWindow()->Render();
     vtkWin->ui->qVTK1->update();
 
     //renderWindow->Render();
@@ -421,10 +421,10 @@ void contour::createContour()
     contour_actor->GetProperty()->SetColor(ui->redText->text().toDouble(), ui->greenText->text().toDouble(), ui->blueText->text().toDouble());
 */
     //fa parte di TEST
-    vtkWin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contour_actor);
-    vtkWin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(isolabels);
+    vtkWin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contour_actor);
+    vtkWin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(isolabels);
 
-    vtkWin->ui->qVTK1->GetRenderWindow()->Render();
+    vtkWin->ui->qVTK1->renderWindow()->Render();
     vtkWin->ui->qVTK1->update();
 }
 
@@ -441,7 +441,7 @@ void contour::deleteContour()
 
     //contour_actor->GetMapper()->Update();
 
-    vtkWin->ui->qVTK1->GetRenderWindow()->Render();
+    vtkWin->ui->qVTK1->renderWindow()->Render();
     std::cout<<"POST- SIZE CELLS: "<<contourStripper->GetOutput()->GetNumberOfCells()<<std::endl;
 
 
