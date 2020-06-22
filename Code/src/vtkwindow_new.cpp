@@ -650,7 +650,7 @@ public:
          vtkSmartPointer<vtkLineWidget2> lineWidget =
          vtkSmartPointer<vtkLineWidget2>::New();
 
-         //lineWidget->SetInteractor(vtkwin->ui->qVTK1->GetRenderWindow()->GetInteractor());
+         //lineWidget->SetInteractor(vtkwin->ui->qVTK1->GetRenderWindow()->GetInteractor());//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
          lineWidget->SetInteractor(this->Interactor);
 
 
@@ -676,7 +676,7 @@ public:
 
 
 
-         vtkwin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();
+         vtkwin->ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
          lineWidget->On();
          */
 
@@ -1072,7 +1072,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     vtkAxes = vtkSmartPointer<vtkAxesActor>::New();
     vtkAxesWidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
-    vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
+//    vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
 
     vtkAxesWidget->SetOrientationMarker(vtkAxes);
 
@@ -1207,7 +1207,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         /*
         ui->qVTK1->setContextMenuPolicy(Qt::CustomContextMenu);
         this->Connections = vtkSmartPointer<vtkEventQtSlotConnect>::New();
-        this->Connections->Connect( ui->qVTK1->GetRenderWindow()->GetInteractor(), vtkCommand::RightButtonPressEvent ,this,SLOT(slot_clicked(vtkObject*, unsigned long, void*, void*)));
+        this->Connections->Connect( ui->qVTK1->GetRenderWindow()->GetInteractor(), vtkCommand::RightButtonPressEvent ,this,SLOT(slot_clicked(vtkObject*, unsigned long, void*, void*)));//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
 */
 
 
@@ -3203,9 +3203,9 @@ void vtkwindow_new::setVtkInteractorStyleImage()
 
     vtkSmartPointer<myVtkInteractorStyleImage> style =vtkSmartPointer<myVtkInteractorStyleImage>::New();
 
-    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+/*    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->renderWindow() );
-
+*/
 
     style->setVtkWin(this);
     ui->qVTK1->setCursor(Qt::ArrowCursor);
@@ -4405,7 +4405,7 @@ void vtkwindow_new::drawGlyphs(int index){
 
     //FV
 
-    // ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();
+    // ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
     // ui->qVTK1->update();
 
 }
@@ -4490,7 +4490,7 @@ void vtkwindow_new::drawGlyphs(int index){
 
 
     m_Ren1->AddActor ( glyph_actor );
-    ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();
+    ui->qVTK1->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->Render();//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
     ui->qVTK1->update();
 
 }

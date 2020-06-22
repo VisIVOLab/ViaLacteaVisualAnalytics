@@ -825,7 +825,7 @@ void contour::addContours()
 
     //# create the scalar_bar_widget
     //vtkSmartPointer<vtkScalarBarWidget>  scalar_bar_widget = vtkSmartPointer<vtkScalarBarWidget>::New();
-    //scalar_bar_widget->SetInteractor(vtkWin->ui->qVTK1->GetRenderWindow()->GetInteractor());
+    //scalar_bar_widget->SetInteractor(vtkWin->ui->qVTK1->GetRenderWindow()->GetInteractor());//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
     //scalar_bar_widget->SetScalarBarActor(scalarBar);
     //scalar_bar_widget->On();
     //scalar_bar_widget->SetEnabled(1);
@@ -833,7 +833,7 @@ void contour::addContours()
     /*
 
         vtkAxesWidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
-        vtkAxesWidget->SetInteractor(ui->qVTK1->GetRenderWindow()->GetInteractor());
+        vtkAxesWidget->SetInteractor(ui->qVTK1->GetRenderWindow()->GetInteractor());//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
 
         vtkAxesWidget->SetOrientationMarker(vtkAxes);
 
