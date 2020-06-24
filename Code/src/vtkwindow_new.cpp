@@ -83,6 +83,7 @@
 #include "vtkImageChangeInformation.h"
 #include "vtkImageResize.h"
 #include "vtkImageSliceCollection.h"
+#include "vtkGenericOpenGLRenderWindow.h"
 
 #include "filtercustomize.h"
 
@@ -1052,10 +1053,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     fitsViewer = false;
     m_Ren1 = vtkRenderer::New();
-    renwin = vtkRenderWindow::New();
-    renwin->AddRenderer(m_Ren1);
-    renwin->SetInteractor(ui->qVTK1->interactor());
-    ui->qVTK1->setRenderWindow(renwin);
+    //renwin = vtkRenderWindow::New();
+    vtkNew<vtkGenericOpenGLRenderWindow> rw;
+    rw->AddRenderer(m_Ren1);
+    rw->SetInteractor(ui->qVTK1->interactor());
+    ui->qVTK1->setRenderWindow(rw);
 
     m_Ren1->GlobalWarningDisplayOff();
     loadObservedObject(vis);
@@ -1168,13 +1170,14 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
         m_Ren1 = vtkRenderer::New();
-        renwin = vtkRenderWindow::New();
+        //renwin = vtkRenderWindow::New();
+        vtkNew<vtkGenericOpenGLRenderWindow> rw;
+        renwin = rw;
         renwin->AddRenderer(m_Ren1);
         ui->qVTK1->setRenderWindow(renwin);
 
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren1->SetBackground(0.21,0.23,0.25);
-
 
         QAction* select = new QAction("Select",this);
         select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
@@ -1288,20 +1291,22 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
         m_Ren1 = vtkRenderer::New();
-        renwin = vtkRenderWindow::New();
-        renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->setRenderWindow(renwin);
+        //renwin = vtkRenderWindow::New();
+        vtkNew<vtkGenericOpenGLRenderWindow> rw;
+        rw->AddRenderer(m_Ren1);
+        ui->qVTK1->setRenderWindow(rw);
 
         m_Ren2 = vtkRenderer::New();
-        renwin2 = vtkRenderWindow::New();
-        renwin2->SetNumberOfLayers(2);
-        renwin2->AddRenderer(m_Ren2);
+        //renwin2 = vtkRenderWindow::New();
+        vtkNew<vtkGenericOpenGLRenderWindow> rw2;
+        rw2->SetNumberOfLayers(2);
+        rw2->AddRenderer(m_Ren2);
 
         m_Ren2->SetBackground(0.21,0.23,0.25);
 
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren2->GlobalWarningDisplayOff();
-        ui->isocontourVtkWin->setRenderWindow(renwin2);
+        ui->isocontourVtkWin->setRenderWindow(rw2);
 
         ui->splitter->hide();
         ui->ElementListWidget->hide();
@@ -1498,9 +1503,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         m_Ren1 = vtkRenderer::New();
         m_Ren1->GlobalWarningDisplayOff();
-        renwin = vtkRenderWindow::New();
-        renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->setRenderWindow(renwin);
+       // renwin = vtkRenderWindow::New();
+        vtkNew<vtkGenericOpenGLRenderWindow> rw;
+        rw->AddRenderer(m_Ren1);
+        ui->qVTK1->setRenderWindow(rw);
         ui->filamentsGroupBox->hide();
         ui->bubbleGroupBox->hide();
 
@@ -1574,7 +1580,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         imageViewer->GetInteractorStyle()->AutoAdjustCameraClippingRangeOn();
 
         imageViewer->SetRenderer(m_Ren1);
-        imageViewer->SetRenderWindow(renwin);
+        imageViewer->SetRenderWindow(rw);
 
         imageViewer->GetWindowLevel()->SetLookupTable(lut);
 
@@ -3203,9 +3209,9 @@ void vtkwindow_new::setVtkInteractorStyleImage()
 
     vtkSmartPointer<myVtkInteractorStyleImage> style =vtkSmartPointer<myVtkInteractorStyleImage>::New();
 
-/*    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->renderWindow() );
-*/
+
 
     style->setVtkWin(this);
     ui->qVTK1->setCursor(Qt::ArrowCursor);
@@ -3239,7 +3245,7 @@ void vtkwindow_new::setSkyRegionSelectorInteractorStyle()
 
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
-    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    //ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
 
 
