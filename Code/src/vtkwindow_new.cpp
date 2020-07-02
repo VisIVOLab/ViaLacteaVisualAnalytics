@@ -1074,7 +1074,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     vtkAxes = vtkSmartPointer<vtkAxesActor>::New();
     vtkAxesWidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
-//    vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
+    vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
 
     vtkAxesWidget->SetOrientationMarker(vtkAxes);
 
