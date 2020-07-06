@@ -1055,9 +1055,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
     m_Ren1 = vtkRenderer::New();
     //renwin = vtkRenderWindow::New();
     vtkNew<vtkGenericOpenGLRenderWindow> rw;
-    rw->AddRenderer(m_Ren1);
-    rw->SetInteractor(ui->qVTK1->interactor());
-    ui->qVTK1->setRenderWindow(rw);
+    renwin = rw;
+    renwin->AddRenderer(m_Ren1);
+    renwin->SetInteractor(ui->qVTK1->interactor());
+    ui->qVTK1->setRenderWindow(renwin);
 
     m_Ren1->GlobalWarningDisplayOff();
     loadObservedObject(vis);
@@ -1293,20 +1294,22 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1 = vtkRenderer::New();
         //renwin = vtkRenderWindow::New();
         vtkNew<vtkGenericOpenGLRenderWindow> rw;
-        rw->AddRenderer(m_Ren1);
-        ui->qVTK1->setRenderWindow(rw);
+        renwin = rw;
+        renwin->AddRenderer(m_Ren1);
+        ui->qVTK1->setRenderWindow(renwin);
 
         m_Ren2 = vtkRenderer::New();
         //renwin2 = vtkRenderWindow::New();
         vtkNew<vtkGenericOpenGLRenderWindow> rw2;
-        rw2->SetNumberOfLayers(2);
-        rw2->AddRenderer(m_Ren2);
+        renwin2 = rw2;
+        renwin2->SetNumberOfLayers(2);
+        renwin2->AddRenderer(m_Ren2);
 
         m_Ren2->SetBackground(0.21,0.23,0.25);
 
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren2->GlobalWarningDisplayOff();
-        ui->isocontourVtkWin->setRenderWindow(rw2);
+        ui->isocontourVtkWin->setRenderWindow(renwin2);
 
         ui->splitter->hide();
         ui->ElementListWidget->hide();
@@ -1454,7 +1457,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         setVtkInteractorStyleImageContour();
 
 
-        viewer  =vtkSmartPointer<vtkResliceImageViewer>::New();
+        viewer = vtkSmartPointer<vtkResliceImageViewer>::New();
         viewer->SetInputData(vis->GetOutput());
         viewer->GetWindowLevel()->SetOutputFormatToRGB();
         viewer->GetWindowLevel()->SetLookupTable(lutSlice);
@@ -1462,6 +1465,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         viewer->SetRenderer(ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer());
         viewer->SetRenderWindow(ui->isocontourVtkWin->renderWindow());
+        m_Ren2->SetRenderWindow(renwin2);
 
         m_Ren2->SetBackground(0.21,0.23,0.25);
         currentContourActor = vtkSmartPointer<vtkLODActor>::New();
