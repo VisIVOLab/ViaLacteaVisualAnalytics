@@ -1061,14 +1061,15 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
     ui->qVTK1->setRenderWindow(renwin);*/
 
     auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-    ui->qVTK1->setRenderWindow(renWin);
+    renwin = renWin;
+    ui->qVTK1->setRenderWindow(renwin);
 
-    auto interactor = renWin->GetInteractor();
+    auto interactor = renwin->GetInteractor();
 
     auto ren = vtkSmartPointer<vtkRenderer>::New();
     m_Ren1 = ren;
     //m_Ren1->SetBackground(0.21,0.23,0.25);
-    renWin->AddRenderer(m_Ren1);
+    renwin->AddRenderer(m_Ren1);
 
     interactor->Render();
 
@@ -1190,14 +1191,15 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->qVTK1->setRenderWindow(renwin);*/
 
         auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-        ui->qVTK1->setRenderWindow(renWin);
+        renwin = renWin;
+        ui->qVTK1->setRenderWindow(renwin);
 
-        auto interactor = renWin->GetInteractor();
+        auto interactor = renwin->GetInteractor();
 
         auto m_Ren0 = vtkSmartPointer<vtkRenderer>::New();
         m_Ren1 = m_Ren0;
         m_Ren1->SetBackground(0.21,0.23,0.25);
-        renWin->AddRenderer(m_Ren1);
+        renwin->AddRenderer(m_Ren1);
 
         interactor->Render();
 
@@ -1323,14 +1325,15 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->qVTK1->setRenderWindow(renwin);*/
 
         auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-        ui->qVTK1->setRenderWindow(renWin);
+        renwin = renWin;
+        ui->qVTK1->setRenderWindow(renwin);
 
-        auto interactor = renWin->GetInteractor();
+        auto interactor = renwin->GetInteractor();
 
         auto ren = vtkSmartPointer<vtkRenderer>::New();
         m_Ren1 = ren;
         m_Ren1->SetBackground(0.21,0.23,0.25);
-        renWin->AddRenderer(m_Ren1);
+        renwin->AddRenderer(m_Ren1);
 
         interactor->Render();
 
@@ -1338,7 +1341,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         renwin2 = renWin2;
         ui->isocontourVtkWin->setRenderWindow(renwin2);
 
-        auto interactor2 = renWin2->GetInteractor();
+        auto interactor2 = renwin2->GetInteractor();
 
         auto ren2 = vtkSmartPointer<vtkRenderer>::New();
         m_Ren2 = ren2;
@@ -4746,12 +4749,9 @@ void vtkwindow_new::drawRectangleFootprint(double points[8]){
     rectangleActor->SetMapper(mapper);
     rectangleActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
     m_Ren1->AddActor(rectangleActor);
-    //Debug statements testing why the outlines do not show up
-    /*qDebug()<< "m_Ren1 has " << m_Ren1->GetActors()->GetNumberOfItems() << " actor(s).";
-    qDebug() << "m_Ren1 has " << m_Ren1->GetActors()->GetLastActor() << " as its actor.";
-    qDebug() << "m_Ren1 has " << m_Ren1->GetActors()->GetNextActor() << " as its actor.";
-    qDebug() << "rectangleActor is " << rectangleActor;*/
+
     ui->qVTK1->update();
+    ui->qVTK1->interactor()->Render();
 }
 
 bool vtkwindow_new::eventFilter(QObject *object, QEvent *event)
