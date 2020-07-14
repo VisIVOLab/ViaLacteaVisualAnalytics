@@ -1194,7 +1194,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         auto interactor = renWin->GetInteractor();
 
-        auto m_Ren1 = vtkSmartPointer<vtkRenderer>::New();
+        auto m_Ren0 = vtkSmartPointer<vtkRenderer>::New();
+        m_Ren1 = m_Ren0;
         m_Ren1->SetBackground(0.21,0.23,0.25);
         renWin->AddRenderer(m_Ren1);
 
@@ -4745,7 +4746,11 @@ void vtkwindow_new::drawRectangleFootprint(double points[8]){
     rectangleActor->SetMapper(mapper);
     rectangleActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
     m_Ren1->AddActor(rectangleActor);
-
+    //Debug statements testing why the outlines do not show up
+    /*qDebug()<< "m_Ren1 has " << m_Ren1->GetActors()->GetNumberOfItems() << " actor(s).";
+    qDebug() << "m_Ren1 has " << m_Ren1->GetActors()->GetLastActor() << " as its actor.";
+    qDebug() << "m_Ren1 has " << m_Ren1->GetActors()->GetNextActor() << " as its actor.";
+    qDebug() << "rectangleActor is " << rectangleActor;*/
     ui->qVTK1->update();
 }
 
