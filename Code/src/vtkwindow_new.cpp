@@ -1131,7 +1131,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     selected_scale="Log";
 
 
-
     switch (b) {
     case 0:
     {
@@ -1202,6 +1201,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         renwin->AddRenderer(m_Ren1);
 
         interactor->Render();
+        ui->qVTK1->setDefaultCursor(Qt::ArrowCursor);
+
 
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren1->SetBackground(0.21,0.23,0.25);
@@ -1336,6 +1337,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         renwin->AddRenderer(m_Ren1);
 
         interactor->Render();
+        ui->qVTK1->setDefaultCursor(Qt::ArrowCursor);
 
         auto renWin2 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
         renwin2 = renWin2;
@@ -1690,7 +1692,7 @@ void vtkwindow_new::on_horizontalSlider_threshold_sliderReleased()
 
     ui->thresholdValueLineEdit->setText(QString::number(value,'f',4) );
     shellE->SetValue(0,  value);
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 
@@ -1717,13 +1719,14 @@ void vtkwindow_new::on_cuttingPlane_Slider_valueChanged(int value)
 
     ui->spinBox_cuttingPlane->setValue(value);
     sliceA->SetPosition (0,0,value);
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 
 void vtkwindow_new::on_spinBox_cuttingPlane_valueChanged(int arg1)
 {
     ui->cuttingPlane_Slider->setValue(arg1);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_cameraLeft_clicked()
@@ -1763,7 +1766,7 @@ void vtkwindow_new::setCameraAzimuth(double az)
     //    pp->getRenderer()->GetActiveCamera()->Azimuth(az);
     m_Ren1->GetActiveCamera()->Azimuth(az);
 
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     if(!isDatacube)
         scale(scaleActivate);
@@ -1778,7 +1781,7 @@ void vtkwindow_new::setCameraElevation(double el)
     resetCamera();
 
     m_Ren1->GetActiveCamera()->Elevation(el);
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     if(!isDatacube)
         scale(scaleActivate);
@@ -1811,6 +1814,7 @@ void vtkwindow_new::updateScene()
 {
     m_Ren1->ResetCamera();
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::addBubble(VSTableDesktop* m_VisIVOTable)
@@ -3267,12 +3271,12 @@ void vtkwindow_new::setVtkInteractorStyleImage()
 
     ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow( ui->qVTK1->renderWindow() );
+    ui->rectangularSelectionCS->setStyleSheet("");
 
 
     style->setVtkWin(this);
-    ui->qVTK1->setCursor(Qt::ArrowCursor);
-
-
+    if (ui->qVTK1->cursor() != Qt::ArrowCursor)
+        ui->qVTK1->setCursor(ui->qVTK1->defaultCursor());
 }
 
 void vtkwindow_new::setSkyRegionSelectorInteractorStyleFor3D()
@@ -3301,8 +3305,9 @@ void vtkwindow_new::setSkyRegionSelectorInteractorStyle()
 
     vtkSmartPointer<SkyRegionSelector> style =vtkSmartPointer<SkyRegionSelector>::New();
     style->setVtkWin(this);
-    //ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle( style );
     ui->qVTK1->setCursor(Qt::CrossCursor);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 
 }
@@ -3386,6 +3391,7 @@ void vtkwindow_new::on_spinBox_contour_valueChanged(int arg1)
 
 
     setSliceDatacube(arg1-1);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 
 }
@@ -3537,6 +3543,7 @@ void vtkwindow_new::addLayer(vtkfitstoolwidgetobject *o,bool enabled)
     // ui->tableWidget->horizontalHeader()->sectionResizeMode(QHeaderView::Stretch);
 
     ui->tableWidget->resizeColumnsToContents();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -3575,6 +3582,7 @@ void vtkwindow_new::addImageToList( vtkfitstoolwidgetobject *o)
     QListWidgetItem* item = new QListWidgetItem(o->getSurvey()+"_"+o->getSpecies()+"_"+o->getTransition(), ui->listWidget);
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // set checkable flag
     item->setCheckState(Qt::Checked); // AND initialize check state
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 
 
@@ -3650,7 +3658,7 @@ void vtkwindow_new::checkboxImageClicked(int cb)
     else
         vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOn();
 
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -3671,7 +3679,7 @@ void vtkwindow_new::checkboxClicked(int cb,bool status)
     else
         getVisualizedActorList().value(ui->tableWidget->item(cb, 1)->text())->VisibilityOn();
 
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -3914,6 +3922,7 @@ void vtkwindow_new::addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString su
 
     this->update();
     activateWindow();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -4002,6 +4011,7 @@ void vtkwindow_new::handleButton(int i)
 void vtkwindow_new::on_lutComboBox_activated(const QString &arg1)
 {
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_logRadioButton_toggled(bool checked)
@@ -4012,6 +4022,7 @@ void vtkwindow_new::on_logRadioButton_toggled(bool checked)
         selected_scale="Linear";
 
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -4038,7 +4049,7 @@ void vtkwindow_new::on_thresholdValueLineEdit_editingFinished()
 {
 
     shellE->SetValue(0,  ui->thresholdValueLineEdit->text().toFloat());
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -4267,11 +4278,13 @@ void vtkwindow_new::on_scalarComboBox_activated(const QString &arg1)
     if(ui->glyphShapeComboBox->isEnabled()){
         ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
     }
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_lut3dComboBox_activated(const QString &arg1)
 {
     changePalette(ui->lut3dComboBox->currentText().toStdString().c_str());
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_toolButton_clicked()
@@ -4310,7 +4323,7 @@ void vtkwindow_new::on_glyphActivateCheckBox_clicked(bool checked)
             m_Ren1->RemoveActor(glyph_actor);
             glyph_actor=0;
             ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->Render();
-            ui->qVTK1->update();
+            ui->qVTK1->renderWindow()->GetInteractor()->Render();
         }
     }
 }
@@ -4332,6 +4345,7 @@ void vtkwindow_new::on_linear3dRadioButton_toggled(bool checked)
     pp->setLookupTableScale();
 
     //  changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -4572,7 +4586,7 @@ void vtkwindow_new::on_horizontalSlider_valueChanged(int value)
     }
 
     vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject(pos))->GetProperty()->SetOpacity(value/100.0);
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -4580,7 +4594,7 @@ void vtkwindow_new::on_glyphShapeComboBox_activated(int index)
 {
 
     this->drawGlyphs(index);
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     //FV
     // m_Ren1->ResetCamera();
@@ -4594,7 +4608,7 @@ void vtkwindow_new::on_glyphScalarComboBox_activated(const QString &arg1)
     //changeScalar(arg1.toStdString());
     //if(ui->glyphShapeComboBox->isEnabled()){
     ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     //}
 }
@@ -4602,7 +4616,7 @@ void vtkwindow_new::on_glyphScalarComboBox_activated(const QString &arg1)
 void vtkwindow_new::on_glyphScalingLineEdit_returnPressed()
 {
     ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
-    ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
