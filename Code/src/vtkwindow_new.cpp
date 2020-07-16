@@ -1915,6 +1915,7 @@ void vtkwindow_new::addBubble(VSTableDesktop* m_VisIVOTable)
 
     m_Ren1->AddActor(actor);
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     QString name="Bubbles_"+QString::number( visualized_actor_list.count() );
 
@@ -2779,6 +2780,7 @@ void vtkwindow_new::changeScalar(std::string scalar)
         qDebug()<<range[0]<<" "<<range[1];
     }
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -2791,6 +2793,7 @@ void vtkwindow_new::showColorbar(bool checked)
 
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -2859,6 +2862,7 @@ void vtkwindow_new::changePalette(std::string palette)
     pp->setLookupTableScale();
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -2935,6 +2939,7 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale)
     // vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOn();
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 
@@ -3064,6 +3069,7 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop* m_VisIVOTable)
 
     //test window resize
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
     this->update();
 
 }
@@ -3114,6 +3120,7 @@ void vtkwindow_new::changeFitsPalette(std::string palette)
     imageViewer->GetWindowLevel()->SetLookupTable(lut);
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -3124,6 +3131,7 @@ void vtkwindow_new::drawSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor)
     m_Ren1->AddActor(ellipseActor);
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -3131,6 +3139,7 @@ void vtkwindow_new::removeSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActo
 {
     m_Ren1->RemoveActor(ellipseActor);
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::loadObservedObject(VisPoint * vis)
@@ -3177,7 +3186,7 @@ void vtkwindow_new::setCuttingPlaneValue(int arg1)
         scale(scaleActivate);
     else
         this->updateScene();
-
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_actionInfo_triggered()
@@ -3275,8 +3284,10 @@ void vtkwindow_new::setVtkInteractorStyleImage()
 
 
     style->setVtkWin(this);
+    qDebug() << "Cursor is " << ui->qVTK1->cursor();
     if (ui->qVTK1->cursor() != Qt::ArrowCursor)
         ui->qVTK1->setCursor(ui->qVTK1->defaultCursor());
+    qDebug() << "Cursor is " << ui->qVTK1->cursor();
 }
 
 void vtkwindow_new::setSkyRegionSelectorInteractorStyleFor3D()
@@ -3444,6 +3455,7 @@ void vtkwindow_new::showBox(bool checked)
         pp->outlineActor->SetVisibility(false);
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::addActor(vtkProp *actor)
@@ -3464,6 +3476,7 @@ void vtkwindow_new::showAxes(bool checked)
         pp->axesActor->SetVisibility(false);
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 
@@ -3704,6 +3717,7 @@ void vtkwindow_new::on_tableWidget_doubleClicked(const QModelIndex &index)
         QColor color = QColorDialog::getColor(QColor(r,g,b), this);
         getVisualizedActorList().value(ui->tableWidget->item( index.row(), 1)->text())->GetProperty()->SetColor(color.redF(), color.greenF(), color.blueF());
         ui->qVTK1->update();
+        ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
         //update color on table
         ui->tableWidget->cellWidget(index.row(),0)->setStyleSheet("background-color: rgb("+QString::number(color.redF()*255)+","+QString::number(color.greenF()*255)+" ,"+QString::number(color.blueF()*255)+")");
@@ -4208,6 +4222,7 @@ void vtkwindow_new::goContour()
         myParentVtkWindow->m_Ren1->AddActor2D(currentContourActorForMainWindow);
         //myParentVtkWindow->m_Ren1->Render();
         myParentVtkWindow->ui->qVTK1->update();
+        myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
 
 
@@ -4239,6 +4254,7 @@ void vtkwindow_new::removeContour()
     if(myParentVtkWindow!=0){
         myParentVtkWindow->m_Ren1->RemoveActor2D(currentContourActorForMainWindow);
         myParentVtkWindow->ui->qVTK1->update();
+        myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
     ui->isocontourVtkWin->update();
 }
@@ -4832,6 +4848,7 @@ void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int source
     }
 
     ui->qVTK1->update();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
 }
 

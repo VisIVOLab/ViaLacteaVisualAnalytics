@@ -209,7 +209,10 @@ void HigalSelectedSources::plotNewWindow()
 {
 
     QList<QListWidgetItem*> selectedItems = qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->selectedItems();
-
+    if (selectedItems.isEmpty()){
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("Cannot create plot if no compact objects are selected.\n\rPlease select at least one compact object from the list and try again."));
+        return;
+    }
     PlotWindow *plotwin= new PlotWindow(vtkwin,selectedItems,plotWindowList.size());
     plotWindowList.append(plotwin);
 
@@ -222,7 +225,10 @@ void HigalSelectedSources::on_datasetButton_clicked()
 {
 
     QList<QListWidgetItem*> selectedItems = qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->selectedItems();
-
+    if (selectedItems.isEmpty()){
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("Cannot show dataset if no compact objects are selected.\n\rPlease select at least one compact object from the list and try again."));
+        return;
+    }
 
     selectedSourceFieldsSelect *selectFields = new selectedSourceFieldsSelect(vtkwin,selectedItems);
     selectFields->show();
@@ -276,6 +282,10 @@ void HigalSelectedSources::on_sedButton_clicked()
     qDebug()<<"SELECTED: "<<ui->tabWidget->tabText(ui->tabWidget->currentIndex())<<" -> "<<wave;
 
     QList<QListWidgetItem*> selectedItems =qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->selectedItems();
+    if (selectedItems.isEmpty()){
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("Cannot retrieve SED data if no compact object is selected.\n\rPlease select at least one compact object from the list and try again."));
+        return;
+    }
     for(int i=0;i<selectedItems.size();i++)
     {
 
