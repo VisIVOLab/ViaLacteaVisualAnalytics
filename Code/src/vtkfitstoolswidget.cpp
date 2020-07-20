@@ -284,8 +284,9 @@ void vtkfitstoolswidget::changeLut(std::string palette)
 
 void vtkfitstoolswidget::on_addLocalSourcesPushButton_clicked()
 {
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Open file"), "", tr("(*.*)"));
-
+    QString fileName = QFileDialog::getOpenFileName(nullptr, "Open data file", QString(), "(*.*)");
+    if(fileName.isEmpty())
+        return;
     Vialactea_FileLoad *fileload = new Vialactea_FileLoad(fileName,vtkwin);
     fileload->show();
 }
