@@ -415,6 +415,9 @@ void ViaLactea::on_select3dPushButton_clicked()
 void ViaLactea::on_actionLoad_SED_2_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this,tr("Load SED fits"), QDir::homePath(), tr("Archive (*.zip)"));
+    if (fileName.isEmpty())
+        return;
+
     QString sedZipPath=QDir::homePath()+"/VisIVODesktopTemp/tmp_download/SED.zip";
     QFile::copy(fileName, sedZipPath);
     QProcess process_unzip;

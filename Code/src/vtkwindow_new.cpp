@@ -2511,8 +2511,8 @@ void vtkwindow_new::closeEvent(QCloseEvent *event)
 {
     if(vtkwintype==1)
         removeContour();
-    this->~vtkwindow_new();
-
+    //this->~vtkwindow_new();
+    this->close();
 }
 
 void vtkwindow_new::updateSpecies(){
