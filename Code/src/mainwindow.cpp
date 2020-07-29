@@ -862,7 +862,7 @@ void MainWindow::on_actionCsv_triggered()
 void MainWindow::on_actionTEST_DC3D_triggered()
 {
     
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("FITS images(*.fit *.fits)"));
     
     if (!fileName.isEmpty() )
     {

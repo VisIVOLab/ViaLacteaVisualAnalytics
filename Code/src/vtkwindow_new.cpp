@@ -1229,7 +1229,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         QAction* selector_3D = new QAction("3D",this);
         selector_3D->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_3));
-        connect(selector_3D,SIGNAL(triggered()), this,SLOT(setSkyRegionSelectorInteractorStyleFor3D()));
+        connect(selector_3D,SIGNAL(triggered()), this,SLOT(on_tdRectPushButton_clicked()));
 
         compact->addAction(local);
         compact->addAction(remote);
