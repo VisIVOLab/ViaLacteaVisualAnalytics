@@ -14,7 +14,7 @@
 #include "vtkOutlineFilter.h"
 #include "vtkAlgorithmOutput.h"
 #include <vtkSmartPointer.h>
-#include <curl/curl.h>
+//#include <curl/curl.h>
 #include <string.h>
 #include <stdio.h>
 

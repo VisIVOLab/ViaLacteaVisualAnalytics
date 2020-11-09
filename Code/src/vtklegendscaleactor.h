@@ -38,7 +38,7 @@
 #include "vtkProp.h"
 #include "vtkCoordinate.h" // For vtkViewportCoordinateMacro
 #include "vtkSmartPointer.h"
-#include "vtkFitsReader.h"
+#include "vtkfitsreader.h"
 #include "vtkImageActor.h"
 
 class vtkAxisActor2D;
@@ -62,9 +62,9 @@ public:
   // Standard methods for the class.
   vtkTypeMacro(vtkLegendScaleActor,vtkProp);
  // void PrintSelf(ostream& os, vtkIndent indent);
-  void PrintHeader(ostream& os, vtkIndent indent);
-  void PrintTrailer(std::ostream& os , vtkIndent indent);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintHeader(ostream& os, vtkIndent indent) override;
+  void PrintTrailer(std::ostream& os , vtkIndent indent) override;
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 //BTX
   enum AttributeLocation
   {

@@ -292,7 +292,7 @@ void Pipe::saveImageAsPng(int num )
     ss>>numero;
     std::string fileName;
     w2i->SetInput(m_pRenderWindow);
-    w2i->SetMagnification(magnification);
+    w2i->SetScale(magnification,magnification);
     w2i->Update();
 
 

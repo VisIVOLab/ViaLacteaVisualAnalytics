@@ -12,7 +12,7 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#include "vtkLegendScaleActor.h"
+#include "vtklegendscaleactor.h"
 #include "vtkAxisActor2D.h"
 #include "vtkCommand.h"
 #include "vtkObjectFactory.h"
@@ -32,7 +32,7 @@
 #include "vtkCoordinate.h"
 #include "qdebug.h"
 #include "astroutils.h"
-#include "vtkFitsReader.h"
+#include "vtkfitsreader.h"
 #include "vtkSmartPointer.h"
 
 vtkStandardNewMacro(vtkLegendScaleActor);

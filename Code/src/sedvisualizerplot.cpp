@@ -3,7 +3,6 @@
 #include <QInputDialog>
 #include "sedplotpointcustom.h"
 #include "loadingwidget.h"
-#include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
 #include <QFileDialog>
 #include "sedfitgrid_thin.h"
@@ -1067,7 +1066,7 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
 
 void SEDVisualizerPlot::on_actionScreenshot_triggered()
 {
-    QPixmap qPixMap = QPixmap::grabWidget(this);  // *this* is window pointer, the snippet     is in the mainwindow.cpp file
+    QPixmap qPixMap = QWidget::grab(this->rect());  // *this* is window pointer, the snippet     is in the mainwindow.cpp file
 
     QImage qImage = qPixMap.toImage();
 

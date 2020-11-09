@@ -33,7 +33,7 @@ public:
     void SetFileName(std::string name);
     std::string GetFileName(){return filename;}
 
-    vtkTypeRevisionMacro(vtkFitsReader,vtkAlgorithm);
+    vtkTypeMacro(vtkFitsReader,vtkAlgorithm);
     void PrintSelf(ostream& os, vtkIndent indent);
     void PrintHeader(ostream& os, vtkIndent indent);
     void PrintTrailer(std::ostream& os , vtkIndent indent);

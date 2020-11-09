@@ -426,7 +426,7 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
 void VLKBSimpleQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
     aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("ia2vlkb");
+    aAuthenticator->setPassword("secret");
 }
 
 
