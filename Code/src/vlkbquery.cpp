@@ -139,7 +139,7 @@ void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticato
 {
     qDebug() <<"auth";
     aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("ia2vlkb");
+    aAuthenticator->setPassword("secret");
 }
 
 void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)
