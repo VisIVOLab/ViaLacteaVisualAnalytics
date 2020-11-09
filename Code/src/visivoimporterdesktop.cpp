@@ -93,8 +93,8 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    settings.setValue("vlkburl","http://vialactea:ia2vlkb@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
-    //    settings.setValue("vlkburl","http://vialactea:ia2vlkb@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.22.0/");
+    settings.setValue("vlkburl","http://vialactea:secret@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
+    //    settings.setValue("vlkburl","http://vialactea:secret@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.22.0/");
     float  flux22Multiplier= 1;
 
     if(!isBandMergedCatalogue)
