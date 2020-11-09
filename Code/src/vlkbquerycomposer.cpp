@@ -228,7 +228,7 @@ void VLKBQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuth
 {
     qDebug() <<"auth";
     aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("ia2vlkb");
+    aAuthenticator->setPassword("secret");
 }
 
 
