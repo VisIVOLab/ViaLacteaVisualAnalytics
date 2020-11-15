@@ -317,11 +317,9 @@ void contour::createContour()
 
     vtkSmartPointer<vtkPolyDataMapper> surfaceMapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
-#if VTK_MAJOR_VERSION <= 5
-    surfaceMapper->SetInput(polyData);
-#else
+
     surfaceMapper->SetInputData(polyData);
-#endif
+
     surfaceMapper->ScalarVisibilityOn();
     surfaceMapper->SetScalarRange(
                 polyData->GetPointData()->GetScalars()->GetRange());
@@ -335,11 +333,9 @@ void contour::createContour()
     vtkSmartPointer<vtkLabeledDataMapper> labelMapper =
             vtkSmartPointer<vtkLabeledDataMapper>::New();
     labelMapper->SetFieldDataName("Isovalues");
-#if VTK_MAJOR_VERSION <= 5
-    labelMapper->SetInput(labelPolyData);
-#else
+
     labelMapper->SetInputData(labelPolyData);
-#endif
+
     labelMapper->SetLabelModeToLabelScalars();
     labelMapper->SetLabelFormat("%6.2f");
 
@@ -872,11 +868,9 @@ void contour::addContours()
 
     vtkSmartPointer<vtkPolyDataMapper> surfaceMapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
-#if VTK_MAJOR_VERSION <= 5
-    surfaceMapper->SetInput(polyData);
-#else
+
     surfaceMapper->SetInputData(polyData);
-#endif
+
     surfaceMapper->ScalarVisibilityOn();
     surfaceMapper->SetScalarRange(
                 polyData->GetPointData()->GetScalars()->GetRange());
@@ -890,11 +884,9 @@ void contour::addContours()
     vtkSmartPointer<vtkLabeledDataMapper> labelMapper =
             vtkSmartPointer<vtkLabeledDataMapper>::New();
     labelMapper->SetFieldDataName("Isovalues");
-#if VTK_MAJOR_VERSION <= 5
-    labelMapper->SetInput(labelPolyData);
-#else
+
     labelMapper->SetInputData(labelPolyData);
-#endif
+
     labelMapper->SetLabelModeToLabelScalars();
     labelMapper->SetLabelFormat("%6.2f");
 

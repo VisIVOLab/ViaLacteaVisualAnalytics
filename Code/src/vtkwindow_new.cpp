@@ -166,11 +166,9 @@ virtual void OnLeftButtonUp()
                     vtkSmartPointer<vtkExtractSelection>::New();
 
             extractSelection->SetInputData(this->Points);
-#if VTK_MAJOR_VERSION <= 5
-            extractSelection->SetInput(1, selection);
-#else
+
             extractSelection->SetInputData(1, sel);
-#endif
+
             extractSelection->Update();
 
             // In selection
@@ -184,19 +182,15 @@ virtual void OnLeftButtonUp()
                       << " cells in the selection." << std::endl;
 
             vtkSmartPointer<vtkGeometryFilter> geometryFilter =  vtkSmartPointer<vtkGeometryFilter>::New();
-#if VTK_MAJOR_VERSION <= 5
-            geometryFilter->SetInput(selected);
-#else
+
             geometryFilter->SetInputData(selected);
-#endif
+
             geometryFilter->Update();
             vtkPolyData*  selected_poly = geometryFilter->GetOutput();
 
-#if VTK_MAJOR_VERSION <= 5
-            this->SelectedMapper->SetInput(selected_poly);
-#else
+
             this->SelectedMapper->SetInputData(selected_poly);
-#endif
+
 
             this->SelectedMapper->ScalarVisibilityOff();
 
@@ -284,11 +278,9 @@ public:
         vtkSmartPointer<vtkExtractGeometry> extractGeometry = vtkSmartPointer<vtkExtractGeometry>::New();
         extractGeometry->SetImplicitFunction(frustum);
 
-#if VTK_MAJOR_VERSION <= 5
-        extractGeometry->SetInput(this->Points);
-#else
+
         extractGeometry->SetInputData(this->Points);
-#endif
+
         extractGeometry->Update();
 
         vtkSmartPointer<vtkVertexGlyphFilter> glyphFilter = vtkSmartPointer<vtkVertexGlyphFilter>::New();
@@ -297,11 +289,9 @@ public:
 
         vtkPolyData*  selected = glyphFilter->GetOutput();
 
-#if VTK_MAJOR_VERSION <= 5
-        this->SelectedMapper->SetInput(selected);
-#else
+
         this->SelectedMapper->SetInputData(selected);
-#endif
+
 
         this->SelectedMapper->ScalarVisibilityOff();
 
@@ -1442,11 +1432,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         vtkPolyData* frustum = frustumSource->GetOutput();
 
         vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-#if VTK_MAJOR_VERSION <= 5
-        mapper->SetInput(frustum);
-#else
+
         mapper->SetInputData(frustum);
-#endif
+
 
         sliceA = vtkActor::New();
         sliceA->SetMapper(mapper);
@@ -1889,11 +1877,9 @@ void vtkwindow_new::addBubble(VSTableDesktop* m_VisIVOTable)
             // Add the lines to the dataset
             polyData->SetLines(cells);
 
-#if VTK_MAJOR_VERSION <= 5
-            appendFilter->AddInputConnection(polyData->GetProducerPort());
-#else
+
             appendFilter->AddInputData(polyData);
-#endif
+
 
 
 
@@ -2052,11 +2038,8 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
             // Add the lines to the dataset
             polyData->SetLines(cells);
 
-#if VTK_MAJOR_VERSION <= 5
-            appendFilter->AddInputConnection(polyData->GetProducerPort());
-#else
+
             appendFilter->AddInputData(polyData);
-#endif
 
 
 
@@ -2103,11 +2086,9 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
             // Add the lines to the dataset
             branches_contour1d_polyData->SetLines(branches_contour1d_cells);
 
-#if VTK_MAJOR_VERSION <= 5
-            branches_contour1d_appendFilter->AddInputConnection(branches_contour1d_polyData->GetProducerPort());
-#else
+
             branches_contour1d_appendFilter->AddInputData(branches_contour1d_polyData);
-#endif
+
 
             if (is_S)
             {
@@ -2123,11 +2104,9 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
 
                 // Add the lines to the dataset
                 branches_contour1d_polyData_S->SetLines(branches_contour1d_cells_S);
-#if VTK_MAJOR_VERSION <= 5
-                branches_contour1d_appendFilter_S->AddInputConnection(branches_contour1d_polyData_S->GetProducerPort());
-#else
+
                 branches_contour1d_appendFilter_S->AddInputData(branches_contour1d_polyData_S);
-#endif
+
             }
 
         }
@@ -2162,11 +2141,9 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
             // Add the lines to the dataset
             branches_contour_new_polyData->SetLines(branches_contour_new_cells);
 
-#if VTK_MAJOR_VERSION <= 5
-            branches_contour_new_appendFilter->AddInputConnection(branches_contour_new_polyData->GetProducerPort());
-#else
+
             branches_contour_new_appendFilter->AddInputData(branches_contour_new_polyData);
-#endif
+
 
         }
 
@@ -2200,11 +2177,9 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
             // Add the lines to the dataset
             branches_contour_polyData->SetLines(branches_contour_cells);
 
-#if VTK_MAJOR_VERSION <= 5
-            branches_contour_appendFilter->AddInputConnection(branches_contour_polyData->GetProducerPort());
-#else
+
             branches_contour_appendFilter->AddInputData(branches_contour_polyData);
-#endif
+
 
         }
 
@@ -2376,18 +2351,11 @@ void vtkwindow_new::addCombinedLayer(QString name,  vtkSmartPointer<vtkLODActor>
     {
         vtkSmartPointer<vtkAppendPolyData> appendFilter2 =vtkSmartPointer<vtkAppendPolyData>::New();
 
-    #if VTK_MAJOR_VERSION <= 5
-        appendFilter2->AddInputConnection(VisualizedEllipseSourcesList.value(name)->GetMapper()->GetInputAsDataSet());
-    #else
         appendFilter2->AddInputData( vtkPolyData::SafeDownCast(VisualizedEllipseSourcesList.value(name)->GetMapper()->GetInputAsDataSet()));
-    #endif
 
 
-    #if VTK_MAJOR_VERSION <= 5
-        appendFilter2->AddInputConnection(vtkPolyData::SafeDownCast(actor->GetMapper()->GetInputAsDataSet())) ;
-    #else
         appendFilter2->AddInputData(vtkPolyData::SafeDownCast(actor->GetMapper()->GetInputAsDataSet())) ;
-    #endif
+
 
     // Remove any duplicate points.
     vtkSmartPointer<vtkCleanPolyData> cleanFilter2 = vtkSmartPointer<vtkCleanPolyData>::New();
@@ -2634,13 +2602,8 @@ ellipse_list=ellipse;
 
     foreach(vtkEllipse *el, ellipse )
     {
-#if VTK_MAJOR_VERSION <= 5
-        appendFilter->AddInputConnection(el->getPolyData()->GetProducerPort());
-#else
+
         appendFilter->AddInputData(el->getPolyData());
-#endif
-
-
         designation2fileMap.insert(el->getSourceName(), sourceFilename);
 
     }
@@ -2669,18 +2632,14 @@ ellipse_list=ellipse;
 
         vtkSmartPointer<vtkAppendPolyData> appendFilter2 =vtkSmartPointer<vtkAppendPolyData>::New();
 
-#if VTK_MAJOR_VERSION <= 5
-        appendFilter2->AddInputConnection(VisualizedEllipseSourcesList.value(ori_sourceFilename)->GetMapper()->GetInputAsDataSet());
-#else
+
         appendFilter2->AddInputData( vtkPolyData::SafeDownCast(VisualizedEllipseSourcesList.value(ori_sourceFilename)->GetMapper()->GetInputAsDataSet()));
-#endif
 
 
-#if VTK_MAJOR_VERSION <= 5
-        appendFilter2->AddInputConnection(vtkPolyData::SafeDownCast(ellipseActor->GetMapper()->GetInputAsDataSet())) ;
-#else
+
+
         appendFilter2->AddInputData(vtkPolyData::SafeDownCast(ellipseActor->GetMapper()->GetInputAsDataSet())) ;
-#endif
+
 
         // Remove any duplicate points.
         vtkSmartPointer<vtkCleanPolyData> cleanFilter2 = vtkSmartPointer<vtkCleanPolyData>::New();

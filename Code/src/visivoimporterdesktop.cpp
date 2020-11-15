@@ -1328,11 +1328,9 @@ void VisIVOImporterDesktop::doImport(QString wavelen, bool usingAPI)
 
             vtiReader->SetFileName(fileName.toStdString().c_str());
             vtiReader->Update();
-#if VTK_MAJOR_VERSION <= 5
-            volumeMapper->SetInput(vtiReader->GetOutput());
-#else
+
             volumeMapper->SetInputConnection(vtiReader->GetOutputPort());
-#endif
+
 
             volumeMapper->SetImageSampleDistance(0.5);
             volume->SetMapper(volumeMapper);

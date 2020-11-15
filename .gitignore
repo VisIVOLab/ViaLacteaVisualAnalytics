@@ -6,3 +6,6 @@ build-VisIVODesktop-vtk6_qt5_mac-Unnamed-Debug/
 *.pro.user.*
 *.pro
 *.pro.user
+.DS_Store
+Code/.DS_Store
+Code/src/.DS_Store
