@@ -10,13 +10,14 @@
             #subheader { height: 12px; text-align: right; font-size: 10px; color: #555;}
             #map { height: 95%; border: 1px solid #888; }
             .olImageLoadError { display: none; }
-            .olControlLayerSwitcher .layersDiv { border-radius: 10px 0 0 10px; } 
+            .olControlLayerSwitcher .layersDiv { border-radius: 10px 0 0 10px; }
         </style>
             <script src="OpenLayers.js"></script>
+            <script type="text/javascript" src="qwebchannel.js"></script>
             <script>
-            
-            
-              OpenLayers.Control.Click = OpenLayers.Class(OpenLayers.Control, {                
+
+
+              OpenLayers.Control.Click = OpenLayers.Class(OpenLayers.Control, {
                 defaultHandlerOptions: {
                     'single': true,
                     'double': false,
@@ -31,56 +32,64 @@
                     );
                     OpenLayers.Control.prototype.initialize.apply(
                         this, arguments
-                    ); 
+                    );
                     this.handler = new OpenLayers.Handler.Click(
                         this, {
                             'click': this.trigger
                         }, this.handlerOptions
                     );
-                }, 
+                },
 
                 trigger: function(e) {
                     var lonlat = map.getLonLatFromPixel(e.xy);
-                                              
+
 				    var b = map.getLonLatFromPixel(e.xy);
-				        
+
 				    displayProjection= null;
 					displayProjection && b.transform(map.getProjectionObject(), displayProjection);
 	        		var ret=b.lon.toFixed(b) +" , " + b.lat.toFixed(b);
 				  	step_x=-0.001333333333333333;
                 	step_y=0.001333333333333333;
 					ori_lat=3.0125822852714919;
-                	ori_lon=181.94317626951325; 
-					
+                	ori_lon=181.94317626951325;
 
-                		
+
+
                 	d=map.getMaxExtent({
                     	restricted: !0
                 	});
          			var tmp = new OpenLayers.LonLat( ((e.xy.x - map.minPx.x) * map.getResolution() + d.left)*step_x, ((map.minPx.y - e.xy.y) * map.getResolution() + d.top)*step_y);
-					
+
     			    var lon_final_tmp = OpenLayers.Util.toFloat(tmp.lon)+ori_lon;
       				lon_final=lon_final_tmp<0?360+lon_final_tmp:lon_final_tmp;
 					var lat_final = OpenLayers.Util.toFloat(tmp.lat)+ori_lat;
-        				
-        				
+
+
         			document.getElementById("valuediv").value=lon_final.toFixed(4) +"," + lat_final.toFixed(4);
-        				
-        			//	if (lat_final<2.22813 && lat_final> -2.22813 && lon_final_tmp< 67.6027 && lon_final_tmp>-71.18)					        
+
+        			//	if (lat_final<2.22813 && lat_final> -2.22813 && lon_final_tmp< 67.6027 && lon_final_tmp>-71.18)
         		 	//		alert("You clicked near " + lon_final + " , " + lat_final);
 					//	else
 					//	  OpenLayers.Util.getElement("valuediv").innerHTML = "";
 
-                                              
 
-        				
-                                              
+
+
+
                 }
 
             });
-  
+
+            //enable javasctipt/c++ communication
+
+            new QWebChannel(qt.webChannelTransport,
+ function(channel){
+ var webobj = channel.objects.webobj;
+ window.qtWeb = webobj;
+ });
+
               var map;
-              
+
                var mapBounds = new OpenLayers.Bounds( 0.0, -4398.0, 270674.0, 0.0);
 
 //              var mapBounds = new OpenLayers.Bounds(0.0, -4274.0, 155805.0, 0.0);
@@ -92,14 +101,14 @@
 
               function init(){
               var graticuleCtl1;
-              
+
                graticuleCtl1 = new OpenLayers.Control.Graticule({
                             lineSymbolizer:{strokeColor: "#ff0000", strokeWidth: 1, strokeOpacity: 0.8},
 
                     labelled: true
                 });
-              
-              
+
+
                   var options = {
                       div: "map",
                       controls: [
@@ -110,40 +119,40 @@
                       maxResolution: 2048.000000,
                       numZoomLevels: 11
                   };
-  
+
                     map = new OpenLayers.Map(options);
 
-  			    
+
   			    map.events.register("mousemove", map, function(e) {
           		     var position = this.events.getMousePosition(e);
-					
+
 						var a={x:position.x,y:position.y};
 				        var b = map.getLonLatFromPixel(a);
 
 				        displayProjection= null;
 
 	        			displayProjection && b.transform(map.getProjectionObject(), displayProjection);
-	        			
+
         				var ret=b.lon.toFixed(b) +" , " + b.lat.toFixed(b)
-				        
+
 
 
 				      					step_x=-0.001333333333333333;
                 	step_y=0.001333333333333333;
 					ori_lat=3.0125822852714919;
-                	ori_lon=181.94317626951325; 
-                	                		
+                	ori_lon=181.94317626951325;
+
                 		d=map.getMaxExtent({
 	                   		restricted: !0
     		            });
-         	
+
          			    var tmp = new OpenLayers.LonLat( ((a.x - map.minPx.x) * map.getResolution() + d.left)*step_x, ((map.minPx.y - a.y) * map.getResolution() + d.top)*step_y);
 
   	   				    var lon_final_tmp = OpenLayers.Util.toFloat(tmp.lon)+ori_lon;
       				    lon_final=lon_final_tmp<0?360+lon_final_tmp:lon_final_tmp;
         			    var lat_final = OpenLayers.Util.toFloat(tmp.lat)+ori_lat;
-        				
-        			if (lat_final<3.08588 && lat_final> -2.90 && lon_final_tmp< 181.943 && lon_final_tmp>-183.943)					        
+
+        			if (lat_final<3.08588 && lat_final> -2.90 && lon_final_tmp< 181.943 && lon_final_tmp>-183.943)
 	              		  OpenLayers.Util.getElement("valuediv").innerHTML = lon_final_tmp.toFixed(4)+", "+lat_final.toFixed(4);
 	              		//  OpenLayers.Util.getElement("valuediv").innerHTML = a.x+", "+a.y;
 						else
@@ -162,7 +171,7 @@
                   });
 
                   map.addLayer(layer);
-                  
+
             	 var polygonLayer = new OpenLayers.Layer.Vector("Polygon Layer");
                  map.addLayer(polygonLayer);
 		        // map.zoomToExtent(mapBounds);
@@ -170,7 +179,7 @@
                var mapBoundsInitialZoom = new OpenLayers.Bounds(135.337, 16000.0, 135.337, 20000.0);
 		         map.zoomToExtent(mapBoundsInitialZoom);
 
-        
+
                  map.addControls([new OpenLayers.Control.PanZoomBar(),
                                    new OpenLayers.Control.Navigation(),
                                    new OpenLayers.Control.MousePosition(),
@@ -178,20 +187,21 @@
                                    new OpenLayers.Control.Attribution()]);
 
                   map.addControl(new OpenLayers.Control.LayerSwitcher());
-      
-            
-      
-      
+
+
+
+
        		pointControl = new OpenLayers.Control.DrawFeature(polygonLayer,  OpenLayers.Handler.Point);
 
 
-            
+
             map.addControl(pointControl);
-            
+
             // register a listener on each control
   			pointControl.events.register('featureadded', pointControl, function(f)
   			{
   				if (polygonLayer.features.length >1)
+
   				{
   					polygonLayer.removeFeatures(polygonLayer.features[0]);
   				}
@@ -199,7 +209,9 @@
 				OpenLayers.Util.getElement("selected_point").innerHTML = v;
 				OpenLayers.Util.getElement("selected_radius").innerHTML = "";
 
-			    window.status="";
+			    //window.status="";
+
+          qtWeb.jsCall(v,"");
 
    			});
 
@@ -210,14 +222,14 @@
                                 irregular: true
                 	            }
                 	        });
-			
+
 			map.addControl(polygonControl);
 
  		 // register a listener on each control
   			polygonControl.events.register('featureadded', polygonControl, function(f)
   			{
-  				
-  						centerPixel=f.feature.geometry.getBounds().getCenterPixel();							
+
+  						centerPixel=f.feature.geometry.getBounds().getCenterPixel();
 						//lonlat del centro
 						var lonlat={lon:centerPixel.x,lat:centerPixel.y};
 						//lonlat del pixel top left
@@ -232,10 +244,10 @@
 
 						var a=map.getPixelFromLonLat(lonlat);
 	        			var b = map.getLonLatFromPixel(a);
-	        			
+
 	        			var a_top=map.getPixelFromLonLat(lonlat_top);
 	        			var b_top = map.getLonLatFromPixel(a_top);
-	        			
+
 	        			var a_bot=map.getPixelFromLonLat(lonlat_bot);
 	        			var b_bot = map.getLonLatFromPixel(a_bot);
 
@@ -245,28 +257,28 @@
 				        //displayProjection= null;
 
 	        			//displayProjection && b.transform(map.getProjectionObject(), displayProjection);
-	        			
-	        			
+
+
 
 	        			  //var tmp = parseInt(10);
         			//	var ret=b.lon.toFixed(b) +" , " + b.lat.toFixed(b)
-				        
-				 	
-                	//ori_lon=181.943; 
+
+
+                	//ori_lon=181.943;
 					//ori_lat=2.8514;
 					//ori_lat=3.08588;
 					step_x=-0.001333333333333333;
                 	step_y=0.001333333333333333;
 					ori_lat=3.0125822852714919;
-                	ori_lon=181.94317626951325; 
+                	ori_lon=181.94317626951325;
 
-                		
-                	                		
+
+
                 		d=map.getMaxExtent({
 	                   		restricted: !0
     		            });
-         	
-         	
+
+
          				//COMPUTE CENTER GLON/GLAT
          			    var tmp = new OpenLayers.LonLat( ((a.x - map.minPx.x) * map.getResolution() + d.left)*step_x, ((map.minPx.y - a.y) * map.getResolution() + d.top)*step_y);
   	   				    var lon_final = OpenLayers.Util.toFloat(tmp.lon)+ori_lon;
@@ -301,44 +313,48 @@
     				  	console.log("BOT: "+lon_final_bot.toFixed(4) +"," + lat_final_bot.toFixed(4) );
     				  	console.log("RIGHT: "+lon_final_right.toFixed(4) +"," + lat_final_right.toFixed(4) );*/
 						console.log("db: "+db.toFixed(4) +" dl: "+dl.toFixed(4) );
-			
-  				
-  				
-  				
-  				
+
+
+
+
+
 
   				if (polygonLayer.features.length >1)
   				{
   					polygonLayer.removeFeatures(polygonLayer.features[0]);
   				}
-				OpenLayers.Util.getElement("selected_point").innerHTML = lon_final.toFixed(4) +"," + lat_final.toFixed(4);
-				OpenLayers.Util.getElement("selected_radius").innerHTML = dl.toFixed(4) +"," + db.toFixed(4);
-			    window.status="";
+          var point=lon_final.toFixed(4) +"," + lat_final.toFixed(4);
+          var radius=dl.toFixed(4) +"," + db.toFixed(4);
+				OpenLayers.Util.getElement("selected_point").innerHTML = point;
+				OpenLayers.Util.getElement("selected_radius").innerHTML = radius;
+			    //window.status="";
+
+          qtWeb.jsCall(point,radius);
 
 
    			});
 
 
-     
 
-      
+
+
 		activatePointSelection(false);
 		activateRectangularSelection(false);
         // activatePointSelection(true);
         //activateRectangularSelection(true);
-         
-         var click = new OpenLayers.Control.Click();       
+
+         var click = new OpenLayers.Control.Click();
          map.addControl(click);
          click.activate();
-           
+
         }
 
-     
-     
+
+
      function activateRectangularSelection(e)
      {
      	if(e)
-		{          	
+		{
 	       	 polygonControl.activate();
 	       	 pointControl.deactivate();
         }
@@ -347,12 +363,12 @@
 	    	polygonControl.deactivate();
 		}
      }
-     
-     
+
+
     function activatePointSelection(e)
           {
           	if(e)
-			{          	
+			{
 	        	 pointControl.activate();
 	        	 polygonControl.deactivate();
         	}
@@ -361,8 +377,8 @@
 	        	 pointControl.deactivate();
 		  	}
 		  }
-          
-          
+
+
       function getURL(bounds) {
                   bounds = this.adjustBounds(bounds);
                   var res = this.getServerResolution();
@@ -370,10 +386,10 @@
                   var x = Math.round((bounds.left - this.tileOrigin.lon) / (res * this.tileSize.w));
                   var y = Math.round((bounds.bottom - this.tileOrigin.lat) / (res * this.tileSize.h));
                   var z = this.getServerZoom();
-                  var path = this.serviceVersion + "/" + this.layername + "/" + z + "/" + x + "/" + y + "." + this.type; 
+                  var path = this.serviceVersion + "/" + this.layername + "/" + z + "/" + x + "/" + y + "." + this.type;
                   var url = this.url;
-        
-                  
+
+
                   if (OpenLayers.Util.isArray(url)) {
                       url = this.selectUrl(path, url);
                   }
@@ -383,7 +399,7 @@
                       return emptyTileURL;
                   }
               }
-          
+
       function getWindowHeight() {
                 if (self.innerHeight) return self.innerHeight;
                     if (document.documentElement && document.documentElement.clientHeight)
@@ -400,10 +416,10 @@
                         return 0;
                 }
 
-    function resize() {  
-                    var map = document.getElementById("map");  
-                    var header = document.getElementById("header");  
-                    var subheader = document.getElementById("subheader");  
+    function resize() {
+                    var map = document.getElementById("map");
+                    var header = document.getElementById("header");
+                    var subheader = document.getElementById("subheader");
                     map.style.height = (getWindowHeight()-80) + "px";
                     map.style.width = (getWindowWidth()-20) + "px";
                     header.style.width = (getWindowWidth()-20) + "px";
@@ -419,7 +435,7 @@
               <body onload="init()">
                 <div id="header">
                 	<img src="./logo.png" alt="logo" height="50px">
-                    <div id="valuediv" style="float:right" value=""></div>
+                  	 <div id="valuediv" style="float:right" value=""></div>
                     <div id="selected_point" style="display:none;" value=""></div>
                     <div id="selected_radius" style="display:none;" value=""></div>
 
@@ -430,12 +446,12 @@
                		-->
                 <!-- PLEASE, LET THIS NOTE ABOUT AUTHOR AND PROJECT SOMEWHERE ON YOUR WEBSITE, OR AT LEAST IN THE COMMENT IN HTML. THANK YOU -->
                 </div>
-       
-                
-                
+
+
+
         	<div id="map"></div>
         		<script type="text/javascript" >
-                	resize();                
+                	resize();
                 </script>
               </body>
             </html>

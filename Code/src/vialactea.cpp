@@ -5,6 +5,7 @@
 #include "vialacteainitialquery.h"
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QWebChannel>
 #include "mainwindow.h"
 #include "singleton.h"
 #include <QSettings>
@@ -15,11 +16,18 @@
 #include "sedvisualizerplot.h"
 #include "vialacteastringdictwidget.h"
 
+void WebProcess::jsCall(const QString &point,const QString &radius)
+{
+
+    emit processJavascript(point,radius);
+}
 
 ViaLactea::ViaLactea(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::ViaLactea)
 {
+
+
     ui->setupUi(this);
 
     ui->saveToDiskCheckBox->setVisible(false);
@@ -84,8 +92,29 @@ ViaLactea::ViaLactea(QWidget *parent) :
     }
     ui->webView->setContextMenuPolicy(Qt::CustomContextMenu);
 
+    //TODO: receive a message clicked()
+    //suggestion
     connect(ui->webView, SIGNAL(clicked()), this, SLOT(on_queryPushButton_clicked()));
+    connect(ui->webView, SIGNAL(selectionChanged()), this, SLOT(textSelected()));
+    //connect(ui->webView, SIGNAL(statusBarMessage(QString)),
+    //           this, SIGNAL(on_webViewStatusBarMessage(QString)));
+    //connect(ui->webView->page(), SIGNAL(statusBarMessage(QString)), this, SIGNAL(on_webViewStatusBarMessage(QString)));
+
+    //create an object for javascript communication
+
+    webobj = new WebProcess();
+    QWebChannel *channel = new QWebChannel(this);
+    channel->registerObject("webobj", webobj);
+    ui->webView->page()->setWebChannel(channel);
+    connect(webobj, SIGNAL(processJavascript(QString,QString)),
+                   this, SLOT(on_webViewStatusBarMessage(QString,QString)));
+
+
+
     QObject::connect( this, SIGNAL(destroyed()), qApp, SLOT(quit()) );
+
+
+
 /*
     if (tilePath=="")
     {
@@ -123,9 +152,29 @@ ViaLactea::ViaLactea(QWidget *parent) :
 
 ViaLactea::~ViaLactea()
 {
+
     delete ui;
+    delete  webobj;
 }
 
+void ViaLactea::quitApp()
+{
+//Problem not only in this
+ QWebEnginePage *p =ui->webView->page();
+ p->disconnect(ui->webView);
+ delete p;
+ std::cout<<"Deleted" << std::endl;
+
+
+}
+
+void ViaLactea::textSelected()
+{
+
+ std::cout<<"TextSelected" << std::endl;
+
+
+}
 
 void ViaLactea::updateVLKBSetting()
 {
@@ -170,7 +219,6 @@ void ViaLactea::on_PLW_checkBox_clicked()
 
 void ViaLactea::on_queryPushButton_clicked()
 {
-
 
     VialacteaInitialQuery *vq;
     if (ui->saveToDiskCheckBox->isChecked())
@@ -228,6 +276,8 @@ void ViaLactea::on_noneRadioButton_clicked(bool checked)
         ui->webView->page()->runJavaScript( "activatePointSelection(false)" );
         ui->webView->page()->runJavaScript( "activateRectangularSelection(false)" );
     }
+
+
 }
 
 void ViaLactea::on_saveToDiskCheckBox_clicked(bool checked)
@@ -248,18 +298,20 @@ void ViaLactea::on_selectFsPushButton_clicked()
 }
 
 
-void ViaLactea::on_webView_statusBarMessage(const QString &text)
+void ViaLactea::on_webViewStatusBarMessage( const QString &point, const QString &radius)
 {
 
 //    QObject e = ui->webView->page()-> ( ->findChild("div#selected_point");
-    QString result;
-    ui->webView->page()->runJavaScript("function myFunction() {"
+   // QString result;
+   /*ui->webView->page()->runJavaScript("function myFunction() {"
                                         "var el = document.getElementById('div#selected_point');"
                                         "return el;} myFunction();",
                                         [] (const QVariant &result) {
                    return result.toString();
-      });
-            QString e=result;
+      });*/
+
+           const QString e=point;
+
              if (e!="")
              {
                  QStringList pieces = e.split( "," );
@@ -273,14 +325,14 @@ void ViaLactea::on_webView_statusBarMessage(const QString &text)
                  ui->noneRadioButton->setChecked(true);
                  on_noneRadioButton_clicked(true);
              }
-    qDebug()<<"e: "<<e;
-    ui->webView->page()->runJavaScript("function myFunction() {"
+/*     qDebug()<<"e: "<<e;
+   ui->webView->page()->runJavaScript("function myFunction() {"
                                         "var el = document.getElementById('div#selected_radius');"
                                         "return el;} myFunction();",
                                         [] (const QVariant &result) {
                    return result.toString();
-      });
-            QString e_radius=result;
+      });*/
+            QString e_radius=radius;
 
 //    QWebElement e_radius = ui->webView->page()->mainFrame()->findFirstElement("div#selected_radius");
 
@@ -302,7 +354,6 @@ void ViaLactea::on_webView_statusBarMessage(const QString &text)
         //  ui->noneRadioButton->setChecked(true);
         //  on_noneRadioButton_clicked(true);
     }
-
 
 }
 
@@ -387,13 +438,17 @@ void ViaLactea::on_localDCPushButton_clicked()
 void ViaLactea::on_actionExit_triggered()
 {
     // QCoreApplication::exit(0);
+
     this->close();
 }
 
 void   ViaLactea::closeEvent(QCloseEvent*)
 {
+
+    //quitApp();
     qApp->closeAllWindows();
-    //    qApp->quit();
+    //qApp->quit();
+
 }
 
 void ViaLactea::on_actionAbout_triggered()
