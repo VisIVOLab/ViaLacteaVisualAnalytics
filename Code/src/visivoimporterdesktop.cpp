@@ -93,7 +93,6 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    settings.setValue("vlkburl","http://vialactea:secret@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
 
     QString user= "";
     QString pass = "";
