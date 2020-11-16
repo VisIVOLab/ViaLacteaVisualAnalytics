@@ -235,8 +235,6 @@ void contour::createContour()
     contourStripper->SetInputConnection( mycontours->GetOutputPort());
     contourStripper->Update();
 
-
-    // Da qui commentato
     int numberOfContourLines = contourStripper->GetOutput()->GetNumberOfLines();
 
 

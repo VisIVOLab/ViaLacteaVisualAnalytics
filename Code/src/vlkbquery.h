@@ -37,6 +37,7 @@ private:
     QString what;
     SEDVisualizerPlot *sd;
     Qt::GlobalColor modelColor;
+    QString m_sSettingsFile;
 
 
 private slots:

@@ -35,7 +35,6 @@ public:
 private slots:
     void quitApp(); //Added page delete befor main app quits
     void textSelected();//test for selection changed
-    void on_PLW_checkBox_clicked();
     void on_queryPushButton_clicked();
     void on_noneRadioButton_clicked(bool checked);
     void on_saveToDiskCheckBox_clicked(bool checked);

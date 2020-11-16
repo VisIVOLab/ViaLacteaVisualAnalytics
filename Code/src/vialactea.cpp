@@ -18,7 +18,6 @@
 
 void WebProcess::jsCall(const QString &point,const QString &radius)
 {
-
     emit processJavascript(point,radius);
 }
 
@@ -36,19 +35,15 @@ ViaLactea::ViaLactea(QWidget *parent) :
 
 
 
-    //Svuoto i file temp del precedente run
-
+    //Cleanup previous run tmp
     QDir dir_tmp(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download"));
     foreach(QString dirFile, dir_tmp.entryList())
     {
         dir_tmp.remove(dirFile);
     }
 
-    //end
-
 
     m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
-
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
@@ -69,9 +64,6 @@ ViaLactea::ViaLactea(QWidget *parent) :
         QString user= settings.value("vlkbuser", "").toString();
         QString pass = settings.value("vlkbpass", "").toString();
 
-
-       // settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.23.2/");
-      //  settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.23.16/");
         settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
 
@@ -114,13 +106,6 @@ ViaLactea::ViaLactea(QWidget *parent) :
     QObject::connect( this, SIGNAL(destroyed()), qApp, SLOT(quit()) );
 
 
-
-/*
-    if (tilePath=="")
-    {
-        on_actionSettings_triggered();
-    }
-*/
 
 
     VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
@@ -184,13 +169,7 @@ void ViaLactea::updateVLKBSetting()
     if (settings.value("vlkbtype", "").toString()=="public")
     {
         qDebug()<<"public access to vlkb";
-        //settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/publicfitsdb-0.23.12/");
-       // settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/publicfitsdb-0.23.16/");
         settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/");
-
-
-
-        //settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap");
 
     }
@@ -202,18 +181,11 @@ void ViaLactea::updateVLKBSetting()
         QString user= settings.value("vlkbuser", "").toString();
         QString pass = settings.value("vlkbpass", "").toString();
 
-
-        //settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.23.16/");
         settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
 
 
     }
-
-}
-
-void ViaLactea::on_PLW_checkBox_clicked()
-{
 
 }
 

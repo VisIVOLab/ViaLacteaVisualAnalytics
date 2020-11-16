@@ -32,7 +32,7 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
         qDebug()<<"public access to vlkb";
         settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/");
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap");
- url_prefix="http://";
+        url_prefix="http://";
 
 
     }
@@ -45,24 +45,12 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
         QString pass = settings.value("vlkbpass", "").toString();
 
 
-       // settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.23.2/");
-      //  settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.23.16/");
         settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
         url_prefix="http://"+user+":"+pass+"@";
 
 
     }
-
-
-
-
-
-  //  QString user= settings.value("vlkbuser", "").toString();
-  //  QString pass = settings.value("vlkbpass", "").toString();
-
-    // settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.23.16/");
-    //settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
 
 
     parser =new xmlparser();
