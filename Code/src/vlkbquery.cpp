@@ -18,6 +18,8 @@ VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt
         sd = dynamic_cast<SEDVisualizerPlot*>(parent);
     }
 
+    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+
 
     query=q;//QUrl::toPercentEncoding(q);
 
@@ -42,7 +44,6 @@ void VLKBQuery::connectToVlkb()
     qDebug()<<"connect";
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
     manager->get(QNetworkRequest(QUrl(url+"/availability")));
-//    manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
 
     qDebug()<<"connected";
 
@@ -138,8 +139,19 @@ void VLKBQuery::executoSyncQuery()
 void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
     qDebug() <<"auth";
-    aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("secret");
+    QString user= "";
+    QString pass = "";
+
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    if (settings.value("vlkbtype", "public").toString()=="private")
+    {
+           user= settings.value("vlkbuser", "").toString();
+           pass = settings.value("vlkbpass", "").toString();
+
+    }
+
+    aAuthenticator->setUser(user);
+    aAuthenticator->setPassword(pass);
 }
 
 void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)

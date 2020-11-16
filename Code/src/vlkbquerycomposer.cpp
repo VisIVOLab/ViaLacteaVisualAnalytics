@@ -69,16 +69,6 @@ void VLKBQueryComposer::tableReplyFinished (QNetworkReply *reply)
 
         }
 
-        /*
-        QFile *file = new QFile("/Users/fxbio6600/test.xml");
-        if(file->open(QFile::Append))
-        {
-            file->write(reply->readAll());
-            file->flush();
-            file->close();
-        }
-        delete file;
-*/
 
     }
 
@@ -210,7 +200,6 @@ void VLKBQueryComposer::on_okButton_clicked()
     postData.append("LANG=ADQL&");
     postData.append("FORMAT=tsv&");
 
-    //WHERE (glon >=316.313 and glon <=317.131 ) AND (glat>=-0.34358 and glat <= 0.3113)
 
     postData.append("QUERY=SELECT%20*%20FROM%20vlkb_compactsources.band500um%20WHERE%20(glon>=316.009%20and%20glon<=317.178)%20AND%20(glat>=-0.78796%20and%20glat<=0.68552)");
 
@@ -226,9 +215,22 @@ void VLKBQueryComposer::on_okButton_clicked()
 
 void VLKBQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
+
     qDebug() <<"auth";
-    aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("secret");
+    QString user= "";
+    QString pass = "";
+
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    if (settings.value("vlkbtype", "public").toString()=="private")
+    {
+            user= settings.value("vlkbuser", "").toString();
+            pass = settings.value("vlkbpass", "").toString();
+
+    }
+
+    aAuthenticator->setUser(user);
+    aAuthenticator->setPassword(pass);
+
 }
 
 

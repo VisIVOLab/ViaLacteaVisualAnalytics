@@ -110,15 +110,11 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
         loading->activateWindow();
         loading->setFocus();
 
-        //url=ui->vlkbUrlLineEdit->text();
-
-
 
         manager = new QNetworkAccessManager(this);
 
         connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
         manager->get(QNetworkRequest(QUrl(url+"/availability")));
-       // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
 
     }
     else
@@ -172,7 +168,6 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
 
         if(list.at(0).toElement().text()=="true")
         {
-            qDebug()<<"entro";
 
             available=true;
             qDebug()<<"isFilament "<<isFilament;
@@ -373,23 +368,6 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
         if(band.compare("bandmerged") ==0)
         {
             isBandmerged=true;
-           /*
-           // QString query="SELECT DISTINCT * FROM vlkb_compactsources.bandmerged_sed_view WHERE";
-            query+= "(( glon500>="+ui->longMinLineEdit->text()+" and glon500<="+ui->longMaxLineEdit->text()+") AND ";
-            query+= "(glat500>="+ui->latMinLineEdit->text()+" and glat500<="+ui->latMaxLineEdit->text()+"))";
-
-            query+= " OR (( glon350>="+ui->longMinLineEdit->text()+" and glon350<="+ui->longMaxLineEdit->text()+") AND ";
-            query+= "(glat350>="+ui->latMinLineEdit->text()+" and glat350<="+ui->latMaxLineEdit->text()+"))";
-
-            query+= " OR (( glon250>="+ui->longMinLineEdit->text()+" and glon250<="+ui->longMaxLineEdit->text()+") AND ";
-            query+= "(glat250>="+ui->latMinLineEdit->text()+" and glat250<="+ui->latMaxLineEdit->text()+"))";
-
-            query+= " OR (( glon160>="+ui->longMinLineEdit->text()+" and glon160<="+ui->longMaxLineEdit->text()+") AND ";
-            query+= "(glat160>="+ui->latMinLineEdit->text()+" and glat160<="+ui->latMaxLineEdit->text()+"))";
-
-            query+= " OR (( glon70>="+ui->longMinLineEdit->text()+" and glon70<="+ui->longMaxLineEdit->text()+") AND ";
-            query+= "(glat70>="+ui->latMinLineEdit->text()+" and glat70<="+ui->latMaxLineEdit->text()+"))";
-*/
 
             QString query="SELECT DISTINCT * FROM vlkb_compactsources.sed_view_final WHERE ";
             query+= "(( glonft>="+ui->longMinLineEdit->text()+" and glonft<="+ui->longMaxLineEdit->text()+") AND ";
@@ -425,8 +403,19 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
 
 void VLKBSimpleQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
-    aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("secret");
+     QString user= "";
+     QString pass = "";
+     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+
+     if (settings.value("vlkbtype", "public").toString()=="private")
+     {
+            user= settings.value("vlkbuser", "").toString();
+            pass = settings.value("vlkbpass", "").toString();
+
+     }
+
+     aAuthenticator->setUser(user);
+     aAuthenticator->setPassword(pass);
 }
 
 
