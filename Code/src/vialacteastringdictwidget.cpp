@@ -284,8 +284,21 @@ QUrl VialacteaStringDictWidget::redirectUrl(const QUrl& possibleRedirectUrl,   c
 
 void VialacteaStringDictWidget::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
-    aAuthenticator->setUser("vialactea");
-    aAuthenticator->setPassword("secret");
+        qDebug() <<"auth";
+       QString user= "";
+       QString pass = "";
+
+       QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+       if (settings.value("vlkbtype", "public").toString()=="private")
+       {
+              user= settings.value("vlkbuser", "").toString();
+              pass = settings.value("vlkbpass", "").toString();
+
+       }
+
+       aAuthenticator->setUser(user);
+       aAuthenticator->setPassword(pass);
+
 }
 
 
