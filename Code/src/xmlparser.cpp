@@ -12,7 +12,6 @@
 #include <QModelIndex>
 #include <QStandardItem>
 #include <QStringList>
-#include <algorithm>
 
 xmlparser::xmlparser()
 {
@@ -232,7 +231,7 @@ QList< QMap<QString,QString> > xmlparser::parseXmlAndGetList(QXmlStreamReader & 
     }
     xml_reader.clear();
 
-    std::sort(datacubes.begin(), datacubes.end());
+    qSort(datacubes);
 
     return datacubes;
 

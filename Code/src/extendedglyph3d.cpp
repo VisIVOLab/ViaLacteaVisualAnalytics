@@ -1,5 +1,5 @@
 
-#include "extendedglyph3d.h"
+#include "extendedglyph3D.h"
 
 #include "vtkCellData.h"
 #include "vtkCell.h"

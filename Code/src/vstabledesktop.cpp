@@ -1161,8 +1161,7 @@ int VSTableDesktop::getbinNumber()
 
 bool VSTableDesktop::readStatistics()
 {
-    //Removed VisIVO Integrations
-    /*
+
     qDebug()<<"*************LEGGO STATISTICHE ";
 
 
@@ -1218,6 +1217,84 @@ bool VSTableDesktop::readStatistics()
 
 
     }
+    /*
+       float min=0;
+        float max=0;
+        float value=0;
+        int hist_max=0;
+        int j=0;
+        QStringList arguments;
+        //!Read from a VBT min max and the whole histogram for the scalar i
+        QProcess *myProcess = new QProcess();
+
+
+
+        QString histogramFilePath = "";
+        histogramFilePath.append(w->workingPath).append(QDir::separator()).append("profile.ascii");
+
+        QDateTime dt = QDateTime::currentDateTime ();
+        uint posixDT = dt.toMSecsSinceEpoch  ();
+
+        histogramFilePath.append(QString::number(posixDT));
+
+
+        QString locatorQtString = QString(this->m_locator.c_str());
+        QString qtColName = QString(this->getColName(i).c_str());
+        arguments<< "--op";
+        arguments.append("statistic");
+        arguments.append("--histogram");
+        arguments.append(QString::number(getbinNumber()));
+        arguments.append("--list");
+        arguments.append(qtColName);
+        arguments.append("--out");
+        arguments.append(histogramFilePath);
+        arguments.append(locatorQtString);
+
+       // qDebug()<<arguments;
+
+        myProcess->setStandardErrorFile(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append(QDir::separator()).append("log_error.txt"), QIODevice::Append);
+        myProcess->setStandardOutputFile(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append(QDir::separator()).append("log_output.txt"), QIODevice::Append);
+
+        myProcess->start(w->filter,arguments);
+        myProcess->waitForFinished();
+        impStatus = myProcess->exitStatus();
+/*
+
+        /*  impStatus:
+            1 : an error occurred
+            0 : OK
+        */
+    /*
+        if (impStatus) return false;
+        std::string line,subFirst,subSecond;
+        ifstream myfile (histogramFilePath.toLatin1());
+        if (myfile.is_open())
+        {
+            while (! myfile.eof() )
+            {
+                // the file is an histogram, it has n lines containing 2 strings
+                // in the form of X(float) N(int)
+                getline (myfile,line);
+                std::istringstream iss(line);
+                iss>>subFirst;
+                iss>>subSecond;
+                value=atof(subFirst.c_str());
+                if (value<min)  min=value;
+                if (value>max)  max=value;
+                if (atoi(subSecond.c_str())>hist_max) hist_max=atoi(subSecond.c_str());
+                this->m_histogramValueArray[i][j] =value;
+                this->m_histogramArray[i][j] = atoi(subSecond.c_str());
+                j++;
+            }
+            myfile.close();
+            QFile::remove(histogramFilePath.toLatin1());
+        }
+        this->m_rangeArray[i][0]=min;
+        this->m_rangeArray[i][1]=max;
+        this->m_rangeArray[i][2]=hist_max;
+
+    }
+
     */
     return true;
 }

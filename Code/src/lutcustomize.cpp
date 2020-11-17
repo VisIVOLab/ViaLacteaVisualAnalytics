@@ -1,6 +1,6 @@
 #include "lutcustomize.h"
 #include "ui_lutcustomize.h"
-#include "vtkextracthistogram.h"
+#include "vtkExtractHistogram.h"
 #include "vispoint.h"
 #include "vtkTable.h"
 #include "vtkDoubleArray.h"

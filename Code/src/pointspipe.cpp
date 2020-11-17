@@ -448,7 +448,7 @@ int PointsPipe::createPipe ()
     /*
     vtkSmartPointer<vtkIdFilter> idFilter = vtkSmartPointer<vtkIdFilter>::New();
     idFilter->SetInput(m_pUnstructuredGrid);
-    idFilter->SetIdsArrayName("OriginalIds");//Deprecated method, replace with SetPointIdsArrayName or SetCellIdsArrayName
+    idFilter->SetIdsArrayName("OriginalIds");
     idFilter->Update();
 */
 
@@ -482,7 +482,7 @@ int PointsPipe::createPipe ()
     vtkSmartPointer<vtkIdFilter> idFilter =
             vtkSmartPointer<vtkIdFilter>::New();
     idFilter->SetInputConnection(m_polyData->GetProducerPort());
-    idFilter->SetIdsArrayName("ids");//Deprecated method, replace with SetPointIdsArrayName or SetCellIdsArrayName
+    idFilter->SetIdsArrayName("ids");
     idFilter->Update();
 
     vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceFilter = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();

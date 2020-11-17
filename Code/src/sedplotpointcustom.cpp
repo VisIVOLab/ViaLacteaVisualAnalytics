@@ -82,8 +82,11 @@ void SEDPlotPointCustom::drawSingleEllipse(vtkEllipse * ellipse )
 {
 
     vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+#if VTK_MAJOR_VERSION <= 5
+    cleanFilter->SetInput(ellipse->getPolyData());
+#else
     cleanFilter->SetInputData(ellipse->getPolyData());
-
+#endif
 
     cleanFilter->Update();
 

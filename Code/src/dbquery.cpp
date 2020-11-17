@@ -695,7 +695,7 @@ void dbquery::on_queryPushButton_clicked()
     nam = new QNetworkAccessManager(this);
     QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
 
-    //QUrl url ("http://vialactea:secret@palantir19.oats.inaf.it:8080/libjnifitsdb-0.15.0/vlkb_search?l="+ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
+    //QUrl url ("http://vialactea:ia2vlkb@palantir19.oats.inaf.it:8080/libjnifitsdb-0.15.0/vlkb_search?l="+ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
     QUrl url(vlkbUrl+"/vlkb_search?l="+ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
 
 
@@ -730,7 +730,7 @@ void dbquery::on_pushButton_map_clicked()
     QObject::connect(nam, SIGNAL(finished(QNetworkReply*)),
                      this, SLOT(finishedSlot2(QNetworkReply*)));
     /*
-    QUrl url ("http://vialactea:secret@palantir19.oats.inaf.it:8080/libjnifitsdb-0.15.0/vlkb_search?l="+ui->lineEdit_l->text()+
+    QUrl url ("http://vialactea:ia2vlkb@palantir19.oats.inaf.it:8080/libjnifitsdb-0.15.0/vlkb_search?l="+ui->lineEdit_l->text()+
               "&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
   */
     QUrl url (vlkbUrl+"/vlkb_search?l="+ui->lineEdit_l->text()+
@@ -760,7 +760,7 @@ void dbquery::handleButton(int i)
             +ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+
             "&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text()+"&nullvals");
     /*
- QUrl url ("http://vialactea:secret@palantir19.oats.inaf.it:8080/libjnifitsdb-0.14.2/vlkb_cutout?pubdid="+datacube["PublisherDID"]+"&l="
+ QUrl url ("http://vialactea:ia2vlkb@palantir19.oats.inaf.it:8080/libjnifitsdb-0.14.2/vlkb_cutout?pubdid="+datacube["PublisherDID"]+"&l="
  +ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+
  "&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
 */

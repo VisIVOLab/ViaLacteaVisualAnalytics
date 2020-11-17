@@ -19,7 +19,7 @@
  ***************************************************************************/
 
 #include "visivoimporterdesktop.h"
-#include <QDebug>
+#include <//qDebug>
 #include <QDialog>
 #include <QFileDialog>
 #include <QTreeView>
@@ -56,12 +56,10 @@
 
 #include <QtConcurrent>
 
-/*
+
 extern "C" {
 #include "visivo.h"
 }
-
-*/
 
 
 VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBandMergedCatalogue, vtkwindow_new *v, QString wavelen)
@@ -93,19 +91,9 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-
-    QString user= "";
-    QString pass = "";
-    QString url_prefix = "";
-
-    if (settings.value("vlkbtype", "public").toString()=="private")
-    {
-        user= settings.value("vlkbuser", "").toString();
-        pass = settings.value("vlkbpass", "").toString();
-        url_prefix = user+":"+pass;
-    }
-
-    settings.setValue("vlkburl","http://"+url_prefix+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");    float  flux22Multiplier= 1;
+    settings.setValue("vlkburl","http://vialactea:ia2vlkb@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
+    //    settings.setValue("vlkburl","http://vialactea:ia2vlkb@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-0.22.0/");
+    float  flux22Multiplier= 1;
 
     if(!isBandMergedCatalogue)
     {
@@ -119,6 +107,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
         firstSEDNode=true;
         double distances;
 
+//        for(int  i = 0; i < 3; i++)
 
         for(int  i = 0; i < m_VisIVOTable->getNumberOfRows()/2; i++)
         {
@@ -376,6 +365,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
             tmp=QString::fromStdString( m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation160")][i]);
             //qDebug()<<"tmp 160: "<<tmp;
+
             if(tmp!="missing")
             {
 
@@ -425,6 +415,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
             tmp=QString::fromStdString( m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation70")][i]);
             //qDebug()<<"tmp 70: "<<tmp;
+
             if(tmp!="missing")
             {
 
@@ -474,6 +465,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
             tmp=QString::fromStdString( m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation24")][i]);
             //qDebug()<<"tmp 24: "<<tmp;
+
             if(tmp!="missing")
             {
 
@@ -527,6 +519,8 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
             {
 
                 flux= flux22Multiplier*atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux22")][i].c_str());
+                //flux= flux22Multiplier*atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux34")][i].c_str());
+                //e_flux= atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux34")][i].c_str());
                 e_flux= atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux22")][i].c_str());
                 glon=atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i].c_str());
                 glat=atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i].c_str());
@@ -573,6 +567,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
             tmp=QString::fromStdString( m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
             //qDebug()<<"tmp 21um: "<<tmp;
+
             if(tmp!="missing")
             {
 
@@ -718,7 +713,9 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
             {
 
                 flux= flux22Multiplier*atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux12")][i].c_str());
+                // flux= flux22Multiplier*atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux46")][i].c_str());
                 e_flux= atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux12")][i].c_str());
+                // e_flux= atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux46")][i].c_str());
                 glon=atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i].c_str());
                 glat=atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i].c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath,glon,glat,coord);
@@ -1072,8 +1069,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
                     else
                         firstSEDNode=false;
 
+
+
+
                     if(!sed->hasRoot())
                         sed->setRootNode(node);
+
+                    ////qDebug()<<"1.25_  flux:"<<flux;
                 }
 
             }
@@ -1163,23 +1165,23 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool i
 
 
     char *filepath = new char[f.toStdString().length() + 1];
-    strcpy(filepath,f.toStdString().c_str());
+    std::strcpy(filepath,f.toStdString().c_str());
 
     char *fileformat = new char[type.toStdString().length() + 1];
-    strcpy(fileformat,type.toStdString().c_str());
+    std::strcpy(fileformat,type.toStdString().c_str());
 
- //   VisIVOImporter envVI1;
- //   VI_Init(&envVI1);
+    VisIVOImporter envVI1;
+    VI_Init(&envVI1);
 
     QString outputPathString=QDir::homePath()+"/VisIVODesktopTemp/tmp_download/"+infoFile.baseName()+".bin";
 
     char *outputPath = new char[outputPathString.toStdString().length() + 1];
-    strcpy(outputPath,outputPathString.toStdString().c_str());
+    std::strcpy(outputPath,outputPathString.toStdString().c_str());
 
- //   errorCode=VI_SetAtt(&envVI1,VI_SET_FFORMAT,fileformat);
- //   errorCode=VI_SetAtt(&envVI1,VI_SET_FILEPATH, filepath);
- //   errorCode=VI_SetAtt(&envVI1,VI_SET_OUTFILEVBT,outputPath);
- //   VI_Import(&envVI1);
+    errorCode=VI_SetAtt(&envVI1,VI_SET_FFORMAT,fileformat);
+    errorCode=VI_SetAtt(&envVI1,VI_SET_FILEPATH, filepath);
+    errorCode=VI_SetAtt(&envVI1,VI_SET_OUTFILEVBT,outputPath);
+    VI_Import(&envVI1);
 
 
     VialacteaSource *vialactea_source= new VialacteaSource(f.toStdString());
@@ -1337,9 +1339,11 @@ void VisIVOImporterDesktop::doImport(QString wavelen, bool usingAPI)
 
             vtiReader->SetFileName(fileName.toStdString().c_str());
             vtiReader->Update();
-
+#if VTK_MAJOR_VERSION <= 5
+            volumeMapper->SetInput(vtiReader->GetOutput());
+#else
             volumeMapper->SetInputConnection(vtiReader->GetOutputPort());
-
+#endif
 
             volumeMapper->SetImageSampleDistance(0.5);
             volume->SetMapper(volumeMapper);
@@ -1442,10 +1446,10 @@ void VisIVOImporterDesktop::doImport(QString wavelen, bool usingAPI)
 
 
             char *filepath = new char[fileName.toStdString().length() + 1];
-            strcpy(filepath,fileName.toStdString().c_str());
+            std::strcpy(filepath,fileName.toStdString().c_str());
 
             char *fileformat = new char[type.toStdString().length() + 1];
-            strcpy(fileformat,type.toStdString().c_str());
+            std::strcpy(fileformat,type.toStdString().c_str());
             /*
             VisIVOImporter envVI1;
             VI_Init(&envVI1);
