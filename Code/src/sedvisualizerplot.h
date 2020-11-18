@@ -59,8 +59,8 @@ private:
     void loadSedFitOutput(QString filename);
     void loadSedFitThin(QString filename);
     void loadSedFitThick(QString filename);
-    void readThinFit(QString resultPath);
-    void readThickFit(QString resultPath);
+    bool readThinFit(QString resultPath);
+    bool readThickFit(QString resultPath);
 
     QMap <QString, double> modelFitBands;
 

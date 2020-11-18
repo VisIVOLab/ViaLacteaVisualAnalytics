@@ -3,6 +3,7 @@
 #include <QInputDialog>
 #include "sedplotpointcustom.h"
 #include "loadingwidget.h"
+#include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
 #include <QFileDialog>
 #include "sedfitgrid_thin.h"
@@ -932,7 +933,8 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename){
 }
 
 void SEDVisualizerPlot::loadSedFitThin(QString filename){
-    //qDebug()<<"filename: "<<filename;
+
+    qDebug()<<"leggo thin: "<<filename;
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setColumnCount(6);
     ui->resultsTableWidget->setRowCount(0);
@@ -956,6 +958,9 @@ void SEDVisualizerPlot::loadSedFitThin(QString filename){
 }
 
 void SEDVisualizerPlot::loadSedFitThick(QString filename){
+
+    qDebug()<<"leggo thick "<<filename;
+
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setColumnCount(9);
     ui->resultsTableWidget->setRowCount(0);
@@ -1066,7 +1071,7 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
 
 void SEDVisualizerPlot::on_actionScreenshot_triggered()
 {
-    QPixmap qPixMap = QWidget::grab(this->rect());  // *this* is window pointer, the snippet     is in the mainwindow.cpp file
+    QPixmap qPixMap = QPixmap::grabWidget(this);  // *this* is window pointer, the snippet     is in the mainwindow.cpp file
 
     QImage qImage = qPixMap.toImage();
 
@@ -1292,8 +1297,8 @@ void SEDVisualizerPlot::addNewSEDCheckBox(QString label){
 
 void SEDVisualizerPlot::on_SEDCheckboxClicked(int sedN)
 {
-    //qDebug()<<"processing checkbox "<<sedN;
-    //qDebug()<<"sedGraphs.size() "<<QString::number(sedGraphs.size());
+    qDebug()<<"processing checkbox "<<sedN;
+    qDebug()<<"sedGraphs.size() "<<QString::number(sedGraphs.size());
     QCPGraph * graph=sedGraphs.at(sedN);
     if(graph->visible()){
         //qDebug()<<"Remove Graph "<<sedGraphPoints.contains(sedN);
@@ -1463,7 +1468,6 @@ void SEDVisualizerPlot::doThinLocalFit()
 }
 
 void SEDVisualizerPlot::doThinRemoteFit()
-
 {
     sd_thin->close();
 
@@ -1487,7 +1491,7 @@ void SEDVisualizerPlot::doThinRemoteFit()
 
 
 
-    //qDebug()<<" java -jar "<<QApplication::applicationDirPath().append("/vsh-ws-client.jar")<<" \"sedfitgrid_engine_thin_vialactea,"+sedFitInputW+","+sedFitInputF+","+mrange+","+trange+","+brange+","+sd_thin->ui->distLineEdit->text()+","+srefRange+",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= 'sedfit_output.dat'";
+    qDebug()<<" java -jar "<<QApplication::applicationDirPath().append("/vsh-ws-client.jar")<<" \"sedfitgrid_engine_thin_vialactea,"+sedFitInputW+","+sedFitInputF+","+mrange+","+trange+","+brange+","+sd_thin->ui->distLineEdit->text()+","+srefRange+",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= 'sedfit_output.dat'";
 
     process->setWorkingDirectory(QApplication::applicationDirPath());
 
@@ -1541,16 +1545,20 @@ void SEDVisualizerPlot::doThickRemoteFit()
 
 void SEDVisualizerPlot::finishedThinLocalFit()
 {
-    readThinFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv"));
-    addNewSEDCheckBox("Thin Fit");
+    bool res = readThinFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv"));
+    if(res)
+        addNewSEDCheckBox("Thin Fit");
+    else
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("No results."));
+
 }
 
-void SEDVisualizerPlot::readThinFit(QString resultPath){
+bool SEDVisualizerPlot::readThinFit(QString resultPath){
     QFile file(resultPath);
     if (!file.open(QIODevice::ReadOnly)) {
         //qDebug() << file.errorString();
         //qDebug() << "ERRORE Disegno FIT";
-        return ;
+        return false ;
     }
 
     QVector<double> x, y;
@@ -1579,7 +1587,7 @@ void SEDVisualizerPlot::readThinFit(QString resultPath){
     if (!filepar.open(QIODevice::ReadOnly)) {
         //qDebug() << file.errorString();
         //qDebug() << "ERRORE Parametri";
-        return ;
+        return false ;
     }
     QString line=filepar.readLine();
     filepar.close();
@@ -1588,15 +1596,15 @@ void SEDVisualizerPlot::readThinFit(QString resultPath){
         ui->resultsTableWidget->setItem(0,i,new QTableWidgetItem(line_list_string.at(i).trimmed()));
     }
     ui->resultsTableWidget->resizeColumnsToContents();
-
+    return true;
 }
 
-void SEDVisualizerPlot::readThickFit(QString resultPath){
+bool SEDVisualizerPlot::readThickFit(QString resultPath){
     QFile file(resultPath);
     if (!file.open(QIODevice::ReadOnly)) {
         //qDebug() << file.errorString();
         //qDebug() << "ERRORE Disegno FIT";
-        return ;
+        return false;
     }
 
     QVector<double> x, y;
@@ -1623,7 +1631,7 @@ void SEDVisualizerPlot::readThickFit(QString resultPath){
     QFile filepar(resultPath+".par");
     if (!filepar.open(QIODevice::ReadOnly)) {
         //qDebug() << filepar.errorString();
-        return ;
+        return false ;
     }
     QString line=filepar.readLine();
     filepar.close();
@@ -1632,6 +1640,8 @@ void SEDVisualizerPlot::readThickFit(QString resultPath){
         ui->resultsTableWidget->setItem(0,i,new QTableWidgetItem(line_list_string.at(i).trimmed()));
     }
     ui->resultsTableWidget->resizeColumnsToContents();
+
+    return true;
 
 }
 
@@ -1667,19 +1677,22 @@ void SEDVisualizerPlot::doThickLocalFit()
 void SEDVisualizerPlot::finishedThinRemoteFit()
 {
 
-
     QDir dir (QApplication::applicationDirPath());
 
-    dir.rename("sedfit_output.dat",QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv"));
-    dir.rename("sedfit_output.dat.par",QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv.par"));
+    dir.rename("sedfit_output.dat",QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv"));
+    dir.rename("sedfit_output.dat.par",QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv.par"));
 
 
     // readSedFitOutput(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_sedfit_output.dat"));
 
 
-    readThickFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv"));
+    bool res= readThickFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv"));
 
-    addNewSEDCheckBox("Thin Fit");
+    if (res)
+        addNewSEDCheckBox("Thin Fit");
+    else
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("No results."));
+
 
 }
 
@@ -1693,22 +1706,25 @@ void SEDVisualizerPlot::finishedThickRemoteFit()
     dir.rename("sedfit_output.dat.par",QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv.par"));
 
 
-    readThickFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv"));
+    bool res = readThickFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv"));
 
-    addNewSEDCheckBox("Thick Fit");
+    if (res)
+        addNewSEDCheckBox("Thick Fit");
+    else
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("No results."));
 
 }
 
 void SEDVisualizerPlot::finishedThickLocalFit()
 {
 
+    bool res = readThickFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv"));
+    if (res)
+        addNewSEDCheckBox("Thick Fit");
+    else
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("No results."));
 
 
-
-
-    readThickFit(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv"));
-    addNewSEDCheckBox("Thick Fit");
-    
 }
 
 
