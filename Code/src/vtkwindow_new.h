@@ -182,7 +182,7 @@ public:
 
 
     QHash<vtkImageProperty*,  double> image_init_color_level;
-   QHash<vtkImageProperty*,  double> image_init_window_level;
+    QHash<vtkImageProperty*,  double> image_init_window_level;
 
 
 signals:
