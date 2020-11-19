@@ -6,12 +6,12 @@
 #include <QDebug>
 //#include "vosamp.h"
 #include <QSurfaceFormat>
-#include "QVTKOpenGLStereoWidget.h"
+#include "QVTKOpenGLNativeWidget.h"
 
 int main(int argc, char *argv[])
 {
 
-    QSurfaceFormat::setDefaultFormat(QVTKOpenGLStereoWidget::defaultFormat());
+    QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
     QApplication a(argc, argv);
     MainWindow *w = &Singleton<MainWindow>::Instance();
