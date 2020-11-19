@@ -180,9 +180,14 @@ public:
     vtkSmartPointer<vtkFitsReader> getFitsImage(){return myfits;};
     vtkSmartPointer<vtkActor> getGlyphActor(){return glyph_actor;};
 
+
+    QHash<vtkImageProperty*,  double> image_init_color_level;
+   QHash<vtkImageProperty*,  double> image_init_window_level;
+
+
 signals:
-    void speciesChanged();
-    void surveyChanged();
+   void speciesChanged();
+   void surveyChanged();
     void transitionChanged();
 
 
