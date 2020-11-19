@@ -740,25 +740,22 @@ public:
 
     virtual void OnMouseMove()
     {
-
         vtkRenderWindowInteractor* rwi = this->Interactor;
-         if (this->CurrentImageProperty)
-               {
-                    vtkImageProperty* property = this->CurrentImageProperty;
+        if (this->CurrentImageProperty)
+              {
+                   vtkImageProperty* property = this->CurrentImageProperty;
 
-                     if (!vtkwin->image_init_window_level.contains(property))
-                    {
-                        vtkwin->image_init_window_level.insert(property,property->GetColorWindow());
-                    }
+                   if (!vtkwin->image_init_window_level.contains(property))
+                   {
+                       vtkwin->image_init_window_level.insert(property,property->GetColorWindow());
+                   }
 
-                     if (!vtkwin->image_init_color_level.contains(property))
-                    {
+                   if (!vtkwin->image_init_color_level.contains(property))
+                   {
 
-
-                         vtkwin->image_init_color_level.insert(property,property->GetColorLevel());
-                    }
-                }
-
+                       vtkwin->image_init_color_level.insert(property,property->GetColorLevel());
+                   }
+               }
         // Forward events
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
@@ -873,42 +870,42 @@ public:
     }
 
     virtual void OnChar()
-    {
-        vtkRenderWindowInteractor* rwi = this->Interactor;
+        {
+            vtkRenderWindowInteractor* rwi = this->Interactor;
 
-           switch (rwi->GetKeyCode())
-          {
-            case 'r':
-            case 'R':
-              // Allow either shift/ctrl to trigger the usual 'r' binding
-              // otherwise trigger reset window level event
-              if (rwi->GetShiftKey() || rwi->GetControlKey())
-              {
-                this->Superclass::OnChar();
+             switch (rwi->GetKeyCode())
+             {
+               case 'r':
+               case 'R':
+                 // Allow either shift/ctrl to trigger the usual 'r' binding
+                 // otherwise trigger reset window level event
+                 if (rwi->GetShiftKey() || rwi->GetControlKey())
+                 {
+                   this->Superclass::OnChar();
+                 }
+                 else if (this->HandleObservers && this->HasObserver(vtkCommand::ResetWindowLevelEvent))
+                 {
+                   this->InvokeEvent(vtkCommand::ResetWindowLevelEvent, this);
+                 }
+                 else if (this->CurrentImageProperty)
+                 {
+                   vtkImageProperty* property = this->CurrentImageProperty;
+                   qDebug()<<property;
+
+                    property->SetColorWindow( vtkwin->image_init_window_level.value(property));
+                    property->SetColorLevel( vtkwin->image_init_color_level.value(property));
+
+
+                     qDebug()<<vtkwin->image_init_window_level.value(property);
+
+                          // property->SetColorWindow(this->WindowLevelInitial[0]);
+                  // property->SetColorLevel(this->WindowLevelInitial[1]);
+                   this->Interactor->Render();
+                 }
+                 break;
               }
-              else if (this->HandleObservers && this->HasObserver(vtkCommand::ResetWindowLevelEvent))
-              {
-                this->InvokeEvent(vtkCommand::ResetWindowLevelEvent, this);
-              }
-              else if (this->CurrentImageProperty)
-              {
-                vtkImageProperty* property = this->CurrentImageProperty;
-                qDebug()<<property;
 
-                  property->SetColorWindow( vtkwin->image_init_window_level.value(property));
-                 property->SetColorLevel( vtkwin->image_init_color_level.value(property));
-
-
-                   qDebug()<<vtkwin->image_init_window_level.value(property);
-
-                        // property->SetColorWindow(this->WindowLevelInitial[0]);
-               // property->SetColorLevel(this->WindowLevelInitial[1]);
-                this->Interactor->Render();
-              }
-              break;
-           }
-
-      }
+        }
 
     virtual void PrintSelf(std::ostream& os, vtkIndent indent) {}
     virtual void PrintHeader(ostream& os, vtkIndent indent){    }
@@ -1102,8 +1099,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
     renwin->SetInteractor(ui->qVTK1->interactor());
     ui->qVTK1->setRenderWindow(renwin);*/
 
-
-
     auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     renwin = renWin;
     ui->qVTK1->setRenderWindow(renwin);
@@ -1148,8 +1143,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     scaleActivate=true;
     isDatacube=false;
-
-
 
 }
 
@@ -1234,9 +1227,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         renwin = rw;
         renwin->AddRenderer(m_Ren1);
         ui->qVTK1->setRenderWindow(renwin);*/
-
-        std::cout<<"DONE_____"<<std::endl;
-
 
         auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
         renwin = renWin;
