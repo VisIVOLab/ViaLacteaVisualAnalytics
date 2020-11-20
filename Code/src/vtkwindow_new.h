@@ -186,8 +186,8 @@ public:
 
 
 signals:
-    void speciesChanged();
-    void surveyChanged();
+   void speciesChanged();
+   void surveyChanged();
     void transitionChanged();
 
 

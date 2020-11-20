@@ -1386,7 +1386,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_7">
           <item>
-           <widget class="QVTKOpenGLStereoWidget" name="qVTK1" native="true">
+           <widget class="QVTKOpenGLNativeWidget" name="qVTK1" native="true">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
@@ -1396,7 +1396,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QVTKOpenGLStereoWidget" name="isocontourVtkWin" native="true">
+           <widget class="QVTKOpenGLNativeWidget" name="isocontourVtkWin" native="true">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
@@ -1529,9 +1529,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QVTKOpenGLStereoWidget</class>
+   <class>QVTKOpenGLNativeWidget</class>
    <extends>QWidget</extends>
-   <header>QVTKOpenGLStereoWidget.h</header>
+   <header>QVTKOpenGLNativeWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
