@@ -1483,7 +1483,14 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
 
         mapper->SetInputData(frustum);
-
+        double bounds[6];
+        shellM->GetBounds(bounds);
+        shellM->GetCenter(cam_init_foc);
+        for (int i=0;i<3;i++)
+        {
+         //cam_init_foc[i]=(bounds[i+3]+bounds[i])/2.0;
+         cam_init_pos[i]=bounds[i+3];
+        }
 
         sliceA = vtkActor::New();
         sliceA->SetMapper(mapper);
@@ -1491,10 +1498,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         // add actors to renderer
 
         m_Ren1->AddActor(outlineA);
-        m_Ren1->AddActor(shellA);
+        m_Ren1->AddActor(shellA); //3d countours actor
         m_Ren1->AddActor(sliceA);
 
 
+        //The 3d window
         vtkAxes = vtkSmartPointer<vtkAxesActor>::New();
         vtkAxes->SetXAxisLabelText("X");
         vtkAxes->SetYAxisLabelText("Y");
@@ -1526,8 +1534,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         vtkAxesWidget->InteractiveOff();
 
 
-        m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
-        m_Ren1->GetActiveCamera( )->GetFocalPoint(cam_init_foc);
+
+        // compute a camera position done before- just set it
+        m_Ren1->GetActiveCamera( )->SetViewUp(0,1,0);
+        m_Ren1->GetActiveCamera( )->SetPosition(cam_init_pos);
+
+         // compute a camera focal point done before- just set it
+        m_Ren1->GetActiveCamera( )->SetFocalPoint(cam_init_foc);
 
 
         vtkSmartPointer<vtkLegendScaleActor> legendScaleActor3d =  vtkSmartPointer<vtkLegendScaleActor>::New();
@@ -1553,6 +1566,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         viewer->GetWindowLevel()->SetOutputFormatToRGB();
         viewer->GetWindowLevel()->SetLookupTable(lutSlice);
         viewer->GetImageActor()->InterpolateOff();
+
+        //sets 2D viewer
 
         viewer->SetRenderer(ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer());
         viewer->SetRenderWindow(ui->isocontourVtkWin->renderWindow());
@@ -1695,6 +1710,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
         vtkImageActor* imageActor = viewer->GetImageActor();
+
         m_Ren1->AddActor(imageActor);
         m_Ren1->SetBackground(0.21,0.23,0.25);
 
@@ -4245,7 +4261,8 @@ void vtkwindow_new::goContour()
     // myParentVtkWindow->m_Ren1->AddActor(currentContourActor);
 
     // myParentVtkWindow->imageViewer->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
-    // ui->isocontourVtkWin->update();
+
+    ui->isocontourVtkWin->update();
 
 }
 
