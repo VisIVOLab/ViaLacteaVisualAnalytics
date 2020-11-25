@@ -1484,22 +1484,47 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         mapper->SetInputData(frustum);
         double bounds[6];
-        //shellM->GetBounds(bounds);
-        //shellM->GetCenter(cam_init_foc);
-        //for (int i=0;i<3;i++)
-        //{
-
-        // cam_init_pos[i]=bounds[i+3];
-        //}
+        shellM->GetBounds(bounds);
+        shellM->GetCenter(cam_init_foc);
+        float dist[3];
+        for (int i=0;i<3;i++)
+        {
+         dist[i]=(cam_init_foc[i]-bounds[i+3])*(cam_init_foc[i]-bounds[i+3]);
+        }
+        float l=sqrt(dist[0]+dist[1]+dist[2])*1.2;
 
         sliceA = vtkActor::New();
         sliceA->SetMapper(mapper);
+
 
         // add actors to renderer
 
         m_Ren1->AddActor(outlineA);
         m_Ren1->AddActor(shellA); //3d countours actor
         m_Ren1->AddActor(sliceA);
+
+
+        m_Ren1->GetActiveCamera( )->SetViewUp(0,1,0);
+
+        //set focal point
+        m_Ren1->GetActiveCamera( )->SetFocalPoint(cam_init_foc);
+        setCameraAzimuth(0);
+
+        double p[3];
+        m_Ren1->GetActiveCamera( )->GetPosition(p);
+        for (int i=0;i<3;i++)
+                dist[i]=cam_init_foc[i]-p[i];
+        vtkMath::Normalize(dist);
+         for (int i=0;i<3;i++)
+             p[i]=cam_init_foc[i]+l*dist[i];
+          m_Ren1->GetActiveCamera( )->SetPosition(p);
+         // m_Ren1->GetActiveCamera( )->Dolly(2.0); // somehow strange behaviour->disapears
+          //TODO: update widget - did not fixed it
+          renWin->Render();
+          interactor->Render();
+          ui->qVTK1->renderWindow()->GetInteractor()->Render();
+          ui->qVTK1->renderWindow()->Render();
+          ui->qVTK1->update();
 
 
         //The 3d window
@@ -1534,11 +1559,14 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         vtkAxesWidget->InteractiveOff();
 
 
-        m_Ren1->GetActiveCamera( )->SetViewUp(0,1,0);
-        m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
-        //set focal point
-        m_Ren1->GetActiveCamera( )->GetFocalPoint(cam_init_foc);
-        //setCameraAzimuth(0);
+
+
+
+          //renWin->Up
+
+
+
+          m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
 
 
         vtkSmartPointer<vtkLegendScaleActor> legendScaleActor3d =  vtkSmartPointer<vtkLegendScaleActor>::New();
