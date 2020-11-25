@@ -1484,13 +1484,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         mapper->SetInputData(frustum);
         double bounds[6];
-        shellM->GetBounds(bounds);
-        shellM->GetCenter(cam_init_foc);
-        for (int i=0;i<3;i++)
-        {
-         //cam_init_foc[i]=(bounds[i+3]+bounds[i])/2.0;
-         cam_init_pos[i]=bounds[i+3];
-        }
+        //shellM->GetBounds(bounds);
+        //shellM->GetCenter(cam_init_foc);
+        //for (int i=0;i<3;i++)
+        //{
+
+        // cam_init_pos[i]=bounds[i+3];
+        //}
 
         sliceA = vtkActor::New();
         sliceA->SetMapper(mapper);
@@ -1534,13 +1534,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         vtkAxesWidget->InteractiveOff();
 
 
-
-        // compute a camera position done before- just set it
         m_Ren1->GetActiveCamera( )->SetViewUp(0,1,0);
-        m_Ren1->GetActiveCamera( )->SetPosition(cam_init_pos);
-
-         // compute a camera focal point done before- just set it
-        m_Ren1->GetActiveCamera( )->SetFocalPoint(cam_init_foc);
+        m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
+        //set focal point
+        m_Ren1->GetActiveCamera( )->GetFocalPoint(cam_init_foc);
+        //setCameraAzimuth(0);
 
 
         vtkSmartPointer<vtkLegendScaleActor> legendScaleActor3d =  vtkSmartPointer<vtkLegendScaleActor>::New();
