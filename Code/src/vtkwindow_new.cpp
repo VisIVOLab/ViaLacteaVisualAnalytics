@@ -1523,7 +1523,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
           cam->ComputeViewPlaneNormal();
           cam->SetViewUp(0,1,0);
           cam->OrthogonalizeViewUp();
-          m_Ren1->SetActiveCamera(cam);
+          m_Ren1->SetActiveCamera(cam); //for some reason rerenderers
           // m_Ren1->ResetCamera();
 
            ui->qVTK1->renderWindow()->GetInteractor()->Render();
