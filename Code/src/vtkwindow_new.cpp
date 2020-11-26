@@ -1504,26 +1504,37 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->AddActor(sliceA);
 
 
-        m_Ren1->GetActiveCamera( )->SetViewUp(0,1,0);
+        vtkSmartPointer<vtkCamera> cam=vtkSmartPointer<vtkCamera>::New();
+        cam->SetFocalPoint(cam_init_foc);
+        cam->Azimuth(0);
 
         //set focal point
-        m_Ren1->GetActiveCamera( )->SetFocalPoint(cam_init_foc);
-        setCameraAzimuth(0);
+        //m_Ren1->GetActiveCamera( )->SetFocalPoint(cam_init_foc);
+        //setCameraAzimuth(0);
 
         double p[3];
-        m_Ren1->GetActiveCamera( )->GetPosition(p);
+        cam->GetPosition(p);
         for (int i=0;i<3;i++)
                 dist[i]=cam_init_foc[i]-p[i];
         vtkMath::Normalize(dist);
          for (int i=0;i<3;i++)
              p[i]=cam_init_foc[i]+l*dist[i];
-          m_Ren1->GetActiveCamera( )->SetPosition(p);
+          cam->SetPosition(p);
+          cam->ComputeViewPlaneNormal();
+          cam->SetViewUp(0,1,0);
+          cam->OrthogonalizeViewUp();
+          m_Ren1->SetActiveCamera(cam);
+          // m_Ren1->ResetCamera();
+
+           ui->qVTK1->renderWindow()->GetInteractor()->Render();
+           m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
+          // this->updateScene();
          // m_Ren1->GetActiveCamera( )->Dolly(2.0); // somehow strange behaviour->disapears
           //TODO: update widget - did not fixed it
-          renWin->Render();
-          interactor->Render();
-          ui->qVTK1->renderWindow()->GetInteractor()->Render();
-          ui->qVTK1->renderWindow()->Render();
+          //renWin->Render();
+          //interactor->Render();
+          //ui->qVTK1->renderWindow()->GetInteractor()->Render();
+          //ui->qVTK1->renderWindow()->Render();
           ui->qVTK1->update();
 
 
@@ -1564,9 +1575,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
           //renWin->Up
 
-
-
-          m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
 
 
         vtkSmartPointer<vtkLegendScaleActor> legendScaleActor3d =  vtkSmartPointer<vtkLegendScaleActor>::New();
