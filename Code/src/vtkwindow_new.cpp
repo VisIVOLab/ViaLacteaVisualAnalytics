@@ -1580,7 +1580,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         showMaximized();
         activateWindow();
 
-
+        updateScene();
         break;
     }
     case 2:
@@ -1829,6 +1829,7 @@ void vtkwindow_new::setCameraElevation(double el)
 
 void vtkwindow_new::resetCamera()
 {
+    qDebug()<<"resetto";
     //MARI
     m_Ren1->GetActiveCamera()->SetViewUp( 0, 1, 0 );
     m_Ren1->GetActiveCamera()->SetFocalPoint( cam_init_foc );
