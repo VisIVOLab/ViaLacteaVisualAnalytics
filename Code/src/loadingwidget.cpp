@@ -8,7 +8,7 @@ LoadingWidget::LoadingWidget(QWidget *parent) :
 {
     ui->setupUi(this);
     //this->setWindowFlags(this->windowFlags() |  Qt::WindowStaysOnTopHint);
-
+    reply = 0;
 }
 
 LoadingWidget::~LoadingWidget()
@@ -27,6 +27,11 @@ void LoadingWidget::setFileName(QString name)
     ui->titleLabel->setText(name);
 }
 
+void LoadingWidget::setDismissiAction(QNetworkReply *reply)
+{
+    this->reply = reply;
+}
+
 void LoadingWidget::loadingEnded()
 {
     ui->progressBar->setMaximum(100);
@@ -37,5 +42,11 @@ void LoadingWidget::loadingEnded()
 
 void LoadingWidget::on_dismissPushButton_clicked()
 {
-    close();
+    qDebug() << "dismissPushButton_clicked";
+    if (reply)
+    {
+        qDebug() << "Cancel download " << qPrintable(reply->url().toString());
+        reply->abort();
+    }
+    // close();
 }

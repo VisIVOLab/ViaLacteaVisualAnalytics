@@ -2,6 +2,7 @@
 #define LOADINGWIDGET_H
 
 #include <QWidget>
+#include <QNetworkReply>
 
 namespace Ui {
 class LoadingWidget;
@@ -17,6 +18,7 @@ public:
     void loadingEnded();
     void init();
     void setFileName(QString name);
+    void setDismissiAction(QNetworkReply *);
 
 
 private slots:
@@ -24,6 +26,7 @@ private slots:
 
 private:
     Ui::LoadingWidget *ui;
+    QNetworkReply *reply;
 };
 
 #endif // LOADINGWIDGET_H

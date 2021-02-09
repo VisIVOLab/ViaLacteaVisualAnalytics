@@ -43,6 +43,8 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
     QNetworkRequest request(url);
     QNetworkReply *reply = man->get(request);
 
+    loading->setDismissiAction(reply);
+
     qDebug()<<"doDownload, request:"<<request.url()<<" and saving to: "<<savedFilename;
 #ifndef QT_NO_SSL
     connect(reply, SIGNAL(sslErrors(QList<QSslError>)), SLOT(sslErrors(QList<QSslError>)));
@@ -89,8 +91,6 @@ QString DownloadManager::saveFileName(const QUrl &url,QString outputFile )
 
 void DownloadManager::downloadFinished(QNetworkReply *reply)
 {
-    qDebug()<<"Download Finished: "<<reply->url().toString();
-    
     QUrl url = reply->url();
     if (reply->error()) {
         qDebug()<<"Download of"<< url.toEncoded().constData()<<"failed: "<<qPrintable(reply->errorString());
@@ -99,7 +99,7 @@ void DownloadManager::downloadFinished(QNetworkReply *reply)
 
         //fprintf(stderr, "Download of %s failed: %s\n",url.toEncoded().constData(),qPrintable(reply->errorString()));
     } else {
-
+        qDebug()<<"Download Finished: "<<reply->url().toString();
         filenamePath = saveFileName(url,savedFilename);
         if (saveToDisk(filenamePath, reply))
             qDebug()<<"Download of"<<url.toEncoded().constData()<<" succeeded and saved to"<<qPrintable(filenamePath);
