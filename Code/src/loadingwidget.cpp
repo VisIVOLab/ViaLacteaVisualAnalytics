@@ -27,7 +27,7 @@ void LoadingWidget::setFileName(QString name)
     ui->titleLabel->setText(name);
 }
 
-void LoadingWidget::setDismissiAction(QNetworkReply *reply)
+void LoadingWidget::setLoadingProcess(QNetworkReply *reply)
 {
     this->reply = reply;
 }
@@ -42,11 +42,11 @@ void LoadingWidget::loadingEnded()
 
 void LoadingWidget::on_dismissPushButton_clicked()
 {
-    qDebug() << "dismissPushButton_clicked";
     if (reply)
     {
-        qDebug() << "Cancel download " << qPrintable(reply->url().toString());
+        qDebug() << "Stop request " << qPrintable(reply->url().toString());
         reply->abort();
+        reply = 0;
     }
     // close();
 }

@@ -18,7 +18,7 @@ public:
     void loadingEnded();
     void init();
     void setFileName(QString name);
-    void setDismissiAction(QNetworkReply *);
+    void setLoadingProcess(QNetworkReply *);
 
 
 private slots:

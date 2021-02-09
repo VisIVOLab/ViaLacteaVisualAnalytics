@@ -166,7 +166,7 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
     url_enc.setQuery(q);
 
     QNetworkReply *reply = nam->get(QNetworkRequest(url_enc));
-    loading->setDismissiAction(reply);
+    loading->setLoadingProcess(reply);
 
 }
 
@@ -182,7 +182,7 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
 
     qDebug()<<url;
     QNetworkReply *reply = nam->get(QNetworkRequest(url));
-    loading->setDismissiAction(reply);
+    loading->setLoadingProcess(reply);
 
 }
 
@@ -212,7 +212,7 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
     QUrl url2 (urlString);
 
     QNetworkReply *reply = nam->get(QNetworkRequest(url2));
-    loading->setDismissiAction(reply);
+    loading->setLoadingProcess(reply);
 
     qDebug()<<"INITIAL QUERY:\n"<<urlString;
 }

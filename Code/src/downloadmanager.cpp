@@ -43,7 +43,7 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
     QNetworkRequest request(url);
     QNetworkReply *reply = man->get(request);
 
-    loading->setDismissiAction(reply);
+    loading->setLoadingProcess(reply);
 
     qDebug()<<"doDownload, request:"<<request.url()<<" and saving to: "<<savedFilename;
 #ifndef QT_NO_SSL
