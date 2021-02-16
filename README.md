@@ -10,6 +10,5 @@ informations without requiring technical skills to query the data source base (n
 
 *Installation Guide for developers*
 
-Install QT and QT Creator from: https://www.qt.io/
+See [INSTALL.md](https://github.com/NEANIAS-Space/ViaLacteaVisualAnalytics/blob/master/INSTALL.md)
 
-Install VTK with QT support from: https://vtk.org/
