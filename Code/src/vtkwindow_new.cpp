@@ -4123,6 +4123,7 @@ void vtkwindow_new::goContour()
     currentContourActor->GetProperty()->SetLineWidth(1);
 
     ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
+    ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 
     //TEST FV
 
@@ -4219,10 +4220,14 @@ void vtkwindow_new::goContour()
 
 */
 
-        currentContourActorForMainWindow ->ShallowCopy(currentContourActor);
+        vtkSmartPointer<vtkPolyDataMapper> mapperForMainWindow = vtkSmartPointer<vtkPolyDataMapper>::New();
+        mapperForMainWindow->ShallowCopy(contourLineMapperer);
+
+        currentContourActorForMainWindow->ShallowCopy(currentContourActor);
+        currentContourActorForMainWindow->SetMapper(mapperForMainWindow);
         currentContourActorForMainWindow->SetScale(scaledPixel,scaledPixel,1);
         // currentContourActorForMainWindow-> SetOrigin(x1,y1,0);
-        currentContourActorForMainWindow-> SetPosition(x1,y1,1);
+        currentContourActorForMainWindow->SetPosition(x1,y1,1);
         currentContourActorForMainWindow->SetUserTransform(transform);
 
         // myParentVtkWindow-> addLayer(img);
@@ -4266,6 +4271,7 @@ void vtkwindow_new::removeContour()
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
     ui->isocontourVtkWin->update();
+    ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_contourCheckBox_clicked(bool checked)
