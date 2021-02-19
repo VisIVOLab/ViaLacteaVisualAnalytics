@@ -4331,7 +4331,7 @@ void vtkwindow_new::on_glyphActivateCheckBox_clicked(bool checked)
 
     QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini"), QSettings::NativeFormat);
 
-    int maxpoint =  settings.value("glyphmax", "").toString().toInt() ;
+    int maxpoint =  settings.value("glyphmax", "2147483647").toString().toInt() ;
 
     if(checked)
     {

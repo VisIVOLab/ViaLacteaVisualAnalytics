@@ -24,7 +24,7 @@ SettingForm::SettingForm(QWidget *parent) :
     QString idlPath = settings.value("idlpath", "").toString();
     ui->IdlLineEdit->setText(idlPath);
 
-    QString glyphmax = settings.value("glyphmax", "").toString();
+    QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
     ui->groupBox_4->hide();
 
