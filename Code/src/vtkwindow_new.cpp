@@ -4644,7 +4644,7 @@ void vtkwindow_new::on_glyphScalarComboBox_activated(const QString &arg1)
     //}
 }
 
-void vtkwindow_new::on_glyphScalingLineEdit_returnPressed()
+void vtkwindow_new::on_glyphScalingLineEdit_editingFinished()
 {
     ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
