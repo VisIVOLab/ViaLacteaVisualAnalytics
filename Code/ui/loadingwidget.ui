@@ -81,7 +81,7 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Dismiss</string>
+        <string>Cancel</string>
        </property>
       </widget>
      </item>
