@@ -370,7 +370,7 @@ private slots:
     void on_glyphShapeComboBox_activated(int index);
     void on_horizontalSlider_valueChanged(int value);
     void on_glyphScalarComboBox_activated(const QString &arg1);
-    void on_glyphScalingLineEdit_returnPressed();
+    void on_glyphScalingLineEdit_editingFinished();
     void on_ElementListWidget_clicked(const QModelIndex &index);
     bool eventFilter(QObject *object, QEvent *event);
     void on_listWidget_clicked(const QModelIndex &index);
