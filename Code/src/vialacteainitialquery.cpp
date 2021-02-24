@@ -165,7 +165,8 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
     q.setQueryItems(urlQuery);
     url_enc.setQuery(q);
 
-    nam->get(QNetworkRequest(url_enc));
+    QNetworkReply *reply = nam->get(QNetworkRequest(url_enc));
+    loading->setLoadingProcess(reply);
 
 }
 
@@ -180,7 +181,8 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
     QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
 
     qDebug()<<url;
-    nam->get(QNetworkRequest(url));
+    QNetworkReply *reply = nam->get(QNetworkRequest(url));
+    loading->setLoadingProcess(reply);
 
 }
 
@@ -209,7 +211,8 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
 
     QUrl url2 (urlString);
 
-    nam->get(QNetworkRequest(url2));
+    QNetworkReply *reply = nam->get(QNetworkRequest(url2));
+    loading->setLoadingProcess(reply);
 
     qDebug()<<"INITIAL QUERY:\n"<<urlString;
 }
@@ -537,7 +540,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
         //handle errors here
         loading->loadingEnded();
         loading->hide();
-        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("Server is not replying"));
+        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr(qPrintable(reply->errorString())));
 
     }
     //delete reply;
