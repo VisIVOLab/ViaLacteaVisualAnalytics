@@ -2,6 +2,7 @@
 #define SETTINGFORM_H
 
 #include <QWidget>
+#include "authwrapper.h"
 
 namespace Ui {
 class SettingForm;
@@ -33,9 +34,12 @@ private slots:
     void on_OkPushButton_clicked();
 
 
+    void on_neaniasVLKB_radioButton_toggled(bool checked);
+
 private:
     Ui::SettingForm *ui;
     QString m_sSettingsFile;
+    AuthWrapper *m_authWrapper;
 };
 
 #endif // SETTINGFORM_H

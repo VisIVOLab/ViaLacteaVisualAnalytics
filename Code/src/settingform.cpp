@@ -15,8 +15,12 @@ SettingForm::SettingForm(QWidget *parent) :
 
     this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
-    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+    m_authWrapper = &Singleton<AuthWrapper>::Instance();
+    connect(m_authWrapper, &AuthWrapper::authenticated, [&](){
+        ui->authStatusLabel->setText("Authenticated");
+    });
 
+    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
@@ -37,10 +41,14 @@ SettingForm::SettingForm(QWidget *parent) :
         ui->password_LineEdit->hide();
         ui->userLabel->hide();
         ui->passLabel->hide();
+        ui->authLabel->hide();
+        ui->authStatusLabel->hide();
     }
     else if(settings.value("vlkbtype", "public")=="private")
     {
         ui->privateVLKB_radioButton->setChecked(true);
+        ui->authLabel->hide();
+        ui->authStatusLabel->hide();
         ui->username_LineEdit->show();
         ui->password_LineEdit->show();
         ui->userLabel->show();
@@ -48,6 +56,17 @@ SettingForm::SettingForm(QWidget *parent) :
 
         ui->username_LineEdit->setText(settings.value("vlkbuser", "").toString());
         ui->password_LineEdit->setText(settings.value("vlkbpass", "").toString());
+    }
+    else if (settings.value("vlkbtype", "public")=="neanias")
+    {
+        ui->neaniasVLKB_radioButton->setChecked(true);
+        ui->username_LineEdit->hide();
+        ui->password_LineEdit->hide();
+        ui->userLabel->hide();
+        ui->passLabel->hide();
+
+        ui->authLabel->show();
+        ui->authStatusLabel->show();
     }
 
     if (settings.value("online",false) == true)
@@ -96,8 +115,10 @@ void SettingForm::on_OkPushButton_clicked()
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     if(ui->privateVLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "private");
-    else
+    else if (ui->publicVLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "public");
+    else
+        settings.setValue("vlkbtype", "neanias");
 
 
     settings.setValue("vlkbuser", ui->username_LineEdit->text());
@@ -163,4 +184,21 @@ void SettingForm::on_workdirButton_clicked()
 void SettingForm::on_checkBox_clicked()
 {
 
+}
+
+void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
+{
+    if (checked) {
+        ui->authLabel->show();
+        ui->authStatusLabel->show();
+
+        if (!m_authWrapper->isAuthenticated()) {
+            ui->authStatusLabel->setText("Not authenticated");
+            m_authWrapper->grant();
+        }
+
+    } else {
+        ui->authLabel->hide();
+        ui->authStatusLabel->hide();
+    }
 }
