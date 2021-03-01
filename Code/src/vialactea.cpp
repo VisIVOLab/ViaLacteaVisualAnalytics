@@ -9,6 +9,7 @@
 #include "mainwindow.h"
 #include "singleton.h"
 #include <QSettings>
+#include "authwrapper.h"
 #include "settingform.h"
 #include "aboutform.h"
 #include "vlkbsimplequerycomposer.h"
@@ -68,6 +69,34 @@ ViaLactea::ViaLactea(QWidget *parent) :
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
 
 
+    }
+    else if (settings.value("vlkbtype", "public").toString() == "neanias") {
+        qDebug() << "private access to vlkb through NEANIAS SSO";
+        settings.setValue("vlkburl", "http://vlkb.dev.neanias.eu:8080/vlkb-datasets-1.1/");
+        settings.setValue("vlkbtableurl", "http://vlkb.dev.neanias.eu:8080/vlkb/tap");
+
+        // The user has to login through SSO to continue or change access method
+        QMessageBox *msgBox = new QMessageBox(this);
+        msgBox->setIcon(QMessageBox::Question);
+        msgBox->setWindowTitle("Login required");
+        msgBox->setInformativeText("You have selected private access to VLKB using NEANIAS SSO.\n\nSign in to continue using this private access or change access method in the Settings.");
+        msgBox->addButton("Login", QMessageBox::AcceptRole);
+        msgBox->addButton("Open settings", QMessageBox::DestructiveRole);
+        msgBox->show();
+        connect(msgBox, &QMessageBox::buttonClicked, [=](QAbstractButton *button){
+            QMessageBox::ButtonRole btn = msgBox->buttonRole(button);
+            if(btn == QMessageBox::AcceptRole)
+            {
+                // Open NEANIAS login page
+                AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                auth->grant();
+            }
+            else
+            {
+                // Open settings window
+                on_actionSettings_triggered();
+            }
+        });
     }
 
     if (settings.value("online",true) == true)
@@ -185,6 +214,11 @@ void ViaLactea::updateVLKBSetting()
         settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
 
 
+    }
+    else if (settings.value("vlkbtype", "").toString() == "neanias") {
+        qDebug() << "private access to vlkb through NEANIAS SSO";
+        settings.setValue("vlkburl", "http://vlkb.dev.neanias.eu:8080/vlkb-datasets-1.1/");
+        settings.setValue("vlkbtableurl", "http://vlkb.dev.neanias.eu:8080/vlkb/tap");
     }
 
 }

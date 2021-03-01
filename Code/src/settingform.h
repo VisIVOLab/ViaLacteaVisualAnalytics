@@ -36,6 +36,8 @@ private slots:
 
     void on_neaniasVLKB_radioButton_toggled(bool checked);
 
+    void on_loginButton_clicked();
+
 private:
     Ui::SettingForm *ui;
     QString m_sSettingsFile;

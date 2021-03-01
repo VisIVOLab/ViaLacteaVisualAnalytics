@@ -13,11 +13,12 @@ SettingForm::SettingForm(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    this->setWindowFlags(Qt::WindowStaysOnTopHint);
+    // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
     m_authWrapper = &Singleton<AuthWrapper>::Instance();
     connect(m_authWrapper, &AuthWrapper::authenticated, [&](){
         ui->authStatusLabel->setText("Authenticated");
+        ui->loginButton->hide();
     });
 
     m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
@@ -43,12 +44,14 @@ SettingForm::SettingForm(QWidget *parent) :
         ui->passLabel->hide();
         ui->authLabel->hide();
         ui->authStatusLabel->hide();
+        ui->loginButton->hide();
     }
     else if(settings.value("vlkbtype", "public")=="private")
     {
         ui->privateVLKB_radioButton->setChecked(true);
         ui->authLabel->hide();
         ui->authStatusLabel->hide();
+        ui->loginButton->hide();
         ui->username_LineEdit->show();
         ui->password_LineEdit->show();
         ui->userLabel->show();
@@ -67,6 +70,7 @@ SettingForm::SettingForm(QWidget *parent) :
 
         ui->authLabel->show();
         ui->authStatusLabel->show();
+        ui->loginButton->setVisible(!m_authWrapper->isAuthenticated());
     }
 
     if (settings.value("online",false) == true)
@@ -194,11 +198,22 @@ void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
 
         if (!m_authWrapper->isAuthenticated()) {
             ui->authStatusLabel->setText("Not authenticated");
-            m_authWrapper->grant();
+            ui->loginButton->show();
+        }
+        else {
+            ui->authStatusLabel->setText("Authenticated");
+            ui->loginButton->hide();
         }
 
     } else {
         ui->authLabel->hide();
         ui->authStatusLabel->hide();
+        ui->loginButton->hide();
     }
+}
+
+void SettingForm::on_loginButton_clicked()
+{
+    if(!m_authWrapper->isAuthenticated())
+        m_authWrapper->grant();
 }
