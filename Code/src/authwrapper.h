@@ -34,23 +34,26 @@ private slots:
     void open_webview(const QUrl & url);
     void exchangeTokenFromCode(const QString & code);
     void on_authenticated();
+    void on_refresh_timeout();
 
 signals:
     void authenticated();
+    void refresh_timeout();
 
 private:
+    const QUrl authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/auth");
+    const QUrl tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/token");
+    const QString clientId = QString("vlkb");
+    const QString clientSecret = QString("e1b4cda4-0ae5-46ba-86fd-1b05f58432e3");
+    const QString scope = QString("openid profile email phone address");
+
     QWebEngineView *view;
     QNetworkAccessManager *mgr;
     QOAuth2AuthorizationCodeFlow oauth2;
     enum Token {ID, ACCESS, REFRESH};
     QString tokens[3];
     bool _authenticated = false;
-
-    const QUrl authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/auth");
-    const QUrl tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/token");
-    const QString clientId = QString("vlkb");
-    const QString clientSecret = QString("e1b4cda4-0ae5-46ba-86fd-1b05f58432e3");
-    const QString scope = QString("openid profile email phone address");
+    void extractTokensFromJson(QJsonObject & json);
 };
 
 #endif // AUTHWRAPPER_H

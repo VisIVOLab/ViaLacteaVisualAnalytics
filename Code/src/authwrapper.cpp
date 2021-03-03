@@ -1,6 +1,7 @@
 #include "authwrapper.h"
 #include "vlvaurlschemehandler.h"
 
+#include <QTimer>
 #include <QtNetwork>
 #include <QWebEngineProfile>
 
@@ -23,6 +24,7 @@ AuthWrapper::AuthWrapper(QObject *parent) : QObject(parent)
     oauth2.setScope(scope);
     connect(&oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this, &AuthWrapper::open_webview);
     connect(this, &AuthWrapper::authenticated, this, &AuthWrapper::on_authenticated);
+    connect(this, &AuthWrapper::refresh_timeout, this, &AuthWrapper::on_refresh_timeout);
 }
 
 void AuthWrapper::grant()
@@ -57,13 +59,57 @@ void AuthWrapper::exchangeTokenFromCode(const QString & code)
         if (reply->error() == QNetworkReply::NoError) {
             // Get tokens from response body
             QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
-            tokens[ID] = json["id_token"].toString();
-            tokens[ACCESS] = json["access_token"].toString();
-            tokens[REFRESH] = json["refresh_token"].toString();
+            extractTokensFromJson(json);
+
+            // Schedule next refresh 5m before expiration time
+            int timeout = json["expires_in"].toInt() - 300;
+            QTimer::singleShot(timeout * 1000, [&]{
+                emit refresh_timeout();
+            });
+
             emit authenticated();
         }
         else {
             qDebug() << "Error in exchangeTokenFromCode: " << reply->errorString();
+            qDebug() << reply->readAll();
+        }
+
+        reply->deleteLater();
+    });
+}
+
+void AuthWrapper::on_refresh_timeout()
+{
+    if (!isAuthenticated())
+        return;
+
+    QUrlQuery postData;
+    postData.addQueryItem("grant_type", "refresh_token");
+    postData.addQueryItem("client_id", clientId);
+    postData.addQueryItem("client_secret", clientSecret);
+    postData.addQueryItem("refresh_token", refreshToken());
+    QByteArray postDataEncoded = postData.toString(QUrl::FullyEncoded).toUtf8();
+
+    QNetworkRequest req(tokenUrl);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    QNetworkReply *reply = mgr->post(req, postDataEncoded);
+    connect(reply, &QNetworkReply::finished, [=](){
+        if (reply->error() == QNetworkReply::NoError) {
+            // Get tokens from response body
+            QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
+            extractTokensFromJson(json);
+
+            // Schedule next refresh 5m before expiration time
+            int timeout = json["expires_in"].toInt() - 300;
+            QTimer::singleShot(timeout * 1000, [&]{
+                emit refresh_timeout();
+            });
+        }
+        else {
+            _authenticated = false;
+
+            qDebug() << "Error in on_refresh_timeout: " << reply->errorString();
             qDebug() << reply->readAll();
         }
 
@@ -78,6 +124,13 @@ void AuthWrapper::on_authenticated()
         view->close();
         view->deleteLater();
     }
+}
+
+void AuthWrapper::extractTokensFromJson(QJsonObject & json)
+{
+    tokens[ID] = json["id_token"].toString();
+    tokens[ACCESS] = json["access_token"].toString();
+    tokens[REFRESH] = json["refresh_token"].toString();
 }
 
 bool AuthWrapper::isAuthenticated() const
