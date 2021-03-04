@@ -402,6 +402,7 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
 void ViaLactea::on_actionSettings_triggered()
 {
     SettingForm *s = &Singleton<SettingForm>::Instance();
+    s->readSettingsFromFile();
     s->show();
 
     s->activateWindow();

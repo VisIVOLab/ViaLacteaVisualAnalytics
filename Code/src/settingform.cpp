@@ -12,6 +12,7 @@ SettingForm::SettingForm(QWidget *parent) :
     ui(new Ui::SettingForm)
 {
     ui->setupUi(this);
+    ui->groupBox_4->hide();
 
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
@@ -22,7 +23,17 @@ SettingForm::SettingForm(QWidget *parent) :
     });
 
     m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+}
+
+SettingForm::~SettingForm()
+{
+    delete ui;
+}
+
+void SettingForm::readSettingsFromFile()
+{
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
 
@@ -31,7 +42,6 @@ SettingForm::SettingForm(QWidget *parent) :
 
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
-    ui->groupBox_4->hide();
 
 
     if(settings.value("vlkbtype", "public")=="public")
@@ -79,15 +89,7 @@ SettingForm::SettingForm(QWidget *parent) :
 
     }
 
-
     ui->urlLineEdit->setText(settings.value("onlinetilepath", "http://visivo.oact.inaf.it/vialacteatiles/openlayers.html").toString());
-
-
-}
-
-SettingForm::~SettingForm()
-{
-    delete ui;
 }
 
 void SettingForm::on_IdlPushButton_clicked()

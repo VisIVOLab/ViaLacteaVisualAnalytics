@@ -14,8 +14,8 @@ class SettingForm : public QWidget
 
 public:
     explicit SettingForm(QWidget *parent = 0);
-
     ~SettingForm();
+    void readSettingsFromFile();
 
 private slots:
     void on_IdlPushButton_clicked();
