@@ -17,24 +17,23 @@ class VialacteaStringDictWidget : public QWidget
 
 public:
     explicit VialacteaStringDictWidget(QWidget *parent = 0);
-    void buildDict();
     ~VialacteaStringDictWidget();
+    void buildDict();
     QHash<QString, QString> getColUtypeStringDict(){return colUtypeStringDict;}
     QHash<QString, QString> getColDescStringDict(){return colDescStringDict;}
     QHash<QString, QString> getTableDescStringDict(){return tableDescStringDict;}
     QHash<QString, QString> getTableUtypeStringDict(){return tableUtypeStringDict;}
-    QHash<QString, QString> tableUtypeStringDict;
-    QHash<QString, QString> tableDescStringDict;
-
-    QHash<QString, QString> colUtypeStringDict;
-    QHash<QString, QString> colDescStringDict;
 
 private:
     Ui::VialacteaStringDictWidget *ui;
-
     QUrl urlRedirectedTo;
     QNetworkAccessManager *manager;
     QString m_sSettingsFile;
+    QHash<QString, QString> tableUtypeStringDict;
+    QHash<QString, QString> tableDescStringDict;
+    QHash<QString, QString> colUtypeStringDict;
+    QHash<QString, QString> colDescStringDict;
+    void clearDict();
 
 private slots:
     void availReplyFinished (QNetworkReply *reply);

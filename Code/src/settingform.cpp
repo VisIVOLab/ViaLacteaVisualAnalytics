@@ -43,10 +43,12 @@ void SettingForm::readSettingsFromFile()
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
 
-
-    if(settings.value("vlkbtype", "public")=="public")
+    QString vlkbtype = settings.value("vlkbtype", "public").toString();
+    if(vlkbtype == "public")
     {
         ui->publicVLKB_radioButton->setChecked(true);
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PUBLIC);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PUBLIC);
 
         ui->username_LineEdit->hide();
         ui->password_LineEdit->hide();
@@ -56,7 +58,7 @@ void SettingForm::readSettingsFromFile()
         ui->authStatusLabel->hide();
         ui->loginButton->hide();
     }
-    else if(settings.value("vlkbtype", "public")=="private")
+    else if(vlkbtype == "private")
     {
         ui->privateVLKB_radioButton->setChecked(true);
         ui->authLabel->hide();
@@ -70,7 +72,7 @@ void SettingForm::readSettingsFromFile()
         ui->username_LineEdit->setText(settings.value("vlkbuser", "").toString());
         ui->password_LineEdit->setText(settings.value("vlkbpass", "").toString());
     }
-    else if (settings.value("vlkbtype", "public")=="neanias")
+    else if (vlkbtype == "neanias")
     {
         ui->neaniasVLKB_radioButton->setChecked(true);
         ui->username_LineEdit->hide();
@@ -89,7 +91,7 @@ void SettingForm::readSettingsFromFile()
 
     }
 
-    ui->urlLineEdit->setText(settings.value("onlinetilepath", "http://visivo.oact.inaf.it/vialacteatiles/openlayers.html").toString());
+    ui->urlLineEdit->setText(settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
 }
 
 void SettingForm::on_IdlPushButton_clicked()
@@ -134,6 +136,7 @@ void SettingForm::on_OkPushButton_clicked()
     settings.setValue("online", ui->checkBox->isChecked());
     settings.setValue("onlinetilepath", ui->urlLineEdit->text());
 
+    settings.sync();
 
     this->close();
     ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
@@ -154,17 +157,15 @@ void SettingForm::on_privateVLKB_radioButton_toggled(bool checked)
 {
     if (checked)
     {
-
         ui->username_LineEdit->show();
         ui->password_LineEdit->show();
         ui->userLabel->show();
         ui->passLabel->show();
-
-
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PRIVATE);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PRIVATE);
     }
     else
     {
-
         ui->username_LineEdit->hide();
         ui->password_LineEdit->hide();
         ui->userLabel->hide();
@@ -197,6 +198,8 @@ void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
     if (checked) {
         ui->authLabel->show();
         ui->authStatusLabel->show();
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_NEANIAS);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_NEANIAS);
 
         if (!m_authWrapper->isAuthenticated()) {
             ui->authStatusLabel->setText("Not authenticated");
@@ -218,4 +221,12 @@ void SettingForm::on_loginButton_clicked()
 {
     if(!m_authWrapper->isAuthenticated())
         m_authWrapper->grant();
+}
+
+void SettingForm::on_publicVLKB_radioButton_toggled(bool checked)
+{
+    if (checked) {
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PUBLIC);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PUBLIC);
+    }
 }
