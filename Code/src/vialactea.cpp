@@ -83,6 +83,7 @@ ViaLactea::ViaLactea(QWidget *parent) :
                 // Open settings window
                 on_actionSettings_triggered();
             }
+            msgBox->deleteLater();
         });
     }
 

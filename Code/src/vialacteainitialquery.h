@@ -56,7 +56,6 @@ private:
     QString species, transition,velfrom,velto;
     QMap<QString,QString> transitions;
     QList < QPair<QString, QString> > selectedSurvey;
-    QString url_prefix;
 
 
     QWidget *p;

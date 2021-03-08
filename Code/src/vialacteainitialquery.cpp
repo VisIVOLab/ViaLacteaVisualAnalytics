@@ -21,37 +21,29 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
 
     ui->rectGroupBox->hide();
 
+    nam = new QNetworkAccessManager(this);
+    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
+
     QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini"), QSettings::NativeFormat);
     vlkbUrl= settings.value("vlkburl", "").toString();
 
-
-
-
-    if (settings.value("vlkbtype", "public").toString()=="public")
+    QString vlkbtype = settings.value("vlkbtype", "public").toString();
+    if (vlkbtype == "public")
     {
-        qDebug()<<"public access to vlkb";
-        settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/");
-        settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap");
-        url_prefix="http://";
-
-
+        qDebug() << "public access to vlkb";
     }
-    else if (settings.value("vlkbtype", "public").toString()=="private")
+    else if (vlkbtype == "private")
     {
-        qDebug()<<"private access to vlkb";
-
-
-        QString user= settings.value("vlkbuser", "").toString();
+        qDebug() << "private access to vlkb";
+        QString user = settings.value("vlkbuser", "").toString();
         QString pass = settings.value("vlkbpass", "").toString();
-
-
-        settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
-        settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
-        url_prefix="http://"+user+":"+pass+"@";
-
-
+        QString url_prefix="http://"+user+":"+pass+"@";
+        vlkbUrl = vlkbUrl.replace("http://", url_prefix);
     }
-
+    else if (vlkbtype == "neanias")
+    {
+        qDebug() << "private access to vlkb through NEANIAS";
+    }
 
     parser =new xmlparser();
     loading = new LoadingWidget();
@@ -65,9 +57,6 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
     transitions.insert("PSW","250um");
     transitions.insert("red","160um");
     transitions.insert("blue","70um");
-
-
-
 }
 
 VialacteaInitialQuery::~VialacteaInitialQuery()
@@ -147,11 +136,9 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
     velto=elementsOnDb.at(pos).value("to");
 
     velocityUnit=elementsOnDb.at(pos).value("VelocityUnit");
-    nam = new QNetworkAccessManager(this);
-    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
 
 
-    url=url.replace("http://",url_prefix);
+    // url=url.replace("http://",url_prefix);
 
     QUrl url_enc=QUrl(url);
     QList<QPair<QString, QString> > urlQuery = QUrlQuery(url_enc).queryItems();
@@ -177,9 +164,6 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
     loading ->show();
     loading->setFileName("Querying cutout services");
 
-    nam = new QNetworkAccessManager(this);
-    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
-
     qDebug()<<url;
     QNetworkReply *reply = nam->get(QNetworkRequest(url));
     loading->setLoadingProcess(reply);
@@ -196,8 +180,6 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
     loading->setFileName("Querying cutout services");
 
 
-    nam = new QNetworkAccessManager(this);
-    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
 
     QString urlString=vlkbUrl+"/vlkb_search?l="+ui->l_lineEdit->text()+"&b="+ui->b_lineEdit->text();//+"&species="+species;
     if(isRadius)
