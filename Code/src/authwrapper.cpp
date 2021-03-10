@@ -117,6 +117,15 @@ void AuthWrapper::on_refresh_timeout()
     });
 }
 
+void AuthWrapper::putAccessToken(QNetworkRequest &req) const
+{
+    if (isAuthenticated())
+    {
+        QString bearer = "Bearer " + accessToken();
+        req.setRawHeader(QByteArray("Authorization"), bearer.toUtf8());
+    }
+}
+
 void AuthWrapper::on_authenticated()
 {
     _authenticated = true;

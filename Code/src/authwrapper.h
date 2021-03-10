@@ -29,6 +29,7 @@ public:
     QString idToken() const;
     QString accessToken() const;
     QString refreshToken() const;
+    void putAccessToken(QNetworkRequest & req) const;
 
 private slots:
     void open_webview(const QUrl & url);

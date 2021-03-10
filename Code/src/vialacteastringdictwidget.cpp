@@ -9,6 +9,9 @@
 #include <QAuthenticator>
 #include <QNetworkRequest>
 
+#include "singleton.h"
+#include "authwrapper.h"
+
 VialacteaStringDictWidget::VialacteaStringDictWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::VialacteaStringDictWidget)
@@ -41,10 +44,14 @@ void VialacteaStringDictWidget::buildDict()
 
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("text/html; charset=utf-8"));
+
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(request);
+    }
+
     manager->get(request);
-
-
-
 }
 
 
@@ -113,8 +120,13 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/x-www-form-urlencoded"));
 
-    manager->post(request,postData);
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(request);
+    }
 
+    manager->post(request,postData);
 }
 
 void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
@@ -149,8 +161,14 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     qDebug()<<url;
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/x-www-form-urlencoded"));
-    manager->post(request,postData);
 
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(request);
+    }
+
+    manager->post(request,postData);
 }
 
 

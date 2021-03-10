@@ -76,6 +76,8 @@ ViaLactea::ViaLactea(QWidget *parent) :
             {
                 // Open NEANIAS login page
                 AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                connect(auth, &AuthWrapper::authenticated,
+                        &Singleton<VialacteaStringDictWidget>::Instance(), &VialacteaStringDictWidget::buildDict);
                 auth->grant();
             }
             else

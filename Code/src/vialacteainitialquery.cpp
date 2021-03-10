@@ -12,6 +12,8 @@
 #include "singleton.h"
 #include <QSettings>
 #include <QUrlQuery>
+#include <QAuthenticator>
+#include "authwrapper.h"
 
 VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
     QWidget(parent),
@@ -21,11 +23,12 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
 
     ui->rectGroupBox->hide();
 
-    nam = new QNetworkAccessManager(this);
-    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
-
     QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini"), QSettings::NativeFormat);
     vlkbUrl= settings.value("vlkburl", "").toString();
+
+    nam = new QNetworkAccessManager(this);
+    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
+    QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
 
     QString vlkbtype = settings.value("vlkbtype", "public").toString();
     if (vlkbtype == "public")
@@ -120,6 +123,13 @@ void VialacteaInitialQuery::setTransition(QString s)
 
 }
 
+void VialacteaInitialQuery::on_authentication_required(QNetworkReply *r, QAuthenticator *a){
+    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini"), QSettings::NativeFormat);
+    QString user = settings.value("vlkbuser", "").toString();
+    QString pass = settings.value("vlkbpass", "").toString();
+    a->setUser(user);
+    a->setPassword(pass);
+}
 
 
 void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QString> > el, int pos)
@@ -193,7 +203,18 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
 
     QUrl url2 (urlString);
 
-    QNetworkReply *reply = nam->get(QNetworkRequest(url2));
+    QNetworkRequest req(url2);
+
+    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
+                       , QSettings::NativeFormat);
+
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(req);
+    }
+
+    QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 
     qDebug()<<"INITIAL QUERY:\n"<<urlString;
