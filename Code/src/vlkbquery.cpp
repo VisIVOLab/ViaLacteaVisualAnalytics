@@ -6,6 +6,8 @@
 #include "vialactea_fileload.h"
 #include <QMessageBox>
 #include "sedvisualizerplot.h"
+#include "singleton.h"
+#include "authwrapper.h"
 
 VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt::GlobalColor color) :
     QWidget(parent),
@@ -39,11 +41,24 @@ VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt
 void VLKBQuery::connectToVlkb()
 {
     qDebug()<<"connectToVlkb";
-    url= "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    // url= "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
+    url = settings.value("vlkbtableurl").toString();
+
     manager = new QNetworkAccessManager(this);
     qDebug()<<"connect";
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
-    manager->get(QNetworkRequest(QUrl(url+"/availability")));
+    QUrl reqUrl(url + "/availability");
+    QNetworkRequest req(reqUrl);
+
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(req);
+    }
+
+    QNetworkReply *reply = manager->get(req);
+    loading->setLoadingProcess(reply);
 
     qDebug()<<"connected";
 
@@ -60,9 +75,13 @@ void VLKBQuery::availReplyFinished (QNetworkReply *reply)
     }
     else
     {
+        QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+        QString vlkbtype = settings.value("vlkbtype", "public").toString();
+        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
+
         QDomDocument doc;
         doc.setContent(reply->readAll());
-        QDomNodeList list=doc.elementsByTagName("vosi:available");
+        QDomNodeList list=doc.elementsByTagName(tag);
         if(list.at(0).toElement().text()=="true")
         {
 
@@ -97,9 +116,9 @@ void VLKBQuery::executeQuery()
     else if(what.compare("model")==0)
         connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinishedModel(QNetworkReply*)));
 
-    manager->post(QNetworkRequest(url+"/sync"),postData);
+    QNetworkReply *reply = manager->post(QNetworkRequest(url+"/sync"),postData);
     //manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
-
+    loading->setLoadingProcess(reply);
 
 }
 

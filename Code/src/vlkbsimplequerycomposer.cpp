@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
+#include "authwrapper.h"
 
 VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *parent) :
     QWidget(parent),
@@ -112,10 +113,18 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 
 
         manager = new QNetworkAccessManager(this);
-
         connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
-        manager->get(QNetworkRequest(QUrl(url+"/availability")));
+        QNetworkRequest request(QUrl(url+"/availability"));
 
+        QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+        if (settings.value("vlkbtype", "") == "neanias")
+        {
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(request);
+        }
+
+        QNetworkReply *reply = manager->get(request);
+        loading->setLoadingProcess(reply);
     }
     else
     {
@@ -160,10 +169,14 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
     }
     else
     {
+        QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+        QString vlkbtype = settings.value("vlkbtype", "public").toString();
+        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
+
         QDomDocument doc;
         doc.setContent(reply->readAll());
         qDebug()<<doc.toByteArray();
-        QDomNodeList list=doc.elementsByTagName("vosi:available");
+        QDomNodeList list=doc.elementsByTagName(tag);
         qDebug()<<list.at(0).toElement().text();
 
         if(list.at(0).toElement().text()=="true")
@@ -178,7 +191,8 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
                 QNetworkAccessManager * manager = new QNetworkAccessManager(this);
 
                 connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(tableReplyFinished(QNetworkReply*)));
-                manager->get(QNetworkRequest(QUrl(url+"/tables")));
+                QNetworkReply *r = manager->get(QNetworkRequest(QUrl(url+"/tables")));
+                loading->setLoadingProcess(r);
                 //manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/tables")),postData);
 
 
@@ -197,7 +211,6 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
                 isConnected=true;
 
                 loading->close();
-                reply->deleteLater();
             }
         }
     }
@@ -394,7 +407,8 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
 
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinished(QNetworkReply*)));
 
-    manager->post(QNetworkRequest(url+"/sync"),postData);
+    QNetworkReply *r = manager->post(QNetworkRequest(url+"/sync"),postData);
+    loading->setLoadingProcess(r);
     //manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
     qDebug()<<" query url: "<<url;
 
