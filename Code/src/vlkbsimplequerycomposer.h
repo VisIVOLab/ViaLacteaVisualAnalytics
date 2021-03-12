@@ -45,6 +45,8 @@ private:
     QNetworkAccessManager *manager;
     QString url;
     QString m_sSettingsFile;
+    QString vlkbtype;
+    QString table_prefix;
 
     bool available;
     QList<VlkbTable *> table_list;
