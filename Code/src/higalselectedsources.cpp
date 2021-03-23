@@ -316,5 +316,6 @@ void HigalSelectedSources::closeEvent(QCloseEvent *event)
 
 void HigalSelectedSources::on_tabWidget_currentChanged(int index)
 {
-    qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->clearSelection();
+    if (index >= 0)
+        qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->clearSelection();
 }
