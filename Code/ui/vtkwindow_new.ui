@@ -687,7 +687,7 @@
              <item>
               <widget class="QToolButton" name="filterMoreButton">
                <property name="enabled">
-                <bool>true</bool>
+                <bool>false</bool>
                </property>
                <property name="text">
                 <string>...</string>
@@ -1494,7 +1494,7 @@
      <x>0</x>
      <y>0</y>
      <width>3990</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
