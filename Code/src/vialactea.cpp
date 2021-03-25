@@ -9,6 +9,7 @@
 #include "mainwindow.h"
 #include "singleton.h"
 #include <QSettings>
+#include "authwrapper.h"
 #include "settingform.h"
 #include "aboutform.h"
 #include "vlkbsimplequerycomposer.h"
@@ -20,6 +21,17 @@ void WebProcess::jsCall(const QString &point,const QString &radius)
 {
     emit processJavascript(point,radius);
 }
+
+const QString ViaLactea::ONLINE_TILE_PATH = "http://vlkb.dev.neanias.eu:8080/PanoramicView-v1.1.0/openlayers.html";
+
+const QString ViaLactea::VLKB_URL_PUBLIC = "http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/";
+const QString ViaLactea::TAP_URL_PUBLIC = "http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap";
+
+const QString ViaLactea::VLKB_URL_PRIVATE = "http://ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/";
+const QString ViaLactea::TAP_URL_PRIVATE = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
+
+const QString ViaLactea::VLKB_URL_NEANIAS = "http://vlkb.dev.neanias.eu:8080/vlkb-datasets-1.1/";
+const QString ViaLactea::TAP_URL_NEANIAS = "http://vlkb.dev.neanias.eu:8080/vlkb/tap";
 
 ViaLactea::ViaLactea(QWidget *parent) :
     QMainWindow(parent),
@@ -45,34 +57,41 @@ ViaLactea::ViaLactea(QWidget *parent) :
 
     m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
 
+    updateVLKBSetting();
+
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
-    if (settings.value("vlkbtype", "public").toString()=="public")
-    {
-        qDebug()<<"public access to vlkb";
-        settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/");
-        settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap");
-
-
-
-    }
-    else if (settings.value("vlkbtype", "public").toString()=="private")
-    {
-        qDebug()<<"private access to vlkb";
-
-
-        QString user= settings.value("vlkbuser", "").toString();
-        QString pass = settings.value("vlkbpass", "").toString();
-
-        settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
-        settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
-
-
+    if (settings.value("vlkbtype", "public").toString() == "neanias") {
+        // The user has to login through SSO to continue or change access method
+        QMessageBox *msgBox = new QMessageBox(this);
+        msgBox->setIcon(QMessageBox::Question);
+        msgBox->setWindowTitle("Login required");
+        msgBox->setInformativeText("You have selected private access to VLKB using NEANIAS SSO.\n\nSign in to continue using this private access or change access method in the Settings.");
+        msgBox->addButton("Login", QMessageBox::AcceptRole);
+        msgBox->addButton("Open settings", QMessageBox::DestructiveRole);
+        msgBox->show();
+        connect(msgBox, &QMessageBox::buttonClicked, [=](QAbstractButton *button){
+            QMessageBox::ButtonRole btn = msgBox->buttonRole(button);
+            if(btn == QMessageBox::AcceptRole)
+            {
+                // Open NEANIAS login page
+                AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                connect(auth, &AuthWrapper::authenticated,
+                        &Singleton<VialacteaStringDictWidget>::Instance(), &VialacteaStringDictWidget::buildDict);
+                auth->grant();
+            }
+            else
+            {
+                // Open settings window
+                on_actionSettings_triggered();
+            }
+            msgBox->deleteLater();
+        });
     }
 
     if (settings.value("online",true) == true)
     {
-        tilePath = settings.value("onlinetilepath", "http://visivo.oact.inaf.it/vialacteatiles/openlayers.html").toString();
+        tilePath = settings.value("onlinetilepath", ONLINE_TILE_PATH).toString();
         ui->webView->load(QUrl(tilePath));
 
     }
@@ -108,8 +127,8 @@ ViaLactea::ViaLactea(QWidget *parent) :
 
 
 
-    VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
-    stringDictWidget->buildDict();
+    // VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
+    // stringDictWidget->buildDict();
 
     qDebug()<<"----------tilePath: "<<tilePath;
 
@@ -165,28 +184,29 @@ void ViaLactea::updateVLKBSetting()
 {
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QString vlkbtype = settings.value("vlkbtype", "public").toString();
 
-    if (settings.value("vlkbtype", "").toString()=="public")
+    if (vlkbtype == "public")
     {
         qDebug()<<"public access to vlkb";
-        settings.setValue("vlkburl","http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/");
-        settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap");
-
+        settings.setValue("vlkburl", VLKB_URL_PUBLIC);
+        settings.setValue("vlkbtableurl", TAP_URL_PUBLIC);
     }
-    else if (settings.value("vlkbtype", "").toString()=="private")
+    else if (vlkbtype == "private")
     {
         qDebug()<<"private access to vlkb";
-
-
-        QString user= settings.value("vlkbuser", "").toString();
-        QString pass = settings.value("vlkbpass", "").toString();
-
-        settings.setValue("vlkburl","http://"+user+":"+pass+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
-        settings.setValue("vlkbtableurl","http://ia2-vialactea.oats.inaf.it:8080/vlkb");
-
-
+        settings.setValue("vlkburl", VLKB_URL_PRIVATE);
+        settings.setValue("vlkbtableurl", TAP_URL_PRIVATE);
     }
+    else if (vlkbtype == "neanias") {
+        qDebug() << "private access to vlkb through NEANIAS SSO";
+        settings.setValue("vlkburl", VLKB_URL_NEANIAS);
+        settings.setValue("vlkbtableurl", TAP_URL_NEANIAS);
+    }
+    settings.sync();
 
+    VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
+    stringDictWidget->buildDict();
 }
 
 void ViaLactea::on_queryPushButton_clicked()
@@ -368,6 +388,7 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
 void ViaLactea::on_actionSettings_triggered()
 {
     SettingForm *s = &Singleton<SettingForm>::Instance();
+    s->readSettingsFromFile();
     s->show();
 
     s->activateWindow();

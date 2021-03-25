@@ -9,12 +9,23 @@
 #include <QAuthenticator>
 #include <QNetworkRequest>
 
+#include "singleton.h"
+#include "authwrapper.h"
+
 VialacteaStringDictWidget::VialacteaStringDictWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::VialacteaStringDictWidget)
 {
     ui->setupUi(this);
 
+}
+
+void VialacteaStringDictWidget::clearDict()
+{
+    tableDescStringDict.clear();
+    tableUtypeStringDict.clear();
+    colDescStringDict.clear();
+    colUtypeStringDict.clear();
 }
 
 void VialacteaStringDictWidget::buildDict()
@@ -33,10 +44,14 @@ void VialacteaStringDictWidget::buildDict()
 
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("text/html; charset=utf-8"));
+
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(request);
+    }
+
     manager->get(request);
-
-
-
 }
 
 
@@ -48,24 +63,23 @@ void VialacteaStringDictWidget::availReplyFinished (QNetworkReply *reply)
 
     if(reply->error())
     {
-
         QMessageBox::critical(this,"Error", "Error: \n"+reply->errorString());
-
-
-
     }
     else
     {
+        QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+        QString vlkbtype = settings.value("vlkbtype", "public").toString();
+        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
+
         QDomDocument doc;
         doc.setContent(reply->readAll());
-        QDomNodeList list=doc.elementsByTagName("vosi:available");
+        QDomNodeList list=doc.elementsByTagName(tag);
 
         if(list.at(0).toElement().text()=="true")
         {
-
+            clearDict();
             executeQueryTapSchemaTables();
             executeQueryTapSchemaColumns();
-
         }
     }
 
@@ -106,8 +120,13 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/x-www-form-urlencoded"));
 
-    manager->post(request,postData);
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(request);
+    }
 
+    manager->post(request,postData);
 }
 
 void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
@@ -142,8 +161,14 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     qDebug()<<url;
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/x-www-form-urlencoded"));
-    manager->post(request,postData);
 
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(request);
+    }
+
+    manager->post(request,postData);
 }
 
 
@@ -168,7 +193,6 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables (QNetworkReply
         }
         else
         {
-
             QByteArray bytes = reply->readLine();
             QString s_data = QString::fromLatin1(bytes.data());
             //se inizia per '<' è un xml, se è xml c'e' stato un errore
@@ -178,38 +202,31 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables (QNetworkReply
             }
             else
             {
-                QString line_data;
-                while(! reply->atEnd())
+                int table_name, description, utype;
+                QStringList columns = s_data.split('\t');
+
+                for (int i = 0; i < columns.length(); ++i)
                 {
-                     line_data = QString::fromLatin1(reply->readLine().data());
-
-                     QStringList list2=line_data.split('\t');
-
-                     tableUtypeStringDict.insert(list2[3],list2[5].remove(QRegExp("[\n\t\r]")));
-                     tableDescStringDict.insert(list2[3],list2[0].remove(QRegExp("[\n\t\r]")));
-
-
-
+                    QString col = columns[i].remove(QRegExp("[\n\t\r]"));
+                    if (col == "table_name") table_name = i;
+                    if (col == "description") description = i;
+                    if (col == "utype") utype = i;
                 }
 
-             //   qDebug()<<tableUtypeStringDict.value("vlkb_compactsources.band500um");
-             //   qDebug()<<tableDescStringDict.value("vlkb_compactsources.band500um");
-
-
-
-
-
-
-
+                QString line_data;
+                while(!reply->atEnd())
+                {
+                     line_data = QString::fromLatin1(reply->readLine().data());
+                     QStringList list2=line_data.split('\t');
+                     tableUtypeStringDict.insert(list2[table_name],list2[utype].remove(QRegExp("[\n\t\r]")));
+                     tableDescStringDict.insert(list2[table_name],list2[description].remove(QRegExp("[\n\t\r]")));
+                }
+                // qDebug() << "TAP_TABLE: " << tableDescStringDict.size();
             }
-
         }
         /* Clean up. */
         reply->deleteLater();
-
     }
-
-
 }
 
 void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns (QNetworkReply *reply)
@@ -243,31 +260,31 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns (QNetworkRepl
             }
             else
             {
-                QString line_data;
-                while(! reply->atEnd())
+                int table_name, column_name, description, utype;
+                QStringList columns = s_data.split('\t');
+
+                for (int i = 0; i < columns.length(); ++i)
                 {
-                     line_data = QString::fromLatin1(reply->readLine().data());
-
-                     QStringList list2=line_data.split('\t');
-
-
-                     colUtypeStringDict.insert(list2[8] +"."+list2[1],list2[11].remove(QRegExp("[\n\t\r]")));
-                     colDescStringDict.insert(list2[8] +"."+list2[1],list2[3].remove(QRegExp("[\n\t\r]")));
-
+                    QString col = columns[i].remove(QRegExp("[\n\t\r]"));
+                    if (col == "table_name") table_name = i;
+                    if (col == "column_name") column_name = i;
+                    if (col == "description") description = i;
+                    if (col == "utype") utype = i;
                 }
 
-            //     qDebug()<<"AUUUUUUUUUUUUUU"<<colUtypeStringDict.value("vlkb_filaments.branches.contour");
-            //     qDebug()<<"AUUUUUUUUUUUUUU"<<colDescStringDict.value("vlkb_filaments.branches.contour");
-
-
+                QString line_data;
+                while(!reply->atEnd())
+                {
+                     line_data = QString::fromLatin1(reply->readLine().data());
+                     QStringList list2=line_data.split('\t');
+                     colUtypeStringDict.insert(list2[table_name] +"."+list2[column_name],list2[utype].remove(QRegExp("[\n\t\r]")));
+                     colDescStringDict.insert(list2[table_name] +"."+list2[column_name],list2[description].remove(QRegExp("[\n\t\r]")));
+                }
+                // qDebug() << "TAP_COLUMN: " << colDescStringDict.size();
             }
-
         }
         reply->deleteLater();
-
     }
-
-
 }
 
 

@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
+#include "authwrapper.h"
 
 VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *parent) :
     QWidget(parent),
@@ -30,6 +31,10 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
 
 
     url=settings.value("vlkbtableurl", "").toString();
+
+    vlkbtype = settings.value("vlkbtype", "public").toString();
+    table_prefix = (vlkbtype == "neanias") ? "" : "vlkb_";
+
     ui->vlkbUrlLineEdit->setText(url);
 
     on_connectPushButton_clicked();
@@ -106,16 +111,23 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
         loading = new LoadingWidget();
         loading->init();
         loading->setFileName("Connecting to VLKB...");
-        loading ->show();
+        loading->show();
         loading->activateWindow();
         loading->setFocus();
 
 
         manager = new QNetworkAccessManager(this);
-
         connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
-        manager->get(QNetworkRequest(QUrl(url+"/availability")));
+        QNetworkRequest request(QUrl(url+"/availability"));
 
+        if (vlkbtype == "neanias")
+        {
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(request);
+        }
+
+        QNetworkReply *reply = manager->get(request);
+        loading->setLoadingProcess(reply);
     }
     else
     {
@@ -160,10 +172,12 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
     }
     else
     {
+        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
+
         QDomDocument doc;
         doc.setContent(reply->readAll());
         qDebug()<<doc.toByteArray();
-        QDomNodeList list=doc.elementsByTagName("vosi:available");
+        QDomNodeList list=doc.elementsByTagName(tag);
         qDebug()<<list.at(0).toElement().text();
 
         if(list.at(0).toElement().text()=="true")
@@ -178,7 +192,16 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
                 QNetworkAccessManager * manager = new QNetworkAccessManager(this);
 
                 connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(tableReplyFinished(QNetworkReply*)));
-                manager->get(QNetworkRequest(QUrl(url+"/tables")));
+
+                QNetworkRequest req(QUrl(url+"/tables"));
+                if (vlkbtype == "neanias")
+                {
+                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                    auth->putAccessToken(req);
+                }
+
+                QNetworkReply *r = manager->get(req);
+                loading->setLoadingProcess(r);
                 //manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/tables")),postData);
 
 
@@ -197,7 +220,6 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
                 isConnected=true;
 
                 loading->close();
-                reply->deleteLater();
             }
         }
     }
@@ -222,6 +244,9 @@ void VLKBSimpleQueryComposer::tableReplyFinished (QNetworkReply *reply)
         QDomNodeList list=doc.elementsByTagName("table");
 
         ui->tableComboBox->clear();
+
+        QString table_name = table_prefix + "compactsources.band";
+
         for(int i=0;i<list.size();i++)
         {
             VlkbTable *table= new VlkbTable();
@@ -233,7 +258,7 @@ void VLKBSimpleQueryComposer::tableReplyFinished (QNetworkReply *reply)
                 if(node.childNodes().at(j).toElement().tagName()=="name")
                 {
                     table->setName(node.childNodes().at(j).toElement().text());
-                    if(table->getName().contains("vlkb_compactsources.band") && ( table->getName().right(2).compare("um") ==0) )
+                    if(table->getName().contains(table_name) && ( table->getName().right(2).compare("um") ==0) )
                     {
                         bandTableName = table->getName().mid( table->getName().lastIndexOf(".")+1 );
                         table->setShortname( bandTableName );
@@ -303,7 +328,7 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
     loading->init();
     loading->setFileName("Retrieving dataset from VLKB");
 
-    loading ->show();
+    loading->show();
     // loading->activateWindow();
 
     manager = new QNetworkAccessManager(this);
@@ -324,8 +349,10 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
         query+= "(glat>="+ui->latMinLineEdit->text()+" and glat<="+ui->latMaxLineEdit->text()+")";
 
 */
+        QString tab1 = table_prefix + "filaments.filaments";
+        QString tab2 = table_prefix + "filaments.branches";
 
-        QString query="SELECT f.idfil_mos as idfil_mos, f.contour as contour, f.glon as glon, f.glat as glat, b.contour as branches_contour, b.contour1d as branches_contour1d, b.contour_new as branches_contour_new, b.flagspine as flagspine_branches  FROM vlkb_filaments.filaments as f JOIN vlkb_filaments.branches as b on f.idfil_mos = b.idfil_mos";
+        QString query="SELECT f.idfil_mos as idfil_mos, f.contour as contour, f.glon as glon, f.glat as glat, b.contour as branches_contour, b.contour1d as branches_contour1d, b.contour_new as branches_contour_new, b.flagspine as flagspine_branches  FROM " + tab1 + " as f JOIN " + tab2 + " as b on f.idfil_mos = b.idfil_mos";
         query += " WHERE( glon>="+ui->longMinLineEdit->text()+" and glon<="+ui->longMaxLineEdit->text()+") AND ";
         query += "(glat>="+ui->latMinLineEdit->text()+" and glat<="+ui->latMaxLineEdit->text()+")";
 
@@ -335,7 +362,8 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
     }
     else if(isBubble)
     {
-        QString query="SELECT * FROM vlkb_filaments.bubbles WHERE ( glon_cen>="+ui->longMinLineEdit->text()+" and glon_cen<="+ui->longMaxLineEdit->text()+") AND ";
+        QString tab = table_prefix + "filaments.bubbles";
+        QString query="SELECT * FROM " + tab + " WHERE ( glon_cen>="+ui->longMinLineEdit->text()+" and glon_cen<="+ui->longMaxLineEdit->text()+") AND ";
         query+= "(glat_cen>="+ui->latMinLineEdit->text()+" and glat_cen<="+ui->latMaxLineEdit->text()+")";
         postData.append("QUERY="+QUrl::toPercentEncoding(query));
 
@@ -354,7 +382,8 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
         postData.append("QUERY="+QUrl::toPercentEncoding(query));
         */
 
-        QString query="SELECT dist*cos(radians(glon)+3.14159265359/2) as x, dist*sin(radians(glon)+3.14159265359/2) as y,dist*tan(radians(glat)) as z, * FROM vlkb_compactsources.props_dist WHERE ";
+        QString tab = table_prefix + "compactsources.props_dist";
+        QString query="SELECT dist*cos(radians(glon)+3.14159265359/2) as x, dist*sin(radians(glon)+3.14159265359/2) as y,dist*tan(radians(glat)) as z, * FROM " + tab + " WHERE ";
         query += "(( glon>="+ui->longMinLineEdit->text()+" and glon<="+ui->longMaxLineEdit->text()+") AND ";
         query+= "(glat>="+ui->latMinLineEdit->text()+" and glat<="+ui->latMaxLineEdit->text()+"))";
 
@@ -369,7 +398,8 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
         {
             isBandmerged=true;
 
-            QString query="SELECT DISTINCT * FROM vlkb_compactsources.sed_view_final WHERE ";
+            QString tab = table_prefix + "compactsources.sed_view_final";
+            QString query="SELECT DISTINCT * FROM " + tab + " WHERE ";
             query+= "(( glonft>="+ui->longMinLineEdit->text()+" and glonft<="+ui->longMaxLineEdit->text()+") AND ";
             query+= "(glatft>="+ui->latMinLineEdit->text()+" and glatft<="+ui->latMaxLineEdit->text()+"))";
 
@@ -383,7 +413,8 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
             isBandmerged=false;
 
             //aggiungo al table name 'vlkb_compactsources.'
-            QString query="SELECT * FROM vlkb_compactsources."+band+" WHERE ( glon>="+ui->longMinLineEdit->text()+" and glon<="+ui->longMaxLineEdit->text()+") AND ";
+            QString tab = table_prefix + "compactsources." + band;
+            QString query="SELECT * FROM "+tab+" WHERE ( glon>="+ui->longMinLineEdit->text()+" and glon<="+ui->longMaxLineEdit->text()+") AND ";
             query+= "(glat>="+ui->latMinLineEdit->text()+" and glat<="+ui->latMaxLineEdit->text()+")";
             postData.append("QUERY="+QUrl::toPercentEncoding(query));
         }
@@ -394,7 +425,17 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
 
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinished(QNetworkReply*)));
 
-    manager->post(QNetworkRequest(url+"/sync"),postData);
+    QNetworkRequest req(url+"/sync");
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    if (vlkbtype == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(req);
+    }
+
+    QNetworkReply *r = manager->post(req,postData);
+    loading->setLoadingProcess(r);
     //manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
     qDebug()<<" query url: "<<url;
 
@@ -425,6 +466,8 @@ void VLKBSimpleQueryComposer::queryReplyFinished (QNetworkReply *reply)
     if(reply->error())
     {
         QMessageBox::critical(this,"Error", "Error: \n"+reply->errorString());
+        loading->loadingEnded();
+        loading->hide();
     }
     else
     {
@@ -530,13 +573,10 @@ void VLKBSimpleQueryComposer::queryReplyFinished (QNetworkReply *reply)
             }
             loading->loadingEnded();
             loading->hide();
-
         }
-        /* Clean up. */
-        reply->deleteLater();
-
     }
-
+    /* Clean up. */
+    reply->deleteLater();
 }
 
 QUrl VLKBSimpleQueryComposer::redirectUrl(const QUrl& possibleRedirectUrl,   const QUrl& oldRedirectUrl) const {

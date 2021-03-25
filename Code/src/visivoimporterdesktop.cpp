@@ -89,23 +89,25 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
 
     vtkwin=v;
 
-    QString m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+//    QString m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
 
 
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+//    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
-    QString user= "";
-    QString pass = "";
-    QString url_prefix = "";
+//    QString user= "";
+//    QString pass = "";
+//    QString url_prefix = "";
 
-    if (settings.value("vlkbtype", "public").toString()=="private")
-    {
-        user= settings.value("vlkbuser", "").toString();
-        pass = settings.value("vlkbpass", "").toString();
-        url_prefix = user+":"+pass;
-    }
+//    if (settings.value("vlkbtype", "public").toString()=="private")
+//    {
+//        user= settings.value("vlkbuser", "").toString();
+//        pass = settings.value("vlkbpass", "").toString();
+//        url_prefix = user+":"+pass;
+//    }
 
-    settings.setValue("vlkburl","http://"+url_prefix+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");    float  flux22Multiplier= 1;
+//    settings.setValue("vlkburl","http://"+url_prefix+"@ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/");
+
+    float  flux22Multiplier= 1;
 
     if(!isBandMergedCatalogue)
     {

@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network printsupport xml  widgets concurrent webenginewidgets
+QT       += core gui network networkauth printsupport xml  widgets concurrent webenginewidgets
 #QT       += core gui network printsupport xml  widgets concurrent webkitwidgets
 #CONFIG   += static
 QMAKE_MAC_SDK = macosx10.15
@@ -78,9 +78,11 @@ macx:LIBS +=  -framework \
 
 
 SOURCES += src/main.cpp\
+    src/authwrapper.cpp \
            src/mainwindow.cpp \
     src/treemodel.cpp \
     src/treeitem.cpp \
+    src/vlvaurlschemehandler.cpp \
     src/vtkfitsreader.cpp \
     src/vispoint.cpp \
     src/observedobject.cpp \
@@ -164,9 +166,11 @@ SOURCES += src/main.cpp\
 
 
 HEADERS  += src/mainwindow.h \
+    src/authwrapper.h \
             src/singleton.h \
     src/treemodel.h \
     src/treeitem.h \
+    src/vlvaurlschemehandler.h \
     src/vtkfitsreader.h \
     src/vispoint.h \
     src/observedobject.h \

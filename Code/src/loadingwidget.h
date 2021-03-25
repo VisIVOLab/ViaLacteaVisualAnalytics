@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QNetworkReply>
+#include <QPointer>
 
 namespace Ui {
 class LoadingWidget;
@@ -26,7 +27,7 @@ private slots:
 
 private:
     Ui::LoadingWidget *ui;
-    QNetworkReply *reply;
+    QPointer<QNetworkReply> reply;
 };
 
 #endif // LOADINGWIDGET_H

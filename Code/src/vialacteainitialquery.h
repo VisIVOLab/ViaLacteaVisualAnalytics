@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QNetworkReply>
+#include <QAuthenticator>
 #include "xmlparser.h"
 #include "loadingwidget.h"
 #include "vtkwindow_new.h"
@@ -35,6 +36,7 @@ private slots:
     void on_pointRadioButton_toggled(bool checked);
     void finishedSlot(QNetworkReply* reply);
     void on_download_completed();
+    void on_authentication_required(QNetworkReply *reply, QAuthenticator *auth);
 
 public slots:
     void on_queryPushButton_clicked();
@@ -56,7 +58,6 @@ private:
     QString species, transition,velfrom,velto;
     QMap<QString,QString> transitions;
     QList < QPair<QString, QString> > selectedSurvey;
-    QString url_prefix;
 
 
     QWidget *p;
