@@ -162,7 +162,18 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
     q.setQueryItems(urlQuery);
     url_enc.setQuery(q);
 
-    QNetworkReply *reply = nam->get(QNetworkRequest(url_enc));
+    QNetworkRequest req(url_enc);
+
+    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
+                       , QSettings::NativeFormat);
+
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(req);
+    }
+
+    QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 
 }
@@ -175,7 +186,19 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
     loading->setFileName("Querying cutout services");
 
     qDebug()<<url;
-    QNetworkReply *reply = nam->get(QNetworkRequest(url));
+
+    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
+                       , QSettings::NativeFormat);
+
+    QNetworkRequest req(url);
+
+    if (settings.value("vlkbtype", "") == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(req);
+    }
+
+    QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 
 }
