@@ -20,6 +20,12 @@ SettingForm::SettingForm(QWidget *parent) :
     connect(m_authWrapper, &AuthWrapper::authenticated, [&](){
         ui->authStatusLabel->setText("Authenticated");
         ui->loginButton->hide();
+        ui->logoutButton->show();
+    });
+    connect(m_authWrapper, &AuthWrapper::logged_out, [&](){
+        ui->authStatusLabel->setText("Not authenticated");
+        ui->loginButton->show();
+        ui->logoutButton->hide();
     });
 
     m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
@@ -81,8 +87,18 @@ void SettingForm::readSettingsFromFile()
         ui->passLabel->hide();
 
         ui->authLabel->show();
+
+        if(m_authWrapper->isAuthenticated()){
+            ui->loginButton->hide();
+            ui->logoutButton->show();
+            ui->authStatusLabel->setText("Authenticated");
+        } else {
+            ui->loginButton->show();
+            ui->logoutButton->hide();
+            ui->authStatusLabel->setText("Not authenticated");
+        }
+
         ui->authStatusLabel->show();
-        ui->loginButton->setVisible(!m_authWrapper->isAuthenticated());
     }
 
     if (settings.value("online",false) == true)
@@ -204,16 +220,19 @@ void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
         if (!m_authWrapper->isAuthenticated()) {
             ui->authStatusLabel->setText("Not authenticated");
             ui->loginButton->show();
+            ui->logoutButton->hide();
         }
         else {
             ui->authStatusLabel->setText("Authenticated");
             ui->loginButton->hide();
+            ui->logoutButton->show();
         }
 
     } else {
         ui->authLabel->hide();
         ui->authStatusLabel->hide();
         ui->loginButton->hide();
+        ui->logoutButton->hide();
     }
 }
 
@@ -229,4 +248,10 @@ void SettingForm::on_publicVLKB_radioButton_toggled(bool checked)
         ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PUBLIC);
         ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PUBLIC);
     }
+}
+
+void SettingForm::on_logoutButton_clicked()
+{
+    if (m_authWrapper->isAuthenticated())
+        m_authWrapper->logout();
 }

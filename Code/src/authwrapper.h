@@ -25,6 +25,7 @@ class AuthWrapper : public QObject
 public:
     explicit AuthWrapper(QObject *parent = nullptr);
     void grant();
+    void logout();
     bool isAuthenticated() const;
     QString idToken() const;
     QString accessToken() const;
@@ -36,14 +37,17 @@ private slots:
     void exchangeTokenFromCode(const QString & code);
     void on_authenticated();
     void on_refresh_timeout();
+    void on_logged_out();
 
 signals:
     void authenticated();
     void refresh_timeout();
+    void logged_out();
 
 private:
     const QUrl authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/auth");
     const QUrl tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/token");
+    const QUrl logoutUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/logout");
     const QString clientId = QString("vlkb");
     const QString clientSecret = QString("e1b4cda4-0ae5-46ba-86fd-1b05f58432e3");
     const QString scope = QString("openid profile email phone address");

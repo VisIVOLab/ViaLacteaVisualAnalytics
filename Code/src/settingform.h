@@ -40,6 +40,8 @@ private slots:
 
     void on_publicVLKB_radioButton_toggled(bool checked);
 
+    void on_logoutButton_clicked();
+
 private:
     Ui::SettingForm *ui;
     QString m_sSettingsFile;

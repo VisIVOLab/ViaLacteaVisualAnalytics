@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QtNetwork>
 #include <QWebEngineProfile>
+#include <QWebEngineCookieStore>
 
 AuthWrapper::AuthWrapper(QObject *parent) : QObject(parent)
 {
@@ -25,6 +26,7 @@ AuthWrapper::AuthWrapper(QObject *parent) : QObject(parent)
     connect(&oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this, &AuthWrapper::open_webview);
     connect(this, &AuthWrapper::authenticated, this, &AuthWrapper::on_authenticated);
     connect(this, &AuthWrapper::refresh_timeout, this, &AuthWrapper::on_refresh_timeout);
+    connect(this, &AuthWrapper::logged_out, this, &AuthWrapper::on_logged_out);
 }
 
 void AuthWrapper::grant()
@@ -32,9 +34,47 @@ void AuthWrapper::grant()
     oauth2.grant();
 }
 
+void AuthWrapper::logout()
+{
+    if (!isAuthenticated())
+        return;
+
+    QUrlQuery postData;
+    postData.addQueryItem("client_id", clientId);
+    postData.addQueryItem("client_secret", clientSecret);
+    postData.addQueryItem("refresh_token", refreshToken());
+    QByteArray postDataEncoded = postData.toString(QUrl::FullyEncoded).toUtf8();
+
+    QNetworkRequest req(logoutUrl);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    QNetworkReply *reply = mgr->post(req, postDataEncoded);
+    connect(reply, &QNetworkReply::finished, [=](){
+        if (reply->error() == QNetworkReply::NoError) {
+            emit logged_out();
+        } else {
+            qDebug() << "Error in logout: " << reply->errorString();
+            qDebug() << reply->readAll();
+        }
+        reply->deleteLater();
+    });
+}
+
+void AuthWrapper::on_logged_out()
+{
+    tokens[ID].clear();
+    tokens[ACCESS].clear();
+    tokens[REFRESH].clear();
+    _authenticated = false;
+}
+
 void AuthWrapper::open_webview(const QUrl & url)
 {
+    // The default UA does not allow standard @gmail.com users to login
+    QString userAgent("Mozilla/5.0 (Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0");
+
     view = new QWebEngineView();
+    view->page()->profile()->setHttpUserAgent(userAgent);
     view->load(url);
     view->setContextMenuPolicy(Qt::NoContextMenu);
     view->resize(1024, 768);
@@ -130,6 +170,7 @@ void AuthWrapper::on_authenticated()
 {
     _authenticated = true;
     if (view) {
+        view->page()->profile()->cookieStore()->deleteAllCookies();
         view->close();
         view->deleteLater();
     }
