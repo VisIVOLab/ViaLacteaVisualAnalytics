@@ -13,6 +13,7 @@ SettingForm::SettingForm(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->groupBox_4->hide();
+    ui->logoutButton->hide();
 
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
