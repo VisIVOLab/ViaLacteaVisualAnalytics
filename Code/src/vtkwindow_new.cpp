@@ -1352,58 +1352,12 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
 
         vis->CalculateRMS();
-
         isDatacube=true;
+        this->max=vis->GetMax();
+        this->min=vis->GetMin();
+        this->naxis3=vis->GetNaxes(2);
+
         ui->setupUi(this);
-
-
-        /*m_Ren1 = vtkRenderer::New();
-        //renwin = vtkRenderWindow::New();
-        vtkNew<vtkGenericOpenGLRenderWindow> rw;
-        renwin = rw;
-        renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->setRenderWindow(renwin);*/
-
-        auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-        renwin = renWin;
-        ui->qVTK1->setRenderWindow(renwin);
-
-        auto interactor = renwin->GetInteractor();
-
-        auto ren = vtkSmartPointer<vtkRenderer>::New();
-        m_Ren1 = ren;
-        m_Ren1->SetBackground(0.21,0.23,0.25);
-        renwin->AddRenderer(m_Ren1);
-
-        interactor->Render();
-        ui->qVTK1->setDefaultCursor(Qt::ArrowCursor);
-
-        auto renWin2 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-        renwin2 = renWin2;
-        ui->isocontourVtkWin->setRenderWindow(renwin2);
-
-        auto interactor2 = renwin2->GetInteractor();
-
-        auto ren2 = vtkSmartPointer<vtkRenderer>::New();
-        m_Ren2 = ren2;
-        m_Ren2->SetBackground(0.21,0.23,0.25);
-        renwin2->AddRenderer(m_Ren2);
-        renwin2->SetNumberOfLayers(2);
-
-        interactor2->Render();
-        /*m_Ren2 = vtkRenderer::New();
-        //renwin2 = vtkRenderWindow::New();
-        vtkNew<vtkGenericOpenGLRenderWindow> rw2;
-        renwin2 = rw2;
-        renwin2->SetNumberOfLayers(2);
-        renwin2->AddRenderer(m_Ren2);
-
-        m_Ren2->SetBackground(0.21,0.23,0.25);*/
-
-        m_Ren1->GlobalWarningDisplayOff();
-        m_Ren2->GlobalWarningDisplayOff();
-        //ui->isocontourVtkWin->setRenderWindow(renwin2);
-
         ui->splitter->hide();
         ui->ElementListWidget->hide();
         ui->tableWidget->hide();
@@ -1429,29 +1383,32 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->glyphGroupBox->hide();
         ui->filterGroupBox->hide();
 
-        this->max=vis->GetMax();
-        this->min=vis->GetMin();
-        this->naxis3=vis->GetNaxes(2);
-
         ui->minLineEdit->setText(QString::number(min,'f',4));
         ui->maxLineEdit->setText(QString::number(max,'f',4));
         ui->RmsLineEdit->setText(QString::number(vis->GetRMS(),'f',4));
         ui->thresholdValueLineEdit->setText( QString::number(3*vis->GetRMS(),'f',4) );
-
         ui->lowerBoundLineEdit->setText(QString::number(3*vis->GetRMS(),'f',4));
         ui->upperBoundLineEdit->setText(QString::number(max,'f',4));
 
 
+        // Start qVTK1 (left)
+        auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
+        renwin = renWin;
+        ui->qVTK1->setDefaultCursor(Qt::ArrowCursor);
+        ui->qVTK1->setRenderWindow(renwin);
+
+        auto ren = vtkSmartPointer<vtkRenderer>::New();
+        m_Ren1 = ren;
+        m_Ren1->SetBackground(0.21,0.23,0.25);
+        m_Ren1->GlobalWarningDisplayOff();
+        renwin->AddRenderer(m_Ren1);
+
         // outline
         vtkOutlineFilter *outlineF = vtkOutlineFilter::New();
         outlineF->SetInputData(vis->GetOutput());
-
-
-
         vtkPolyDataMapper *outlineM = vtkPolyDataMapper::New();
         outlineM->SetInputConnection(outlineF->GetOutputPort());
         outlineM->ScalarVisibilityOff();
-
         vtkActor *outlineA = vtkActor::New();
         outlineA->SetMapper(outlineM);
 
@@ -1459,122 +1416,102 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         shellE = vtkMarchingCubes::New();
         shellE->SetInputData(vis->GetOutput());
         shellE->ComputeNormalsOn();
-
         shellE->SetValue(0, 3*vis->GetRMS());
-
         vtkPolyDataMapper *shellM = vtkPolyDataMapper::New();
         shellM->SetInputConnection(shellE->GetOutputPort());
         shellM->ScalarVisibilityOff();
-
         vtkActor *shellA = vtkActor::New();
         shellA->SetMapper(shellM);
         shellA->GetProperty()->SetColor(1.0, 0.5, 1.0);
 
+        // slice
         vtkPlanes *sliceE= vtkPlanes::New();
         sliceE->SetBounds(vis->GetOutput()->GetBounds()[0], vis->GetOutput()->GetBounds()[1], vis->GetOutput()->GetBounds()[2], vis->GetOutput()->GetBounds()[3], 0, 1);
-
         vtkSmartPointer<vtkFrustumSource> frustumSource = vtkSmartPointer<vtkFrustumSource>::New();
         frustumSource->ShowLinesOff();
         frustumSource->SetPlanes(sliceE);
         frustumSource->Update();
-
         vtkPolyData* frustum = frustumSource->GetOutput();
-
         vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-
         mapper->SetInputData(frustum);
-
-
         sliceA = vtkActor::New();
         sliceA->SetMapper(mapper);
 
-        // add actors to renderer
 
-        m_Ren1->AddActor(outlineA);
-        m_Ren1->AddActor(shellA);
-        m_Ren1->AddActor(sliceA);
-
-
+        // axes and coords
         vtkAxes = vtkSmartPointer<vtkAxesActor>::New();
         vtkAxes->SetXAxisLabelText("X");
         vtkAxes->SetYAxisLabelText("Y");
         vtkAxes->SetZAxisLabelText("Z");
         vtkAxes->DragableOn();
-
         vtkSmartPointer<vtkTextProperty> tprop = vtkSmartPointer<vtkTextProperty>::New();
         tprop->SetFontSize(0);
         tprop->SetOpacity(0);
-
-        vtkAxes->GetZAxisCaptionActor2D()->GetTextActor()->GetScaledTextProperty();
-        vtkAxes->GetZAxisCaptionActor2D()->GetTextActor()->SetTextScaleMode(0.1);
-
         vtkAxes->GetXAxisCaptionActor2D()->GetTextActor()->GetScaledTextProperty();
-        vtkAxes->GetXAxisCaptionActor2D()->GetTextActor()->SetTextScaleMode(0.1);
-
+        vtkAxes->GetXAxisCaptionActor2D()->GetTextActor()->SetTextScaleMode(0);
         vtkAxes->GetYAxisCaptionActor2D()->GetTextActor()->GetScaledTextProperty();
-        vtkAxes->GetYAxisCaptionActor2D()->GetTextActor()->SetTextScaleMode(0.1);
-
-
+        vtkAxes->GetYAxisCaptionActor2D()->GetTextActor()->SetTextScaleMode(0);
+        vtkAxes->GetZAxisCaptionActor2D()->GetTextActor()->GetScaledTextProperty();
+        vtkAxes->GetZAxisCaptionActor2D()->GetTextActor()->SetTextScaleMode(0);
         vtkAxesWidget = vtkSmartPointer<vtkOrientationMarkerWidget>::New();
         vtkAxesWidget->SetInteractor(ui->qVTK1->renderWindow()->GetInteractor());
-
         vtkAxesWidget->SetOrientationMarker(vtkAxes);
-
         vtkAxesWidget->SetOutlineColor( 0.9300, 0.5700, 0.1300 );
         vtkAxesWidget->SetViewport( 0.0, 0.0, 0.2, 0.2 );
         vtkAxesWidget->SetEnabled(1);
         vtkAxesWidget->InteractiveOff();
-
-
-        m_Ren1->GetActiveCamera( )->GetPosition(cam_init_pos);
-        m_Ren1->GetActiveCamera( )->GetFocalPoint(cam_init_foc);
-
-
         vtkSmartPointer<vtkLegendScaleActor> legendScaleActor3d =  vtkSmartPointer<vtkLegendScaleActor>::New();
-
         legendScaleActor3d->LegendVisibilityOff();
         legendScaleActor3d->setFitsFile(myfits);
 
+
+        m_Ren1->GetActiveCamera()->GetPosition(cam_init_pos);
+        m_Ren1->GetActiveCamera()->GetFocalPoint(cam_init_foc);
+
+        // add actors to renderer
+        m_Ren1->AddActor(outlineA);
+        m_Ren1->AddActor(shellA);
+        m_Ren1->AddActor(sliceA);
         m_Ren1->AddActor(legendScaleActor3d);
-        //end coordinate e assi
 
-        //start FV double vtkwin in one window
 
-        // A yellow-to-blue colormap defined by individually setting all values
+        // Start isocontourVtkWin (right)
+        auto renWin2 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
+        renwin2 = renWin2;
+        // renwin2->SetNumberOfLayers(2);
+        ui->isocontourVtkWin->setRenderWindow(renwin2);
+
+        auto ren2 = vtkSmartPointer<vtkRenderer>::New();
+        m_Ren2 = ren2;
+        m_Ren2->SetBackground(0.21,0.23,0.25);
+        m_Ren2->GlobalWarningDisplayOff();
+        renwin2->AddRenderer(m_Ren2);
+
         vtkSmartPointer<vtkLookupTable> lutSlice = vtkSmartPointer<vtkLookupTable>::New();
         lutSlice->SetTableRange( myfits->GetRangeSlice(0)[0], myfits->GetRangeSlice(0)[1] );
         SelectLookTable("Gray",lutSlice);
 
         setVtkInteractorStyleImageContour();
 
-
         viewer = vtkSmartPointer<vtkResliceImageViewer>::New();
         viewer->SetInputData(vis->GetOutput());
         viewer->GetWindowLevel()->SetOutputFormatToRGB();
         viewer->GetWindowLevel()->SetLookupTable(lutSlice);
         viewer->GetImageActor()->InterpolateOff();
+        viewer->SetRenderWindow(renwin2);
+        viewer->SetRenderer(m_Ren2);
+        viewer->GetRenderer()->ResetCamera();
 
-        viewer->SetRenderer(ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer());
-        viewer->SetRenderWindow(ui->isocontourVtkWin->renderWindow());
-        m_Ren2->SetRenderWindow(renwin2);
-
-        m_Ren2->SetBackground(0.21,0.23,0.25);
         currentContourActor = vtkSmartPointer<vtkLODActor>::New();
         currentContourActorForMainWindow = vtkSmartPointer<vtkLODActor>::New();
 
         ui->cuttingPlane_Slider->setRange(1, vis->GetNaxes(2));
         ui->spinBox_cuttingPlane->setRange(1,vis->GetNaxes(2));
-        setSliceDatacube(1);
-        setSliceDatacube(0);
 
         vtkSmartPointer<vtkLegendScaleActor> legendScaleActorImage =  vtkSmartPointer<vtkLegendScaleActor>::New();
-
         legendScaleActorImage->LegendVisibilityOff();
         legendScaleActorImage->setFitsFile(myfits);
-
         m_Ren2->AddActor(legendScaleActorImage);
-
-        //end FV
 
         this->setWindowName("Datacube visualization");
         showMaximized();
@@ -3102,9 +3039,10 @@ void vtkwindow_new::setSliceDatacube(int i)
     vtkSmartPointer<vtkLookupTable> lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange( myfits->GetRangeSlice(i)[0], myfits->GetRangeSlice(i)[1] );
     SelectLookTable("Gray",lutSlice);
-    viewer->SetLookupTable(lutSlice);
+    viewer->GetWindowLevel()->SetOutputFormatToRGB();
+    viewer->GetWindowLevel()->SetLookupTable(lutSlice);
+    viewer->GetImageActor()->InterpolateOff();
     viewer->SetSlice(i);
-
 
     if(ui->contourCheckBox->isChecked())
         goContour();
@@ -3114,8 +3052,7 @@ void vtkwindow_new::setSliceDatacube(int i)
 
     ui->isocontourVtkWin->update();
     viewer->GetRenderer()->ResetCamera();
-
-
+    viewer->Render();
 }
 
 void vtkwindow_new::changeFitsPalette(std::string palette)
