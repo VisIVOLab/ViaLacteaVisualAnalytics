@@ -29,6 +29,29 @@ AstroUtils::AstroUtils()
 {
 }
 
+/// values = [dl, db]
+void AstroUtils::GetRectSize(std::string file, double *values)
+{
+    WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
+    double sky_coords[2], delta[2];
+    AstroUtils().xy2sky(file, 0, 0, sky_coords, 3);
+
+    /* dl */
+    AstroUtils().xy2sky(file, wc->nxpix, 0, delta, 3);
+    values[0] = abs(delta[0] - sky_coords[0]);
+
+    /* db */
+    AstroUtils().xy2sky(file, 0, wc->nypix, delta, 3);
+    values[1] = abs(delta[1] - sky_coords[1]);
+}
+
+double AstroUtils::GetRadiusSize(std::string file)
+{
+    double rect[2];
+    AstroUtils().GetRectSize(file, rect);
+    double radius = fmax(rect[0], rect[1]) / 2.0;
+    return radius;
+}
 
 double AstroUtils::arcsecPixel(std::string file)
 {
