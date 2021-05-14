@@ -1,5 +1,4 @@
 #include "astroutils.h"
-#include <QDebug>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +42,8 @@ void AstroUtils::GetRectSize(std::string file, double *values)
     /* db */
     AstroUtils().xy2sky(file, 0, wc->nypix, delta, 3);
     values[1] = abs(delta[1] - sky_coords[1]);
+
+    wcsfree(wc);
 }
 
 double AstroUtils::GetRadiusSize(std::string file)
@@ -55,8 +56,7 @@ double AstroUtils::GetRadiusSize(std::string file)
 
 double AstroUtils::arcsecPixel(std::string file)
 {
-
-    char *fn= new char[file.length() + 1];
+    char *fn = new char[file.length() + 1];
     strcpy(fn, file.c_str());
 
     struct WorldCoor *wcs;
@@ -66,118 +66,50 @@ double AstroUtils::arcsecPixel(std::string file)
     int sysout = 0;
     double eqout = 0.0;
 
-    header = GetFITShead (fn, 0);
-
-    wcs= GetFITSWCS (fn,header,0,&cra,&cdec,&dra,&ddec,&secpix, &wp, &hp, &sysout, &eqout);
+    header = GetFITShead(fn, 0);
+    wcs = GetFITSWCS(fn, header, 0, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
+    wcsfree(wcs);
 
     return secpix;
 }
 
-
-//void AstroUtils::xy2sky(QString map,float x, float y,double* coord,int wcs_type)
-void AstroUtils::xy2sky(std::string map,float x, float y,double* coord,int wcs_type)
+void AstroUtils::xy2sky(std::string map, float x, float y, double* coord, int wcs_type)
 {
     struct WorldCoor *wcs;
-    char *fn=new char[map.length() + 1];;
+    char *fn = new char[map.length() + 1];
     static char coorsys[16];
     char wcstring[64];
     char lstr = 64;
     *coorsys = 0;
 
-
-
     strcpy(fn, map.c_str());
-    //    fn=map.c_str();
-    wcs = GetWCSFITS (fn, 0);
-
+    wcs = GetWCSFITS(fn, 0);
     wcs->sysout = wcs_type;
     // force the set of wcs in degree
-
-
     setwcsdeg(wcs,1);
-    if(wcs_type==WCS_GALACTIC)
+
+    if (wcs_type == WCS_GALACTIC)
     {
         wcs->eqout = 2000.0;
     }
-    else if ( wcs_type = WCS_J2000)
-    {
-    }
 
-    if (pix2wcst (wcs, x, y, wcstring, lstr))
+    if (pix2wcst(wcs, x, y, wcstring, lstr))
     {
-
         std::string str(wcstring);
-        using namespace boost::algorithm;
         std::vector<std::string> tokens;
-
         trim(str);
-
-        split(tokens, str, is_any_of(" "),boost::token_compress_on);
-
-        coord[0]=atof(tokens[0].c_str());
-        coord[1]=atof(tokens[1].c_str());
-
-
-
-
+        split(tokens, str, is_any_of(" "), boost::token_compress_on);
+        coord[0] = atof(tokens[0].c_str());
+        coord[1] = atof(tokens[1].c_str());
     }
 
     delete [] fn;
-
-
+    wcsfree(wcs);
 }
 
-int AstroUtils::getSysOut( std::string file )
+int AstroUtils::getSysOut(std::string file)
 {
-
-
-    double x1,x2,y1,y2;
-    double d1, d2, r, diffi;
-    double pos1[3], pos2[3], w, diff;
-    int i;
-
-    x1=40.25058;
-
-    y1=-0.98334;
-
-    x2= 40.30152;
-
-    y2=-0.30171;
-
-    /* Convert two vectors to direction cosines */
-    r = 1.0;
-    d2v3 (x1, y1, r, pos1);
-    d2v3 (x2, y2, r, pos2);
-
-    /* Modulus squared of half the difference vector */
-    w = 0.0;
-    for (i = 0; i < 3; i++) {
-        diffi = pos1[i] - pos2[i];
-        w = w + (diffi * diffi);
-        }
-    w = w / 4.0;
-    if (w > 1.0) w = 1.0;
-
-    /* Angle beween the vectors */
-    diff = 2.0 * atan2 (sqrt (w), sqrt (1.0 - w));
-    diff = raddeg (diff);
-
-    w = 0.0;
-    d1 = 0.0;
-    d2 = 0.0;
-    for (i = 0; i < 3; i++) {
-        w = w + (pos1[i] * pos2[i]);
-        d1 = d1 + (pos1[i] * pos1[i]);
-        d2 = d2 + (pos2[i] * pos2[i]);
-        }
-    diff = acosdeg (w / (sqrt (d1) * sqrt (d2)));
-
-
-
-
-
-
-    char *fn= new char[file.length() + 1];
+    char *fn = new char[file.length() + 1];
     strcpy(fn, file.c_str());
 
     struct WorldCoor *wcs;
@@ -187,23 +119,18 @@ int AstroUtils::getSysOut( std::string file )
     int sysout = 0;
     double eqout = 0.0;
 
+    header = GetFITShead(fn, 0);
+    wcs = GetFITSWCS(fn, header, 1, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
+    wcsfree(wcs);
 
-    //sysout=WCS_GALACTIC;
-    header = GetFITShead (fn, 0);
+    delete [] fn;
 
-    wcs = GetFITSWCS (fn,header,1,&cra,&cdec,&dra,&ddec,&secpix, &wp, &hp, &sysout, &eqout);
-
-    return wcs->sysout;
+    return sysout;
 }
 
-void AstroUtils::getRotationAngle( std::string file )
+void AstroUtils::getRotationAngle(std::string file)
 {
-
-
-    //char *fn;
-    // do stuff
-
-    char *fn= new char[file.length() + 1];
+    char *fn = new char[file.length() + 1];
     strcpy(fn, file.c_str());
 
     struct WorldCoor *wcs;
@@ -213,15 +140,9 @@ void AstroUtils::getRotationAngle( std::string file )
     int sysout = 0;
     double eqout = 0.0;
 
-
-    header = GetFITShead (fn, 0);
-
-    wcs = GetFITSWCS (fn,header,1,&cra,&cdec,&dra,&ddec,&secpix, &wp, &hp, &sysout, &eqout);
-
-
-
-    wcsoutinit(wcs,"GALACTIC");
-
+    header = GetFITShead(fn, 0);
+    wcs = GetFITSWCS(fn, header, 1, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
+    wcsoutinit(wcs, (char*) "GALACTIC");
 
     int off;
     double xc, xn, xe, yc, yn, ye;
@@ -233,7 +154,6 @@ void AstroUtils::getRotationAngle( std::string file )
         wcs->pa_east = wcs->rot + 180.0;
         return;
     }
-
 
     /* Do not try anything if image is LINEAR (not Cartesian projection) */
     if (wcs->syswcs == WCS_LINEAR)
@@ -300,17 +220,14 @@ void AstroUtils::getRotationAngle( std::string file )
             wcs->xinc = -wcs->xinc;
     }
 
-
     delete [] fn;
-
+    wcsfree(wcs);
 }
 
-//bool AstroUtils::sky2xy(QString map,double ra, double dec,double* coord)
 bool AstroUtils::sky2xy(std::string map, double ra, double dec, double* coord)
 {
-
-    //char *fn;
-    char *fn=new char[map.length() + 1];;
+    char *fn = new char[map.length() + 1];
+    strcpy(fn, map.c_str());
 
     struct WorldCoor *wcs;
     char *header;
@@ -318,22 +235,14 @@ bool AstroUtils::sky2xy(std::string map, double ra, double dec, double* coord)
     int wp, hp;
     int sysout = 0;
     double eqout = 0.0;
-    double x, y, ra0, dec0;
+    double x, y;
     int sysin;
     char csys[16];
     double eqin = 0.0;
     int offscale;
 
-    strcpy(fn, map.c_str());
-    //    fn=map.c_str();
-
-    header = GetFITShead (fn, 0);
-
-    wcs = GetFITSWCS (fn,header,0,&cra,&cdec,&dra,&ddec,&secpix, &wp, &hp, &sysout, &eqout);
-
-
-    ra0=ra;
-    dec0=dec;
+    header = GetFITShead(fn, 0);
+    wcs = GetFITSWCS(fn, header, 0, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
 
     if (wcs->prjcode < 0)
         strcpy (csys, "PIXEL");
@@ -348,63 +257,38 @@ bool AstroUtils::sky2xy(std::string map, double ra, double dec, double* coord)
     if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10)
         wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
 
+    wcsc2pix (wcs, ra, dec, csys, &x, &y, &offscale);
 
+    coord[0] = x;
+    coord[1] = y;
+    coord[2] = secpix;
 
-    wcsc2pix (wcs, ra0, dec0, csys, &x, &y, &offscale);
+    delete [] fn;
+    delete [] header;
+    wcsfree(wcs);
 
-
-    //    delete[] fn;
-    delete[] header;
-    delete[] wcs;
-
-
-    /*
- // COMMENTATO FV PER AGGIUNGERE LAYER, ANCHE SE IMMAGINE E' FUORI RESTITUISCE OFFSET
-
-    if (offscale == 2){
-        return false;
-    }
-    else if (offscale){
-        return false;
-    }
-*/
-    coord[0]= x;
-    coord[1]= y;
-    coord[2]= secpix;
-
-
-
-    delete []fn;
     return true;
 }
 
-
-//QUI
 static double secpix0 = PSCALE;		/* Set image scale--override header */
-static int usecdelt = 0;		/* Use CDELT if 1, else CD matrix */
-static int hp0 = 0;			/* Initial height of image */
-static int wp0 = 0;			/* Initial width of image */
-static double ra0 = -99.0;		/* Initial center RA in degrees */
-static double dec0 = -99.0;		/* Initial center Dec in degrees */
+static int usecdelt = 0;		    /* Use CDELT if 1, else CD matrix */
+static int hp0 = 0;			        /* Initial height of image */
+static int wp0 = 0;			        /* Initial width of image */
+static double ra0 = -99.0;		    /* Initial center RA in degrees */
+static double dec0 = -99.0;		    /* Initial center Dec in degrees */
 static int comsys = WCS_J2000;		/* Command line center coordinte system */
-static int ptype0 = -1;			/* Projection type to fit */
-static int  nctype = 28;		/* Number of possible projections */
-static char ctypes[32][4];		/* 3-letter codes for projections */
+static int ptype0 = -1;			    /* Projection type to fit */
+static int  nctype = 28;		    /* Number of possible projections */
+static char ctypes[32][4];		    /* 3-letter codes for projections */
 static double xref0 = -99999.0;		/* Reference pixel X coordinate */
 static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
 static double secpix2 = PSCALE;		/* Set image scale 2--override header */
-static double *cd0 = NULL;		/* Set CD matrix--override header */
-static double rot0 = 361.0;		/* Initial image rotation */
+static double *cd0 = NULL;		    /* Set CD matrix--override header */
+static double rot0 = 361.0;		    /* Initial image rotation */
 static char *dateobs0 = NULL;		/* Initial DATE-OBS value in FITS date format */
 
-//END
-
-
-
-
-WorldCoor* AstroUtils::GetFITSWCS (char *filename, char	*header, int verbose, double *cra, double *cdec,double	*dra, double *ddec, double *secpix, int *wp,int	*hp,int	*sysout ,double	*eqout)
+WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, double *cra, double *cdec,double	*dra, double *ddec, double *secpix, int *wp,int	*hp,int	*sysout ,double	*eqout)
 {
-
     int naxes;
     double eq1, x, y;
     double ra1, dec1, dx, dy;
@@ -413,9 +297,7 @@ WorldCoor* AstroUtils::GetFITSWCS (char *filename, char	*header, int verbose, do
     struct WorldCoor *wcs;
     char rstr[64], dstr[64], cstr[16];
 
-
     /* Initialize WCS structure from possibly revised FITS header */
-
     wcs = ChangeFITSWCS (filename, header, verbose);
     if (wcs == NULL) {
         return (NULL);
@@ -692,8 +574,7 @@ WorldCoor* AstroUtils::GetFITSWCS (char *filename, char	*header, int verbose, do
     return (wcs);
 }
 
-
-WorldCoor* AstroUtils::ChangeFITSWCS (char *filename, char* header, int verbose)
+WorldCoor* AstroUtils::ChangeFITSWCS(char *filename, char* header, int verbose)
 {
     int nax, i, hp, wp;
     double xref, yref, degpix, secpix;
@@ -702,22 +583,14 @@ WorldCoor* AstroUtils::ChangeFITSWCS (char *filename, char* header, int verbose)
     char *cwcs;
 
     /* Set the world coordinate system from the image header */
-
-
-
     if (strlen (filename) > 0)
     {
         cwcs = strchr (filename, '%');
-
-
         if (cwcs != NULL)
             cwcs++;
     }
 
     if (!strncmp (header, "END", 3)) {
-        //qDebug()<<"strncmp - pre ";
-
-
         cwcs = NULL;
         for (i = 0; i < 2880; i++)
             header[i] = (char) 32;
@@ -726,12 +599,7 @@ WorldCoor* AstroUtils::ChangeFITSWCS (char *filename, char* header, int verbose)
         hputi4 (header, "NAXIS", 2);
         hputi4 (header, "NAXIS1", 1);
         hputi4 (header, "NAXIS2", 1);
-
-        // qDebug()<<"strncmp - post ";
-
     }
-
-    //qDebug()<<"dopo id strncmp --  ";
 
     /* Set image dimensions */
     nax = 0;
@@ -901,13 +769,11 @@ WorldCoor* AstroUtils::ChangeFITSWCS (char *filename, char* header, int verbose)
     return (wcs);
 }
 
-
-WorldCoor * AstroUtils::GetWCSFITS (char *filename, int verbose)
+WorldCoor * AstroUtils::GetWCSFITS(char *filename, int verbose)
 {
-    char *header;		/* FITS header */
+    char *header;		    /* FITS header */
     struct WorldCoor *wcs;	/* World coordinate system structure */
-    //char *GetFITShead();
-    char *cwcs;			/* Multiple wcs string (name or character) */
+    char *cwcs;			    /* Multiple wcs string (name or character) */
 
     /* Read the FITS or IRAF image file header */
     header = GetFITShead (filename, verbose);
@@ -931,11 +797,11 @@ WorldCoor * AstroUtils::GetWCSFITS (char *filename, int verbose)
     return (wcs);
 }
 
-char * AstroUtils::GetFITShead (char * filename, int verbose)
+char * AstroUtils::GetFITShead(char * filename, int verbose)
 {
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader;   /* IRAF image header */
     int nbiraf, nbfits;
 
     /* Open IRAF image if .imh extension is present */
@@ -964,7 +830,6 @@ char * AstroUtils::GetFITShead (char * filename, int verbose)
             return (NULL);
         }
     }
-
 
     /* Open FITS file if .imh extension is not present */
     else {
