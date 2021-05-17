@@ -46,7 +46,6 @@ private slots:
 
 public slots:
     void on_queryPushButton_clicked();
-   // void cutoutRequest(QUrl url, QList< QMap<QString,QString> > el =QList< QMap<QString,QString> >(), int pos=0);
     void cutoutRequest(QString url, QList< QMap<QString,QString> > el, int pos);
     void selectedStartingLayersRequest(QUrl url);
 
