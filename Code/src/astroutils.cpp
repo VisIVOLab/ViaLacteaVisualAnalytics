@@ -28,19 +28,26 @@ AstroUtils::AstroUtils()
 {
 }
 
+void AstroUtils::GetCenterCoords(std::string file, double *coords)
+{
+    WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
+    AstroUtils().xy2sky(file, wc->nxpix/2.0, wc->nypix/2.0, coords, WCS_GALACTIC);
+    wcsfree(wc);
+}
+
 /// values = [dl, db]
 void AstroUtils::GetRectSize(std::string file, double *values)
 {
     WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
     double sky_coords[2], delta[2];
-    AstroUtils().xy2sky(file, 0, 0, sky_coords, 3);
+    AstroUtils().xy2sky(file, 0, 0, sky_coords, WCS_GALACTIC);
 
     /* dl */
-    AstroUtils().xy2sky(file, wc->nxpix, 0, delta, 3);
+    AstroUtils().xy2sky(file, wc->nxpix, 0, delta, WCS_GALACTIC);
     values[0] = abs(delta[0] - sky_coords[0]);
 
     /* db */
-    AstroUtils().xy2sky(file, 0, wc->nypix, delta, 3);
+    AstroUtils().xy2sky(file, 0, wc->nypix, delta, WCS_GALACTIC);
     values[1] = abs(delta[1] - sky_coords[1]);
 
     wcsfree(wc);

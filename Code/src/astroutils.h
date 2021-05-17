@@ -13,6 +13,7 @@ public:
     static double arcsecPixel(std::string file);
     static void getRotationAngle(std::string file);
     static int getSysOut(std::string file);
+    static void GetCenterCoords(std::string file, double *coords);
     static void GetRectSize(std::string file, double *values);
     static double GetRadiusSize(std::string file);
 

@@ -30,7 +30,7 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
     QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
     QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
 
-    QString vlkbtype = settings.value("vlkbtype", "public").toString();
+    vlkbtype = settings.value("vlkbtype", "public").toString();
     if (vlkbtype == "public")
     {
         qDebug() << "public access to vlkb";
@@ -131,6 +131,57 @@ void VialacteaInitialQuery::on_authentication_required(QNetworkReply *r, QAuthen
     a->setPassword(pass);
 }
 
+void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
+{
+    QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&dl=%3&db=%4&vl=-500000&vu=500000")
+            .arg(l)
+            .arg(b)
+            .arg(dl)
+            .arg(db);
+    searchRequest(url);
+}
+
+void VialacteaInitialQuery::searchRequest(double l, double b, double r)
+{
+    QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&r=%3&vl=-500000&vu=500000")
+            .arg(l)
+            .arg(b)
+            .arg(r);
+    searchRequest(url);
+}
+
+void VialacteaInitialQuery::searchRequest(QString url)
+{
+    loading->setFileName("Querying search service");
+    loading->show();
+    loading->activateWindow();
+
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
+    connect(nam, &QNetworkAccessManager::finished, [&](QNetworkReply *reply){
+        if (reply->error() == QNetworkReply::NoError) {
+            QXmlStreamReader xml(reply);
+            auto results = parser->parseXmlAndGetList(xml);
+            emit searchDone(results);
+        } else {
+            QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr(qPrintable(reply->errorString())));
+        }
+
+        loading->loadingEnded();
+        loading->hide();
+        reply->deleteLater();
+    });
+
+    QNetworkRequest req(url);
+    if (vlkbtype == "neanias")
+    {
+        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        auth->putAccessToken(req);
+    }
+
+    QNetworkReply* reply = nam->get(req);
+    loading->setLoadingProcess(reply);
+}
 
 void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QString> > el, int pos)
 {
