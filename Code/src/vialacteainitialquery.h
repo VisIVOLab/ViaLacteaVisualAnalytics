@@ -30,6 +30,12 @@ public:
     void setCallingVtkWindow(vtkwindow_new *v){myCallingVtkWindow=v;}
     void setSelectedSurveyMap(QList < QPair<QString, QString> > s){selectedSurvey=s;}
 
+    void searchRequest(double l, double b, double dl, double db);
+    void searchRequest(double l, double b, double r);
+
+signals:
+    void searchDone(QList<QMap<QString,QString>>);
+
 
 private slots:
     void on_pushButton_clicked();
@@ -40,7 +46,6 @@ private slots:
 
 public slots:
     void on_queryPushButton_clicked();
-   // void cutoutRequest(QUrl url, QList< QMap<QString,QString> > el =QList< QMap<QString,QString> >(), int pos=0);
     void cutoutRequest(QString url, QList< QMap<QString,QString> > el, int pos);
     void selectedStartingLayersRequest(QUrl url);
 
@@ -58,16 +63,15 @@ private:
     QString species, transition,velfrom,velto;
     QMap<QString,QString> transitions;
     QList < QPair<QString, QString> > selectedSurvey;
-
-
     QWidget *p;
     QString pubdid;
     QString vlkbUrl;
-    QString vlkbsearchUrl;
-    QString vlkbcutoutUrl;
+    QString vlkbtype;
     QString velocityUnit;
     vtkwindow_new *myCallingVtkWindow;
     bool isRadius;
+
+    void searchRequest(QString url);
 };
 
 #endif // VIALACTEAINITIALQUERY_H

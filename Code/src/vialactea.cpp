@@ -16,6 +16,7 @@
 #include "sed.h"
 #include "sedvisualizerplot.h"
 #include "vialacteastringdictwidget.h"
+#include "astroutils.h"
 
 void WebProcess::jsCall(const QString &point,const QString &radius)
 {
@@ -376,14 +377,25 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(), "Fits images (*.fits)");
 
-    if (!fn.isEmpty() )
+    if (!fn.isEmpty())
     {
-        MainWindow *w = &Singleton<MainWindow>::Instance();
-        w->importFitsImage(fn);
+        double coords[2], rectSize[2];
+        AstroUtils().GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils().GetRectSize(fn.toStdString(), rectSize);
+
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn](QList<QMap<QString,QString>> results){
+            MainWindow *w = &Singleton<MainWindow>::Instance();
+            w->setSurvey("");
+            w->setSpecies("");
+            w->setTransition("");
+            w->importFitsImage(fn, results);
+            vq->deleteLater();
+        });
+
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
     }
 }
-
-
 
 void ViaLactea::on_actionSettings_triggered()
 {
