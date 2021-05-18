@@ -3531,23 +3531,24 @@ void vtkwindow_new::addTreeChild(QTreeWidgetItem *parent, QString name, QBrush b
 
 }
 
-void vtkwindow_new::addImageToList( vtkfitstoolwidgetobject *o)
+void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
 {
     imgLayerList.append(o);
-
-
     o->setLayerNumber(imageStack->GetImages()->GetNumberOfItems()-1);
 
-    QListWidgetItem* item = new QListWidgetItem(o->getSurvey()+"_"+o->getSpecies()+"_"+o->getTransition(), ui->listWidget);
+    QString text;
+    if ((o->getSurvey() == "") && (o->getSpecies() == "") && (o->getTransition() == "")) {
+        // We are loading a local file, use the filename
+        text = o->getName();
+    } else {
+        text = o->getSurvey() + "_" + o->getSpecies() + "_" + o->getTransition();
+    }
+
+    QListWidgetItem* item = new QListWidgetItem(text, ui->listWidget);
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // set checkable flag
     item->setCheckState(Qt::Checked); // AND initialize check state
+
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
-
-
-
-
-
 }
 
 

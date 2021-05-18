@@ -386,6 +386,9 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
         VialacteaInitialQuery *vq = new VialacteaInitialQuery;
         connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn](QList<QMap<QString,QString>> results){
             MainWindow *w = &Singleton<MainWindow>::Instance();
+            w->setSurvey("");
+            w->setSpecies("");
+            w->setTransition("");
             w->importFitsImage(fn, results);
             vq->deleteLater();
         });
