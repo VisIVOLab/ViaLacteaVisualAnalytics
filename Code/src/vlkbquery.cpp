@@ -116,7 +116,10 @@ void VLKBQuery::executeQuery()
     else if(what.compare("model")==0)
         connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinishedModel(QNetworkReply*)));
 
-    QNetworkReply *reply = manager->post(QNetworkRequest(url+"/sync"),postData);
+    QNetworkRequest req(url+"/sync");
+    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    auth->putAccessToken(req);
+    QNetworkReply *reply = manager->post(req,postData);
     //manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
     loading->setLoadingProcess(reply);
 
@@ -139,7 +142,10 @@ void VLKBQuery::executoSyncQuery()
               this,
               SLOT(onAuthenticationRequestSlot(QNetworkReply*,QAuthenticator*)) );
 
-    QNetworkReply *reply = networkMgr->get(QNetworkRequest(url+"/sync?REQUEST=doQuery&VERSION=1.0&LANG=ADQL&FORMAT=tsv&QUERY="+QUrl::toPercentEncoding(query)));
+    QNetworkRequest req(url+"/sync?REQUEST=doQuery&VERSION=1.0&LANG=ADQL&FORMAT=tsv&QUERY="+QUrl::toPercentEncoding(query));
+    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    auth->putAccessToken(req);
+    QNetworkReply *reply = networkMgr->get(req);
 
     qDebug()<<"pre loop >>> ";
     QEventLoop loop;
@@ -199,7 +205,10 @@ void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)
             qDebug()<<"URL REDIREZIONE: "<< urlRedirectedTo.toString();
 
             /* We'll do another request to the redirection url. */
-            manager->get(QNetworkRequest(urlRedirectedTo));
+            QNetworkRequest req(urlRedirectedTo);
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(req);
+            manager->get(req);
         }
         else
         {
@@ -294,7 +303,10 @@ void VLKBQuery::queryReplyFinishedBM (QNetworkReply *reply)
             qDebug()<<"URL REDIREZIONE: "<< urlRedirectedTo.toString();
 
             /* We'll do another request to the redirection url. */
-            manager->get(QNetworkRequest(urlRedirectedTo));
+            QNetworkRequest req(urlRedirectedTo);
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(req);
+            manager->get(req);
         }
         else
         {

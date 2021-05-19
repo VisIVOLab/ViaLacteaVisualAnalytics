@@ -168,7 +168,6 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
         ui->outputNameLineEdit->setEnabled(false);
 
         available=false;
-
     }
     else
     {
@@ -480,7 +479,10 @@ void VLKBSimpleQueryComposer::queryReplyFinished (QNetworkReply *reply)
         if(!urlRedirectedTo.isEmpty())
         {
             /* We'll do another request to the redirection url. */
-            manager->get(QNetworkRequest(urlRedirectedTo));
+            QNetworkRequest req(urlRedirectedTo);
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(req);
+            manager->get(req);
         }
         else
         {
