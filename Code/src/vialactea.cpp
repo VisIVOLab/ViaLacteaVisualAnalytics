@@ -435,9 +435,35 @@ void ViaLactea::reload()
 
 void ViaLactea::on_localDCPushButton_clicked()
 {
+    QString fn = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("FITS images(*.fit *.fits)"));
 
-    MainWindow *w = &Singleton<MainWindow>::Instance();
-    w->on_actionTEST_DC3D_triggered();
+    if (!fn.isEmpty())
+    {
+        double coords[2], rectSize[2];
+        AstroUtils().GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils().GetRectSize(fn.toStdString(), rectSize);
+
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn, this](QList<QMap<QString,QString>> results){
+            // Open a new placeholder window
+            auto placeholder = vtkSmartPointer<vtkFitsReader>::New();
+            placeholder->is3D = true;
+            placeholder->SetFileName(fn.toStdString());
+            placeholder->GetOutput();
+            auto win = new vtkwindow_new(this, placeholder);
+            win->setDbElements(results);
+
+            // Open a new window to visualize the datacube
+            auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader->is3D = true;
+            fitsReader->SetFileName(fn.toStdString());
+            fitsReader->GetOutput();
+            new vtkwindow_new(this, fitsReader, 1, win);
+
+            vq->deleteLater();
+        });
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    }
 }
 
 void ViaLactea::on_actionExit_triggered()

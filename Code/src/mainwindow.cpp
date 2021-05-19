@@ -861,25 +861,7 @@ void MainWindow::on_actionCsv_triggered()
 
 void MainWindow::on_actionTEST_DC3D_triggered()
 {
-    
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("FITS images(*.fit *.fits)"));
-    
-    if (!fileName.isEmpty() )
-    {
-
-        vtkSmartPointer<vtkFitsReader> fitsReader = vtkSmartPointer<vtkFitsReader>::New();
-        fitsReader->is3D=true;
-        fitsReader->SetFileName(fileName.toStdString());
-        fitsReader->GetOutput();
-
-        //TEST
-        //new vtkwindow(this,fitsReader,1);
-        vtkwindow_new *nn=new vtkwindow_new(this,fitsReader,1);
-        //  nn->showNormal();
-        //END TEST
-
-    }
-    
+    // Moved to ViaLactea::on_localDCPushButton_clicked
 }
 
 void MainWindow::importFitsDC(QString fileName)
