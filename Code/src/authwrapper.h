@@ -45,11 +45,11 @@ signals:
     void logged_out();
 
 private:
-    const QUrl authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/auth");
-    const QUrl tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/token");
-    const QUrl logoutUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/logout");
+    const QUrl authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
+    const QUrl tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
+    const QUrl logoutUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
     const QString clientId = QString("vlkb");
-    const QString clientSecret = QString("e1b4cda4-0ae5-46ba-86fd-1b05f58432e3");
+    const QString clientSecret = QString("b6f98dba-a409-432a-bb21-13b692d86172");
     const QString scope = QString("openid profile email phone address");
 
     QWebEngineView *view;

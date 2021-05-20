@@ -189,7 +189,10 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables (QNetworkReply
         if(!urlRedirectedTo.isEmpty())
         {
             /* We'll do another request to the redirection url. */
-            manager->get(QNetworkRequest(urlRedirectedTo));
+            QNetworkRequest req(urlRedirectedTo);
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(req);
+            manager->get(req);
         }
         else
         {
@@ -246,7 +249,10 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns (QNetworkRepl
         if(!urlRedirectedTo.isEmpty())
         {
             /* We'll do another request to the redirection url. */
-            manager->get(QNetworkRequest(urlRedirectedTo));
+            QNetworkRequest req(urlRedirectedTo);
+            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            auth->putAccessToken(req);
+            manager->get(req);
         }
         else
         {

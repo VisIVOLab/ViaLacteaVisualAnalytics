@@ -6,6 +6,8 @@
 #include "loadingwidget.h"
 #include <QDir>
 #include <QMessageBox>
+#include "authwrapper.h"
+#include "singleton.h"
 
 // constructor
 DownloadManager::DownloadManager()
@@ -41,8 +43,9 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
 
     savedFilename=fn;
     QNetworkRequest request(url);
+    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    auth->putAccessToken(request);
     QNetworkReply *reply = man->get(request);
-
     loading->setLoadingProcess(reply);
 
     qDebug()<<"doDownload, request:"<<request.url()<<" and saving to: "<<savedFilename;
