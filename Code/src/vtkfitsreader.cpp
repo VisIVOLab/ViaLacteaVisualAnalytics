@@ -1,4 +1,4 @@
-#include "vtkfitsreader.h"
+    #include "vtkfitsreader.h"
 
 #include "vtkCommand.h"
 #include "vtkInformation.h"
@@ -36,6 +36,7 @@ vtkFitsReader::vtkFitsReader()
     }
     
     this->is3D=false;
+    this->isMoment3D=false;
 
     qDebug()<<"New.vtkFitsReader";
 
@@ -183,54 +184,62 @@ int vtkFitsReader::RequestDataObject(
 
             if(! (this->is3D) )
             {
-                qDebug()<<"!is3D.RequestDataObject.vtkFitsReader";
+
+                if (this->isMoment3D)
+                {
+                    scalars = this->CalculateMoment();
+                }
+                else
+                {
+                    qDebug()<<"-!is3d.RequestDataObject.vtkFitsReader";
 
 
-                /* read the NAXIS1 and NAXIS2 keyword to get image size */
-                // if ( fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status) )
-                if ( fits_read_keys_lng(fptr, "NAXIS", 1, 2, naxes, &nfound, &status) )
-                    printerror( status );
-
-                npixels  = naxes[0] * naxes[1]; /* num of pixels in the image */
-                fpixel   = 1;
-                nullval  = 0;                /* don't check for null values in the image */
-                datamin  = 1.0E30;
-                datamax  = -1.0E30;
-
-                output->SetDimensions(naxes[0], naxes[1],1);
-
-                // output->SetOrigin(0.0, 0.0, 0.0);
-                output->SetOrigin(1.0, 1.0, 0.0);
-
-                scalars->Allocate(npixels);
-
-                while (npixels > 0) {
-
-                    nbuffer = npixels;
-                    if (npixels > buffsize)
-                        nbuffer = buffsize;
-
-                    if ( fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval,
-                                       buffer, &anynull, &status) )
+                    /* read the NAXIS1 and NAXIS2 keyword to get image size */
+                    // if ( fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status) )
+                    if ( fits_read_keys_lng(fptr, "NAXIS", 1, 2, naxes, &nfound, &status) )
                         printerror( status );
 
-                    for (ii = 0; ii < nbuffer; ii++)
-                    {
+                    npixels  = naxes[0] * naxes[1]; /* num of pixels in the image */
+                    fpixel   = 1;
+                    nullval  = 0;                /* don't check for null values in the image */
+                    datamin  = 1.0E30;
+                    datamax  = -1.0E30;
 
-                        // if (isnanf(buffer[ii])) buffer[ii] = -1000000.0; // hack for now
-                        if (std::isnan(buffer[ii])) buffer[ii] = -1000000.0; // hack for now
+                    output->SetDimensions(naxes[0], naxes[1],1);
 
-                        scalars->InsertNextValue(buffer[ii]);
+                    // output->SetOrigin(0.0, 0.0, 0.0);
+                    output->SetOrigin(1.0, 1.0, 0.0);
+
+                    scalars->Allocate(npixels);
+
+                    while (npixels > 0) {
+
+                        nbuffer = npixels;
+                        if (npixels > buffsize)
+                            nbuffer = buffsize;
+
+                        if ( fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval,
+                                           buffer, &anynull, &status) )
+                            printerror( status );
+
+                        for (ii = 0; ii < nbuffer; ii++)
+                        {
+
+                            // if (isnanf(buffer[ii])) buffer[ii] = -1000000.0; // hack for now
+                            if (std::isnan(buffer[ii])) buffer[ii] = -1000000.0; // hack for now
+
+                            scalars->InsertNextValue(buffer[ii]);
 
 
-                        if ( buffer[ii] < datamin  &&  buffer[ii]!=-1000000.0)
-                            datamin = buffer[ii];
-                        if ( buffer[ii] > datamax  &&  buffer[ii]!=-1000000.0 )
-                            datamax = buffer[ii];
+                            if ( buffer[ii] < datamin  &&  buffer[ii]!=-1000000.0)
+                                datamin = buffer[ii];
+                            if ( buffer[ii] > datamax  &&  buffer[ii]!=-1000000.0 )
+                                datamax = buffer[ii];
+                        }
+
+                        npixels -= nbuffer;    /* increment remaining number of pixels */
+                        fpixel  += nbuffer;    /* next pixel to be read in image */
                     }
-
-                    npixels -= nbuffer;    /* increment remaining number of pixels */
-                    fpixel  += nbuffer;    /* next pixel to be read in image */
                 }
             }
             else
@@ -739,10 +748,11 @@ void vtkFitsReader::printerror(int status) {
     return;
 }
 
-void vtkFitsReader::CalculateMoment()
+vtkFloatArray* vtkFitsReader::CalculateMoment()
 {
-    ReadHeader();
 
+    ReadHeader();
+    vtkStructuredPoints *output = (vtkStructuredPoints *) this->GetOutput();
     fitsfile *fptr;
     int status = 0, nfound = 0;
 
@@ -751,6 +761,13 @@ void vtkFitsReader::CalculateMoment()
     if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
         printerror(status);
 
+
+    output->SetDimensions(naxes[0], naxes[1],1);
+
+    output->SetOrigin(1.0, 1.0, 0.0);
+
+    datamin  = 1.0E30;
+    datamax  = -1.0E30;
     long npixels = naxes[0] * naxes[1] * naxes[2];
     long buffsize = naxes[0] * naxes[1];
     float *buffer = new float[buffsize];
@@ -774,8 +791,15 @@ void vtkFitsReader::CalculateMoment()
             if (std::isnan(buffer[i]))
                 buffer[i] = -1000000.0;
 
-            float v = scalars->GetValue(i) + buffer[i];
-            scalars->SetValue(i, v);
+            if (scalars->GetValue(i)!=-1000000.0)
+            {
+                float v = scalars->GetValue(i) + buffer[i];
+                scalars->SetValue(i, v);
+                if ( v < datamin  )
+                    datamin = v;
+                if ( v > datamax  )
+                    datamax = v;
+            }
         }
 
         fpixel += nbuffer;
@@ -791,9 +815,7 @@ void vtkFitsReader::CalculateMoment()
     if (fits_close_file(fptr, &status))
         printerror(status);
 
-    auto output = GetOutput();
-    output->SetDimensions(naxes[0], naxes[1], 1);
-    output->GetPointData()->SetScalars(scalars);
+    return scalars;
 }
 
 // Note: This function adapted from readimage() from cookbook.c in
@@ -890,7 +912,6 @@ void vtkFitsReader::CalculateRMS() {
                 if ( buffer[ii] > datamax   )
                     datamax = buffer[ii];
 
-                //qDebug()<<"poreeeee "<<slice;
                 if ( buffer[ii] < minmaxslice[slice][0] )
                     minmaxslice[slice][0] = buffer[ii];
                 if ( buffer[ii] > minmaxslice[slice][1]   )

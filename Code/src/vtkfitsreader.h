@@ -40,9 +40,10 @@ public:
     double getInitSlice(){return initSlice;}
     
     bool is3D;
+    bool isMoment3D;
     void CalculateRMS();
     void CalculateMedia();
-    void CalculateMoment();
+    vtkFloatArray* CalculateMoment();
     void PrintDetails();
     double GetSigma(){return sigma;}
     double GetRMS(){return rms;}

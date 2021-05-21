@@ -448,7 +448,9 @@ void ViaLactea::on_localDCPushButton_clicked()
             // Open a new window to visualize the momentmap
             auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
             fitsReader_moment->SetFileName(fn.toStdString());
-            fitsReader_moment->CalculateMoment();
+            fitsReader_moment->isMoment3D = true;
+
+           // fitsReader_moment->CalculateMoment();
             auto win = new vtkwindow_new(this, fitsReader_moment);
             win->setDbElements(results);
 
