@@ -43,7 +43,7 @@ public:
     bool isMoment3D;
     void CalculateRMS();
     void CalculateMedia();
-    vtkFloatArray* CalculateMoment();
+    vtkFloatArray* CalculateMoment(int moment = 0);
     void PrintDetails();
     double GetSigma(){return sigma;}
     double GetRMS(){return rms;}
