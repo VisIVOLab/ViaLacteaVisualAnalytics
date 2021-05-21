@@ -42,6 +42,7 @@ public:
     bool is3D;
     void CalculateRMS();
     void CalculateMedia();
+    void CalculateMoment();
     void PrintDetails();
     double GetSigma(){return sigma;}
     double GetRMS(){return rms;}

@@ -445,20 +445,18 @@ void ViaLactea::on_localDCPushButton_clicked()
 
         VialacteaInitialQuery *vq = new VialacteaInitialQuery;
         connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn, this](QList<QMap<QString,QString>> results){
-            // Open a new placeholder window
-            auto placeholder = vtkSmartPointer<vtkFitsReader>::New();
-            placeholder->is3D = true;
-            placeholder->SetFileName(fn.toStdString());
-            placeholder->GetOutput();
-            auto win = new vtkwindow_new(this, placeholder);
+            // Open a new window to visualize the momentmap
+            auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader_moment->SetFileName(fn.toStdString());
+            fitsReader_moment->CalculateMoment();
+            auto win = new vtkwindow_new(this, fitsReader_moment);
             win->setDbElements(results);
 
             // Open a new window to visualize the datacube
-            auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
-            fitsReader->is3D = true;
-            fitsReader->SetFileName(fn.toStdString());
-            fitsReader->GetOutput();
-            new vtkwindow_new(this, fitsReader, 1, win);
+            auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader_dc->SetFileName(fn.toStdString());
+            fitsReader_dc->is3D = true;
+            new vtkwindow_new(this, fitsReader_dc, 1, win);
 
             vq->deleteLater();
         });

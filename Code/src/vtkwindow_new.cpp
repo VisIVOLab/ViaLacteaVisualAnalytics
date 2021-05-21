@@ -1298,6 +1298,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         if ( min <= 0 )
             min=1;
         lut->SetTableRange( min, myfits->GetMax() );
+        qDebug() << "-- RANGE" << min << "\t" << myfits->GetMax();
 
         SelectLookTable("Gray",lut);
         imageObject->setLutScale("Log");

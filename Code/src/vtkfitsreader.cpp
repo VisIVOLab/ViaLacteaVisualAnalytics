@@ -739,6 +739,62 @@ void vtkFitsReader::printerror(int status) {
     return;
 }
 
+void vtkFitsReader::CalculateMoment()
+{
+    ReadHeader();
+
+    fitsfile *fptr;
+    int status = 0, nfound = 0;
+
+    if (fits_open_file(&fptr, filename.c_str(), READONLY, &status))
+        printerror(status);
+    if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
+        printerror(status);
+
+    long npixels = naxes[0] * naxes[1] * naxes[2];
+    long buffsize = naxes[0] * naxes[1];
+    float *buffer = new float[buffsize];
+    auto scalars = vtkFloatArray::New();
+    scalars->Allocate(buffsize);
+
+    for (long i = 0; i < buffsize; ++i)
+        scalars->InsertNextValue(0.0);
+
+    int anynull = 0;
+    float fpixel = 1, nullval = 0;
+    long nbuffer = 0;
+
+    while (npixels > 0) {
+        nbuffer = fmin(npixels, buffsize);
+
+        if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+        for (long i = 0; i < nbuffer; ++i) {
+            if (std::isnan(buffer[i]))
+                buffer[i] = -1000000.0;
+
+            float v = scalars->GetValue(i) + buffer[i];
+            scalars->SetValue(i, v);
+        }
+
+        fpixel += nbuffer;
+        npixels -= nbuffer;
+    }
+
+    double range[2];
+    scalars->GetRange(range);
+
+
+    delete [] buffer;
+
+    if (fits_close_file(fptr, &status))
+        printerror(status);
+
+    auto output = GetOutput();
+    output->SetDimensions(naxes[0], naxes[1], 1);
+    output->GetPointData()->SetScalars(scalars);
+}
 
 // Note: This function adapted from readimage() from cookbook.c in
 // fitsio distribution.
@@ -878,7 +934,6 @@ void vtkFitsReader::CalculateRMS() {
         printerror( status );
     
     output->GetPointData()->SetScalars(scalars);
-
     return;
 }
 int vtkFitsReader::GetNaxes(int i)
