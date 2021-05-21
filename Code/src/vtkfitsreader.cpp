@@ -1,5 +1,4 @@
-    #include "vtkfitsreader.h"
-
+#include "vtkfitsreader.h"
 #include "vtkCommand.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
@@ -750,9 +749,7 @@ void vtkFitsReader::printerror(int status) {
 
 vtkFloatArray* vtkFitsReader::CalculateMoment()
 {
-
     ReadHeader();
-    vtkStructuredPoints *output = (vtkStructuredPoints *) this->GetOutput();
     fitsfile *fptr;
     int status = 0, nfound = 0;
 
@@ -761,9 +758,8 @@ vtkFloatArray* vtkFitsReader::CalculateMoment()
     if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
         printerror(status);
 
-
-    output->SetDimensions(naxes[0], naxes[1],1);
-
+    vtkStructuredPoints *output = this->GetOutput();
+    output->SetDimensions(naxes[0], naxes[1], 1);
     output->SetOrigin(1.0, 1.0, 0.0);
 
     datamin  = 1.0E30;
@@ -791,13 +787,13 @@ vtkFloatArray* vtkFitsReader::CalculateMoment()
             if (std::isnan(buffer[i]))
                 buffer[i] = -1000000.0;
 
-            if (scalars->GetValue(i)!=-1000000.0)
+            if (scalars->GetValue(i) != -1000000.0)
             {
                 float v = scalars->GetValue(i) + buffer[i];
                 scalars->SetValue(i, v);
-                if ( v < datamin  )
+                if (v < datamin)
                     datamin = v;
-                if ( v > datamax  )
+                if (v > datamax)
                     datamax = v;
             }
         }
@@ -805,10 +801,6 @@ vtkFloatArray* vtkFitsReader::CalculateMoment()
         fpixel += nbuffer;
         npixels -= nbuffer;
     }
-
-    double range[2];
-    scalars->GetRange(range);
-
 
     delete [] buffer;
 
