@@ -1178,6 +1178,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->setWindowTitle(myfits->GetFileName().c_str());
         this->isDatacube = false;
 
+        ui->menuCamera->menuAction()->setVisible(false);
         ui->menuMoment->menuAction()->setVisible(false);
         ui->cameraControlgroupBox->hide();
         ui->selectionGroupBox->hide();
@@ -1334,6 +1335,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->naxis3=vis->GetNaxes(2);
 
         ui->setupUi(this);
+        ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
         ui->ElementListWidget->hide();
         ui->tableWidget->hide();
@@ -4926,5 +4928,41 @@ void vtkwindow_new::on_actionCalculate_order_1_triggered()
         moment->setMomentOrder(1);
         myParentVtkWindow->addLayerImage(moment, myfits->getSurvey(), myfits->getSpecies(), myfits->getTransition());
     }
+}
+
+
+void vtkwindow_new::on_actionFront_triggered()
+{
+    setCameraAzimuth(0);
+}
+
+
+void vtkwindow_new::on_actionBack_triggered()
+{
+    setCameraAzimuth(-180);
+}
+
+
+void vtkwindow_new::on_actionTop_triggered()
+{
+    setCameraElevation(90);
+}
+
+
+void vtkwindow_new::on_actionRight_triggered()
+{
+    setCameraAzimuth(90);
+}
+
+
+void vtkwindow_new::on_actionBottom_triggered()
+{
+    setCameraElevation(-90);
+}
+
+
+void vtkwindow_new::on_actionLeft_triggered()
+{
+    setCameraAzimuth(-90);
 }
 

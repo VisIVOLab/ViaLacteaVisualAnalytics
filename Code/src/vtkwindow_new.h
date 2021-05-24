@@ -384,6 +384,12 @@ private slots:
     void on_filterMoreButton_clicked();
     void on_actionCalculate_order_0_triggered();
     void on_actionCalculate_order_1_triggered();
+    void on_actionFront_triggered();
+    void on_actionBack_triggered();
+    void on_actionTop_triggered();
+    void on_actionRight_triggered();
+    void on_actionBottom_triggered();
+    void on_actionLeft_triggered();
 };
 
 #endif // vtkwindow_new_H
