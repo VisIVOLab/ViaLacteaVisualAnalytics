@@ -382,6 +382,8 @@ private slots:
 
     void on_bubblePushButton_clicked();
     void on_filterMoreButton_clicked();
+    void on_actionCalculate_order_0_triggered();
+    void on_actionCalculate_order_1_triggered();
 };
 
 #endif // vtkwindow_new_H
