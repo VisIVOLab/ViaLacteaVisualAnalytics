@@ -3518,6 +3518,9 @@ void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
     if ((o->getSurvey() == "") && (o->getSpecies() == "") && (o->getTransition() == "")) {
         // We are loading a local file, use the filename
         text = o->getName();
+        if (o->getFits()->isMoment3D) {
+            text += "_mom" + QString::number(o->getFits()->getMomentOrder());
+        }
     } else {
         text = o->getSurvey() + "_" + o->getSpecies() + "_" + o->getTransition();
     }
@@ -4914,7 +4917,7 @@ void vtkwindow_new::on_actionCalculate_order_0_triggered()
         moment->SetFileName(myfits->GetFileName());
         moment->isMoment3D = true;
         moment->setMomentOrder(0);
-        myParentVtkWindow->addLayerImage(moment, myfits->getSurvey(), myfits->getSpecies(), myfits->getTransition());
+        myParentVtkWindow->addLayerImage(moment);
     }
 }
 
@@ -4926,7 +4929,7 @@ void vtkwindow_new::on_actionCalculate_order_1_triggered()
         moment->SetFileName(myfits->GetFileName());
         moment->isMoment3D = true;
         moment->setMomentOrder(1);
-        myParentVtkWindow->addLayerImage(moment, myfits->getSurvey(), myfits->getSpecies(), myfits->getTransition());
+        myParentVtkWindow->addLayerImage(moment);
     }
 }
 
