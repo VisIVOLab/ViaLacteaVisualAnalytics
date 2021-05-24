@@ -187,7 +187,7 @@ int vtkFitsReader::RequestDataObject(
                 if (this->isMoment3D)
                 {
                     // Calculate moment order=0 by default
-                    scalars = this->CalculateMoment();
+                    scalars = this->CalculateMoment(momentOrder);
                 }
                 else
                 {
@@ -748,39 +748,49 @@ void vtkFitsReader::printerror(int status) {
     return;
 }
 
-vtkFloatArray* vtkFitsReader::CalculateMoment(int moment)
+int vtkFitsReader::getMomentOrder()
+{
+    return momentOrder;
+}
+
+void vtkFitsReader::setMomentOrder(int order)
+{
+    momentOrder = order;
+}
+
+vtkFloatArray* vtkFitsReader::CalculateMoment(int order)
 {
     auto scalars = vtkFloatArray::New();
 
-    if (moment == 0)
+    ReadHeader();
+    fitsfile *fptr;
+    int status = 0, nfound = 0;
+
+    if (fits_open_file(&fptr, filename.c_str(), READONLY, &status))
+        printerror(status);
+    if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
+        printerror(status);
+
+    vtkStructuredPoints *output = this->GetOutput();
+    output->SetDimensions(naxes[0], naxes[1], 1);
+    output->SetOrigin(1.0, 1.0, 0.0);
+
+    datamin  = 1.0E30;
+    datamax  = -1.0E30;
+    long npixels = naxes[0] * naxes[1] * naxes[2];
+    long buffsize = naxes[0] * naxes[1];
+    float *buffer = new float[buffsize];
+    scalars->Allocate(buffsize);
+
+    for (long i = 0; i < buffsize; ++i)
+        scalars->InsertNextValue(0.0);
+
+    int anynull = 0;
+    float fpixel = 1, nullval = 0;
+    long nbuffer = 0;
+
+    if (order == 0)
     {
-        ReadHeader();
-        fitsfile *fptr;
-        int status = 0, nfound = 0;
-
-        if (fits_open_file(&fptr, filename.c_str(), READONLY, &status))
-            printerror(status);
-        if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
-            printerror(status);
-
-        vtkStructuredPoints *output = this->GetOutput();
-        output->SetDimensions(naxes[0], naxes[1], 1);
-        output->SetOrigin(1.0, 1.0, 0.0);
-
-        datamin  = 1.0E30;
-        datamax  = -1.0E30;
-        long npixels = naxes[0] * naxes[1] * naxes[2];
-        long buffsize = naxes[0] * naxes[1];
-        float *buffer = new float[buffsize];
-        scalars->Allocate(buffsize);
-
-        for (long i = 0; i < buffsize; ++i)
-            scalars->InsertNextValue(0.0);
-
-        int anynull = 0;
-        float fpixel = 1, nullval = 0;
-        long nbuffer = 0;
-
         while (npixels > 0) {
             nbuffer = fmin(npixels, buffsize);
 
@@ -806,12 +816,48 @@ vtkFloatArray* vtkFitsReader::CalculateMoment(int moment)
             npixels -= nbuffer;
         }
 
-        delete [] buffer;
-
-        if (fits_close_file(fptr, &status))
-            printerror(status);
-
     }
+    else if (order == 1)
+    {
+        vtkFloatArray* m0 = CalculateMoment(0);
+
+        int slice = 0;
+        while (npixels > 0) {
+            nbuffer = fmin(npixels, buffsize);
+            double velocityValue = getInitSlice() + GetCdelt(2) * (slice);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < nbuffer; ++i) {
+                if (std::isnan(buffer[i]))
+                    buffer[i] = -1000000.0;
+
+                if (m0->GetValue(i) != -1000000.0)
+                {
+                    float v = scalars->GetValue(i) + (buffer[i] * velocityValue)/m0->GetValue(i);
+                    scalars->SetValue(i, v);
+                    if (v < datamin)
+                        datamin = v;
+                    if (v > datamax)
+                        datamax = v;
+                } else {
+                    scalars->SetValue(i, buffer[i]);
+                }
+            }
+
+            slice++;
+            fpixel += nbuffer;
+            npixels -= nbuffer;
+        }
+
+        m0->Delete();
+    }
+
+    delete [] buffer;
+
+    if (fits_close_file(fptr, &status))
+        printerror(status);
 
     return scalars;
 }

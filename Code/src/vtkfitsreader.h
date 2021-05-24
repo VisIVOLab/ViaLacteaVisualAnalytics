@@ -43,7 +43,6 @@ public:
     bool isMoment3D;
     void CalculateRMS();
     void CalculateMedia();
-    vtkFloatArray* CalculateMoment(int moment = 0);
     void PrintDetails();
     double GetSigma(){return sigma;}
     double GetRMS(){return rms;}
@@ -83,10 +82,12 @@ public:
     QString getSpecies() {return species;};
     QString getTransition() {return transition;};
     QString getSurvey() {return survey;};
+    int getMomentOrder();
 
     void setSpecies(QString s) {species=s;};
     void setTransition(QString s) {transition=s;};
     void setSurvey(QString s) {survey=s;};
+    void setMomentOrder(int order);
 
 protected:
     QString survey;
@@ -155,6 +156,8 @@ private:
     void ReadHeader();
     void printerror(int status); // from fitsio distribution
     double initSlice;
+    int momentOrder = 0;
+    vtkFloatArray* CalculateMoment(int order);
 };
 
 
