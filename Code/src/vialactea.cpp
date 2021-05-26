@@ -384,12 +384,12 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
         AstroUtils().GetRectSize(fn.toStdString(), rectSize);
 
         VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-        connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn](QList<QMap<QString,QString>> results){
-            MainWindow *w = &Singleton<MainWindow>::Instance();
-            w->setSurvey("");
-            w->setSpecies("");
-            w->setTransition("");
-            w->importFitsImage(fn, results);
+        connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn, this](QList<QMap<QString,QString>> results){
+            auto fits = vtkSmartPointer<vtkFitsReader>::New();
+            fits->SetFileName(fn.toStdString());
+            auto win = new vtkwindow_new(this, fits);
+            win->setDbElements(results);
+            masterWin = win;
             vq->deleteLater();
         });
 
@@ -433,6 +433,18 @@ void ViaLactea::reload()
 
 }
 
+bool ViaLactea::isMasterWin(vtkwindow_new *win)
+{
+    qDebug() << "ViaLactea.isMasterWin" << win;
+    return win == masterWin;
+}
+
+void ViaLactea::resetMasterWin()
+{
+    qDebug() << "ViaLactea.resetMasterWin";
+    masterWin = nullptr;
+}
+
 void ViaLactea::on_localDCPushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("FITS images(*.fit *.fits)"));
@@ -452,6 +464,7 @@ void ViaLactea::on_localDCPushButton_clicked()
             fitsReader_moment->setMomentOrder(0);
             auto win = new vtkwindow_new(this, fitsReader_moment);
             win->setDbElements(results);
+            masterWin = win;
 
             // Open a new window to visualize the datacube
             auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();

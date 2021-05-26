@@ -59,6 +59,7 @@
 #include "singleton.h"
 #include <vtkAutoInit.h>
 #include "vtkPolyLine.h"
+#include "vialactea.h"
 #include "vialacteainitialquery.h"
 #include "selectedsourcesform.h"
 #include "vtkContourFilter.h"
@@ -2444,7 +2445,11 @@ void vtkwindow_new::closeEvent(QCloseEvent *event)
 {
     if(vtkwintype==1)
         removeContour();
-    //this->~vtkwindow_new();
+
+    auto vl = &Singleton<ViaLactea>::Instance();
+    if (vl->isMasterWin(this))
+        vl->resetMasterWin();
+
     this->close();
 }
 
