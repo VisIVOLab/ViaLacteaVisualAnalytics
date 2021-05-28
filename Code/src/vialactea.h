@@ -31,6 +31,7 @@ public:
     void reload();
     bool isMasterWin(vtkwindow_new *win);
     void resetMasterWin();
+    void setMasterWin(vtkwindow_new *win);
 
     //for javascript communication procedures
     WebProcess * webobj;
@@ -83,6 +84,8 @@ private:
     QString tilePath;
     QMap <int, QPair<QString, QString> > mapSurvey;
     vtkwindow_new *masterWin = nullptr;
+
+    bool canImportToMasterWin(std::string importFn);
 
 protected:
     void  closeEvent(QCloseEvent*);

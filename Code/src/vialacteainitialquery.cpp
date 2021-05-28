@@ -10,6 +10,7 @@
 #include <QDir>
 #include "mainwindow.h"
 #include "singleton.h"
+#include "vialactea.h"
 #include <QSettings>
 #include <QUrlQuery>
 #include <QAuthenticator>
@@ -452,8 +453,6 @@ void VialacteaInitialQuery::on_download_completed()
 
     this->close();
 
-    MainWindow *w = &Singleton<MainWindow>::Instance();
-
     if ((velfrom.compare("0.0") == 0 && velto.compare("0.0") == 0) || species.compare("dust") == 0 || species.compare("Continuum") == 0 ||
             (surveyname.compare("NANTEN") == 0 && test_flag_nanten == 2) ||
             QString::compare("cornish", surveyname, Qt::CaseInsensitive) == 0 ||
@@ -462,17 +461,37 @@ void VialacteaInitialQuery::on_download_completed()
     {
         bool l = myCallingVtkWindow != 0;
 
-        w->setSurvey(surveyname);
-        w->setSpecies(species);
-        w->setTransition(transition);
-        w->setCallingVtkWindow(myCallingVtkWindow);
-        w->setSelectedSurveyMap(selectedSurvey);
-        w->importFitsImage(currentPath, elementsOnDb,ui->l_lineEdit->text(),ui->b_lineEdit->text(),ui->r_lineEdit->text(), ui->dbLineEdit->text(), ui->dlLineEdit->text(), l);
+        auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        fits->SetFileName(currentPath.toStdString());
+        fits->setSurvey(surveyname);
+        fits->setSpecies(species);
+        fits->setTransition(transition);
+
+        if (l) {
+            myCallingVtkWindow->addLayerImage(fits, surveyname, species, transition);
+        } else {
+            auto win = new vtkwindow_new(this, fits, 0, myCallingVtkWindow);
+            win->setCallingL(ui->l_lineEdit->text());
+            win->setCallingB(ui->b_lineEdit->text());
+            win->setCallingR(ui->r_lineEdit->text());
+            win->setCallingDl(ui->dlLineEdit->text());
+            win->setCallingDb(ui->dbLineEdit->text());
+            win->setDbElements(elementsOnDb);
+            if (selectedSurvey.length() > 1)
+                win->downloadStartingLayers(selectedSurvey);
+
+            auto vl = &Singleton<ViaLactea>::Instance();
+            vl->setMasterWin(win);
+        }
     }
     else
     {
+        auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        fits->SetFileName(currentPath.toStdString());
+        fits->is3D = true;
+
         myCallingVtkWindow->setSelectedCubeVelocityUnit(velocityUnit);
-        w->setCallingVtkWindow(myCallingVtkWindow);
-        w->importFitsDC(currentPath);
+        new vtkwindow_new(this, fits, 1, myCallingVtkWindow);
+
     }
 }

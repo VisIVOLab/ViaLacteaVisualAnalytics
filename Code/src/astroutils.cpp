@@ -61,6 +61,48 @@ double AstroUtils::GetRadiusSize(std::string file)
     return radius;
 }
 
+void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double *right, double *left)
+{
+    double tl[2], br[2];
+    WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
+    AstroUtils().xy2sky(file, 0, wc->nypix, tl, WCS_GALACTIC);
+    AstroUtils().xy2sky(file, wc->nxpix, 0, br, WCS_GALACTIC);
+    *top = tl[1];
+    *left = tl[0];
+    *bottom = br[1];
+    *right = br[0];
+    wcsfree(wc);
+}
+
+bool AstroUtils::CheckOverlap(std::string f1, std::string f2, bool full)
+{
+    if (full) {
+        // Full overlap
+        return CheckFullOverlap(f1, f2) || CheckFullOverlap(f2, f1);
+    } else {
+        // Check partial overlap
+        double T1, B1, R1, L1;
+        AstroUtils().GetBounds(f1, &T1, &B1, &R1, &L1);
+
+        double T2, B2, R2, L2;
+        AstroUtils().GetBounds(f2, &T2, &B2, &R2, &L2);
+
+        return L1 > R2 && R1 < L2 && T1 > B2 && B1 < T2;
+    }
+}
+
+bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
+{
+    double T1, B1, R1, L1;
+    AstroUtils().GetBounds(f1, &T1, &B1, &R1, &L1);
+
+    double T2, B2, R2, L2;
+    AstroUtils().GetBounds(f2, &T2, &B2, &R2, &L2);
+
+    // returns true if f2 is completely inside f1
+    return R2 > R1 && L2 < L1 && T2 < T1 && B2 > B1;
+}
+
 double AstroUtils::arcsecPixel(std::string file)
 {
     char *fn = new char[file.length() + 1];

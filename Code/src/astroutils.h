@@ -16,12 +16,15 @@ public:
     static void GetCenterCoords(std::string file, double *coords);
     static void GetRectSize(std::string file, double *values);
     static double GetRadiusSize(std::string file);
+    static bool CheckOverlap(std::string f1, std::string f2, bool full = false);
 
 private:
     static WorldCoor* GetWCSFITS (char *filename, int verbose);
     static char * GetFITShead (char * filename, int verbose);
     static WorldCoor* GetFITSWCS (char *filename, char	*header, int verbose, double *cra, double *cdec,double *dra, double *ddec, double *secpix, int *wp,int	*hp,int	*sysout ,double	*eqout);
     static WorldCoor* ChangeFITSWCS (char *filename, char* header, int verbose);
+    static void GetBounds(std::string file, double *top, double *bottom, double *right, double *left);
+    static bool CheckFullOverlap(std::string f1, std::string f2);
 };
 
 #endif // ASTROUTILS_H
