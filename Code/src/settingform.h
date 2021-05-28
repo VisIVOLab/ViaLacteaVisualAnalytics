@@ -46,6 +46,9 @@ private:
     Ui::SettingForm *ui;
     QString m_sSettingsFile;
     AuthWrapper *m_authWrapper;
+    bool m_termsAccepted = false;
+    const QString m_privacyPolicyUrl = "https://thematic.neanias.eu/SPACE/ViaLactea/privacy.html";
+    const QString m_termsOfUseUrl = "https://thematic.neanias.eu/SPACE/ViaLactea/terms.html";
 };
 
 #endif // SETTINGFORM_H

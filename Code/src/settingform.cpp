@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QFileDialog>
+#include <QMessageBox>
 #include "vialactea.h"
 #include "singleton.h"
 
@@ -40,6 +41,8 @@ SettingForm::~SettingForm()
 void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+
+    m_termsAccepted = settings.value("termsaccepted", false).toBool();
 
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
@@ -135,6 +138,7 @@ void SettingForm::on_OkPushButton_clicked()
 {
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
+    settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath",  ui->TileLineEdit->text());
     settings.setValue("idlpath", ui->IdlLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
@@ -239,8 +243,29 @@ void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
 
 void SettingForm::on_loginButton_clicked()
 {
-    if(!m_authWrapper->isAuthenticated())
-        m_authWrapper->grant();
+    if (m_authWrapper->isAuthenticated())
+        return;
+
+    if (!m_termsAccepted) {
+        auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
+                .arg(m_privacyPolicyUrl)
+                .arg(m_termsOfUseUrl);
+
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Question);
+        msgBox.setTextFormat(Qt::RichText);
+        msgBox.setInformativeText(text);
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        int ret = msgBox.exec();
+        if (ret == QMessageBox::Yes) {
+            m_termsAccepted = true;
+        }
+        else {
+            return;
+        }
+    }
+
+    m_authWrapper->grant();
 }
 
 void SettingForm::on_publicVLKB_radioButton_toggled(bool checked)
