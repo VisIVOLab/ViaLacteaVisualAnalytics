@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QMap>
 #include <QPair>
+#include "vtkwindow_new.h"
 
 
 namespace Ui {
@@ -26,9 +27,11 @@ class ViaLactea : public QMainWindow
 
 public:
     explicit ViaLactea(QWidget *parent = 0);
-    void reload();
-
     ~ViaLactea();
+    void reload();
+    bool isMasterWin(vtkwindow_new *win);
+    void resetMasterWin();
+    void setMasterWin(vtkwindow_new *win);
 
     //for javascript communication procedures
     WebProcess * webobj;
@@ -80,6 +83,9 @@ private:
     QString m_sSettingsFile;
     QString tilePath;
     QMap <int, QPair<QString, QString> > mapSurvey;
+    vtkwindow_new *masterWin = nullptr;
+
+    bool canImportToMasterWin(std::string importFn);
 
 protected:
     void  closeEvent(QCloseEvent*);
