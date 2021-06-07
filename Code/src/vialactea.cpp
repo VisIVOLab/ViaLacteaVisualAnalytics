@@ -435,9 +435,34 @@ void ViaLactea::reload()
 
 void ViaLactea::on_localDCPushButton_clicked()
 {
+    QString fn = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("FITS images(*.fit *.fits)"));
 
-    MainWindow *w = &Singleton<MainWindow>::Instance();
-    w->on_actionTEST_DC3D_triggered();
+    if (!fn.isEmpty())
+    {
+        double coords[2], rectSize[2];
+        AstroUtils().GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils().GetRectSize(fn.toStdString(), rectSize);
+
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone, [vq, fn, this](QList<QMap<QString,QString>> results){
+            // Open a new window to visualize the momentmap
+            auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader_moment->SetFileName(fn.toStdString());
+            fitsReader_moment->isMoment3D = true;
+            fitsReader_moment->setMomentOrder(0);
+            auto win = new vtkwindow_new(this, fitsReader_moment);
+            win->setDbElements(results);
+
+            // Open a new window to visualize the datacube
+            auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader_dc->SetFileName(fn.toStdString());
+            fitsReader_dc->is3D = true;
+            new vtkwindow_new(this, fitsReader_dc, 1, win);
+
+            vq->deleteLater();
+        });
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    }
 }
 
 void ViaLactea::on_actionExit_triggered()

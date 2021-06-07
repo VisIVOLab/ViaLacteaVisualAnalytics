@@ -1176,18 +1176,18 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->setupUi(this);
 
         this->setWindowTitle(myfits->GetFileName().c_str());
-        ui->cameraControlgroupBox->hide();
+        this->isDatacube = false;
 
+        ui->menuCamera->menuAction()->setVisible(false);
+        ui->menuMoment->menuAction()->setVisible(false);
+        ui->cameraControlgroupBox->hide();
         ui->selectionGroupBox->hide();
         ui->ThresholdGroupBox->hide();
         ui->valueGroupBox->hide();
-
         ui->cuttingPlaneGroupBox->hide();
-
         ui->spinBox_cuttingPlane->hide();
         ui->spinBox_channels->hide();
         ui->label_channels->hide();
-
         ui->label_survey->hide();
         ui->label_species->hide();
         ui->label_transition->hide();
@@ -1200,33 +1200,16 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->datacubeGroupBox->hide();
         ui->lut3dGroupBox->hide();
         ui->glyphGroupBox->hide();
-
         ui->filterGroupBox->hide();
-
-       ui->bubbleGroupBox->hide();
-
+        ui->bubbleGroupBox->hide();
+        ui->isocontourVtkWin->hide();
 
         ui->ElementListWidget->installEventFilter(this);
-
-        this->isDatacube=false;
-
-
-        ui->isocontourVtkWin->hide();
         ui->ElementListWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         ui->tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
-
         ui->listWidget->setDragDropMode(QAbstractItemView::InternalMove );
         connect(ui->listWidget->model(), SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)), this, SLOT(movedLayersRow(QModelIndex,int,int,QModelIndex,int)) );
-
-
-
-        /*m_Ren1 = vtkRenderer::New();
-        //renwin = vtkRenderWindow::New();
-        vtkNew<vtkGenericOpenGLRenderWindow> rw;
-        renwin = rw;
-        renwin->AddRenderer(m_Ren1);
-        ui->qVTK1->setRenderWindow(renwin);*/
 
         auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
         renwin = renWin;
@@ -1274,18 +1257,12 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         compact->addAction(remote);
         compact->addAction(selector_3D);
         compact->addAction(normal_selector);
-        /*
-        ui->qVTK1->setContextMenuPolicy(Qt::CustomContextMenu);
-        this->Connections = vtkSmartPointer<vtkEventQtSlotConnect>::New();
-        this->Connections->Connect( ui->qVTK1->GetRenderWindow()->GetInteractor(), vtkCommand::RightButtonPressEvent ,this,SLOT(slot_clicked(vtkObject*, unsigned long, void*, void*)));//QVTKOpenGLWindow::GetRenderWindow() is deprecated, use renderWindow() instead.
-*/
-
 
         setVtkInteractorStyleImage();
 
-        double* range = vis->GetOutput()->GetScalarRange();
+        // double* range = vis->GetOutput()->GetScalarRange();
+        // qDebug()<<" r: "<<range[0]<<" .. "<<range[1];
 
-        //   qDebug()<<" r: "<<range[0]<<" .. "<<range[1];
         vtkSmartPointer<vtkImageShiftScale> resultScale = vtkSmartPointer<vtkImageShiftScale>::New();
         resultScale->SetOutputScalarTypeToUnsignedChar();
         resultScale->SetInputData( vis->GetOutput() );
@@ -1358,6 +1335,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->naxis3=vis->GetNaxes(2);
 
         ui->setupUi(this);
+        ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
         ui->ElementListWidget->hide();
         ui->tableWidget->hide();
@@ -3540,6 +3518,9 @@ void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
     if ((o->getSurvey() == "") && (o->getSpecies() == "") && (o->getTransition() == "")) {
         // We are loading a local file, use the filename
         text = o->getName();
+        if (o->getFits()->isMoment3D) {
+            text += "_mom" + QString::number(o->getFits()->getMomentOrder());
+        }
     } else {
         text = o->getSurvey() + "_" + o->getSpecies() + "_" + o->getTransition();
     }
@@ -4928,3 +4909,63 @@ void vtkwindow_new::on_filterMoreButton_clicked()
     filterCustomize->show();
 
 }
+
+void vtkwindow_new::on_actionCalculate_order_0_triggered()
+{
+    if (myParentVtkWindow != 0) {
+        auto moment = vtkSmartPointer<vtkFitsReader>::New();
+        moment->SetFileName(myfits->GetFileName());
+        moment->isMoment3D = true;
+        moment->setMomentOrder(0);
+        myParentVtkWindow->addLayerImage(moment);
+    }
+}
+
+
+void vtkwindow_new::on_actionCalculate_order_1_triggered()
+{
+    if (myParentVtkWindow != 0) {
+        auto moment = vtkSmartPointer<vtkFitsReader>::New();
+        moment->SetFileName(myfits->GetFileName());
+        moment->isMoment3D = true;
+        moment->setMomentOrder(1);
+        myParentVtkWindow->addLayerImage(moment);
+    }
+}
+
+
+void vtkwindow_new::on_actionFront_triggered()
+{
+    setCameraAzimuth(0);
+}
+
+
+void vtkwindow_new::on_actionBack_triggered()
+{
+    setCameraAzimuth(-180);
+}
+
+
+void vtkwindow_new::on_actionTop_triggered()
+{
+    setCameraElevation(90);
+}
+
+
+void vtkwindow_new::on_actionRight_triggered()
+{
+    setCameraAzimuth(90);
+}
+
+
+void vtkwindow_new::on_actionBottom_triggered()
+{
+    setCameraElevation(-90);
+}
+
+
+void vtkwindow_new::on_actionLeft_triggered()
+{
+    setCameraAzimuth(-90);
+}
+
