@@ -14,21 +14,18 @@ SettingForm::SettingForm(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->groupBox_4->hide();
-    ui->logoutButton->hide();
+    ui->vlkbLogoutButton->hide();
+    ui->caesarLogoutButton->hide();
 
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
-    m_authWrapper = &Singleton<AuthWrapper>::Instance();
-    connect(m_authWrapper, &AuthWrapper::authenticated, [&](){
-        ui->authStatusLabel->setText("Authenticated");
-        ui->loginButton->hide();
-        ui->logoutButton->show();
-    });
-    connect(m_authWrapper, &AuthWrapper::logged_out, [&](){
-        ui->authStatusLabel->setText("Not authenticated");
-        ui->loginButton->show();
-        ui->logoutButton->hide();
-    });
+    m_vlkbAuth = &NeaniasVlkbAuth::Instance();
+    connect(m_vlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
+    connect(m_vlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
+
+    m_caesarAuth = &NeaniasCaesarAuth::Instance();
+    connect(m_caesarAuth, &AuthWrapper::authenticated, this, &SettingForm::caesar_loggedin);
+    connect(m_caesarAuth, &AuthWrapper::logged_out, this, &SettingForm::caesar_loggedout);
 
     m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
 }
@@ -64,16 +61,16 @@ void SettingForm::readSettingsFromFile()
         ui->password_LineEdit->hide();
         ui->userLabel->hide();
         ui->passLabel->hide();
-        ui->authLabel->hide();
-        ui->authStatusLabel->hide();
-        ui->loginButton->hide();
+        ui->vlkbAuthLabel->hide();
+        ui->vlkbAuthStatusLabel->hide();
+        ui->vlkbLoginButton->hide();
     }
     else if(vlkbtype == "private")
     {
         ui->privateVLKB_radioButton->setChecked(true);
-        ui->authLabel->hide();
-        ui->authStatusLabel->hide();
-        ui->loginButton->hide();
+        ui->vlkbAuthLabel->hide();
+        ui->vlkbAuthStatusLabel->hide();
+        ui->vlkbLoginButton->hide();
         ui->username_LineEdit->show();
         ui->password_LineEdit->show();
         ui->userLabel->show();
@@ -90,19 +87,15 @@ void SettingForm::readSettingsFromFile()
         ui->userLabel->hide();
         ui->passLabel->hide();
 
-        ui->authLabel->show();
+        ui->vlkbAuthLabel->show();
 
-        if(m_authWrapper->isAuthenticated()){
-            ui->loginButton->hide();
-            ui->logoutButton->show();
-            ui->authStatusLabel->setText("Authenticated");
+        if(m_vlkbAuth->isAuthenticated()){
+            vlkb_loggedin();
         } else {
-            ui->loginButton->show();
-            ui->logoutButton->hide();
-            ui->authStatusLabel->setText("Not authenticated");
+            vlkb_loggedout();
         }
 
-        ui->authStatusLabel->show();
+        ui->vlkbAuthStatusLabel->show();
     }
 
     if (settings.value("online",false) == true)
@@ -112,6 +105,34 @@ void SettingForm::readSettingsFromFile()
     }
 
     ui->urlLineEdit->setText(settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
+}
+
+void SettingForm::vlkb_loggedin()
+{
+    ui->vlkbAuthStatusLabel->setText("Authenticated");
+    ui->vlkbLoginButton->hide();
+    ui->vlkbLogoutButton->show();
+}
+
+void SettingForm::vlkb_loggedout()
+{
+    ui->vlkbAuthStatusLabel->setText("Not authenticated");
+    ui->vlkbLoginButton->show();
+    ui->vlkbLogoutButton->hide();
+}
+
+void SettingForm::caesar_loggedin()
+{
+    ui->caesarAuthStatusLabel->setText("Authenticated");
+    ui->caesarLoginButton->hide();
+    ui->caesarLogoutButton->show();
+}
+
+void SettingForm::caesar_loggedout()
+{
+    ui->caesarAuthStatusLabel->setText("Not authenticated");
+    ui->caesarLoginButton->show();
+    ui->caesarLogoutButton->hide();
 }
 
 void SettingForm::on_IdlPushButton_clicked()
@@ -209,41 +230,32 @@ void SettingForm::on_workdirButton_clicked()
     }
 }
 
-void SettingForm::on_checkBox_clicked()
-{
-
-}
-
 void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
 {
     if (checked) {
-        ui->authLabel->show();
-        ui->authStatusLabel->show();
+        ui->vlkbAuthLabel->show();
+        ui->vlkbAuthStatusLabel->show();
         ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_NEANIAS);
         ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_NEANIAS);
 
-        if (!m_authWrapper->isAuthenticated()) {
-            ui->authStatusLabel->setText("Not authenticated");
-            ui->loginButton->show();
-            ui->logoutButton->hide();
+        if (!m_vlkbAuth->isAuthenticated()) {
+            vlkb_loggedout();
         }
         else {
-            ui->authStatusLabel->setText("Authenticated");
-            ui->loginButton->hide();
-            ui->logoutButton->show();
+            vlkb_loggedin();
         }
 
     } else {
-        ui->authLabel->hide();
-        ui->authStatusLabel->hide();
-        ui->loginButton->hide();
-        ui->logoutButton->hide();
+        ui->vlkbAuthLabel->hide();
+        ui->vlkbAuthStatusLabel->hide();
+        ui->vlkbLoginButton->hide();
+        ui->vlkbLogoutButton->hide();
     }
 }
 
-void SettingForm::on_loginButton_clicked()
+void SettingForm::on_vlkbLoginButton_clicked()
 {
-    if (m_authWrapper->isAuthenticated())
+    if (m_vlkbAuth->isAuthenticated())
         return;
 
     if (!m_termsAccepted) {
@@ -265,7 +277,7 @@ void SettingForm::on_loginButton_clicked()
         }
     }
 
-    m_authWrapper->grant();
+    m_vlkbAuth->grant();
 }
 
 void SettingForm::on_publicVLKB_radioButton_toggled(bool checked)
@@ -276,8 +288,23 @@ void SettingForm::on_publicVLKB_radioButton_toggled(bool checked)
     }
 }
 
-void SettingForm::on_logoutButton_clicked()
+void SettingForm::on_vlkbLogoutButton_clicked()
 {
-    if (m_authWrapper->isAuthenticated())
-        m_authWrapper->logout();
+    if (m_vlkbAuth->isAuthenticated())
+        m_vlkbAuth->logout();
 }
+
+void SettingForm::on_caesarLoginButton_clicked()
+{
+    if (m_caesarAuth->isAuthenticated())
+        return;
+    m_caesarAuth->grant();
+}
+
+
+void SettingForm::on_caesarLogoutButton_clicked()
+{
+    if (m_caesarAuth->isAuthenticated())
+        m_caesarAuth->logout();
+}
+

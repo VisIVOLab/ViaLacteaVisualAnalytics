@@ -53,7 +53,7 @@ void VLKBQuery::connectToVlkb()
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -117,7 +117,7 @@ void VLKBQuery::executeQuery()
         connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinishedModel(QNetworkReply*)));
 
     QNetworkRequest req(url+"/sync");
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     QNetworkReply *reply = manager->post(req,postData);
     //manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
@@ -143,7 +143,7 @@ void VLKBQuery::executoSyncQuery()
               SLOT(onAuthenticationRequestSlot(QNetworkReply*,QAuthenticator*)) );
 
     QNetworkRequest req(url+"/sync?REQUEST=doQuery&VERSION=1.0&LANG=ADQL&FORMAT=tsv&QUERY="+QUrl::toPercentEncoding(query));
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     QNetworkReply *reply = networkMgr->get(req);
 
@@ -206,7 +206,7 @@ void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)
 
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         }
@@ -304,7 +304,7 @@ void VLKBQuery::queryReplyFinishedBM (QNetworkReply *reply)
 
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         }

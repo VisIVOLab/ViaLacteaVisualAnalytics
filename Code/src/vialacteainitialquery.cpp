@@ -171,7 +171,7 @@ void VialacteaInitialQuery::searchRequest(QString url)
     QNetworkRequest req(url);
     if (vlkbtype == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -213,7 +213,7 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -236,7 +236,7 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -270,7 +270,7 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -368,7 +368,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 QNetworkRequest req(url);
                 if (settings.value("vlkbtype", "") == "neanias")
                 {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 
@@ -423,7 +423,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 QNetworkRequest req(url);
                 if (settings.value("vlkbtype", "") == "neanias")
                 {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 

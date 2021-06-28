@@ -47,7 +47,7 @@ void VialacteaStringDictWidget::buildDict()
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(request);
     }
 
@@ -122,7 +122,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(request);
     }
 
@@ -164,7 +164,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(request);
     }
 
@@ -190,7 +190,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables (QNetworkReply
         {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         }
@@ -250,7 +250,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns (QNetworkRepl
         {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         }
