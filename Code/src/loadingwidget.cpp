@@ -22,6 +22,14 @@ void LoadingWidget::init()
     ui->progressBar->setValue(0);
 }
 
+void LoadingWidget::updateProgressBar(qint64 current, qint64 max)
+{
+    if (max > 0) {
+        ui->progressBar->setMaximum(max);
+        ui->progressBar->setValue(current);
+    }
+}
+
 void LoadingWidget::setFileName(QString name)
 {
     ui->titleLabel->setText(name);

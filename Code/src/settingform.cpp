@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include "vialactea.h"
 #include "singleton.h"
+#include "caesarwidget.h"
 
 SettingForm::SettingForm(QWidget *parent) :
     QWidget(parent),
@@ -16,6 +17,7 @@ SettingForm::SettingForm(QWidget *parent) :
     ui->groupBox_4->hide();
     ui->vlkbLogoutButton->hide();
     ui->caesarLogoutButton->hide();
+    ui->caesarEndpoint->setText(CaesarWidget::baseUrl());
 
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 

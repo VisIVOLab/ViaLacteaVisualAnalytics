@@ -390,6 +390,7 @@ private slots:
     void on_actionRight_triggered();
     void on_actionBottom_triggered();
     void on_actionLeft_triggered();
+    void on_actionCAESAR_triggered();
 };
 
 #endif // vtkwindow_new_H

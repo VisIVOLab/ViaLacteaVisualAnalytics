@@ -337,9 +337,12 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit">
+         <widget class="QLineEdit" name="caesarEndpoint">
           <property name="text">
            <string>http://caesar-api.dev.neanias.eu/caesar/api/v1.0</string>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
          </widget>
         </item>

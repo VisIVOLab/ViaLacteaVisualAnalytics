@@ -61,6 +61,7 @@
 #include "vtkPolyLine.h"
 #include "vialactea.h"
 #include "vialacteainitialquery.h"
+#include "caesarwidget.h"
 #include "selectedsourcesform.h"
 #include "vtkContourFilter.h"
 #include "vtklegendscaleactor.h"
@@ -1336,6 +1337,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->naxis3=vis->GetNaxes(2);
 
         ui->setupUi(this);
+        ui->menuTools->menuAction()->setVisible(false);
         ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
         ui->ElementListWidget->hide();
@@ -4972,5 +4974,12 @@ void vtkwindow_new::on_actionBottom_triggered()
 void vtkwindow_new::on_actionLeft_triggered()
 {
     setCameraAzimuth(-90);
+}
+
+
+void vtkwindow_new::on_actionCAESAR_triggered()
+{
+    auto caesar = new CaesarWidget;
+    caesar->show();
 }
 

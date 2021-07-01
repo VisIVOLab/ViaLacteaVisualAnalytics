@@ -1527,10 +1527,17 @@
     <addaction name="actionBottom"/>
     <addaction name="actionLeft"/>
    </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionCAESAR"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuWindow"/>
    <addaction name="menuCamera"/>
    <addaction name="menuMoment"/>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionTools">
@@ -1584,6 +1591,11 @@
   <action name="actionLeft">
    <property name="text">
     <string>Left</string>
+   </property>
+  </action>
+  <action name="actionCAESAR">
+   <property name="text">
+    <string>CAESAR</string>
    </property>
   </action>
  </widget>
