@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QNetworkAccessManager>
+#include <QTableWidget>
 
 #include "authwrapper.h"
 
@@ -21,10 +22,14 @@ public:
     static QString baseUrl();
 
 private slots:
-    void on_refreshButton_clicked();
-    void on_uploadButton_clicked();
-    void on_downloadButton_clicked();
-    void on_deleteButton_clicked();
+    void on_dataRefreshButton_clicked();
+    void on_dataUploadButton_clicked();
+    void on_dataDownloadButton_clicked();
+    void on_dataDeleteButton_clicked();
+
+    void on_jobRefreshButton_clicked();
+    void on_jobDownloadButton_clicked();
+    void on_jobCancelButton_clicked();
 
 private:
     Ui::CaesarWidget *ui;
@@ -32,7 +37,8 @@ private:
     QNetworkAccessManager *nam;
 
     void updateDataTable(const QJsonArray &files);
-    bool selectedItemId(QString &id);
+    void updateJobsTable(const QJsonArray &jobs);
+    bool selectedItemId(const QTableWidget *table, QString &id);
     bool selectedItemName(QString &name);
 };
 

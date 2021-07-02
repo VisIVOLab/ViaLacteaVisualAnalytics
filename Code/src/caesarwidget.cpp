@@ -15,10 +15,15 @@ CaesarWidget::CaesarWidget(QWidget *parent) :
     ui->dataTable->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->dataTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
+    ui->jobsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->jobsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->jobsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+
     nam = new QNetworkAccessManager(this);
     auth = &NeaniasCaesarAuth::Instance();
 
-    emit ui->refreshButton->clicked();
+    emit ui->dataRefreshButton->clicked();
+    emit ui->jobRefreshButton->clicked();
 }
 
 CaesarWidget::~CaesarWidget()
@@ -51,9 +56,31 @@ void CaesarWidget::updateDataTable(const QJsonArray &files)
     }
 }
 
-bool CaesarWidget::selectedItemId(QString &id)
+void CaesarWidget::updateJobsTable(const QJsonArray &jobs)
 {
-    auto items = ui->dataTable->selectedItems();
+    ui->jobsTable->clearContents();
+    ui->jobsTable->setRowCount(0);
+
+    foreach (const auto &it, jobs) {
+        const auto job = it.toObject();
+        auto id = job["job_id"].toString();
+        auto tag = job["tag"].toString();
+        auto date = job["submit_date"].toString();
+        auto status = job["state"].toString();
+        auto elapsed_time = QString::number(job["elapsed_time"].toInt());
+
+        ui->jobsTable->insertRow(ui->jobsTable->rowCount());
+        ui->jobsTable->setItem(ui->jobsTable->rowCount()-1, 0, new QTableWidgetItem(id));
+        ui->jobsTable->setItem(ui->jobsTable->rowCount()-1, 1, new QTableWidgetItem(tag));
+        ui->jobsTable->setItem(ui->jobsTable->rowCount()-1, 2, new QTableWidgetItem(date));
+        ui->jobsTable->setItem(ui->jobsTable->rowCount()-1, 3, new QTableWidgetItem(status));
+        ui->jobsTable->setItem(ui->jobsTable->rowCount()-1, 4, new QTableWidgetItem(elapsed_time));
+    }
+}
+
+bool CaesarWidget::selectedItemId(const QTableWidget *table, QString &id)
+{
+    auto items = table->selectedItems();
     if (items.count() < 1) {
         return false;
     }
@@ -71,9 +98,9 @@ bool CaesarWidget::selectedItemName(QString &name)
     return true;
 }
 
-void CaesarWidget::on_refreshButton_clicked()
+void CaesarWidget::on_dataRefreshButton_clicked()
 {
-    ui->refreshButton->setEnabled(false);
+    ui->dataRefreshButton->setEnabled(false);
 
     auto url = baseUrl() + "/fileids";
     QNetworkRequest req(url);
@@ -85,16 +112,16 @@ void CaesarWidget::on_refreshButton_clicked()
             updateDataTable(res);
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            qDebug() << "CaesarWidget.on_refreshButton_clicked.error" << statusCode << reply->errorString();
+            qDebug() << "CaesarWidget.on_dataRefreshButton_clicked.error" << statusCode << reply->errorString();
             QMessageBox::critical(this, tr("Error"), tr(qPrintable(reply->errorString())));
         }
         reply->deleteLater();
 
-        ui->refreshButton->setEnabled(true);
+        ui->dataRefreshButton->setEnabled(true);
     });
 }
 
-void CaesarWidget::on_uploadButton_clicked()
+void CaesarWidget::on_dataUploadButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this,tr("Upload file"), QDir::homePath(), tr("Images (*.png *.jpg *.jpeg *.gif *.fits)"));
 
@@ -121,7 +148,7 @@ void CaesarWidget::on_uploadButton_clicked()
     loadingWidget->show();
     loadingWidget->activateWindow();
 
-    ui->uploadButton->setEnabled(false);
+    ui->dataUploadButton->setEnabled(false);
 
     auto url = baseUrl() + "/upload";
     QNetworkRequest req(url);
@@ -134,23 +161,23 @@ void CaesarWidget::on_uploadButton_clicked()
     connect(reply, &QNetworkReply::finished, [this, reply, loadingWidget](){
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(loadingWidget, tr(""), tr("File uploaded."));
-            emit ui->refreshButton->clicked();
+            emit ui->dataRefreshButton->clicked();
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            qDebug() << "CaesarWidget.on_uploadButton_clicked.error" << statusCode << reply->errorString();
+            qDebug() << "CaesarWidget.on_dataUploadButton_clicked.error" << statusCode << reply->errorString();
             QMessageBox::critical(loadingWidget, tr("Error"), tr(qPrintable(reply->errorString())));
         }
         reply->deleteLater();
         loadingWidget->deleteLater();
 
-        ui->uploadButton->setEnabled(true);
+        ui->dataUploadButton->setEnabled(true);
     });
 }
 
-void CaesarWidget::on_downloadButton_clicked()
+void CaesarWidget::on_dataDownloadButton_clicked()
 {
     QString fileId, srcName;
-    if (!selectedItemId(fileId) || !selectedItemName(srcName)) {
+    if (!selectedItemId(ui->dataTable, fileId) || !selectedItemName(srcName)) {
         QMessageBox::information(this, tr(""), tr("No file selected."));
         return;
     }
@@ -165,7 +192,7 @@ void CaesarWidget::on_downloadButton_clicked()
     loadingWidget->show();
     loadingWidget->activateWindow();
 
-    ui->downloadButton->setEnabled(false);
+    ui->dataDownloadButton->setEnabled(false);
 
     auto url = baseUrl() + "/download/" + fileId;
     QNetworkRequest req(url);
@@ -187,20 +214,20 @@ void CaesarWidget::on_downloadButton_clicked()
             }
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            qDebug() << "CaesarWidget.on_downloadButton_clicked.error" << statusCode << reply->errorString();
+            qDebug() << "CaesarWidget.on_dataDownloadButton_clicked.error" << statusCode << reply->errorString();
             QMessageBox::critical(loadingWidget, tr("Error"), tr(qPrintable(reply->errorString())));
         }
         reply->deleteLater();
         loadingWidget->deleteLater();
 
-        ui->downloadButton->setEnabled(true);
+        ui->dataDownloadButton->setEnabled(true);
     });
 }
 
-void CaesarWidget::on_deleteButton_clicked()
+void CaesarWidget::on_dataDeleteButton_clicked()
 {
     QString fileId;
-    if (!selectedItemId(fileId)) {
+    if (!selectedItemId(ui->dataTable, fileId)) {
         QMessageBox::information(this, tr(""), tr("No file selected."));
         return;
     }
@@ -212,7 +239,7 @@ void CaesarWidget::on_deleteButton_clicked()
     if (ret == QMessageBox::No)
         return;
 
-    ui->deleteButton->setEnabled(false);
+    ui->dataDeleteButton->setEnabled(false);
 
     auto url = baseUrl() + "/delete/" + fileId;
     QNetworkRequest req(url);
@@ -221,14 +248,126 @@ void CaesarWidget::on_deleteButton_clicked()
     connect(reply, &QNetworkReply::finished, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, tr(""), tr("File deleted."));
-            emit ui->refreshButton->clicked();
+            emit ui->dataRefreshButton->clicked();
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            qDebug() << "CaesarWidget.on_deleteButton_clicked.error" << statusCode << reply->errorString();
+            qDebug() << "CaesarWidget.on_dataDeleteButton_clicked.error" << statusCode << reply->errorString();
             QMessageBox::critical(this, tr("Error"), tr(qPrintable(reply->errorString())));
         }
         reply->deleteLater();
 
-        ui->deleteButton->setEnabled(true);
+        ui->dataDeleteButton->setEnabled(true);
+    });
+}
+
+void CaesarWidget::on_jobRefreshButton_clicked()
+{
+    ui->jobRefreshButton->setEnabled(false);
+
+    auto url = baseUrl() + "/jobs";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    auto reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, [this, reply](){
+        if (reply->error() == QNetworkReply::NoError) {
+            auto res = QJsonDocument::fromJson(reply->readAll()).array();
+            updateJobsTable(res);
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.on_jobRefreshButton_clicked.error" << statusCode << reply->errorString();
+            QMessageBox::critical(this, tr("Error"), tr(qPrintable(reply->errorString())));
+        }
+        reply->deleteLater();
+
+        ui->jobRefreshButton->setEnabled(true);
+    });
+}
+
+
+void CaesarWidget::on_jobDownloadButton_clicked()
+{
+    QString jobId;
+    if (!selectedItemId(ui->jobsTable, jobId)) {
+        QMessageBox::information(this, tr(""), tr("No job selected."));
+        return;
+    }
+
+    auto dstPath = QDir::homePath().append(QDir::separator()).append(jobId).append(".tar.gz");
+    auto filename = QFileDialog::getSaveFileName(this, tr("Save file as..."), dstPath);
+    if (filename.isEmpty())
+        return;
+
+    auto loadingWidget = new LoadingWidget;
+    loadingWidget->setFileName(filename);
+    loadingWidget->show();
+    loadingWidget->activateWindow();
+
+    ui->jobDownloadButton->setEnabled(false);
+
+    auto url = baseUrl() + "/job/" + jobId + "/output";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    auto reply = nam->get(req);
+    loadingWidget->setLoadingProcess(reply);
+
+    connect(reply, &QNetworkReply::downloadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
+    connect(reply, &QNetworkReply::finished, [this, reply, jobId, filename, loadingWidget](){
+        if (reply->error() == QNetworkReply::NoError) {
+            QFile file(filename);
+            if (!file.open(QIODevice::WriteOnly)) {
+                QMessageBox::critical(loadingWidget, tr("Error"), tr(qPrintable(file.errorString())));
+            } else {
+                file.write(reply->readAll());
+                file.close();
+
+                QMessageBox::information(loadingWidget, tr(""), tr("Job output downloaded."));
+            }
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.on_jobDownloadButton_clicked.error" << statusCode << reply->errorString();
+            QMessageBox::critical(loadingWidget, tr("Error"), tr(qPrintable(reply->errorString())));
+        }
+        reply->deleteLater();
+        loadingWidget->deleteLater();
+
+        ui->jobDownloadButton->setEnabled(true);
+    });
+}
+
+void CaesarWidget::on_jobCancelButton_clicked()
+{
+    QString jobId;
+    if (!selectedItemId(ui->jobsTable, jobId)) {
+        QMessageBox::information(this, tr(""), tr("No job selected."));
+        return;
+    }
+
+    int ret = QMessageBox::question(this, tr("Confirm"),
+                                   tr("Do you want to cancel the selected job?"),
+                                   QMessageBox::Yes | QMessageBox::No,
+                                   QMessageBox::No);
+    if (ret == QMessageBox::No)
+        return;
+
+    ui->jobCancelButton->setEnabled(false);
+
+    auto url = baseUrl() + "/job/" + jobId + "/cancel";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    auto reply = nam->post(req, QByteArray());
+    connect(reply, &QNetworkReply::finished, [this, reply](){
+        auto response = reply->readAll();
+        auto status = QJsonDocument::fromJson(response).object()["status"].toString();
+        if (reply->error() == QNetworkReply::NoError) {
+            QMessageBox::information(this, tr(""), tr(qPrintable(status)));
+            emit ui->dataRefreshButton->clicked();
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.on_dataDeleteButton_clicked.error" << statusCode << reply->errorString();
+            QMessageBox::critical(this, tr("Error"), tr(qPrintable(status)));
+        }
+        reply->deleteLater();
+
+        ui->jobCancelButton->setEnabled(true);
     });
 }
