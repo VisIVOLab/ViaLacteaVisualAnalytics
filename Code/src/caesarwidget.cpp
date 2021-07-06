@@ -4,26 +4,26 @@
 #include <QJsonDocument>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QCheckBox>
+
 #include "loadingwidget.h"
 
 CaesarWidget::CaesarWidget(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::CaesarWidget)
+    QWidget(parent, Qt::Window),
+    ui(new Ui::CaesarWidget),
+    auth(&NeaniasCaesarAuth::Instance())
 {
     ui->setupUi(this);
-    ui->dataTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->dataTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->dataTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
-    ui->jobsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->jobsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->dataTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->jobsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     nam = new QNetworkAccessManager(this);
-    auth = &NeaniasCaesarAuth::Instance();
-
-    emit ui->dataRefreshButton->clicked();
-    emit ui->jobRefreshButton->clicked();
+    on_dataRefreshButton_clicked();
+    on_jobRefreshButton_clicked();
+    getSupportedApps();
 }
 
 CaesarWidget::~CaesarWidget()
@@ -78,6 +78,115 @@ void CaesarWidget::updateJobsTable(const QJsonArray &jobs)
     }
 }
 
+void CaesarWidget::getSupportedApps()
+{
+    ui->appsComboBox->clear();
+
+    auto url = baseUrl() + "/apps";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    auto reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
+        if (reply->error() == QNetworkReply::NoError) {
+            const auto apps = QJsonDocument::fromJson(reply->readAll()).object()["apps"].toArray();
+            foreach (const auto &app, apps) {
+                ui->appsComboBox->insertItem(ui->appsComboBox->count(), app.toString());
+            }
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.getSupportedApps.error" << statusCode << reply->errorString();
+            QMessageBox::critical(this, tr("Error"), tr(qPrintable(reply->errorString())));
+        }
+        reply->deleteLater();
+    });
+}
+
+void CaesarWidget::buildJobForm(const QJsonObject &app)
+{
+    QGroupBox *box;
+    QFormLayout *layout;
+
+    foreach (const auto &input, app.keys()) {
+        auto name = input;
+        auto type = app[input].toObject()["type"].toString();
+        auto category = app[input].toObject()["category"].toString();
+        auto subcategory = app[input].toObject()["subcategory"].toString();
+        auto desc = app[input].toObject()["description"].toString();
+        QJsonValue default_value = app[input].toObject()["default"];
+
+        if (boxes.contains(category)) {
+            box = boxes[category];
+            layout = qobject_cast<QFormLayout*>(box->layout());
+        } else {
+            box = new QGroupBox(ui->jobSubmissionWidget);
+            box->setTitle(category);
+            layout = new QFormLayout(box);
+            box->setLayout(layout);
+            boxes.insert(category, box);
+        }
+
+        if (subcategory != "") {
+            auto subbox = box->findChild<QGroupBox*>(subcategory);
+            if (subbox == nullptr) {
+                subbox = new QGroupBox(box);
+                subbox->setObjectName(subcategory);
+                subbox->setTitle(subcategory);
+                subbox->setLayout(new QFormLayout(subbox));
+            }
+            box = subbox;
+            layout = qobject_cast<QFormLayout*>(box->layout());
+        }
+
+        QWidget *widget;
+        QPair<QVariant::Type, QWidget*> p;
+
+        if (type == "str") {
+            p.first = QVariant::String;
+            auto tmp = new QComboBox(box);
+            auto values = app[input].toObject()["allowed_values"].toArray();
+            foreach (const auto &v, values) {
+                tmp->insertItem(tmp->count(), v.toString());
+            }
+            tmp->setCurrentText(default_value.toString());
+            widget = tmp;
+        } else if (type == "int") {
+            p.first = QVariant::Int;
+            auto min = app[input].toObject()["min"].toInt();
+            auto max = app[input].toObject()["max"].toInt();
+            auto tmp = new QSpinBox(box);
+            tmp->setRange(min, max);
+            tmp->setValue(default_value.toInt());
+            widget = tmp;
+        } else if (type == "float") {
+            p.first = QVariant::Double;
+            auto min = app[input].toObject()["min"].toDouble();
+            auto max = app[input].toObject()["max"].toDouble();
+            auto tmp = new QDoubleSpinBox(box);
+            tmp->setDecimals(3);
+            tmp->setRange(min, max);
+            tmp->setValue(default_value.toDouble());
+            widget = tmp;
+        } else /*if (type == "none")*/ {
+            p.first = QVariant::Bool;
+            widget = new QCheckBox(box);
+        }
+        p.second = widget;
+        inputs.insert(name, p);
+
+        widget->setObjectName(name);
+        widget->setToolTip(desc);
+        layout->addRow(name, widget);
+    }
+
+    foreach (const auto &box, boxes.values()) {
+        auto sub = box->findChildren<QGroupBox*>();
+        foreach(const auto &it, sub) {
+            box->layout()->addWidget(it);
+        }
+        ui->jobSubmissionForm->layout()->addWidget(box);
+    }
+}
+
 bool CaesarWidget::selectedItemId(const QTableWidget *table, QString &id)
 {
     auto items = table->selectedItems();
@@ -88,13 +197,13 @@ bool CaesarWidget::selectedItemId(const QTableWidget *table, QString &id)
     return true;
 }
 
-bool CaesarWidget::selectedItemName(QString &name)
+bool CaesarWidget::selectedDataFilename(QString &filename)
 {
     auto items = ui->dataTable->selectedItems();
     if (items.count() < 1) {
         return false;
     }
-    name = items[1]->text();
+    filename = items[1]->text();
     return true;
 }
 
@@ -106,7 +215,7 @@ void CaesarWidget::on_dataRefreshButton_clicked()
     QNetworkRequest req(url);
     auth->putAccessToken(req);
     auto reply = nam->get(req);
-    connect(reply, &QNetworkReply::finished, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             auto res = QJsonDocument::fromJson(reply->readAll()).array();
             updateDataTable(res);
@@ -123,12 +232,10 @@ void CaesarWidget::on_dataRefreshButton_clicked()
 
 void CaesarWidget::on_dataUploadButton_clicked()
 {
-    QString fn = QFileDialog::getOpenFileName(this,tr("Upload file"), QDir::homePath(), tr("Images (*.png *.jpg *.jpeg *.gif *.fits)"));
+    QString fn = QFileDialog::getOpenFileName(this,tr("Upload file"), QDir::homePath(), tr("Images (*.fits)"));
 
     if (fn.isEmpty())
         return;
-
-    auto multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
 
     auto file = new QFile(fn);
     if (!file->open(QIODevice::ReadOnly)) {
@@ -136,9 +243,10 @@ void CaesarWidget::on_dataUploadButton_clicked()
         return;
     }
 
+    auto multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
     file->setParent(multipart);
     QHttpPart filePart;
-    //filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/fits"));
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/fits"));
     filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(fn).fileName() + "\""));
     filePart.setBodyDevice(file);
     multipart->append(filePart);
@@ -158,7 +266,7 @@ void CaesarWidget::on_dataUploadButton_clicked()
     loadingWidget->setLoadingProcess(reply);
 
     connect(reply, &QNetworkReply::uploadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
-    connect(reply, &QNetworkReply::finished, [this, reply, loadingWidget](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply, loadingWidget](){
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(loadingWidget, tr(""), tr("File uploaded."));
             emit ui->dataRefreshButton->clicked();
@@ -177,7 +285,7 @@ void CaesarWidget::on_dataUploadButton_clicked()
 void CaesarWidget::on_dataDownloadButton_clicked()
 {
     QString fileId, srcName;
-    if (!selectedItemId(ui->dataTable, fileId) || !selectedItemName(srcName)) {
+    if (!selectedItemId(ui->dataTable, fileId) || !selectedDataFilename(srcName)) {
         QMessageBox::information(this, tr(""), tr("No file selected."));
         return;
     }
@@ -201,7 +309,7 @@ void CaesarWidget::on_dataDownloadButton_clicked()
     loadingWidget->setLoadingProcess(reply);
 
     connect(reply, &QNetworkReply::downloadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
-    connect(reply, &QNetworkReply::finished, [this, reply, fileId, filename, loadingWidget](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply, fileId, filename, loadingWidget](){
         if (reply->error() == QNetworkReply::NoError) {
             QFile file(filename);
             if (!file.open(QIODevice::WriteOnly)) {
@@ -245,7 +353,7 @@ void CaesarWidget::on_dataDeleteButton_clicked()
     QNetworkRequest req(url);
     auth->putAccessToken(req);
     auto reply = nam->post(req, QByteArray());
-    connect(reply, &QNetworkReply::finished, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, tr(""), tr("File deleted."));
             emit ui->dataRefreshButton->clicked();
@@ -260,6 +368,16 @@ void CaesarWidget::on_dataDeleteButton_clicked()
     });
 }
 
+void CaesarWidget::on_dataTable_itemSelectionChanged()
+{
+    QString id;
+    if (selectedItemId(ui->dataTable, id)) {
+        ui->fileLineEdit->setText(id);
+    } else {
+        ui->fileLineEdit->clear();
+    }
+}
+
 void CaesarWidget::on_jobRefreshButton_clicked()
 {
     ui->jobRefreshButton->setEnabled(false);
@@ -268,7 +386,7 @@ void CaesarWidget::on_jobRefreshButton_clicked()
     QNetworkRequest req(url);
     auth->putAccessToken(req);
     auto reply = nam->get(req);
-    connect(reply, &QNetworkReply::finished, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             auto res = QJsonDocument::fromJson(reply->readAll()).array();
             updateJobsTable(res);
@@ -311,7 +429,7 @@ void CaesarWidget::on_jobDownloadButton_clicked()
     loadingWidget->setLoadingProcess(reply);
 
     connect(reply, &QNetworkReply::downloadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
-    connect(reply, &QNetworkReply::finished, [this, reply, jobId, filename, loadingWidget](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply, jobId, filename, loadingWidget](){
         if (reply->error() == QNetworkReply::NoError) {
             QFile file(filename);
             if (!file.open(QIODevice::WriteOnly)) {
@@ -355,7 +473,7 @@ void CaesarWidget::on_jobCancelButton_clicked()
     QNetworkRequest req(url);
     auth->putAccessToken(req);
     auto reply = nam->post(req, QByteArray());
-    connect(reply, &QNetworkReply::finished, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         auto response = reply->readAll();
         auto status = QJsonDocument::fromJson(response).object()["status"].toString();
         if (reply->error() == QNetworkReply::NoError) {
@@ -369,5 +487,31 @@ void CaesarWidget::on_jobCancelButton_clicked()
         reply->deleteLater();
 
         ui->jobCancelButton->setEnabled(true);
+    });
+}
+
+void CaesarWidget::on_appsComboBox_currentTextChanged(const QString &app)
+{
+    // Clear previous form if already present
+    inputs.clear();
+    foreach (const auto &box, boxes.keys()) {
+        boxes[box]->deleteLater();
+        boxes.remove(box);
+    }
+
+    auto url = baseUrl() + "/app/" + app + "/describe";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    auto reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
+        if (reply->error() == QNetworkReply::NoError) {
+            const auto formInputs = QJsonDocument::fromJson(reply->readAll()).object();
+            buildJobForm(formInputs);
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.on_appsComboBox_currentTextChanged.error" << statusCode << reply->errorString();
+            QMessageBox::critical(this, tr("Error"), tr(qPrintable(reply->errorString())));
+        }
+        reply->deleteLater();
     });
 }
