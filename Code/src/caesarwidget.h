@@ -32,6 +32,7 @@ private slots:
     void on_jobRefreshButton_clicked();
     void on_jobDownloadButton_clicked();
     void on_jobCancelButton_clicked();
+    void on_jobSubmitButton_clicked();
 
     void on_appsComboBox_currentTextChanged(const QString &app);
 
@@ -41,6 +42,7 @@ private:
     QNetworkAccessManager *nam;
     QMap<QString, QGroupBox*> boxes;
     QMap<QString, QPair<QVariant::Type, QWidget*>> inputs;
+    int jobRefreshPeriod;
 
     void updateDataTable(const QJsonArray &files);
     void updateJobsTable(const QJsonArray &jobs);

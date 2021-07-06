@@ -7,15 +7,18 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QCheckBox>
+#include <QTimer>
 
 #include "loadingwidget.h"
 
 CaesarWidget::CaesarWidget(QWidget *parent) :
     QWidget(parent, Qt::Window),
     ui(new Ui::CaesarWidget),
-    auth(&NeaniasCaesarAuth::Instance())
+    auth(&NeaniasCaesarAuth::Instance()),
+    jobRefreshPeriod(10)
 {
     ui->setupUi(this);
+    this->setAttribute(Qt::WA_DeleteOnClose, true);
 
     ui->dataTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->jobsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -24,6 +27,13 @@ CaesarWidget::CaesarWidget(QWidget *parent) :
     on_dataRefreshButton_clicked();
     on_jobRefreshButton_clicked();
     getSupportedApps();
+
+    // Schedule jobs status refresh
+    if (jobRefreshPeriod > 0) {
+        auto timer = new QTimer(this);
+        connect(timer, &QTimer::timeout, this, &CaesarWidget::on_jobRefreshButton_clicked);
+        timer->start(jobRefreshPeriod * 1000);
+    }
 }
 
 CaesarWidget::~CaesarWidget()
@@ -268,7 +278,9 @@ void CaesarWidget::on_dataUploadButton_clicked()
     connect(reply, &QNetworkReply::uploadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
     connect(reply, &QNetworkReply::finished, this, [this, reply, loadingWidget](){
         if (reply->error() == QNetworkReply::NoError) {
-            QMessageBox::information(loadingWidget, tr(""), tr("File uploaded."));
+            auto response = QJsonDocument::fromJson(reply->readAll()).object();
+            auto msg = response["status"].toString() + ".\nUUID " + response["uuid"].toString();
+            QMessageBox::information(loadingWidget, tr("Success"), msg);
             emit ui->dataRefreshButton->clicked();
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -478,7 +490,7 @@ void CaesarWidget::on_jobCancelButton_clicked()
         auto status = QJsonDocument::fromJson(response).object()["status"].toString();
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, tr(""), tr(qPrintable(status)));
-            emit ui->dataRefreshButton->clicked();
+            emit ui->jobRefreshButton->clicked();
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
             qDebug() << "CaesarWidget.on_dataDeleteButton_clicked.error" << statusCode << reply->errorString();
@@ -487,6 +499,76 @@ void CaesarWidget::on_jobCancelButton_clicked()
         reply->deleteLater();
 
         ui->jobCancelButton->setEnabled(true);
+    });
+}
+
+void CaesarWidget::on_jobSubmitButton_clicked()
+{
+    if (ui->fileLineEdit->text().isEmpty()) {
+        QMessageBox::information(this, tr(""), tr("No file selected."));
+        return;
+    }
+
+    if (ui->appsComboBox->currentText().isEmpty()) {
+        QMessageBox::information(this, tr(""), tr("No app selected."));
+        return;
+    }
+
+    QVariantMap map;
+    foreach (const auto &key, inputs.keys())
+    {
+        switch (inputs[key].first) {
+        case QVariant::String: {
+            auto l = qobject_cast<QComboBox*>(inputs[key].second);
+            map[key] = l->currentText();
+            break;
+        }
+        case QVariant::Int: {
+            auto l = qobject_cast<QSpinBox*>(inputs[key].second);
+            map[key] = l->value();
+            break;
+        }
+        case QVariant::Double: {
+            auto l = qobject_cast<QDoubleSpinBox*>(inputs[key].second);
+            map[key] = l->value();
+            break;
+        }
+        case QVariant::Bool: {
+            auto l = qobject_cast<QCheckBox*>(inputs[key].second);
+            map[key] = l->isChecked();
+            break;
+        }
+        default: break;
+        }
+    }
+
+    QJsonObject job;
+    job["app"] = ui->appsComboBox->currentText();
+    job["data_inputs"] = ui->fileLineEdit->text();
+    job["tag"] = "";
+    job["job_inputs"] = QJsonObject::fromVariantMap(map);
+    QJsonDocument doc(job);
+
+    ui->jobSubmitButton->setEnabled(false);
+
+    auto url = baseUrl() + "/job";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    auto reply = nam->post(req, doc.toJson());
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
+        if (reply->error() == QNetworkReply::NoError) {
+            auto response = QJsonDocument::fromJson(reply->readAll()).object();
+            auto msg = response["status"].toString() + ".\nJob id " + response["job_id"].toString();
+            QMessageBox::information(this, tr("Success"), msg);
+            emit ui->jobRefreshButton->clicked();
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.on_jobSubmitButton_clicked.error" << statusCode << reply->errorString();
+            QMessageBox::critical(this, tr("Error"), tr(qPrintable(reply->errorString())));
+        }
+        reply->deleteLater();
+        ui->jobSubmitButton->setEnabled(true);
     });
 }
 

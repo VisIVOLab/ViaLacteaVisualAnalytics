@@ -263,7 +263,7 @@
            <x>0</x>
            <y>0</y>
            <width>956</width>
-           <height>246</height>
+           <height>199</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -331,6 +331,32 @@
           </item>
          </layout>
         </widget>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="submissionLine" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
+          <spacer name="horizontalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="jobSubmitButton">
+           <property name="text">
+            <string>Submit job</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>
