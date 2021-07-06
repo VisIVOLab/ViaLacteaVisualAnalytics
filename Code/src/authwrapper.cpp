@@ -38,7 +38,7 @@ void AuthWrapper::logout()
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     QNetworkReply *reply = mgr->post(req, postDataEncoded);
-    connect(reply, &QNetworkReply::finished, [=](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             emit logged_out();
         } else {
@@ -85,7 +85,7 @@ void AuthWrapper::exchange_tokens(const QString & code)
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     QNetworkReply *reply = mgr->post(req, postDataEncoded);
-    connect(reply, &QNetworkReply::finished, [=](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             // Get tokens from response body
             QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
@@ -93,7 +93,7 @@ void AuthWrapper::exchange_tokens(const QString & code)
 
             // Schedule next refresh 2m before expiration time
             int timeout = json["expires_in"].toInt() - 120;
-            QTimer::singleShot(timeout * 1000, [&]{
+            QTimer::singleShot(timeout * 1000, this, [this]{
                 emit refresh_timeout();
             });
 
@@ -124,7 +124,7 @@ void AuthWrapper::on_refresh_timeout()
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     QNetworkReply *reply = mgr->post(req, postDataEncoded);
-    connect(reply, &QNetworkReply::finished, [=](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply](){
         if (reply->error() == QNetworkReply::NoError) {
             // Get tokens from response body
             QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
@@ -132,7 +132,7 @@ void AuthWrapper::on_refresh_timeout()
 
             // Schedule next refresh 2m before expiration time
             int timeout = json["expires_in"].toInt() - 120;
-            QTimer::singleShot(timeout * 1000, [&]{
+            QTimer::singleShot(timeout * 1000, this, [this]{
                 emit refresh_timeout();
             });
         }
@@ -196,7 +196,6 @@ QString AuthWrapper::refreshToken() const
 
 NeaniasVlkbAuth::NeaniasVlkbAuth(QObject *parent): AuthWrapper(parent)
 {
-    setup();
 }
 
 void NeaniasVlkbAuth::setup()
@@ -221,12 +220,15 @@ void NeaniasVlkbAuth::setup()
 AuthWrapper& NeaniasVlkbAuth::Instance()
 {
     static NeaniasVlkbAuth instance;
+    if (!instance._init) {
+        instance.setup();
+        instance._init = true;
+    }
     return instance;
 }
 
 NeaniasCaesarAuth::NeaniasCaesarAuth(QObject *parent): AuthWrapper(parent)
 {
-    setup();
 }
 
 void NeaniasCaesarAuth::setup()
@@ -251,5 +253,9 @@ void NeaniasCaesarAuth::setup()
 AuthWrapper& NeaniasCaesarAuth::Instance()
 {
     static NeaniasCaesarAuth instance;
+    if (!instance._init) {
+        instance.setup();
+        instance._init = true;
+    }
     return instance;
 }

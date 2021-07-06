@@ -58,6 +58,7 @@ protected:
     QString clientSecret;
     QString scope;
     bool _authenticated = false;
+    bool _init = false;
 
     QWebEngineView *view;
     VLVAUrlSchemeHandler *handler;

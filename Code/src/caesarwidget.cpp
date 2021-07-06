@@ -178,7 +178,7 @@ void CaesarWidget::buildJobForm(const QJsonObject &app)
         layout->addRow(name, widget);
     }
 
-    foreach (const auto &box, boxes.values()) {
+    foreach (const auto &box, boxes) {
         auto sub = box->findChildren<QGroupBox*>();
         foreach(const auto &it, sub) {
             box->layout()->addWidget(it);
