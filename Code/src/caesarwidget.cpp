@@ -8,6 +8,7 @@
 #include <QDoubleSpinBox>
 #include <QCheckBox>
 #include <QTimer>
+#include <QDateTime>
 
 #include "loadingwidget.h"
 
@@ -125,7 +126,7 @@ void CaesarWidget::updateDataTable(const QJsonArray &files)
         auto id = file["fileid"].toString();
         auto name = file["filename_orig"].toString();
         auto tag = file["tag"].toString();
-        auto date = file["filedate"].toString();
+        auto date = formatDate(file["filedate"].toString());
 
         ui->dataTable->insertRow(ui->dataTable->rowCount());
         ui->dataTable->setItem(ui->dataTable->rowCount()-1, 0, new QTableWidgetItem(id));
@@ -144,9 +145,9 @@ void CaesarWidget::updateJobsTable(const QJsonArray &jobs)
         const auto job = it.toObject();
         auto id = job["job_id"].toString();
         auto tag = job["tag"].toString();
-        auto date = job["submit_date"].toString();
+        auto date = formatDate(job["submit_date"].toString());
         auto status = job["state"].toString();
-        auto elapsed_time = QString::number(job["elapsed_time"].toInt());
+        auto elapsed_time = formatElapsedTime(job["elapsed_time"].toInt());
 
         ui->jobsTable->insertRow(ui->jobsTable->rowCount());
         ui->jobsTable->setItem(ui->jobsTable->rowCount()-1, 0, new QTableWidgetItem(id));
@@ -284,6 +285,29 @@ bool CaesarWidget::selectedDataFilename(QString &filename)
     }
     filename = items[1]->text();
     return true;
+}
+
+QString CaesarWidget::formatDate(const QString &date)
+{
+    return QDateTime::fromString(date, Qt::ISODateWithMs).toString(Qt::DefaultLocaleShortDate);
+}
+
+QString CaesarWidget::formatElapsedTime(const int &elapsedTime)
+{
+    QString str;
+    auto hours = elapsedTime / 3600;
+    auto mins = (elapsedTime % 3600) / 60;
+    auto secs = elapsedTime % 60;
+
+    if (hours > 0) {
+        str = str.append(QString("%1h ").arg(hours));
+    }
+    if (mins > 0) {
+        str = str.append(QString("%1%2m ").arg((mins < 10 ? "0" : ""), QString::number(mins)));
+    }
+    str = str.append(QString("%1%2s").arg((secs < 10 ? "0" : ""), QString::number(secs)));
+
+    return str;
 }
 
 void CaesarWidget::on_dataRefreshButton_clicked()

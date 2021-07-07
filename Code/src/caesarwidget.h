@@ -55,6 +55,8 @@ private:
     void buildJobForm(const QJsonObject &app);
     bool selectedItemId(const QTableWidget *table, QString &id);
     bool selectedDataFilename(QString &filename);
+    QString formatDate(const QString &date);
+    QString formatElapsedTime(const int &elapsedTime);
 };
 
 #endif // CAESARWIDGET_H
