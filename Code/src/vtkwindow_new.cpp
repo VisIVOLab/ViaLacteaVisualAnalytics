@@ -4979,7 +4979,7 @@ void vtkwindow_new::on_actionLeft_triggered()
 
 void vtkwindow_new::on_actionCAESAR_triggered()
 {
-    auto caesar = new CaesarWidget(this);
+    auto caesar = new CaesarWidget(this, myfits);
     caesar->show();
 }
 

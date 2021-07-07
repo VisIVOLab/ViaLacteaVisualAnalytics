@@ -11,9 +11,10 @@
 
 #include "loadingwidget.h"
 
-CaesarWidget::CaesarWidget(QWidget *parent) :
+CaesarWidget::CaesarWidget(QWidget *parent, vtkSmartPointer<vtkFitsReader> parentImage) :
     QWidget(parent, Qt::Window),
     ui(new Ui::CaesarWidget),
+    parentImage(parentImage),
     auth(&NeaniasCaesarAuth::Instance()),
     jobRefreshPeriod(10)
 {
@@ -24,9 +25,24 @@ CaesarWidget::CaesarWidget(QWidget *parent) :
     ui->jobsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     nam = new QNetworkAccessManager(this);
-    on_dataRefreshButton_clicked();
-    on_jobRefreshButton_clicked();
-    getSupportedApps();
+
+    // Ask to upload the current file
+    if (parentImage != nullptr) {
+        auto msg = new QMessageBox(this);
+        msg->setIcon(QMessageBox::Question);
+        msg->setWindowTitle("Upload image");
+        msg->setText("Do you want to upload the current image?");
+        msg->setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msg->setDefaultButton(QMessageBox::No);
+        msg->show();
+        connect(msg, &QMessageBox::buttonClicked, this, [this, msg, parentImage](QAbstractButton *button){
+            if (msg->standardButton(button) == QMessageBox::Yes) {
+                QString fn = QString::fromStdString(parentImage->GetFileName());
+                uploadData(fn);
+            }
+            msg->deleteLater();
+        });
+    }
 
     // Schedule jobs status refresh
     if (jobRefreshPeriod > 0) {
@@ -34,6 +50,10 @@ CaesarWidget::CaesarWidget(QWidget *parent) :
         connect(timer, &QTimer::timeout, this, &CaesarWidget::on_jobRefreshButton_clicked);
         timer->start(jobRefreshPeriod * 1000);
     }
+
+    on_dataRefreshButton_clicked();
+    // on_jobRefreshButton_clicked();
+    getSupportedApps();
 }
 
 CaesarWidget::~CaesarWidget()
@@ -44,6 +64,55 @@ CaesarWidget::~CaesarWidget()
 QString CaesarWidget::baseUrl()
 {
     return QString("http://caesar-api.dev.neanias.eu/caesar/api/v1.0");
+}
+
+void CaesarWidget::uploadData(const QString &fn)
+{
+    auto file = new QFile(fn);
+    if (!file->open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, tr("Error"), tr(qPrintable(file->errorString())));
+        return;
+    }
+
+    auto multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    file->setParent(multipart);
+    QHttpPart filePart;
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/fits"));
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(fn).fileName() + "\""));
+    filePart.setBodyDevice(file);
+    multipart->append(filePart);
+
+    auto loadingWidget = new LoadingWidget;
+    loadingWidget->setFileName(fn);
+    loadingWidget->show();
+    loadingWidget->activateWindow();
+
+    ui->dataUploadButton->setEnabled(false);
+
+    auto url = baseUrl() + "/upload";
+    QNetworkRequest req(url);
+    auth->putAccessToken(req);
+    auto reply = nam->post(req, multipart);
+    multipart->setParent(reply);
+    loadingWidget->setLoadingProcess(reply);
+
+    connect(reply, &QNetworkReply::uploadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, loadingWidget](){
+        if (reply->error() == QNetworkReply::NoError) {
+            auto response = QJsonDocument::fromJson(reply->readAll()).object();
+            auto msg = response["status"].toString() + ".\nUUID " + response["uuid"].toString();
+            QMessageBox::information(loadingWidget, tr("Success"), msg);
+            emit ui->dataRefreshButton->clicked();
+        } else {
+            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "CaesarWidget.on_dataUploadButton_clicked.error" << statusCode << reply->errorString();
+            QMessageBox::critical(loadingWidget, tr("Error"), tr(qPrintable(reply->errorString())));
+        }
+        reply->deleteLater();
+        loadingWidget->deleteLater();
+
+        ui->dataUploadButton->setEnabled(true);
+    });
 }
 
 void CaesarWidget::updateDataTable(const QJsonArray &files)
@@ -243,55 +312,9 @@ void CaesarWidget::on_dataRefreshButton_clicked()
 void CaesarWidget::on_dataUploadButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this,tr("Upload file"), QDir::homePath(), tr("Images (*.fits)"));
-
-    if (fn.isEmpty())
-        return;
-
-    auto file = new QFile(fn);
-    if (!file->open(QIODevice::ReadOnly)) {
-        QMessageBox::critical(this, tr("Error"), tr(qPrintable(file->errorString())));
-        return;
+    if (!fn.isEmpty()) {
+        uploadData(fn);
     }
-
-    auto multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
-    file->setParent(multipart);
-    QHttpPart filePart;
-    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/fits"));
-    filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(fn).fileName() + "\""));
-    filePart.setBodyDevice(file);
-    multipart->append(filePart);
-
-    auto loadingWidget = new LoadingWidget;
-    loadingWidget->setFileName(fn);
-    loadingWidget->show();
-    loadingWidget->activateWindow();
-
-    ui->dataUploadButton->setEnabled(false);
-
-    auto url = baseUrl() + "/upload";
-    QNetworkRequest req(url);
-    auth->putAccessToken(req);
-    auto reply = nam->post(req, multipart);
-    multipart->setParent(reply);
-    loadingWidget->setLoadingProcess(reply);
-
-    connect(reply, &QNetworkReply::uploadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, loadingWidget](){
-        if (reply->error() == QNetworkReply::NoError) {
-            auto response = QJsonDocument::fromJson(reply->readAll()).object();
-            auto msg = response["status"].toString() + ".\nUUID " + response["uuid"].toString();
-            QMessageBox::information(loadingWidget, tr("Success"), msg);
-            emit ui->dataRefreshButton->clicked();
-        } else {
-            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            qDebug() << "CaesarWidget.on_dataUploadButton_clicked.error" << statusCode << reply->errorString();
-            QMessageBox::critical(loadingWidget, tr("Error"), tr(qPrintable(reply->errorString())));
-        }
-        reply->deleteLater();
-        loadingWidget->deleteLater();
-
-        ui->dataUploadButton->setEnabled(true);
-    });
 }
 
 void CaesarWidget::on_dataDownloadButton_clicked()

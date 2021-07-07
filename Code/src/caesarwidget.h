@@ -6,6 +6,9 @@
 #include <QTableWidget>
 #include <QGroupBox>
 
+#include <vtkSmartPointer.h>
+#include "vtkfitsreader.h"
+
 #include "authwrapper.h"
 
 namespace Ui {
@@ -17,7 +20,7 @@ class CaesarWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit CaesarWidget(QWidget *parent = nullptr);
+    explicit CaesarWidget(QWidget *parent = nullptr, vtkSmartPointer<vtkFitsReader> parentImage = nullptr);
     ~CaesarWidget();
 
     static QString baseUrl();
@@ -38,12 +41,14 @@ private slots:
 
 private:
     Ui::CaesarWidget *ui;
+    vtkSmartPointer<vtkFitsReader> parentImage;
     AuthWrapper *auth;
     QNetworkAccessManager *nam;
     QMap<QString, QGroupBox*> boxes;
     QMap<QString, QPair<QVariant::Type, QWidget*>> inputs;
     int jobRefreshPeriod;
 
+    void uploadData(const QString &fn);
     void updateDataTable(const QJsonArray &files);
     void updateJobsTable(const QJsonArray &jobs);
     void getSupportedApps();
