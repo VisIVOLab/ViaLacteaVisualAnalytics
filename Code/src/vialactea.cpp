@@ -621,7 +621,7 @@ void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 void ViaLactea::on_actionLoad_session_triggered()
 {
     if (masterWin != nullptr) {
-        // TODO: messagebox
+        QMessageBox::warning(this, QObject::tr("Load a session"), QObject::tr("A session is already open, close it to load another session."));
         return;
     }
 
@@ -648,7 +648,7 @@ void ViaLactea::on_actionLoad_session_triggered()
     }
 
     if (!found) {
-        // TODO: messagebox
+        QMessageBox::critical(this, QObject::tr("Load a session"), QObject::tr("Cannot load the session: there is no origin layer."));
         return;
     }
 
@@ -658,7 +658,7 @@ void ViaLactea::on_actionLoad_session_triggered()
     fitsReader->SetFileName(fits.toStdString());
     if (originLayer["type"].toString() == "Moment") {
         fitsReader->isMoment3D = true;
-        fitsReader->setMomentOrder(originLayer["order"].toInt());
+        fitsReader->setMomentOrder(originLayer["moment_order"].toInt());
     }
 
     // Query VLKB to populate VLKB items table

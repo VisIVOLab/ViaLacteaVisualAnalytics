@@ -5049,9 +5049,9 @@ void vtkwindow_new::on_actionSave_session_triggered()
         QJsonObject layer;
         if (img->getFits()->isMoment3D) {
             layer["type"] = QString("Moment");
-            layer["order"] = img->getFits()->getMomentOrder();
+            layer["moment_order"] = img->getFits()->getMomentOrder();
         } else {
-            layer["type"] = QString("Image");
+            layer["type"] = QString("Continuum");
         }
         layer["origin"] = img->getFits() == myfits;
         layer["text"] = listItem->text();
@@ -5074,4 +5074,5 @@ void vtkwindow_new::on_actionSave_session_triggered()
     sessionFile.open(QFile::WriteOnly);
     sessionFile.write(session.toJson());
     sessionFile.close();
+    QMessageBox::information(this, QObject::tr("Save session"), QObject::tr("Session saved in ") + sessionFolder.absolutePath());
 }
