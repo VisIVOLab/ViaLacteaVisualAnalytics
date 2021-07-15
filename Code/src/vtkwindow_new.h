@@ -150,6 +150,7 @@ public:
     QList<vtkfitstoolwidgetobject*> getLayerListElements(){return elementLayerList;}
 
     void addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString survey="", QString species="", QString transition="");
+    void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
 
     QString getSelectedScale(){return selected_scale;}
 
@@ -342,7 +343,7 @@ private slots:
     void addToList(vtkfitstoolwidgetobject *o, bool enabled=true);
     void addImageToList( vtkfitstoolwidgetobject *o);
 
-    void checkboxImageClicked(int cb);
+    void checkboxImageClicked(int cb, bool status = false);
     void checkboxClicked(int cb, bool status =false);
 
     void on_tableWidget_doubleClicked(const QModelIndex &index);
@@ -373,7 +374,7 @@ private slots:
     void on_glyphScalingLineEdit_editingFinished();
     void on_ElementListWidget_clicked(const QModelIndex &index);
     bool eventFilter(QObject *object, QEvent *event);
-    void on_listWidget_clicked(const QModelIndex &index);
+    void on_listWidget_itemClicked(QListWidgetItem *item);
     void on_listWidget_itemChanged(QListWidgetItem *item);
     void movedLayersRow( const QModelIndex & sourceParent, int sourceStart, int sourceEnd, const QModelIndex & destinationParent, int destinationRow );
     void on_listWidget_itemDoubleClicked(QListWidgetItem *item);
@@ -390,6 +391,7 @@ private slots:
     void on_actionRight_triggered();
     void on_actionBottom_triggered();
     void on_actionLeft_triggered();
+    void on_actionSave_session_triggered();
 };
 
 #endif // vtkwindow_new_H

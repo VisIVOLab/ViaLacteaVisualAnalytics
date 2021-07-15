@@ -617,3 +617,65 @@ void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 {
     queryButtonStatusOnOff();
 }
+
+void ViaLactea::on_actionLoad_session_triggered()
+{
+    if (masterWin != nullptr) {
+        // TODO: messagebox
+        return;
+    }
+
+    QString fn = QFileDialog::getOpenFileName(this, "Load a session", QDir::homePath(), "JSON (*.json)");
+    if (fn.isEmpty())
+        return;
+
+    QFile sessionFile(fn);
+    sessionFile.open(QFile::ReadOnly);
+    QJsonDocument root = QJsonDocument::fromJson(sessionFile.readAll());
+    sessionFile.close();
+
+    // Check for the origin layer and start a new window
+    QJsonArray layers = root.object()["image"].toObject()["layers"].toArray();
+    QJsonObject originLayer;
+    bool found = false;
+    foreach (const auto &it, layers) {
+        auto layer = it.toObject();
+        if (layer["origin"].toBool()) {
+            originLayer = layer;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        // TODO: messagebox
+        return;
+    }
+
+    QDir filesFolder = QFileInfo(fn).dir().absoluteFilePath("files");
+    auto fits = filesFolder.absoluteFilePath(originLayer["fits"].toString());
+    auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+    fitsReader->SetFileName(fits.toStdString());
+    if (originLayer["type"].toString() == "Moment") {
+        fitsReader->isMoment3D = true;
+        fitsReader->setMomentOrder(originLayer["order"].toInt());
+    }
+
+    // Query VLKB to populate VLKB items table
+    double coords[2], rectSize[2];
+    AstroUtils().GetCenterCoords(fits.toStdString(), coords);
+    AstroUtils().GetRectSize(fits.toStdString(), rectSize);
+
+    VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, layers, filesFolder](QList<QMap<QString,QString>> results){
+        auto win = new vtkwindow_new(this, fitsReader);
+        win->setDbElements(results);
+        win->setImageLayers(layers, filesFolder);
+
+        setMasterWin(win);
+        vq->deleteLater();
+    });
+
+    vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+}
+

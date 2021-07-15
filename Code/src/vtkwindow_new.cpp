@@ -1058,6 +1058,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
 
+    ui->actionSave_session->setEnabled(false);
+    ui->menuMoment->menuAction()->setVisible(false);
     ui->ElementListWidget->hide();
     ui->tableWidget->hide();
     ui->listWidget->hide();
@@ -1336,6 +1338,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->naxis3=vis->GetNaxes(2);
 
         ui->setupUi(this);
+        ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
         ui->ElementListWidget->hide();
@@ -3597,12 +3600,12 @@ void vtkwindow_new::addToList(vtkfitstoolwidgetobject *o, bool enabled)
 
 }
 
-void vtkwindow_new::checkboxImageClicked(int cb)
+void vtkwindow_new::checkboxImageClicked(int cb, bool status)
 {
-    if( vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject(cb))->GetVisibility())
-        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
-    else
+    if(status)
         vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOn();
+    else
+        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
@@ -4734,29 +4737,35 @@ bool vtkwindow_new::eventFilter(QObject *object, QEvent *event)
     return false;
 }
 
-void vtkwindow_new::on_listWidget_clicked(const QModelIndex &index)
+void vtkwindow_new::on_listWidget_itemClicked(QListWidgetItem *item)
 {
+    int row = ui->listWidget->row(item);
+    imageStack->SetActiveLayer(row);
+    ui->lutComboBox->setCurrentText(imgLayerList.at(row)->getLutType());
+    auto radioBtn = imgLayerList.at(row)->getLutScale() == "Log" ? ui->logRadioButton : ui->linearadioButton;
+    radioBtn->setChecked(true);
+    ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->GetProperty()->GetOpacity()*100.0);
 
-    if( ui->listWidget->selectionModel()->selectedRows().count()!=0 && imgLayerList.at(index.row())->getType()==0 )
-    {
-        imageStack->SetActiveLayer( ui->listWidget->selectionModel()->selectedRows().at(0).row() );
+//    if( ui->listWidget->selectionModel()->selectedRows().count()!=0 && imgLayerList.at(index.row())->getType()==0 )
+//    {
+//        imageStack->SetActiveLayer( ui->listWidget->selectionModel()->selectedRows().at(0).row() );
 
-        ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject( ui->listWidget->selectionModel()->selectedRows().at(0).row() ))->GetProperty()->GetOpacity()*100.0);
+//        ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject( ui->listWidget->selectionModel()->selectedRows().at(0).row() ))->GetProperty()->GetOpacity()*100.0);
 
-        ui->lutComboBox->setCurrentText(imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutType());
+//        ui->lutComboBox->setCurrentText(imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutType());
 
-        if( imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutScale() == "Linear")
-            ui->linearadioButton->setChecked(true);
-        else
-            ui->logRadioButton->setChecked(true);
+//        if( imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutScale() == "Linear")
+//            ui->linearadioButton->setChecked(true);
+//        else
+//            ui->logRadioButton->setChecked(true);
 
-    }
+//    }
 }
 
 void vtkwindow_new::on_listWidget_itemChanged(QListWidgetItem *item)
 {
     //checkbox img
-    checkboxImageClicked(item->listWidget()->row(item));
+    checkboxImageClicked(item->listWidget()->row(item), item->checkState() == Qt::Checked);
 }
 
 void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int sourceStart, int sourceEnd, const QModelIndex & destinationParent, int destinationRow )
@@ -4974,3 +4983,95 @@ void vtkwindow_new::on_actionLeft_triggered()
     setCameraAzimuth(-90);
 }
 
+void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
+{
+    // Clear current layers
+    ui->listWidget->clear();
+    imgLayerList.clear();
+    imageStack->GetImages()->RemoveAllItems();
+
+    foreach (const auto &it, layers) {
+        auto layer = it.toObject();
+
+        vtkSmartPointer<vtkFitsReader> fitsReader;
+        // If this layer is origin, then we already have the fitsReader
+        if (layer["origin"].toBool()) {
+            fitsReader = myfits;
+        } else {
+            auto fn = filesDir.absoluteFilePath(layer["fits"].toString());
+            fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader->SetFileName(fn.toStdString());
+            if (layer["type"].toString() == "Moment") {
+                fitsReader->isMoment3D = true;
+                fitsReader->setMomentOrder(layer["order"].toInt());
+            }
+        }
+
+        // Setup
+        addLayerImage(fitsReader);
+        ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
+        auto l = ui->listWidget->currentItem();
+        l->setText(layer["text"].toString());
+        changeFitsScale(layer["lutType"].toString().toStdString(), layer["lutScale"].toString().toStdString());
+        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(l)))->GetProperty()->SetOpacity(layer["opacity"].toInt()/100.0);
+        l->setCheckState(layer["enabled"].toBool() ? Qt::Checked : Qt::Unchecked);
+    }
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    emit ui->listWidget->itemClicked(ui->listWidget->item(0));
+}
+
+void vtkwindow_new::on_actionSave_session_triggered()
+{
+    QDateTime currentTime = QDateTime::currentDateTimeUtc();
+    QString dirName = "vialactea_" + currentTime.toString("dd-MM-yyyy_hh-mm-ss");
+
+    // Create the session folders
+    QDir sessionFolder(QDir::home());
+    sessionFolder.mkdir(dirName);
+    sessionFolder.cd(dirName);
+    QDir filesFolder(sessionFolder);
+    filesFolder.mkdir("files");
+    filesFolder.cd("files");
+
+    QJsonObject image;
+    // Process image layers
+    QJsonArray layers;
+    for (int row = 0; row < ui->listWidget->count(); ++row) {
+        auto listItem = ui->listWidget->item(row);
+        auto img = imgLayerList.at(row);
+        auto fits = QFileInfo(QString::fromStdString(img->getFits()->GetFileName()));
+
+        // Copy the fits file into the files directory
+        auto src = fits.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(fits.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject layer;
+        if (img->getFits()->isMoment3D) {
+            layer["type"] = QString("Moment");
+            layer["order"] = img->getFits()->getMomentOrder();
+        } else {
+            layer["type"] = QString("Image");
+        }
+        layer["origin"] = img->getFits() == myfits;
+        layer["text"] = listItem->text();
+        layer["fits"] = fits.fileName();
+        layer["lutType"] = img->getLutType().isEmpty() ? "Gray" : img->getLutType();
+        layer["lutScale"] = img->getLutScale().isEmpty() ? "Log" : img->getLutScale();
+        layer["opacity"] = vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->\
+                GetProperty()->GetOpacity() * 100;
+        layer["enabled"] = listItem->checkState() == Qt::Checked;
+        layers.append(layer);
+    }
+    image["layers"] = layers;
+
+    // Save the session.json configuration file
+    QJsonObject root;
+    root["image"] = image;
+    root["saved"] = currentTime.toString(Qt::ISODate);
+    QJsonDocument session(root);
+    QFile sessionFile(sessionFolder.absoluteFilePath("session.json"));
+    sessionFile.open(QFile::WriteOnly);
+    sessionFile.write(session.toJson());
+    sessionFile.close();
+}

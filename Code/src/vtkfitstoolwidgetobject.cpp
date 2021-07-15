@@ -14,6 +14,8 @@ vtkfitstoolwidgetobject::vtkfitstoolwidgetobject(int t)
     type=t;
     wavelength="";
     name="";
+    lutType = "Gray";
+    lutScale = "Log";
 }
 
 void vtkfitstoolwidgetobject::setTreeWidgetItem( QTreeWidgetItem *i)
