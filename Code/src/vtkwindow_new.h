@@ -374,7 +374,7 @@ private slots:
     void on_glyphScalingLineEdit_editingFinished();
     void on_ElementListWidget_clicked(const QModelIndex &index);
     bool eventFilter(QObject *object, QEvent *event);
-    void on_listWidget_itemClicked(QListWidgetItem *item);
+    void on_listWidget_clicked(const QModelIndex &index);
     void on_listWidget_itemChanged(QListWidgetItem *item);
     void movedLayersRow( const QModelIndex & sourceParent, int sourceStart, int sourceEnd, const QModelIndex & destinationParent, int destinationRow );
     void on_listWidget_itemDoubleClicked(QListWidgetItem *item);

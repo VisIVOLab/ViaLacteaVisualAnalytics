@@ -4737,29 +4737,17 @@ bool vtkwindow_new::eventFilter(QObject *object, QEvent *event)
     return false;
 }
 
-void vtkwindow_new::on_listWidget_itemClicked(QListWidgetItem *item)
+void vtkwindow_new::on_listWidget_clicked(const QModelIndex &index)
 {
-    int row = ui->listWidget->row(item);
-    imageStack->SetActiveLayer(row);
-    ui->lutComboBox->setCurrentText(imgLayerList.at(row)->getLutType());
-    auto radioBtn = imgLayerList.at(row)->getLutScale() == "Log" ? ui->logRadioButton : ui->linearadioButton;
-    radioBtn->setChecked(true);
-    ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->GetProperty()->GetOpacity()*100.0);
-
-//    if( ui->listWidget->selectionModel()->selectedRows().count()!=0 && imgLayerList.at(index.row())->getType()==0 )
-//    {
-//        imageStack->SetActiveLayer( ui->listWidget->selectionModel()->selectedRows().at(0).row() );
-
-//        ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject( ui->listWidget->selectionModel()->selectedRows().at(0).row() ))->GetProperty()->GetOpacity()*100.0);
-
-//        ui->lutComboBox->setCurrentText(imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutType());
-
-//        if( imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutScale() == "Linear")
-//            ui->linearadioButton->setChecked(true);
-//        else
-//            ui->logRadioButton->setChecked(true);
-
-//    }
+    if (ui->listWidget->selectionModel()->selectedRows().count() != 0 && imgLayerList.at(index.row())->getType() == 0)
+    {
+        int row = ui->listWidget->selectionModel()->selectedRows().at(0).row();
+        imageStack->SetActiveLayer(row);
+        ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->GetProperty()->GetOpacity() * 100.0);
+        ui->lutComboBox->setCurrentText(imgLayerList.at(row)->getLutType());
+        auto radioBtn = imgLayerList.at(row)->getLutScale() == "Linear" ? ui->linearadioButton : ui->logRadioButton;
+        radioBtn->setChecked(true);
+    }
 }
 
 void vtkwindow_new::on_listWidget_itemChanged(QListWidgetItem *item)
