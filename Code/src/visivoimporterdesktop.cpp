@@ -84,7 +84,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel * m, bool isBa
     // queue->show();
 
 
-    m_VisIVOTable->setName(infoFile.fileName().toStdString());
+    m_VisIVOTable->setName(infoFile.absoluteFilePath().toStdString());
     m_VisIVOTable->setTableData(vialactea_source->getData());
 
     vtkwin=v;

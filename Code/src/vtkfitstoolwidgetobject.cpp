@@ -14,6 +14,7 @@ vtkfitstoolwidgetobject::vtkfitstoolwidgetobject(int t)
     type=t;
     wavelength="";
     name="";
+    path = "";
     lutType = "Gray";
     lutScale = "Log";
 }

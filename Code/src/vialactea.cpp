@@ -667,10 +667,11 @@ void ViaLactea::on_actionLoad_session_triggered()
     AstroUtils().GetRectSize(fits.toStdString(), rectSize);
 
     VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, layers, filesFolder](QList<QMap<QString,QString>> results){
+    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, layers, filesFolder, root](QList<QMap<QString,QString>> results){
         auto win = new vtkwindow_new(this, fitsReader);
         win->setDbElements(results);
         win->setImageLayers(layers, filesFolder);
+        win->setSources(root.object()["image"].toObject()["compact_sources"].toArray(), filesFolder);
 
         setMasterWin(win);
         vq->deleteLater();

@@ -107,7 +107,7 @@ public:
     void changeScalar(std::string scalar);
     PointsPipe * pp;
     void resetCamera();
-    void drawEllipse(QHash<QString, vtkEllipse *> ellipse , QString sourceFilename);
+    void drawEllipse(QHash<QString, vtkEllipse *> ellipse , QString sourceFilename, QString sourcePath = "");
     void drawGlyphs(int index);
     Ui::vtkwindow_new *ui;
     static void SelectionChangedCallbackFunction (vtkObject* caller, long unsigned int eventId, void* clientData, void* callData );
@@ -138,6 +138,8 @@ public:
     void addFilaments(VSTableDesktop* m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop* m_VisIVOTable);
     void addBubble(VSTableDesktop* m_VisIVOTable);
+    void setSources(const QJsonArray &sources, const QDir &filesDir);
+    QStringList getSourcesLoadedFromFile(const QString &sourcePath);
 
 
     //void drawSingleEllipse(QList<vtkEllipse *> ellipse, QString sourceFilename );

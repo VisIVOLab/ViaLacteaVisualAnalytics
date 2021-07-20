@@ -33,8 +33,9 @@ public:
     void setSpecies( QString l) {species=l;}
     void setTransition( QString l) {transition=l;}
     void setSurvey(QString l) {survey=l;}
+    void setPath(QString p) {path=p;}
 
-
+    QString getPath() {return path;}
     QString getSpecies( ) {return species;}
     QString getTransition( ) {return transition;}
     QString getSurvey() {return survey;}

@@ -61,6 +61,7 @@
 #include "vtkPolyLine.h"
 #include "vialactea.h"
 #include "vialacteainitialquery.h"
+#include "vialactea_fileload.h"
 #include "selectedsourcesform.h"
 #include "vtkContourFilter.h"
 #include "vtklegendscaleactor.h"
@@ -2437,7 +2438,7 @@ void vtkwindow_new::addSources(VSTableDesktop* m_VisIVOTable)
     }
 
     file_wavelength.insert(QString::fromStdString(m_VisIVOTable->getName()),m_VisIVOTable->getWavelength());
-    drawEllipse(ellipse_list,  QString::fromStdString(m_VisIVOTable->getName()) );
+    drawEllipse(ellipse_list, QString::fromStdString(m_VisIVOTable->getName()), QString::fromStdString(m_VisIVOTable->getName()));
 
     this->update();
 
@@ -2561,16 +2562,18 @@ void vtkwindow_new::setTransition(QString q){
 }
 */
 
-void vtkwindow_new::drawEllipse(QHash<QString,vtkEllipse *> ellipse, QString sourceFilename )
+void vtkwindow_new::drawEllipse(QHash<QString,vtkEllipse *> ellipse, QString sourceFilename, QString sourcePath)
 {
-    QString ori_sourceFilename=sourceFilename;
+    if (QDir::isAbsolutePath(sourceFilename))
+        sourceFilename = QFileInfo(sourceFilename).fileName();
+
+    QString ori_sourceFilename = sourceFilename;
     // sourceFilename=sourceFilename+"_"+QString::number( visualized_actor_list.count() );
 
     vtkSmartPointer<vtkAppendPolyData> appendFilter =vtkSmartPointer<vtkAppendPolyData>::New();
 
    //ellipse_list.unite(ellipse);
-
-ellipse_list=ellipse;
+    ellipse_list=ellipse;
 
 
     foreach(vtkEllipse *el, ellipse )
@@ -2636,6 +2639,7 @@ ellipse_list=ellipse;
         vtkfitstoolwidgetobject* singleBandObject=new vtkfitstoolwidgetobject(1);
         singleBandObject->setParentItem(imageObject);
         singleBandObject->setName(sourceFilename);
+        singleBandObject->setPath(sourcePath);
 
         QColor c= QColor( Qt::GlobalColor( Qt::red+VisualizedEllipseSourcesList.count() ) );
         ellipseActor->GetProperty()->SetColor(c.redF(), c.greenF(), c.blueF());
@@ -2982,10 +2986,17 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop* m_VisIVOTable)
 
 
         qDebug()<<"\t draw "<<wavelen[i]<<" - "<<stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]);
+
+        auto ellipse_list = wavelen[i].compare("ft") == 0 ? ft_ellipse_list : ellipse_list_local;
+        auto sourcePath = QString::fromStdString(m_VisIVOTable->getName());
+        drawEllipse(ellipse_list, stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]), sourcePath);
+
+        /*
         if(wavelen[i].compare("ft")==0)
-            drawEllipse(ft_ellipse_list,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]) );
+            drawEllipse(ft_ellipse_list,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]), m_VisIVOTable->getName());
         else
-            drawEllipse(ellipse_list_local,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]) );
+            drawEllipse(ellipse_list_local,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]), m_VisIVOTable->getName());
+        */
         /*
 
         if(wavelen[i].compare("ft")==0)
@@ -3108,6 +3119,16 @@ QHash<QString,  vtkSmartPointer<vtkLODActor> > vtkwindow_new::getVisualizedActor
 QHash<QString,  vtkSmartPointer<vtkLODActor> > vtkwindow_new::getEllipseActorList()
 {
     return ellipse_actor_list;
+}
+
+QStringList vtkwindow_new::getSourcesLoadedFromFile(const QString &sourcePath)
+{
+    QStringList list;
+    foreach (const auto &it, elementLayerList) {
+        if (it->getType() == 1 && it->getPath() == sourcePath)
+            list << it->getName();
+    }
+    return list;
 }
 
 void vtkwindow_new::setCuttingPlaneValue(int arg1)
@@ -5008,6 +5029,51 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDi
     emit ui->listWidget->itemClicked(ui->listWidget->item(0));
 }
 
+void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
+{
+    foreach (const auto &it, sources) {
+        auto compactSource = it.toObject();
+        auto file = filesDir.absoluteFilePath(compactSource["file"].toString());
+
+        auto fileLoad = new Vialactea_FileLoad(file, true);
+        fileLoad->setVtkWin(this);
+        fileLoad->setCatalogueActive();
+
+        if (compactSource["bandmerged"].toBool()) {
+            // bandmerged
+            fileLoad->setWavelength("all");
+        } else {
+            // singleband
+            fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
+            fileLoad->on_okPushButton_clicked();
+
+            auto enabled = compactSource["enabled"].toBool();
+            auto color = compactSource["color"].toArray();
+            auto text = compactSource["text"].toString();
+
+            double rgb[3];
+            rgb[0] = color.at(0).toDouble();
+            rgb[1] = color.at(1).toDouble();
+            rgb[2] = color.at(2).toDouble();
+
+            auto row = ui->tableWidget->findItems(text, Qt::MatchExactly).at(0)->row();
+            auto cb = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
+            auto actor = getVisualizedActorList().value(text);
+            actor->GetProperty()->SetColor(rgb);
+            if (enabled) {
+                cb->setCheckState(Qt::Checked);
+                actor->VisibilityOn();
+            } else {
+                cb->setCheckState(Qt::Unchecked);
+                actor->VisibilityOff();
+            }
+
+            cb->setStyleSheet("background-color: rgb("+QString::number(rgb[0]*255)+","+QString::number(rgb[1]*255)+" ,"+QString::number(rgb[2]*255)+")");
+        }
+    }
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
 void vtkwindow_new::on_actionSave_session_triggered()
 {
     QDateTime currentTime = QDateTime::currentDateTimeUtc();
@@ -5022,6 +5088,8 @@ void vtkwindow_new::on_actionSave_session_triggered()
     filesFolder.cd("files");
 
     QJsonObject image;
+
+
     // Process image layers
     QJsonArray layers;
     for (int row = 0; row < ui->listWidget->count(); ++row) {
@@ -5052,6 +5120,42 @@ void vtkwindow_new::on_actionSave_session_triggered()
         layers.append(layer);
     }
     image["layers"] = layers;
+
+
+    // Process compact sources
+    QJsonArray sources;
+    for (auto i = file_wavelength.constBegin(); i != file_wavelength.constEnd(); ++i) {
+        QJsonObject compactSource;
+        QFileInfo srcInfo = QFileInfo(i.key());
+        compactSource["file"] = srcInfo.fileName();
+
+        // Copy the file into the files directory
+        auto src = srcInfo.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
+        QFile::copy(src, dst);
+
+        if (i.value() == 0) {
+            // bandmerged
+            compactSource["bandmerged"] = true;
+        } else {
+            // single band
+            auto name = getSourcesLoadedFromFile(src).first();
+            auto row = ui->tableWidget->findItems(name, Qt::MatchExactly).first()->row();
+            auto ellipseColor = getVisualizedActorList().value(name)->GetProperty()->GetColor();
+            QJsonArray rgb;
+            rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+
+            compactSource["bandmerged"] = false;
+            compactSource["wavelength"] = i.value();
+            compactSource["text"] = name;
+            compactSource["enabled"] = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0))->checkState() == Qt::Checked;
+            compactSource["color"] = rgb;
+        }
+
+        sources.append(compactSource);
+    }
+    image["compact_sources"] = sources;
+
 
     // Save the session.json configuration file
     QJsonObject root;
