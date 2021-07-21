@@ -5042,6 +5042,36 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
         if (compactSource["bandmerged"].toBool()) {
             // bandmerged
             fileLoad->setWavelength("all");
+            fileLoad->on_okPushButton_clicked();
+
+            auto tableItems = compactSource["tableItems"].toArray();
+
+            foreach (const auto &item, tableItems) {
+                auto text = item["text"].toString();
+                auto enabled = item["enabled"].toBool();
+                auto color = item["color"].toArray();
+                double rgb[3];
+                rgb[0] = color.at(0).toDouble();
+                rgb[1] = color.at(1).toDouble();
+                rgb[2] = color.at(2).toDouble();
+
+                auto row = ui->tableWidget->findItems(text, Qt::MatchExactly).first()->row();
+                auto cb = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
+                auto actor = getVisualizedActorList().value(text);
+
+                actor->GetProperty()->SetColor(rgb);
+                if (enabled) {
+                    cb->setCheckState(Qt::Checked);
+                    actor->VisibilityOn();
+                } else {
+                    cb->setCheckState(Qt::Unchecked);
+                    actor->VisibilityOff();
+                }
+
+                cb->setStyleSheet("background-color: rgb("+QString::number(rgb[0]*255)+","+QString::number(rgb[1]*255)+" ,"+QString::number(rgb[2]*255)+")");
+
+            }
+
         } else {
             // singleband
             fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
@@ -5137,6 +5167,20 @@ void vtkwindow_new::on_actionSave_session_triggered()
         if (i.value() == 0) {
             // bandmerged
             compactSource["bandmerged"] = true;
+            QJsonArray tableItems;
+            auto items = getSourcesLoadedFromFile(src);
+            foreach (const auto &item, items) {
+                auto row = ui->tableWidget->findItems(item, Qt::MatchExactly).first()->row();
+                auto ellipseColor = getVisualizedActorList().value(item)->GetProperty()->GetColor();
+                QJsonArray rgb;
+                rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+                QJsonObject obj;
+                obj["text"] = item;
+                obj["enabled"] = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0))->checkState() == Qt::Checked;
+                obj["color"] = rgb;
+                tableItems.append(obj);
+            }
+            compactSource["tableItems"] = tableItems;
         } else {
             // single band
             auto name = getSourcesLoadedFromFile(src).first();
