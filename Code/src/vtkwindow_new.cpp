@@ -4992,6 +4992,16 @@ void vtkwindow_new::on_actionLeft_triggered()
     setCameraAzimuth(-90);
 }
 
+void vtkwindow_new::loadSession(const QJsonObject &session, const QDir &filesDir)
+{
+    auto layers = session["image"].toObject()["layers"].toArray();
+    setImageLayers(layers, filesDir);
+
+    auto compactSources = session["image"].toObject()["compact_sources"].toArray();
+    if (!compactSources.isEmpty())
+        setSources(compactSources, filesDir);
+}
+
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
 {
     // Clear current layers
@@ -5012,102 +5022,96 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDi
             fitsReader->SetFileName(fn.toStdString());
             if (layer["type"].toString() == "Moment") {
                 fitsReader->isMoment3D = true;
-                fitsReader->setMomentOrder(layer["order"].toInt());
+                fitsReader->setMomentOrder(layer["moment_order"].toInt());
             }
         }
 
         // Setup
         addLayerImage(fitsReader);
         ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
-        auto l = ui->listWidget->currentItem();
-        l->setText(layer["text"].toString());
+        auto listItem = ui->listWidget->currentItem();
+        listItem->setText(layer["text"].toString());
         changeFitsScale(layer["lutType"].toString().toStdString(), layer["lutScale"].toString().toStdString());
-        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(l)))->GetProperty()->SetOpacity(layer["opacity"].toInt()/100.0);
-        l->setCheckState(layer["enabled"].toBool() ? Qt::Checked : Qt::Unchecked);
+        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))->GetProperty()->SetOpacity(layer["opacity"].toInt()/100.0);
+        listItem->setCheckState(layer["enabled"].toBool() ? Qt::Checked : Qt::Unchecked);
     }
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-    emit ui->listWidget->itemClicked(ui->listWidget->item(0));
+    ui->listWidget->setCurrentRow(0);
+    emit ui->listWidget->clicked(ui->listWidget->selectionModel()->currentIndex());
+}
+
+bool vtkwindow_new::getCompactSourceInfo(const QString &text, int &row, bool &enabled, double *color)
+{
+    auto list = ui->tableWidget->findItems(text, Qt::MatchExactly);
+    if (list.count() > 0) {
+        row = list.first()->row();
+        enabled = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0))->isChecked();
+        getVisualizedActorList().value(text)->GetProperty()->GetColor(color);
+        return true;
+    }
+    return false;
+}
+
+void vtkwindow_new::setCompactSourceInfo(const QString &text, const bool &enabled, const double *color)
+{
+    auto list = ui->tableWidget->findItems(text, Qt::MatchExactly);
+    if (list.count() > 0) {
+        auto row = list.first()->row();
+        auto cb = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
+        auto ellipseActor = getVisualizedActorList().value(text);
+        ellipseActor->GetProperty()->SetColor(color[0], color[1], color[2]);
+        cb->setStyleSheet("background-color: rgb("+QString::number(color[0]*255)+","+\
+                QString::number(color[1]*255)+" ,"+QString::number(color[2]*255)+")");
+        if (enabled) {
+            cb->setChecked(true);
+            ellipseActor->VisibilityOn();
+        } else {
+            cb->setChecked(false);
+            ellipseActor->VisibilityOff();
+        }
+    }
 }
 
 void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
 {
+    auto fileLoad = new Vialactea_FileLoad("", true);
+    fileLoad->setVtkWin(this);
+    fileLoad->setCatalogueActive();
+
     foreach (const auto &it, sources) {
         auto compactSource = it.toObject();
         auto file = filesDir.absoluteFilePath(compactSource["file"].toString());
-
-        auto fileLoad = new Vialactea_FileLoad(file, true);
-        fileLoad->setVtkWin(this);
-        fileLoad->setCatalogueActive();
+        fileLoad->init(file);
 
         if (compactSource["bandmerged"].toBool()) {
-            // bandmerged
             fileLoad->setWavelength("all");
             fileLoad->on_okPushButton_clicked();
-
-            auto tableItems = compactSource["tableItems"].toArray();
-
-            foreach (const auto &item, tableItems) {
+            foreach (const auto &item, compactSource["tableItems"].toArray()) {
                 auto text = item["text"].toString();
                 auto enabled = item["enabled"].toBool();
                 auto color = item["color"].toArray();
-                double rgb[3];
-                rgb[0] = color.at(0).toDouble();
-                rgb[1] = color.at(1).toDouble();
-                rgb[2] = color.at(2).toDouble();
-
-                auto row = ui->tableWidget->findItems(text, Qt::MatchExactly).first()->row();
-                auto cb = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
-                auto actor = getVisualizedActorList().value(text);
-
-                actor->GetProperty()->SetColor(rgb);
-                if (enabled) {
-                    cb->setCheckState(Qt::Checked);
-                    actor->VisibilityOn();
-                } else {
-                    cb->setCheckState(Qt::Unchecked);
-                    actor->VisibilityOff();
-                }
-
-                cb->setStyleSheet("background-color: rgb("+QString::number(rgb[0]*255)+","+QString::number(rgb[1]*255)+" ,"+QString::number(rgb[2]*255)+")");
-
+                double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+                setCompactSourceInfo(text, enabled, rgb);
             }
-
         } else {
-            // singleband
             fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
             fileLoad->on_okPushButton_clicked();
-
+            auto text = compactSource["text"].toString();
             auto enabled = compactSource["enabled"].toBool();
             auto color = compactSource["color"].toArray();
-            auto text = compactSource["text"].toString();
-
-            double rgb[3];
-            rgb[0] = color.at(0).toDouble();
-            rgb[1] = color.at(1).toDouble();
-            rgb[2] = color.at(2).toDouble();
-
-            auto row = ui->tableWidget->findItems(text, Qt::MatchExactly).at(0)->row();
-            auto cb = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
-            auto actor = getVisualizedActorList().value(text);
-            actor->GetProperty()->SetColor(rgb);
-            if (enabled) {
-                cb->setCheckState(Qt::Checked);
-                actor->VisibilityOn();
-            } else {
-                cb->setCheckState(Qt::Unchecked);
-                actor->VisibilityOff();
-            }
-
-            cb->setStyleSheet("background-color: rgb("+QString::number(rgb[0]*255)+","+QString::number(rgb[1]*255)+" ,"+QString::number(rgb[2]*255)+")");
+            double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+            setCompactSourceInfo(text, enabled, rgb);
         }
     }
+
+    fileLoad->deleteLater();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::on_actionSave_session_triggered()
 {
-    QDateTime currentTime = QDateTime::currentDateTimeUtc();
-    QString dirName = "vialactea_" + currentTime.toString("dd-MM-yyyy_hh-mm-ss");
+    auto currentTime = QDateTime::currentDateTimeUtc();
+    auto dirName = "vialactea_" + currentTime.toString("dd-MM-yyyy_hh-mm-ss");
 
     // Create the session folders
     QDir sessionFolder(QDir::home());
@@ -5118,9 +5122,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
     filesFolder.cd("files");
 
     QJsonObject image;
-
-
-    // Process image layers
+    // Layers
     QJsonArray layers;
     for (int row = 0; row < ui->listWidget->count(); ++row) {
         auto listItem = ui->listWidget->item(row);
@@ -5152,47 +5154,51 @@ void vtkwindow_new::on_actionSave_session_triggered()
     image["layers"] = layers;
 
 
-    // Process compact sources
+    // Compact sources
     QJsonArray sources;
     for (auto i = file_wavelength.constBegin(); i != file_wavelength.constEnd(); ++i) {
-        QJsonObject compactSource;
-        QFileInfo srcInfo = QFileInfo(i.key());
-        compactSource["file"] = srcInfo.fileName();
+        auto srcInfo = QFileInfo(i.key());
+        auto bandmerged = i.value() == 0;
 
         // Copy the file into the files directory
         auto src = srcInfo.absoluteFilePath();
         auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
         QFile::copy(src, dst);
 
-        if (i.value() == 0) {
-            // bandmerged
-            compactSource["bandmerged"] = true;
+        QJsonObject compactSource;
+        compactSource["file"] = srcInfo.fileName();
+        compactSource["bandmerged"] = bandmerged;
+
+        if (bandmerged) {
             QJsonArray tableItems;
             auto items = getSourcesLoadedFromFile(src);
             foreach (const auto &item, items) {
-                auto row = ui->tableWidget->findItems(item, Qt::MatchExactly).first()->row();
-                auto ellipseColor = getVisualizedActorList().value(item)->GetProperty()->GetColor();
+                int row;
+                bool enabled;
+                double ellipseColor[3];
+                getCompactSourceInfo(item, row, enabled, ellipseColor);
                 QJsonArray rgb;
                 rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+
                 QJsonObject obj;
                 obj["text"] = item;
-                obj["enabled"] = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0))->checkState() == Qt::Checked;
+                obj["enabled"] = enabled;
                 obj["color"] = rgb;
                 tableItems.append(obj);
             }
             compactSource["tableItems"] = tableItems;
         } else {
-            // single band
-            auto name = getSourcesLoadedFromFile(src).first();
-            auto row = ui->tableWidget->findItems(name, Qt::MatchExactly).first()->row();
-            auto ellipseColor = getVisualizedActorList().value(name)->GetProperty()->GetColor();
+            auto text = getSourcesLoadedFromFile(src).first();
+            int row;
+            bool enabled;
+            double ellipseColor[3];
+            getCompactSourceInfo(text, row, enabled, ellipseColor);
             QJsonArray rgb;
             rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
 
-            compactSource["bandmerged"] = false;
             compactSource["wavelength"] = i.value();
-            compactSource["text"] = name;
-            compactSource["enabled"] = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0))->checkState() == Qt::Checked;
+            compactSource["text"] = text;
+            compactSource["enabled"] = enabled;
             compactSource["color"] = rgb;
         }
 
@@ -5210,5 +5216,5 @@ void vtkwindow_new::on_actionSave_session_triggered()
     sessionFile.open(QFile::WriteOnly);
     sessionFile.write(session.toJson());
     sessionFile.close();
-    QMessageBox::information(this, QObject::tr("Save session"), QObject::tr("Session saved in ") + sessionFolder.absolutePath());
+    QMessageBox::information(this, tr("Save session"), tr("Session saved in ") + sessionFolder.absolutePath());
 }

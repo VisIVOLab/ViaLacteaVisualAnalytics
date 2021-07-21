@@ -621,7 +621,7 @@ void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 void ViaLactea::on_actionLoad_session_triggered()
 {
     if (masterWin != nullptr) {
-        QMessageBox::warning(this, QObject::tr("Load a session"), QObject::tr("A session is already open, close it to load another session."));
+        QMessageBox::warning(this, tr("Load a session"), tr("A session is already open, close it to load another session."));
         return;
     }
 
@@ -631,11 +631,11 @@ void ViaLactea::on_actionLoad_session_triggered()
 
     QFile sessionFile(fn);
     sessionFile.open(QFile::ReadOnly);
-    QJsonDocument root = QJsonDocument::fromJson(sessionFile.readAll());
+    auto root = QJsonDocument::fromJson(sessionFile.readAll()).object();
     sessionFile.close();
 
     // Check for the origin layer and start a new window
-    QJsonArray layers = root.object()["image"].toObject()["layers"].toArray();
+    auto layers = root["image"].toObject()["layers"].toArray();
     QJsonObject originLayer;
     bool found = false;
     foreach (const auto &it, layers) {
@@ -648,7 +648,7 @@ void ViaLactea::on_actionLoad_session_triggered()
     }
 
     if (!found) {
-        QMessageBox::critical(this, QObject::tr("Load a session"), QObject::tr("Cannot load the session: there is no origin layer."));
+        QMessageBox::critical(this, tr("Load a session"), tr("Cannot load the session: there is no origin layer."));
         return;
     }
 
@@ -661,22 +661,17 @@ void ViaLactea::on_actionLoad_session_triggered()
         fitsReader->setMomentOrder(originLayer["moment_order"].toInt());
     }
 
-    // Query VLKB to populate VLKB items table
     double coords[2], rectSize[2];
     AstroUtils().GetCenterCoords(fits.toStdString(), coords);
     AstroUtils().GetRectSize(fits.toStdString(), rectSize);
-
-    VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, layers, filesFolder, root](QList<QMap<QString,QString>> results){
+    auto vq = new VialacteaInitialQuery;
+    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, root, filesFolder](QList<QMap<QString,QString>> results){
         auto win = new vtkwindow_new(this, fitsReader);
         win->setDbElements(results);
-        win->setImageLayers(layers, filesFolder);
-        win->setSources(root.object()["image"].toObject()["compact_sources"].toArray(), filesFolder);
-
+        win->loadSession(root, filesFolder);
         setMasterWin(win);
         vq->deleteLater();
     });
-
     vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
 }
 

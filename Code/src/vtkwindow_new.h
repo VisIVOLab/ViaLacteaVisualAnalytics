@@ -85,6 +85,9 @@ public:
     explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis=0, int b=0, vtkwindow_new *p=0);
     //explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
+
+    void loadSession(const QJsonObject &session, const QDir &filesDir);
+
     vtkRenderer* m_Ren1;
     vtkRenderWindow* renwin;
 
@@ -138,8 +141,6 @@ public:
     void addFilaments(VSTableDesktop* m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop* m_VisIVOTable);
     void addBubble(VSTableDesktop* m_VisIVOTable);
-    void setSources(const QJsonArray &sources, const QDir &filesDir);
-    QStringList getSourcesLoadedFromFile(const QString &sourcePath);
 
 
     //void drawSingleEllipse(QList<vtkEllipse *> ellipse, QString sourceFilename );
@@ -152,7 +153,6 @@ public:
     QList<vtkfitstoolwidgetobject*> getLayerListElements(){return elementLayerList;}
 
     void addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString survey="", QString species="", QString transition="");
-    void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
 
     QString getSelectedScale(){return selected_scale;}
 
@@ -248,6 +248,13 @@ private:
     void drawRectangleFootprint(double points[8]);
     VialacteaStringDictWidget *stringDictWidget;
     void addCombinedLayer(QString name,  vtkSmartPointer<vtkLODActor>actor, int objtype, bool active);
+
+    QStringList getSourcesLoadedFromFile(const QString &sourcePath);
+    bool getCompactSourceInfo(const QString &text, int &row, bool &enabled, double *color);
+    void setCompactSourceInfo(const QString &text, const bool &enabled, const double *color);
+
+    void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
+    void setSources(const QJsonArray &sources, const QDir &filesDir);
 
 public slots:
     //void updateCoords(vtkObject*);
