@@ -170,6 +170,7 @@ public:
 
 
     QHash<QString, int> file_wavelength;
+    QHash<QString, QStringList> filamentsList;
     vtkSmartPointer<vtkActor> selectedActor;
     void addActor(vtkProp *actor);
     void removeActor(vtkProp *actor);
@@ -250,11 +251,12 @@ private:
     void addCombinedLayer(QString name,  vtkSmartPointer<vtkLODActor>actor, int objtype, bool active);
 
     QStringList getSourcesLoadedFromFile(const QString &sourcePath);
-    bool getCompactSourceInfo(const QString &text, int &row, bool &enabled, double *color);
-    void setCompactSourceInfo(const QString &text, const bool &enabled, const double *color);
+    bool getTableItemInfo(const QString &text, int &row, bool &enabled, double *color);
+    void setTableItemInfo(const QString &text, const bool &enabled, const double *color);
 
     void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
     void setSources(const QJsonArray &sources, const QDir &filesDir);
+    void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
 
 public slots:
     //void updateCoords(vtkObject*);

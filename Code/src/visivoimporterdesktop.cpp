@@ -1144,13 +1144,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString t, QString f, TreeModel *m 
 
 VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool isFilament, bool isBubble)
 {
-
-
     QFileInfo infoFile = QFileInfo(f);
-
-
-    //QUI
-
 
     headerFileName.append(QDir::homePath()+"/VisIVODesktopTemp/tmp_download/").append(infoFile.baseName()).append(".bin.head");
     binaryFileName.append(QDir::homePath()+"/VisIVODesktopTemp/tmp_download/").append(infoFile.baseName()).append(".bin");
@@ -1159,36 +1153,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool i
     importedFile = new QFile(fileName);
     binaryFile = new QFile(binaryFileName);
 
-
     QString type="ascii";
-    int errorCode;
-
-
-    char *filepath = new char[f.toStdString().length() + 1];
-    strcpy(filepath,f.toStdString().c_str());
-
-    char *fileformat = new char[type.toStdString().length() + 1];
-    strcpy(fileformat,type.toStdString().c_str());
-
- //   VisIVOImporter envVI1;
- //   VI_Init(&envVI1);
-
     QString outputPathString=QDir::homePath()+"/VisIVODesktopTemp/tmp_download/"+infoFile.baseName()+".bin";
 
-    char *outputPath = new char[outputPathString.toStdString().length() + 1];
-    strcpy(outputPath,outputPathString.toStdString().c_str());
-
- //   errorCode=VI_SetAtt(&envVI1,VI_SET_FFORMAT,fileformat);
- //   errorCode=VI_SetAtt(&envVI1,VI_SET_FILEPATH, filepath);
- //   errorCode=VI_SetAtt(&envVI1,VI_SET_OUTFILEVBT,outputPath);
- //   VI_Import(&envVI1);
-
-
     VialacteaSource *vialactea_source= new VialacteaSource(f.toStdString());
+
     m_VisIVOTable = new VSTableDesktop();
-
     m_VisIVOTable->setLocator(outputPathString.toStdString());
-
     m_VisIVOTable->setNumberOfColumns(vialactea_source->getNumberOfColumns());
     m_VisIVOTable->setNumberOfRows(vialactea_source->getNumberOfRows());
     m_VisIVOTable->setColsNames(vialactea_source->getColumnsNames());
@@ -1199,22 +1170,16 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool i
     m_VisIVOTable->setHistogramArray(vialactea_source->getHistogramArray());
     m_VisIVOTable->setHistogramValueArray(vialactea_source->getHistogramValueArray());
 
-
-
     queue = &Singleton<OperationQueue>::Instance();
     operation_queue_row=queue->addOperation("Importing "+infoFile.fileName());
 
-
-    m_VisIVOTable->setName(infoFile.fileName().toStdString());
+    m_VisIVOTable->setName(infoFile.absoluteFilePath().toStdString());
     m_VisIVOTable->setTableData(vialactea_source->getData());
 
     vtkwin=v;
-    ////qDebug()<<"num#### "<<m_VisIVOTable->getNumberOfRows();
 
     if (isFilament)
     {
-
-
         vtkwin->addFilaments(m_VisIVOTable);
     }
     else if (isBubble)
@@ -1223,19 +1188,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool i
     }
     else
     {
-
         VisPoint *m_VisPointsObject = new VisPoint(m_VisIVOTable);
-
         m_VisPointsObject->setX("x");
         m_VisPointsObject->setY("y");
         m_VisPointsObject->setZ("z");
         m_VisPointsObject->setScale(true);
-
         vtkwindow_new *m_OldRenderingWindow = new vtkwindow_new(this, m_VisPointsObject);
-
-
     }
-
 }
 
 void VisIVOImporterDesktop::setVtkWin(vtkwindow_new* v)

@@ -1889,7 +1889,6 @@ void vtkwindow_new::addBubble(VSTableDesktop* m_VisIVOTable)
 
 void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
 {
-
     float centroid_glat;
     float centroid_glon;
     QString contour;
@@ -2155,162 +2154,50 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
 
     }
 
+
+    QStringList names;
     //Contorno filamento
     vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
     cleanFilter->Update();
-
-
-    // Visualize
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
-
-
     vtkSmartPointer<vtkLODActor> actor = vtkSmartPointer<vtkLODActor>::New();
     actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(0, 1,0);
-
-  //  m_Ren1->AddActor(actor);
-   // ui->qVTK1->update();
-
-    //  QString name="Filaments_"+QString::number( visualized_actor_list.count() );
-    QString name=stringDictWidget->getColDescStringDict().value("vlkb_filaments.filaments.contour");
-
-    addCombinedLayer(name,  actor,2, true);
-
-/*visualized_actor_list.insert(name,actor);
-
-
-
-    vtkfitstoolwidgetobject* filamentObject=new vtkfitstoolwidgetobject(2);
-
-    filamentObject->setName(name);
-    filamentObject->setActor(actor);
-
-    addLayer(filamentObject);
-*/
+    actor->GetProperty()->SetColor(0, 1, 0);
+    QString name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.filaments.contour");
+    names << name;
+    addCombinedLayer(name, actor, 2, true);
 
 
     //branches Contour1d
     vtkSmartPointer<vtkCleanPolyData> branches_contour1d_cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     branches_contour1d_cleanFilter->SetInputConnection(branches_contour1d_appendFilter->GetOutputPort());
     branches_contour1d_cleanFilter->Update();
-
-
-    // Visualize
     vtkSmartPointer<vtkPolyDataMapper> branches_contour1d_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     branches_contour1d_mapper->SetInputConnection(branches_contour1d_cleanFilter->GetOutputPort());
-
-
     vtkSmartPointer<vtkLODActor> branches_contour1d_actor = vtkSmartPointer<vtkLODActor>::New();
     branches_contour1d_actor->SetMapper(branches_contour1d_mapper);
-    branches_contour1d_actor->GetProperty()->SetColor(1, 0,0);
-
-   // m_Ren1->AddActor(branches_contour1d_actor);
-   // ui->qVTK1->update();
-
-    //name="Filaments_branches_contour1d_"+QString::number( visualized_actor_list.count() );
-    name=stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour1d");
-
-   // visualized_actor_list.insert(name,branches_contour1d_actor);
-
-    addCombinedLayer(name,  branches_contour1d_actor,2, true);
+    branches_contour1d_actor->GetProperty()->SetColor(1, 0, 0);
+    name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour1d");
+    names << name;
+    addCombinedLayer(name, branches_contour1d_actor, 2, true);
 
 
-/*
-    vtkfitstoolwidgetobject* branches_contour1d_filamentObject=new vtkfitstoolwidgetobject(2);
-    branches_contour1d_filamentObject->setName(name);
-    branches_contour1d_filamentObject->setActor(branches_contour1d_actor);
-    addLayer(branches_contour1d_filamentObject);
-*/
-
-/*
-    //branches Contour1d_S
-    vtkSmartPointer<vtkCleanPolyData> branches_contour1d_cleanFilter_S = vtkSmartPointer<vtkCleanPolyData>::New();
-    branches_contour1d_cleanFilter_S->SetInputConnection(branches_contour1d_appendFilter_S->GetOutputPort());
-    branches_contour1d_cleanFilter_S->Update();
-    // Visualize
-    vtkSmartPointer<vtkPolyDataMapper> branches_contour1d_mapper_S = vtkSmartPointer<vtkPolyDataMapper>::New();
-    branches_contour1d_mapper_S->SetInputConnection(branches_contour1d_cleanFilter_S->GetOutputPort());
-
-    vtkSmartPointer<vtkLODActor> branches_contour1d_actor_S = vtkSmartPointer<vtkLODActor>::New();
-    branches_contour1d_actor_S->SetMapper(branches_contour1d_mapper_S);
-    branches_contour1d_actor_S->GetProperty()->SetColor(0, 0,1);
-
-    m_Ren1->AddActor(branches_contour1d_actor_S);
-    ui->qVTK1->update();
-
-    name="Filaments_branches_contour1d_S_"+QString::number( visualized_actor_list.count() );
-
-    visualized_actor_list.insert(name,branches_contour1d_actor_S);
-
-
-    vtkfitstoolwidgetobject* branches_contour1d_filamentObject_S=new vtkfitstoolwidgetobject(2);
-    branches_contour1d_filamentObject_S->setName(name);
-    branches_contour1d_filamentObject_S->setActor(branches_contour1d_actor_S);
-    addLayer(branches_contour1d_filamentObject_S);
-*/
-/*
-    //branches Contour_new
-    vtkSmartPointer<vtkCleanPolyData> branches_contour_new_cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
-    branches_contour_new_cleanFilter->SetInputConnection(branches_contour_new_appendFilter->GetOutputPort());
-    branches_contour_new_cleanFilter->Update();
-
-    // Visualize
-    vtkSmartPointer<vtkPolyDataMapper> branches_contour_new_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    branches_contour_new_mapper->SetInputConnection(branches_contour_new_cleanFilter->GetOutputPort());
-
-    vtkSmartPointer<vtkLODActor> branches_contour_new_actor = vtkSmartPointer<vtkLODActor>::New();
-    branches_contour_new_actor->SetMapper(branches_contour_new_mapper);
-    branches_contour_new_actor->GetProperty()->SetColor(1, 0,1);
-    branches_contour_new_actor->VisibilityOff();
-    //vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
-
-    m_Ren1->AddActor(branches_contour_new_actor);
-    ui->qVTK1->update();
-
-    name="Filaments_branches_contour_new_"+QString::number( visualized_actor_list.count() );
-    visualized_actor_list.insert(name,branches_contour_new_actor);
-
-    vtkfitstoolwidgetobject* branches_contour_new_filamentObject=new vtkfitstoolwidgetobject(2);
-    branches_contour_new_filamentObject->setName(name);
-    branches_contour_new_filamentObject->setActor(branches_contour_new_actor);
-    addLayer(branches_contour_new_filamentObject,false);
-*/
     //branches Contour
     vtkSmartPointer<vtkCleanPolyData> branches_contour_cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     branches_contour_cleanFilter->SetInputConnection(branches_contour_appendFilter->GetOutputPort());
     branches_contour_cleanFilter->Update();
-
-    // Visualize
     vtkSmartPointer<vtkPolyDataMapper> branches_contour_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     branches_contour_mapper->SetInputConnection(branches_contour_cleanFilter->GetOutputPort());
-
     vtkSmartPointer<vtkLODActor> branches_contour_actor = vtkSmartPointer<vtkLODActor>::New();
     branches_contour_actor->SetMapper(branches_contour_mapper);
-    branches_contour_actor->GetProperty()->SetColor(0, 1,1);
+    branches_contour_actor->GetProperty()->SetColor(0, 1, 1);
+    name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour");
+    names << name;
+    addCombinedLayer(name, branches_contour_actor, 2, false);
 
-//    m_Ren1->AddActor(branches_contour_actor);
- //   ui->qVTK1->update();
-
-//    name="Filaments_branches_contour_"+QString::number( visualized_actor_list.count() );
-    name=stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour");
-
-   // visualized_actor_list.insert(name,branches_contour_actor);
-
-
-
-/*
-    vtkfitstoolwidgetobject* branches_contour_filamentObject=new vtkfitstoolwidgetobject(2);
-    branches_contour_filamentObject->setName(name);
-    branches_contour_filamentObject->setActor(branches_contour_actor);
-    branches_contour_actor->VisibilityOff();
-    addLayer(branches_contour_filamentObject,false);
- */
-    addCombinedLayer(name,  branches_contour_actor,2, false);
-
-
-
+    filamentsList.insert(QString::fromStdString(m_VisIVOTable->getName()), names);
 }
 
 
@@ -5000,6 +4887,10 @@ void vtkwindow_new::loadSession(const QJsonObject &session, const QDir &filesDir
     auto compactSources = session["image"].toObject()["compact_sources"].toArray();
     if (!compactSources.isEmpty())
         setSources(compactSources, filesDir);
+
+    auto filaments = session["image"].toObject()["filaments"].toArray();
+    if (!filaments.isEmpty())
+        setFilaments(filaments, filesDir);
 }
 
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
@@ -5040,7 +4931,7 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDi
     emit ui->listWidget->clicked(ui->listWidget->selectionModel()->currentIndex());
 }
 
-bool vtkwindow_new::getCompactSourceInfo(const QString &text, int &row, bool &enabled, double *color)
+bool vtkwindow_new::getTableItemInfo(const QString &text, int &row, bool &enabled, double *color)
 {
     auto list = ui->tableWidget->findItems(text, Qt::MatchExactly);
     if (list.count() > 0) {
@@ -5052,7 +4943,7 @@ bool vtkwindow_new::getCompactSourceInfo(const QString &text, int &row, bool &en
     return false;
 }
 
-void vtkwindow_new::setCompactSourceInfo(const QString &text, const bool &enabled, const double *color)
+void vtkwindow_new::setTableItemInfo(const QString &text, const bool &enabled, const double *color)
 {
     auto list = ui->tableWidget->findItems(text, Qt::MatchExactly);
     if (list.count() > 0) {
@@ -5091,7 +4982,7 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
                 auto enabled = item["enabled"].toBool();
                 auto color = item["color"].toArray();
                 double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
-                setCompactSourceInfo(text, enabled, rgb);
+                setTableItemInfo(text, enabled, rgb);
             }
         } else {
             fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
@@ -5100,7 +4991,31 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
             auto enabled = compactSource["enabled"].toBool();
             auto color = compactSource["color"].toArray();
             double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
-            setCompactSourceInfo(text, enabled, rgb);
+            setTableItemInfo(text, enabled, rgb);
+        }
+    }
+
+    fileLoad->deleteLater();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &filesDir)
+{
+    auto fileLoad = new Vialactea_FileLoad("", true);
+    fileLoad->setVtkWin(this);
+
+    foreach (const auto &it, filaments) {
+        auto filament = it.toObject();
+        auto file = filesDir.absoluteFilePath(filament["file"].toString());
+        fileLoad->init(file);
+        fileLoad->importFilaments();
+
+        foreach (const auto &item, filament["tableItems"].toArray()) {
+            auto text = item["text"].toString();
+            auto enabled = item["enabled"].toBool();
+            auto color = item["color"].toArray();
+            double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+            setTableItemInfo(text, enabled, rgb);
         }
     }
 
@@ -5176,7 +5091,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
                 int row;
                 bool enabled;
                 double ellipseColor[3];
-                getCompactSourceInfo(item, row, enabled, ellipseColor);
+                getTableItemInfo(item, row, enabled, ellipseColor);
                 QJsonArray rgb;
                 rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
 
@@ -5192,7 +5107,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
             int row;
             bool enabled;
             double ellipseColor[3];
-            getCompactSourceInfo(text, row, enabled, ellipseColor);
+            getTableItemInfo(text, row, enabled, ellipseColor);
             QJsonArray rgb;
             rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
 
@@ -5206,6 +5121,38 @@ void vtkwindow_new::on_actionSave_session_triggered()
     }
     image["compact_sources"] = sources;
 
+
+    // Filaments
+    QJsonArray filaments;
+    for (auto i = filamentsList.constBegin(); i != filamentsList.constEnd(); ++i) {
+        auto srcInfo = QFileInfo(i.key());
+
+        // Copy the file into the files directory
+        auto src = srcInfo.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject filament;
+        filament["file"] = srcInfo.fileName();
+        QJsonArray tableItems;
+        foreach (const auto &text, i.value()) {
+            int row;
+            bool enabled;
+            double ellipseColor[3];
+            getTableItemInfo(text, row, enabled, ellipseColor);
+            QJsonArray rgb;
+            rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+
+            QJsonObject obj;
+            obj["text"] = text;
+            obj["enabled"] = enabled;
+            obj["color"] = rgb;
+            tableItems.append(obj);
+        }
+        filament["tableItems"] = tableItems;
+        filaments.append(filament);
+    }
+    image["filaments"] = filaments;
 
     // Save the session.json configuration file
     QJsonObject root;
