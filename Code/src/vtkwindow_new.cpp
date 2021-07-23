@@ -4879,8 +4879,14 @@ void vtkwindow_new::on_actionLeft_triggered()
     setCameraAzimuth(-90);
 }
 
-void vtkwindow_new::loadSession(const QJsonObject &session, const QDir &filesDir)
+void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir)
 {
+    QFile f(sessionFile);
+    f.open(QFile::ReadOnly);
+    QJsonObject session = QJsonDocument::fromJson(f.readAll()).object();
+    f.close();
+    this->sessionFile = sessionFile;
+
     auto layers = session["image"].toObject()["layers"].toArray();
     setImageLayers(layers, filesDir);
 
@@ -5026,15 +5032,34 @@ void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &filesD
 void vtkwindow_new::on_actionSave_session_triggered()
 {
     auto currentTime = QDateTime::currentDateTimeUtc();
-    auto dirName = "vialactea_" + currentTime.toString("dd-MM-yyyy_hh-mm-ss");
 
-    // Create the session folders
-    QDir sessionFolder(QDir::home());
-    sessionFolder.mkdir(dirName);
-    sessionFolder.cd(dirName);
-    QDir filesFolder(sessionFolder);
-    filesFolder.mkdir("files");
-    filesFolder.cd("files");
+    bool overwriting = false;
+    if (!this->sessionFile.isEmpty()) {
+        auto res = QMessageBox::question(this, "Save session", "Do you want to overwrite the current session?");
+        overwriting = res == QMessageBox::Yes;
+    }
+
+    QString dir;
+    if (overwriting) {
+        dir = QFileInfo(this->sessionFile).absolutePath();
+        // session.json and files are already there, no need to create them
+    } else {
+        dir = QFileDialog::getExistingDirectory(this, "Save session", QDir::homePath(), QFileDialog::ShowDirsOnly);
+        if (dir.isEmpty())
+            return;
+
+        QDir tmp(dir);
+        if (!tmp.isEmpty()) {
+            QMessageBox::warning(this, "Save session", "The directory is not empty, please select an empty folder.");
+            return;
+        }
+        this->sessionFile = tmp.absoluteFilePath("session.json");
+        tmp.mkdir("files");
+    }
+
+    QDir sessionFolder(dir);
+    QFile sessionFile(this->sessionFile);
+    QDir filesFolder(sessionFolder.absoluteFilePath("files"));
 
     QJsonObject image;
     // Layers
@@ -5159,7 +5184,6 @@ void vtkwindow_new::on_actionSave_session_triggered()
     root["image"] = image;
     root["saved"] = currentTime.toString(Qt::ISODate);
     QJsonDocument session(root);
-    QFile sessionFile(sessionFolder.absoluteFilePath("session.json"));
     sessionFile.open(QFile::WriteOnly);
     sessionFile.write(session.toJson());
     sessionFile.close();

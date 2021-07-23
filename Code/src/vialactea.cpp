@@ -665,10 +665,10 @@ void ViaLactea::on_actionLoad_session_triggered()
     AstroUtils().GetCenterCoords(fits.toStdString(), coords);
     AstroUtils().GetRectSize(fits.toStdString(), rectSize);
     auto vq = new VialacteaInitialQuery;
-    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, root, filesFolder](QList<QMap<QString,QString>> results){
+    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, fn, filesFolder](QList<QMap<QString,QString>> results){
         auto win = new vtkwindow_new(this, fitsReader);
         win->setDbElements(results);
-        win->loadSession(root, filesFolder);
+        win->loadSession(fn, filesFolder);
         setMasterWin(win);
         vq->deleteLater();
     });

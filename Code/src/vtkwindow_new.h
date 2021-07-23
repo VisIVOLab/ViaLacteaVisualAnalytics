@@ -86,7 +86,7 @@ public:
     //explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
 
-    void loadSession(const QJsonObject &session, const QDir &filesDir);
+    void loadSession(const QString &sessionFile, const QDir &filesDir);
 
     vtkRenderer* m_Ren1;
     vtkRenderWindow* renwin;
@@ -221,6 +221,7 @@ private:
     QString called_dl;
     QString called_db;
     int vtkwintype;
+    QString sessionFile;
 
     vtkfitstoolwidget_new *vtkfitstoolwindow;
 
