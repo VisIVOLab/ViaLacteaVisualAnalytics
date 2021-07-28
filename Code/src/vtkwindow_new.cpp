@@ -1643,15 +1643,29 @@ QString vtkwindow_new::getWindowName()
     return this->windowTitle();
 }
 
-void vtkwindow_new::on_horizontalSlider_threshold_sliderReleased()
+int vtkwindow_new::getThresholdValue()
 {
-    float value=(ui->horizontalSlider_threshold->value()*(myfits->GetMax() - 3*myfits->GetRMS()) /100)+3*myfits->GetRMS();
+    return ui->horizontalSlider_threshold->value();
+}
 
-    ui->thresholdValueLineEdit->setText(QString::number(value,'f',4) );
-    shellE->SetValue(0,  value);
+void vtkwindow_new::setThresholdValue(int sliderValue)
+{
+    float value = (sliderValue*(myfits->GetMax() - 3*myfits->GetRMS()) /100) + 3*myfits->GetRMS();
+    ui->horizontalSlider_threshold->setValue(sliderValue);
+    ui->thresholdValueLineEdit->setText(QString::number(value,'f',4));
+    shellE->SetValue(0, value);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
+void vtkwindow_new::on_horizontalSlider_threshold_sliderReleased()
+{
+    setThresholdValue(ui->horizontalSlider_threshold->value());
+}
+
+int vtkwindow_new::getCuttingPlaneValue()
+{
+    return ui->cuttingPlane_Slider->value();
+}
 
 void vtkwindow_new::on_cuttingPlane_Slider_valueChanged(int value)
 {
@@ -3020,6 +3034,7 @@ QStringList vtkwindow_new::getSourcesLoadedFromFile(const QString &sourcePath)
 
 void vtkwindow_new::setCuttingPlaneValue(int arg1)
 {
+    /*
     sliceA->SetPosition(0,0,arg1);
     ui->qVTK1->update();
     if(!isDatacube)
@@ -3027,6 +3042,8 @@ void vtkwindow_new::setCuttingPlaneValue(int arg1)
     else
         this->updateScene();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    */
+    ui->cuttingPlane_Slider->setValue(arg1);
 }
 
 void vtkwindow_new::on_actionInfo_triggered()
@@ -3923,6 +3940,23 @@ void vtkwindow_new::on_lowerBoundLineEdit_editingFinished()
         goContour();
 }
 
+bool vtkwindow_new::getContoursInfo(int &level, double &lowerBound, double &upperBound)
+{
+    level = ui->levelLineEdit->text().toInt();
+    lowerBound = ui->lowerBoundLineEdit->text().toDouble();
+    upperBound = ui->upperBoundLineEdit->text().toDouble();
+    return ui->contourCheckBox->isChecked();
+}
+
+void vtkwindow_new::setContoursInfo(const int &level, const double &lowerBound, const double &upperBound, const bool &enabled)
+{
+    ui->levelLineEdit->setText(QString::number(level));
+    ui->lowerBoundLineEdit->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundLineEdit->setText(QString::number(upperBound, 'f', 4));
+    if (enabled)
+        goContour();
+}
+
 void vtkwindow_new::goContour()
 {
     removeContour();
@@ -3937,12 +3971,12 @@ void vtkwindow_new::goContour()
     cutter->Update();
 
     vtkSmartPointer<vtkPolyDataMapper> cutterMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    cutterMapper->SetInputConnection( cutter->GetOutputPort());
+    cutterMapper->SetInputConnection(cutter->GetOutputPort());
 
     vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
-    vtkSmartPointer<vtkContourFilter> contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
     polyData = cutter->GetOutput();
 
+    vtkSmartPointer<vtkContourFilter> contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
     contoursFilter->GenerateValues(ui->levelLineEdit->text().toInt(), ui->lowerBoundLineEdit->text().toDouble(), ui->upperBoundLineEdit->text().toDouble());
     contoursFilter->SetInputConnection(cutter->GetOutputPort());
 
@@ -3953,37 +3987,25 @@ void vtkwindow_new::goContour()
     contourLineMapperer->SetScalarModeToUsePointData();
     contourLineMapperer->SetColorModeToMapScalars();
 
-
     currentContourActor->SetMapper(contourLineMapperer);
     currentContourActor->GetProperty()->SetLineWidth(1);
-
+    ui->contourCheckBox->setChecked(true);
     ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 
-    //TEST FV
-
-
-    if(myParentVtkWindow!=0){
-
+    if (myParentVtkWindow != 0) {
         //Riporto i contorni su visualizzazione principale
-        vtkfitstoolwidgetobject *img=new vtkfitstoolwidgetobject(3);
-        img->setName("isocontour");
-
-
-
         double *sky_coord_gal = new double[2];
         AstroUtils().xy2sky(myfits->GetFileName(),0,0,sky_coord_gal,3);
         double *coord= new double[3];
         AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0], sky_coord_gal[1], coord);
 
         double angle  = 0;
-
         double x1=coord[0];
         double y1=coord[1];
 
         AstroUtils().xy2sky(myfits->GetFileName(),0,100,sky_coord_gal,3);
         AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0], sky_coord_gal[1], coord);
-
 
         if (x1!=coord[0])
         {
@@ -3992,7 +4014,6 @@ void vtkwindow_new::goContour()
         }
 
         double bounds[6];
-
         vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
         myfits->GetOutput()->GetBounds(bounds);
 
@@ -4004,57 +4025,6 @@ void vtkwindow_new::goContour()
         // transform->Translate( 0,0, -1*viewer->GetSlice());
         double scaledPixel=AstroUtils().arcsecPixel(myfits->GetFileName())/AstroUtils().arcsecPixel(myParentVtkWindow->myfits->GetFileName());
 
-
-        /*
-
-
-    viewer->GetImageActor()->Update();
-    vtkSmartPointer<vtkImageData> imgDataContourForMainWindow=  vtkSmartPointer<vtkImageData>::New();
-    imgDataContourForMainWindow->ShallowCopy(viewer->GetImageActor()->GetInput());
-
-    double scaledPixel=AstroUtils().arcsecPixel(myfits->GetFileName())/AstroUtils().arcsecPixel(myParentVtkWindow->myfits->GetFileName());
-    imgDataContourForMainWindow->SetSpacing(scaledPixel,scaledPixel,1);
-
-
-    double *sky_coord_gal = new double[2];
-    AstroUtils().xy2sky(myfits->GetFileName(),0,0,sky_coord_gal,3);
-    double *coord= new double[3];
-    AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0], sky_coord_gal[1], coord);
-
-
-    imgDataContourForMainWindow->SetOrigin( x1,y1,0);
-
-
-    vtkSmartPointer<vtkImageSliceMapper> imageSliceMapperLayer = vtkSmartPointer<vtkImageSliceMapper>::New();
-    imageSliceMapperLayer->SetInputData(imgDataContourForMainWindow);
-
-
-    vtkSmartPointer<vtkImageSlice> imageSliceLayer = vtkSmartPointer<vtkImageSlice>::New();
-    imageSliceLayer->SetMapper(imageSliceMapperLayer);
-    imageSliceLayer->GetProperty()->SetOpacity(1.0);
-    imageSliceLayer->GetProperty()->SetInterpolationTypeToNearest();
-
-
-    imageSliceLayer->SetUserTransform(transform);
-
-    vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-    lut->SetScaleToLinear();
-    lut->SetTableRange( myfits->GetRangeSlice(viewer->GetSlice())[0], myfits->GetRangeSlice(viewer->GetSlice())[1] );
-
-    SelectLookTable("Gray",lut);
-
-    img->setLutScale("Log");
-    img->setLutType("Gray");
-
-    imageSliceLayer->GetProperty()->SetLookupTable(lut);
-    imageSliceLayer->GetProperty()->UseLookupTableScalarRangeOn();
-   // myParentVtkWindow->imageStack->AddImage(imageSliceLayer);
-
-    //myParentVtkWindow-> addLayer(img);
-
-
-*/
-
         vtkSmartPointer<vtkPolyDataMapper> mapperForMainWindow = vtkSmartPointer<vtkPolyDataMapper>::New();
         mapperForMainWindow->ShallowCopy(contourLineMapperer);
 
@@ -4065,29 +4035,10 @@ void vtkwindow_new::goContour()
         currentContourActorForMainWindow->SetPosition(x1,y1,1);
         currentContourActorForMainWindow->SetUserTransform(transform);
 
-        // myParentVtkWindow-> addLayer(img);
-
-
         myParentVtkWindow->m_Ren1->AddActor2D(currentContourActorForMainWindow);
-        //myParentVtkWindow->m_Ren1->Render();
         myParentVtkWindow->ui->qVTK1->update();
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
-
-
-
-
-    //END
-
-
-    // myParentVtkWindow->m_Ren1->AddActor(currentContourActor);
-    // myParentVtkWindow->imageViewer->GetImageActor()->add
-
-    // myParentVtkWindow->m_Ren1->AddActor(currentContourActor);
-
-    // myParentVtkWindow->imageViewer->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
-    // ui->isocontourVtkWin->update();
-
 }
 
 void vtkwindow_new::on_levelLineEdit_editingFinished()
@@ -4105,6 +4056,7 @@ void vtkwindow_new::removeContour()
         myParentVtkWindow->ui->qVTK1->update();
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
+    ui->contourCheckBox->setChecked(false);
     ui->isocontourVtkWin->update();
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 }
@@ -5037,10 +4989,22 @@ void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &files
 {
     foreach (const auto &dc, datacubes) {
         auto fitsPath = filesDir.absoluteFilePath(dc["fits"].toString());
+        auto threshold = dc["threshold"].toInt();
+        auto slice = dc["slice"].toInt();
+
         auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
         fitsReader->SetFileName(fitsPath.toStdString());
         fitsReader->is3D = true;
-        new vtkwindow_new(this, fitsReader, 1, this);
+        auto win = new vtkwindow_new(this, fitsReader, 1, this);
+        win->setThresholdValue(threshold);
+        win->setCuttingPlaneValue(slice);
+
+        auto contours = dc["contours"].toObject();
+        auto level = contours["level"].toInt();
+        auto lowerB = contours["lowerBound"].toDouble();
+        auto upperB = contours["upperBound"].toDouble();
+        auto enabled = contours["enabled"].toBool();
+        win->setContoursInfo(level, lowerB, upperB, enabled);
     }
 }
 
@@ -5208,6 +5172,18 @@ void vtkwindow_new::on_actionSave_session_triggered()
 
         QJsonObject dc;
         dc["fits"] = fits.fileName();
+        dc["threshold"] = win->getThresholdValue();
+        dc["slice"] = win->getCuttingPlaneValue();
+
+        QJsonObject contours;
+        int level;
+        double lowerB, upperB;
+        bool enabled = win->getContoursInfo(level, lowerB, upperB);
+        contours["level"] = level;
+        contours["lowerBound"] = lowerB;
+        contours["upperBound"] = upperB;
+        contours["enabled"] = enabled;
+        dc["contours"] = contours;
         datacubes.append(dc);
     }
 

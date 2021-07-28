@@ -258,7 +258,14 @@ private:
     void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
     void setSources(const QJsonArray &sources, const QDir &filesDir);
     void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
+
     void loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir);
+    int getThresholdValue();
+    void setThresholdValue(int sliderValue);
+    int getCuttingPlaneValue();
+    void setCuttingPlaneValue(int arg1);
+    bool getContoursInfo(int &level, double &lowerBound, double &upperBound);
+    void setContoursInfo(const int &level, const double &lowerBound, const double &upperBound, const bool &enabled);
 
 public slots:
     //void updateCoords(vtkObject*);
@@ -334,9 +341,6 @@ private slots:
     void on_cuttingPlane_Slider_valueChanged(int value);
     void on_spinBox_cuttingPlane_valueChanged(int arg1);
     void handleButton(int i);
-
-    void setCuttingPlaneValue(int arg1);
-
 
     //void on_cuttingPlane_Slider_sliderMoved(int position);
     // void on_horizontalSlider_threshold_sliderMoved(int position);
