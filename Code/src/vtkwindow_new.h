@@ -258,6 +258,7 @@ private:
     void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
     void setSources(const QJsonArray &sources, const QDir &filesDir);
     void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
+    void loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir);
 
 public slots:
     //void updateCoords(vtkObject*);

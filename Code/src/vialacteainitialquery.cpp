@@ -491,7 +491,7 @@ void VialacteaInitialQuery::on_download_completed()
         fits->is3D = true;
 
         myCallingVtkWindow->setSelectedCubeVelocityUnit(velocityUnit);
-        new vtkwindow_new(this, fits, 1, myCallingVtkWindow);
+        new vtkwindow_new(myCallingVtkWindow, fits, 1, myCallingVtkWindow);
 
     }
 }

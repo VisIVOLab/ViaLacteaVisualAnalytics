@@ -497,7 +497,7 @@ void ViaLactea::on_localDCPushButton_clicked()
                 auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
                 fitsReader_dc->SetFileName(fn.toStdString());
                 fitsReader_dc->is3D = true;
-                new vtkwindow_new(this, fitsReader_dc, 1, win);
+                new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
 
                 vq->deleteLater();
             });
@@ -512,7 +512,7 @@ void ViaLactea::on_localDCPushButton_clicked()
             auto dc = vtkSmartPointer<vtkFitsReader>::New();
             dc->SetFileName(fn.toStdString());
             dc->is3D = true;
-            new vtkwindow_new(this, dc, 1, masterWin);
+            new vtkwindow_new(masterWin, dc, 1, masterWin);
         } else {
             QMessageBox::warning(this, QObject::tr("Import DC"), QObject::tr("The regions do not overlap, the file cannot be imported in the current session."));
         }

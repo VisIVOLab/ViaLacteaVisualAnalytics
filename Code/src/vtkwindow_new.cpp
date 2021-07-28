@@ -4897,6 +4897,10 @@ void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir
     auto filaments = session["image"].toObject()["filaments"].toArray();
     if (!filaments.isEmpty())
         setFilaments(filaments, filesDir);
+
+    auto datacubes = session["datacubes"].toArray();
+    if (!datacubes.isEmpty())
+        loadDatacubes(datacubes, filesDir);
 }
 
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
@@ -5027,6 +5031,17 @@ void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &filesD
 
     fileLoad->deleteLater();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir)
+{
+    foreach (const auto &dc, datacubes) {
+        auto fitsPath = filesDir.absoluteFilePath(dc["fits"].toString());
+        auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+        fitsReader->SetFileName(fitsPath.toStdString());
+        fitsReader->is3D = true;
+        new vtkwindow_new(this, fitsReader, 1, this);
+    }
 }
 
 void vtkwindow_new::on_actionSave_session_triggered()
@@ -5179,9 +5194,28 @@ void vtkwindow_new::on_actionSave_session_triggered()
     }
     image["filaments"] = filaments;
 
+
+    // Datacubes
+    QJsonArray datacubes;
+    foreach (const auto &win, this->findChildren<vtkwindow_new*>()) {
+        if (!win->isDatacube || !win->isVisible())
+            continue;
+
+        auto fits = QFileInfo(QString::fromStdString(win->getFitsImage()->GetFileName()));
+        auto src = fits.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(fits.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject dc;
+        dc["fits"] = fits.fileName();
+        datacubes.append(dc);
+    }
+
+
     // Save the session.json configuration file
     QJsonObject root;
     root["image"] = image;
+    root["datacubes"] = datacubes;
     root["saved"] = currentTime.toString(Qt::ISODate);
     QJsonDocument session(root);
     sessionFile.open(QFile::WriteOnly);
