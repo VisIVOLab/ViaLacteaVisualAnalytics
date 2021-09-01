@@ -497,7 +497,7 @@ void ViaLactea::on_localDCPushButton_clicked()
                 auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
                 fitsReader_dc->SetFileName(fn.toStdString());
                 fitsReader_dc->is3D = true;
-                new vtkwindow_new(this, fitsReader_dc, 1, win);
+                new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
 
                 vq->deleteLater();
             });
@@ -512,7 +512,7 @@ void ViaLactea::on_localDCPushButton_clicked()
             auto dc = vtkSmartPointer<vtkFitsReader>::New();
             dc->SetFileName(fn.toStdString());
             dc->is3D = true;
-            new vtkwindow_new(this, dc, 1, masterWin);
+            new vtkwindow_new(masterWin, dc, 1, masterWin);
         } else {
             QMessageBox::warning(this, QObject::tr("Import DC"), QObject::tr("The regions do not overlap, the file cannot be imported in the current session."));
         }
@@ -617,3 +617,61 @@ void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 {
     queryButtonStatusOnOff();
 }
+
+void ViaLactea::on_actionLoad_session_triggered()
+{
+    if (masterWin != nullptr) {
+        QMessageBox::warning(this, tr("Load a session"), tr("A session is already open, close it to load another session."));
+        return;
+    }
+
+    QString fn = QFileDialog::getOpenFileName(this, "Load a session", QDir::homePath(), "JSON (*.json)");
+    if (fn.isEmpty())
+        return;
+
+    QFile sessionFile(fn);
+    sessionFile.open(QFile::ReadOnly);
+    auto root = QJsonDocument::fromJson(sessionFile.readAll()).object();
+    sessionFile.close();
+
+    // Check for the origin layer and start a new window
+    auto layers = root["image"].toObject()["layers"].toArray();
+    QJsonObject originLayer;
+    bool found = false;
+    foreach (const auto &it, layers) {
+        auto layer = it.toObject();
+        if (layer["origin"].toBool()) {
+            originLayer = layer;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        QMessageBox::critical(this, tr("Load a session"), tr("Cannot load the session: there is no origin layer."));
+        return;
+    }
+
+    QDir filesFolder = QFileInfo(fn).dir().absoluteFilePath("files");
+    auto fits = filesFolder.absoluteFilePath(originLayer["fits"].toString());
+    auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+    fitsReader->SetFileName(fits.toStdString());
+    if (originLayer["type"].toString() == "Moment") {
+        fitsReader->isMoment3D = true;
+        fitsReader->setMomentOrder(originLayer["moment_order"].toInt());
+    }
+
+    double coords[2], rectSize[2];
+    AstroUtils().GetCenterCoords(fits.toStdString(), coords);
+    AstroUtils().GetRectSize(fits.toStdString(), rectSize);
+    auto vq = new VialacteaInitialQuery;
+    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, fn, filesFolder](QList<QMap<QString,QString>> results){
+        auto win = new vtkwindow_new(this, fitsReader);
+        win->setDbElements(results);
+        win->loadSession(fn, filesFolder);
+        setMasterWin(win);
+        vq->deleteLater();
+    });
+    vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+}
+

@@ -85,6 +85,9 @@ public:
     explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis=0, int b=0, vtkwindow_new *p=0);
     //explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
+
+    void loadSession(const QString &sessionFile, const QDir &filesDir);
+
     vtkRenderer* m_Ren1;
     vtkRenderWindow* renwin;
 
@@ -107,7 +110,7 @@ public:
     void changeScalar(std::string scalar);
     PointsPipe * pp;
     void resetCamera();
-    void drawEllipse(QHash<QString, vtkEllipse *> ellipse , QString sourceFilename);
+    void drawEllipse(QHash<QString, vtkEllipse *> ellipse , QString sourceFilename, QString sourcePath = "");
     void drawGlyphs(int index);
     Ui::vtkwindow_new *ui;
     static void SelectionChangedCallbackFunction (vtkObject* caller, long unsigned int eventId, void* clientData, void* callData );
@@ -167,6 +170,7 @@ public:
 
 
     QHash<QString, int> file_wavelength;
+    QHash<QString, QStringList> filamentsList;
     vtkSmartPointer<vtkActor> selectedActor;
     void addActor(vtkProp *actor);
     void removeActor(vtkProp *actor);
@@ -217,6 +221,7 @@ private:
     QString called_dl;
     QString called_db;
     int vtkwintype;
+    QString sessionFile;
 
     vtkfitstoolwidget_new *vtkfitstoolwindow;
 
@@ -245,6 +250,22 @@ private:
     void drawRectangleFootprint(double points[8]);
     VialacteaStringDictWidget *stringDictWidget;
     void addCombinedLayer(QString name,  vtkSmartPointer<vtkLODActor>actor, int objtype, bool active);
+
+    QStringList getSourcesLoadedFromFile(const QString &sourcePath);
+    bool getTableItemInfo(const QString &text, int &row, bool &enabled, double *color);
+    void setTableItemInfo(const QString &text, const bool &enabled, const double *color);
+
+    void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
+    void setSources(const QJsonArray &sources, const QDir &filesDir);
+    void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
+
+    void loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir);
+    int getThresholdValue();
+    void setThresholdValue(int sliderValue);
+    int getCuttingPlaneValue();
+    void setCuttingPlaneValue(int arg1);
+    bool getContoursInfo(int &level, double &lowerBound, double &upperBound);
+    void setContoursInfo(const int &level, const double &lowerBound, const double &upperBound, const bool &enabled);
 
 public slots:
     //void updateCoords(vtkObject*);
@@ -321,9 +342,6 @@ private slots:
     void on_spinBox_cuttingPlane_valueChanged(int arg1);
     void handleButton(int i);
 
-    void setCuttingPlaneValue(int arg1);
-
-
     //void on_cuttingPlane_Slider_sliderMoved(int position);
     // void on_horizontalSlider_threshold_sliderMoved(int position);
 
@@ -342,7 +360,7 @@ private slots:
     void addToList(vtkfitstoolwidgetobject *o, bool enabled=true);
     void addImageToList( vtkfitstoolwidgetobject *o);
 
-    void checkboxImageClicked(int cb);
+    void checkboxImageClicked(int cb, bool status = false);
     void checkboxClicked(int cb, bool status =false);
 
     void on_tableWidget_doubleClicked(const QModelIndex &index);
@@ -390,6 +408,7 @@ private slots:
     void on_actionRight_triggered();
     void on_actionBottom_triggered();
     void on_actionLeft_triggered();
+    void on_actionSave_session_triggered();
 };
 
 #endif // vtkwindow_new_H

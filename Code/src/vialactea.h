@@ -77,6 +77,8 @@ private slots:
     void on_dbLineEdit_textChanged(const QString &arg1);
     void updateVLKBSetting();
 
+    void on_actionLoad_session_triggered();
+
 private:
     Ui::ViaLactea *ui;
     QString selectedBand;
