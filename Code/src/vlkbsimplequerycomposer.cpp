@@ -111,7 +111,7 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 
         loading = new LoadingWidget();
         loading->init();
-        loading->setFileName("Connecting to VLKB...");
+        loading->setText("Connecting to VLKB...");
         loading->show();
         loading->activateWindow();
         loading->setFocus();
@@ -326,7 +326,7 @@ void VLKBSimpleQueryComposer::on_queryPushButton_clicked()
 void VLKBSimpleQueryComposer::doQuery(QString band)
 {
     loading->init();
-    loading->setFileName("Retrieving dataset from VLKB");
+    loading->setText("Retrieving dataset from VLKB");
 
     loading->show();
     // loading->activateWindow();

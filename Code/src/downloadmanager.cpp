@@ -39,7 +39,7 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
     qDebug()<<" ********************************** FN: "<<fn;
     loading ->show();
     loading->activateWindow();
-    loading->setFileName("Downloading...");
+    loading->setText("Downloading...");
 
     savedFilename=fn;
     QNetworkRequest request(url);

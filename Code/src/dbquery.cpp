@@ -79,7 +79,7 @@ void dbquery::finishedSlot(QNetworkReply* reply)
 
             if(string.compare("NULL")!=0)
             {
-                loading->setFileName("Datacube found");
+                loading->setText("Datacube found");
 
                 QUrl url2 (vlkbUrl+"/vlkb_cutout?pubdid="+string+"&l="+ui->lineEdit_l->text()+
                            "&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_b->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text()+"&nullvals");
@@ -88,7 +88,7 @@ void dbquery::finishedSlot(QNetworkReply* reply)
             }
             else
             {
-                loading->setFileName("Datacube inexistent");
+                loading->setText("Datacube inexistent");
                 loading->loadingEnded();
                 loading->hide();
                 QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("Datacube inexistent - Try again"));
@@ -100,7 +100,7 @@ void dbquery::finishedSlot(QNetworkReply* reply)
             parser->parseXML(xml, string);
             if(string.compare("NULL")!=0)
             {
-                loading->setFileName("Datacube found");
+                loading->setText("Datacube found");
                 DownloadManager *manager= new DownloadManager();
                 QString urlString=string.trimmed();
                 QUrl url3(urlString);
@@ -681,7 +681,7 @@ void dbquery::on_queryPushButton_clicked()
     ui->lineEdit_vu->setReadOnly(true);
     
     loading->init();
-    loading->setFileName("Connecting to the cutout service");
+    loading->setText("Connecting to the cutout service");
     loading ->show();
     loading->activateWindow();
     
@@ -721,7 +721,7 @@ void dbquery::on_pushButton_map_clicked()
 {
     loading = new LoadingWidget();
     loading->init();
-    loading->setFileName("Getting datacube list...");
+    loading->setText("Getting datacube list...");
     loading ->show();
     loading->activateWindow();
     loading->setFocus();
@@ -744,7 +744,7 @@ void dbquery::handleButton(int i)
 {
     loading = new LoadingWidget();
     loading->init();
-    loading->setFileName("Downloading selected datacube...");
+    loading->setText("Downloading selected datacube...");
     loading ->show();
     loading->activateWindow();
     loading->setFocus();

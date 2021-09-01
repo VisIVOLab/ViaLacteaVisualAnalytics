@@ -22,7 +22,7 @@ void LoadingWidget::init()
     ui->progressBar->setValue(0);
 }
 
-void LoadingWidget::setFileName(QString name)
+void LoadingWidget::setText(QString name)
 {
     ui->titleLabel->setText(name);
 }

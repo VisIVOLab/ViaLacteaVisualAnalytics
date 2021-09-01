@@ -18,7 +18,7 @@ public:
     ~LoadingWidget();
     void loadingEnded();
     void init();
-    void setFileName(QString name);
+    void setText(QString name);
     void setLoadingProcess(QNetworkReply *);
 
 

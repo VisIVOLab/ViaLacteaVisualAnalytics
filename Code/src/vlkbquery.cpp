@@ -27,7 +27,7 @@ VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt
 
     loading = new LoadingWidget();
     loading->init();
-    loading->setFileName("Querying VLKB..");
+    loading->setText("Querying VLKB..");
     loading ->show();
     loading->activateWindow();
 

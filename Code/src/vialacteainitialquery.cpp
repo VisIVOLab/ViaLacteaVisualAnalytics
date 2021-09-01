@@ -148,7 +148,7 @@ void VialacteaInitialQuery::searchRequest(double l, double b, double r)
 
 void VialacteaInitialQuery::searchRequest(QString url)
 {
-    loading->setFileName("Querying search service");
+    loading->setText("Querying search service");
     loading->show();
     loading->activateWindow();
 
@@ -182,7 +182,7 @@ void VialacteaInitialQuery::searchRequest(QString url)
 void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QString> > el, int pos)
 {
     loading->show();
-    loading->setFileName("Querying cutout services");
+    loading->setText("Querying cutout services");
     elementsOnDb=el;
     species=elementsOnDb.at(pos).value("Species");
     pubdid=elementsOnDb.at(pos).value("PublisherDID");
@@ -224,7 +224,7 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
 void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
 {
     loading->show();
-    loading->setFileName("Querying cutout services");
+    loading->setText("Querying cutout services");
     qDebug()<<"1) L "<<ui->l_lineEdit->text()<<" B "<<ui->b_lineEdit->text()<<" DL "<<ui->dlLineEdit->text()<<" DB "<<ui->dbLineEdit->text()<<" R "<<ui->r_lineEdit->text();
     qDebug()<<"\t"<<" species"<<species<<" trans "<<transition<<" survey "<<surveyname;
     qDebug()<<url;
@@ -249,7 +249,7 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
 {
     loading->show();
     loading->activateWindow();
-    loading->setFileName("Querying cutout services");
+    loading->setText("Querying cutout services");
 
     QString urlString=vlkbUrl+"/vlkb_search?l="+ui->l_lineEdit->text()+"&b="+ui->b_lineEdit->text();
     if(isRadius)
@@ -303,7 +303,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
 
             if(!string.contains("NULL"))
             {
-                loading->setFileName("Datacube found");
+                loading->setText("Datacube found");
                 DownloadManager *manager= new DownloadManager();
                 QString urlString=string.trimmed();
                 QUrl url3(urlString);
