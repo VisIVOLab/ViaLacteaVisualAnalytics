@@ -3560,30 +3560,27 @@ void vtkwindow_new::checkboxClicked(int cb,bool status)
 
 void vtkwindow_new::on_tableWidget_doubleClicked(const QModelIndex &index)
 {
+    if (elementLayerList.at(index.row())->getType() != 0) {
+        // Initial color
+        double r = getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()->GetColor()[0]*255;
+        double g = getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()->GetColor()[1]*255;
+        double b = getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()->GetColor()[2]*255;
 
+        QColor color = QColorDialog::getColor(QColor(r, g, b), this);
+        if (color.isValid()) {
+            // Update actor color
+            getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()\
+                    ->SetColor(color.redF(), color.greenF(), color.blueF());
+            ui->qVTK1->update();
+            ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    // if(index.column()==0)
-    if (elementLayerList.at(index.row())->getType()==0)
-    {
-        //settaggi dell'immagine selezionata
+            // Update color on table
+            ui->tableWidget->cellWidget(index.row(), 0)->setStyleSheet("background-color: rgb(" + \
+                                                                       QString::number(color.redF()*255) + "," + \
+                                                                       QString::number(color.greenF()*255) + " ,"+ \
+                                                                       QString::number(color.blueF()*255) +")");
+        }
     }
-    else
-    {
-
-        //Initial color
-        double r=getVisualizedActorList().value(ui->tableWidget->item( index.row(), 1)->text())->GetProperty()->GetColor()[0]*255;
-        double g=getVisualizedActorList().value(ui->tableWidget->item(index.row() , 1)->text())->GetProperty()->GetColor()[1]*255;
-        double b=getVisualizedActorList().value(ui->tableWidget->item( index.row() , 1)->text())->GetProperty()->GetColor()[2]*255;
-
-        QColor color = QColorDialog::getColor(QColor(r,g,b), this);
-        getVisualizedActorList().value(ui->tableWidget->item( index.row(), 1)->text())->GetProperty()->SetColor(color.redF(), color.greenF(), color.blueF());
-        ui->qVTK1->update();
-        ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
-        //update color on table
-        ui->tableWidget->cellWidget(index.row(),0)->setStyleSheet("background-color: rgb("+QString::number(color.redF()*255)+","+QString::number(color.greenF()*255)+" ,"+QString::number(color.blueF()*255)+")");
-    }
-
 }
 
 void vtkwindow_new::on_fil_rectPushButton_clicked()
