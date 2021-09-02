@@ -20,6 +20,7 @@ public:
     void init();
     void setText(QString name);
     void setLoadingProcess(QNetworkReply *);
+    void setButtonStatus(bool enabled);
 
 
 private slots:

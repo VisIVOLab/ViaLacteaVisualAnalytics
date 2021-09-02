@@ -32,6 +32,11 @@ void LoadingWidget::setLoadingProcess(QNetworkReply *reply)
     this->reply = reply;
 }
 
+void LoadingWidget::setButtonStatus(bool enabled)
+{
+    ui->dismissPushButton->setEnabled(enabled);
+}
+
 void LoadingWidget::loadingEnded()
 {
     ui->progressBar->setMaximum(100);

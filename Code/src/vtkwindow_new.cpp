@@ -4830,6 +4830,14 @@ void vtkwindow_new::on_actionLeft_triggered()
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir)
 {
+    auto loadingWindow = new LoadingWidget(this);
+    loadingWindow->setWindowFlag(Qt::Window);
+    loadingWindow->setWindowFlag(Qt::WindowStaysOnTopHint);
+    loadingWindow->setWindowTitle("Loading session");
+    loadingWindow->setText("Loading the session, please wait...");
+    loadingWindow->setButtonStatus(false);
+    loadingWindow->show();
+
     QFile f(sessionFile);
     f.open(QFile::ReadOnly);
     QJsonObject session = QJsonDocument::fromJson(f.readAll()).object();
@@ -4850,6 +4858,8 @@ void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir
     auto datacubes = session["datacubes"].toArray();
     if (!datacubes.isEmpty())
         loadDatacubes(datacubes, filesDir);
+
+    loadingWindow->deleteLater();
 }
 
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
