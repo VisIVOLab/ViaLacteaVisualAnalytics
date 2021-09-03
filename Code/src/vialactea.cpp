@@ -526,13 +526,18 @@ void ViaLactea::on_actionExit_triggered()
     this->close();
 }
 
-void   ViaLactea::closeEvent(QCloseEvent*)
+void ViaLactea::closeEvent(QCloseEvent *event)
 {
+    if (masterWin != nullptr && !masterWin->isSessionSaved()) {
+        // Prompt to save the session
+        if (!masterWin->confirmSaveAndExit()) {
+            // Cancel button was clicked, therefore do not close
+            event->ignore();
+            return;
+        }
+    }
 
-    //quitApp();
-    qApp->closeAllWindows();
-    //qApp->quit();
-
+    QApplication::quit();
 }
 
 void ViaLactea::on_actionAbout_triggered()

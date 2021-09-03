@@ -1660,6 +1660,8 @@ void vtkwindow_new::setThresholdValue(int sliderValue)
 void vtkwindow_new::on_horizontalSlider_threshold_sliderReleased()
 {
     setThresholdValue(ui->horizontalSlider_threshold->value());
+    if (myParentVtkWindow != 0)
+        myParentVtkWindow->sessionModified();
 }
 
 int vtkwindow_new::getCuttingPlaneValue()
@@ -1676,6 +1678,7 @@ void vtkwindow_new::on_cuttingPlane_Slider_valueChanged(int value)
     QString velocityUnit;
     if(myParentVtkWindow!=0){
         velocityUnit=myParentVtkWindow->selectedCubeVelocityUnit;
+        myParentVtkWindow->sessionModified();
     }else{
         velocityUnit="km/s";
     }
@@ -1698,6 +1701,8 @@ void vtkwindow_new::on_spinBox_cuttingPlane_valueChanged(int arg1)
 {
     ui->cuttingPlane_Slider->setValue(arg1);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    if (myParentVtkWindow != 0)
+        myParentVtkWindow->sessionModified();
 }
 
 void vtkwindow_new::on_cameraLeft_clicked()
@@ -2212,6 +2217,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
     addCombinedLayer(name, branches_contour_actor, 2, false);
 
     filamentsList.insert(QString::fromStdString(m_VisIVOTable->getName()), names);
+    sessionModified();
 }
 
 
@@ -2342,20 +2348,27 @@ void vtkwindow_new::addSources(VSTableDesktop* m_VisIVOTable)
     drawEllipse(ellipse_list, QString::fromStdString(m_VisIVOTable->getName()), QString::fromStdString(m_VisIVOTable->getName()));
 
     this->update();
-
-
+    sessionModified();
 }
 
 void vtkwindow_new::closeEvent(QCloseEvent *event)
 {
-    if(vtkwintype==1)
+    if (vtkwintype == 1) {
         removeContour();
+        if (myParentVtkWindow != 0)
+            myParentVtkWindow->sessionModified();
+    }
 
     auto vl = &Singleton<ViaLactea>::Instance();
-    if (vl->isMasterWin(this))
-        vl->resetMasterWin();
+    if (vl->isMasterWin(this)) {
+        if (!isSessionSaved() && !confirmSaveAndExit()) {
+            // Cancel button was clicked, therefore do not close
+            event->ignore();
+            return;
+        }
 
-    this->close();
+        vl->resetMasterWin();
+    }
 }
 
 void vtkwindow_new::updateSpecies(){
@@ -2915,7 +2928,7 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop* m_VisIVOTable)
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
     this->update();
-
+    sessionModified();
 }
 
 
@@ -3554,7 +3567,7 @@ void vtkwindow_new::checkboxClicked(int cb,bool status)
         getVisualizedActorList().value(ui->tableWidget->item(cb, 1)->text())->VisibilityOn();
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 
@@ -3579,6 +3592,7 @@ void vtkwindow_new::on_tableWidget_doubleClicked(const QModelIndex &index)
                                                                        QString::number(color.redF()*255) + "," + \
                                                                        QString::number(color.greenF()*255) + " ,"+ \
                                                                        QString::number(color.blueF()*255) +")");
+            sessionModified();
         }
     }
 }
@@ -3795,7 +3809,7 @@ void vtkwindow_new::addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString su
     this->update();
     activateWindow();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::downloadStartingLayers(QList < QPair<QString, QString> > selectedSurvey)
@@ -3884,6 +3898,7 @@ void vtkwindow_new::on_lutComboBox_activated(const QString &arg1)
 {
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    sessionModified();
 }
 
 void vtkwindow_new::on_logRadioButton_toggled(bool checked)
@@ -3895,7 +3910,7 @@ void vtkwindow_new::on_logRadioButton_toggled(bool checked)
 
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::on_tdRectPushButton_clicked()
@@ -3919,10 +3934,10 @@ void vtkwindow_new::on_ElementListWidget_doubleClicked(const QModelIndex &index)
 
 void vtkwindow_new::on_thresholdValueLineEdit_editingFinished()
 {
-
     shellE->SetValue(0,  ui->thresholdValueLineEdit->text().toFloat());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    if (myParentVtkWindow != 0)
+        myParentVtkWindow->sessionModified();
 }
 
 void vtkwindow_new::on_upperBoundLineEdit_editingFinished()
@@ -4035,6 +4050,7 @@ void vtkwindow_new::goContour()
         myParentVtkWindow->m_Ren1->AddActor2D(currentContourActorForMainWindow);
         myParentVtkWindow->ui->qVTK1->update();
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+        myParentVtkWindow->sessionModified();
     }
 }
 
@@ -4052,6 +4068,7 @@ void vtkwindow_new::removeContour()
         myParentVtkWindow->m_Ren1->RemoveActor2D(currentContourActorForMainWindow);
         myParentVtkWindow->ui->qVTK1->update();
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+        myParentVtkWindow->sessionModified();
     }
     ui->contourCheckBox->setChecked(false);
     ui->isocontourVtkWin->update();
@@ -4402,7 +4419,7 @@ void vtkwindow_new::on_horizontalSlider_valueChanged(int value)
 
     vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject(pos))->GetProperty()->SetOpacity(value/100.0);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::on_glyphShapeComboBox_activated(int index)
@@ -4611,6 +4628,7 @@ void vtkwindow_new::on_listWidget_itemChanged(QListWidgetItem *item)
 {
     //checkbox img
     checkboxImageClicked(item->listWidget()->row(item), item->checkState() == Qt::Checked);
+    sessionModified();
 }
 
 void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int sourceStart, int sourceEnd, const QModelIndex & destinationParent, int destinationRow )
@@ -4642,7 +4660,7 @@ void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int source
 
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
@@ -4859,7 +4877,34 @@ void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir
     if (!datacubes.isEmpty())
         loadDatacubes(datacubes, filesDir);
 
+    sessionSaved = true;
     loadingWindow->deleteLater();
+}
+
+void vtkwindow_new::sessionModified()
+{
+    sessionSaved = false;
+}
+
+bool vtkwindow_new::isSessionSaved() const
+{
+    return sessionSaved;
+}
+
+bool vtkwindow_new::confirmSaveAndExit()
+{
+    auto res = QMessageBox::question(this, "Unsaved changes", "Do you want to save your work before leaving?",
+                                     QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+    if (res == QMessageBox::Cancel) {
+        // Do nothing
+        return false;
+    }
+
+    if (res == QMessageBox::Yes) {
+        on_actionSave_session_triggered();
+    }
+
+    return true;
 }
 
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
@@ -5204,5 +5249,6 @@ void vtkwindow_new::on_actionSave_session_triggered()
     sessionFile.open(QFile::WriteOnly);
     sessionFile.write(session.toJson());
     sessionFile.close();
+    sessionSaved = true;
     QMessageBox::information(this, tr("Save session"), tr("Session saved in ") + sessionFolder.absolutePath());
 }

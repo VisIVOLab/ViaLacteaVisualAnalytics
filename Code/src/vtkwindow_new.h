@@ -87,6 +87,10 @@ public:
     ~vtkwindow_new();
 
     void loadSession(const QString &sessionFile, const QDir &filesDir);
+    bool isSessionSaved() const;
+
+    /// Returns true if the application can be closed, false if the user does not want to close it anymore
+    bool confirmSaveAndExit();
 
     vtkRenderer* m_Ren1;
     vtkRenderWindow* renwin;
@@ -221,7 +225,9 @@ private:
     QString called_dl;
     QString called_db;
     int vtkwintype;
+
     QString sessionFile;
+    bool sessionSaved = false;
 
     vtkfitstoolwidget_new *vtkfitstoolwindow;
 
@@ -255,6 +261,7 @@ private:
     bool getTableItemInfo(const QString &text, int &row, bool &enabled, double *color);
     void setTableItemInfo(const QString &text, const bool &enabled, const double *color);
 
+    void sessionModified();
     void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
     void setSources(const QJsonArray &sources, const QDir &filesDir);
     void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
