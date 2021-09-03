@@ -104,16 +104,9 @@ ViaLactea::ViaLactea(QWidget *parent) :
     }
     ui->webView->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    //TODO: receive a message clicked()
-    //suggestion
-    connect(ui->webView, SIGNAL(clicked()), this, SLOT(on_queryPushButton_clicked()));
     connect(ui->webView, SIGNAL(selectionChanged()), this, SLOT(textSelected()));
-    //connect(ui->webView, SIGNAL(statusBarMessage(QString)),
-    //           this, SIGNAL(on_webViewStatusBarMessage(QString)));
-    //connect(ui->webView->page(), SIGNAL(statusBarMessage(QString)), this, SIGNAL(on_webViewStatusBarMessage(QString)));
 
     //create an object for javascript communication
-
     webobj = new WebProcess();
     QWebChannel *channel = new QWebChannel(this);
     channel->registerObject("webobj", webobj);
