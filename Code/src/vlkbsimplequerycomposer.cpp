@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
+#include <QUuid>
 #include "authwrapper.h"
 
 VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *parent) :
@@ -110,7 +111,7 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 
         loading = new LoadingWidget();
         loading->init();
-        loading->setFileName("Connecting to VLKB...");
+        loading->setText("Connecting to VLKB...");
         loading->show();
         loading->activateWindow();
         loading->setFocus();
@@ -325,7 +326,7 @@ void VLKBSimpleQueryComposer::on_queryPushButton_clicked()
 void VLKBSimpleQueryComposer::doQuery(QString band)
 {
     loading->init();
-    loading->setFileName("Retrieving dataset from VLKB");
+    loading->setText("Retrieving dataset from VLKB");
 
     loading->show();
     // loading->activateWindow();
@@ -506,7 +507,7 @@ void VLKBSimpleQueryComposer::queryReplyFinished (QNetworkReply *reply)
                 else
                 {
                     output_file=QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
-                    output_file.append("/tmp_download/").append("temp_dataset.dat");
+                    output_file.append("/tmp_download/").append(QUuid::createUuid().toString(QUuid::WithoutBraces)).append(".dat");
                 }
 
                 QFile file(output_file);
@@ -564,8 +565,8 @@ void VLKBSimpleQueryComposer::queryReplyFinished (QNetworkReply *reply)
                         }
                     }
                     //delete temp file
-                    if (! ui->savedatasetCheckBox->isChecked())
-                        QFile::remove(output_file);
+                    //if (! ui->savedatasetCheckBox->isChecked())
+                        //QFile::remove(output_file);
                 }
                 else
                 {

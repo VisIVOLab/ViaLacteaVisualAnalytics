@@ -1205,7 +1205,7 @@ void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
 
         loading = new LoadingWidget();
         loading->init();
-        loading->setFileName("Executing vialactea_tap_sedfit");
+        loading->setText("Executing vialactea_tap_sedfit");
         loading ->show();
         loading->activateWindow();
         loading->setFocus();
@@ -1953,7 +1953,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
 
         loading = new LoadingWidget();
         loading->init();
-        loading->setFileName("Executing vialactea_tap_sedfit");
+        loading->setText("Executing vialactea_tap_sedfit");
         loading ->show();
         loading->activateWindow();
         loading->setFocus();

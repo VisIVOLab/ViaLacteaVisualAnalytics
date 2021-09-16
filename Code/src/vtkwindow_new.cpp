@@ -62,6 +62,7 @@
 #include "vialactea.h"
 #include "vialacteainitialquery.h"
 #include "caesarwidget.h"
+#include "vialactea_fileload.h"
 #include "selectedsourcesform.h"
 #include "vtkContourFilter.h"
 #include "vtklegendscaleactor.h"
@@ -1059,6 +1060,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint * vis) : QMainWindow(pare
 
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
 
+    ui->actionSave_session->setEnabled(false);
+    ui->menuMoment->menuAction()->setVisible(false);
     ui->ElementListWidget->hide();
     ui->tableWidget->hide();
     ui->listWidget->hide();
@@ -1338,6 +1341,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         ui->setupUi(this);
         ui->menuTools->menuAction()->setVisible(false);
+        ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
         ui->ElementListWidget->hide();
@@ -1641,15 +1645,31 @@ QString vtkwindow_new::getWindowName()
     return this->windowTitle();
 }
 
-void vtkwindow_new::on_horizontalSlider_threshold_sliderReleased()
+int vtkwindow_new::getThresholdValue()
 {
-    float value=(ui->horizontalSlider_threshold->value()*(myfits->GetMax() - 3*myfits->GetRMS()) /100)+3*myfits->GetRMS();
+    return ui->horizontalSlider_threshold->value();
+}
 
-    ui->thresholdValueLineEdit->setText(QString::number(value,'f',4) );
-    shellE->SetValue(0,  value);
+void vtkwindow_new::setThresholdValue(int sliderValue)
+{
+    float value = (sliderValue*(myfits->GetMax() - 3*myfits->GetRMS()) /100) + 3*myfits->GetRMS();
+    ui->horizontalSlider_threshold->setValue(sliderValue);
+    ui->thresholdValueLineEdit->setText(QString::number(value,'f',4));
+    shellE->SetValue(0, value);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
+void vtkwindow_new::on_horizontalSlider_threshold_sliderReleased()
+{
+    setThresholdValue(ui->horizontalSlider_threshold->value());
+    if (myParentVtkWindow != 0)
+        myParentVtkWindow->sessionModified();
+}
+
+int vtkwindow_new::getCuttingPlaneValue()
+{
+    return ui->cuttingPlane_Slider->value();
+}
 
 void vtkwindow_new::on_cuttingPlane_Slider_valueChanged(int value)
 {
@@ -1660,6 +1680,7 @@ void vtkwindow_new::on_cuttingPlane_Slider_valueChanged(int value)
     QString velocityUnit;
     if(myParentVtkWindow!=0){
         velocityUnit=myParentVtkWindow->selectedCubeVelocityUnit;
+        myParentVtkWindow->sessionModified();
     }else{
         velocityUnit="km/s";
     }
@@ -1682,6 +1703,8 @@ void vtkwindow_new::on_spinBox_cuttingPlane_valueChanged(int arg1)
 {
     ui->cuttingPlane_Slider->setValue(arg1);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    if (myParentVtkWindow != 0)
+        myParentVtkWindow->sessionModified();
 }
 
 void vtkwindow_new::on_cameraLeft_clicked()
@@ -1887,7 +1910,6 @@ void vtkwindow_new::addBubble(VSTableDesktop* m_VisIVOTable)
 
 void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
 {
-
     float centroid_glat;
     float centroid_glon;
     QString contour;
@@ -2153,162 +2175,51 @@ void vtkwindow_new::addFilaments(VSTableDesktop* m_VisIVOTable)
 
     }
 
+
+    QStringList names;
     //Contorno filamento
     vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
     cleanFilter->Update();
-
-
-    // Visualize
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
-
-
     vtkSmartPointer<vtkLODActor> actor = vtkSmartPointer<vtkLODActor>::New();
     actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(0, 1,0);
-
-  //  m_Ren1->AddActor(actor);
-   // ui->qVTK1->update();
-
-    //  QString name="Filaments_"+QString::number( visualized_actor_list.count() );
-    QString name=stringDictWidget->getColDescStringDict().value("vlkb_filaments.filaments.contour");
-
-    addCombinedLayer(name,  actor,2, true);
-
-/*visualized_actor_list.insert(name,actor);
-
-
-
-    vtkfitstoolwidgetobject* filamentObject=new vtkfitstoolwidgetobject(2);
-
-    filamentObject->setName(name);
-    filamentObject->setActor(actor);
-
-    addLayer(filamentObject);
-*/
+    actor->GetProperty()->SetColor(0, 1, 0);
+    QString name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.filaments.contour");
+    names << name;
+    addCombinedLayer(name, actor, 2, true);
 
 
     //branches Contour1d
     vtkSmartPointer<vtkCleanPolyData> branches_contour1d_cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     branches_contour1d_cleanFilter->SetInputConnection(branches_contour1d_appendFilter->GetOutputPort());
     branches_contour1d_cleanFilter->Update();
-
-
-    // Visualize
     vtkSmartPointer<vtkPolyDataMapper> branches_contour1d_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     branches_contour1d_mapper->SetInputConnection(branches_contour1d_cleanFilter->GetOutputPort());
-
-
     vtkSmartPointer<vtkLODActor> branches_contour1d_actor = vtkSmartPointer<vtkLODActor>::New();
     branches_contour1d_actor->SetMapper(branches_contour1d_mapper);
-    branches_contour1d_actor->GetProperty()->SetColor(1, 0,0);
-
-   // m_Ren1->AddActor(branches_contour1d_actor);
-   // ui->qVTK1->update();
-
-    //name="Filaments_branches_contour1d_"+QString::number( visualized_actor_list.count() );
-    name=stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour1d");
-
-   // visualized_actor_list.insert(name,branches_contour1d_actor);
-
-    addCombinedLayer(name,  branches_contour1d_actor,2, true);
+    branches_contour1d_actor->GetProperty()->SetColor(1, 0, 0);
+    name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour1d");
+    names << name;
+    addCombinedLayer(name, branches_contour1d_actor, 2, true);
 
 
-/*
-    vtkfitstoolwidgetobject* branches_contour1d_filamentObject=new vtkfitstoolwidgetobject(2);
-    branches_contour1d_filamentObject->setName(name);
-    branches_contour1d_filamentObject->setActor(branches_contour1d_actor);
-    addLayer(branches_contour1d_filamentObject);
-*/
-
-/*
-    //branches Contour1d_S
-    vtkSmartPointer<vtkCleanPolyData> branches_contour1d_cleanFilter_S = vtkSmartPointer<vtkCleanPolyData>::New();
-    branches_contour1d_cleanFilter_S->SetInputConnection(branches_contour1d_appendFilter_S->GetOutputPort());
-    branches_contour1d_cleanFilter_S->Update();
-    // Visualize
-    vtkSmartPointer<vtkPolyDataMapper> branches_contour1d_mapper_S = vtkSmartPointer<vtkPolyDataMapper>::New();
-    branches_contour1d_mapper_S->SetInputConnection(branches_contour1d_cleanFilter_S->GetOutputPort());
-
-    vtkSmartPointer<vtkLODActor> branches_contour1d_actor_S = vtkSmartPointer<vtkLODActor>::New();
-    branches_contour1d_actor_S->SetMapper(branches_contour1d_mapper_S);
-    branches_contour1d_actor_S->GetProperty()->SetColor(0, 0,1);
-
-    m_Ren1->AddActor(branches_contour1d_actor_S);
-    ui->qVTK1->update();
-
-    name="Filaments_branches_contour1d_S_"+QString::number( visualized_actor_list.count() );
-
-    visualized_actor_list.insert(name,branches_contour1d_actor_S);
-
-
-    vtkfitstoolwidgetobject* branches_contour1d_filamentObject_S=new vtkfitstoolwidgetobject(2);
-    branches_contour1d_filamentObject_S->setName(name);
-    branches_contour1d_filamentObject_S->setActor(branches_contour1d_actor_S);
-    addLayer(branches_contour1d_filamentObject_S);
-*/
-/*
-    //branches Contour_new
-    vtkSmartPointer<vtkCleanPolyData> branches_contour_new_cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
-    branches_contour_new_cleanFilter->SetInputConnection(branches_contour_new_appendFilter->GetOutputPort());
-    branches_contour_new_cleanFilter->Update();
-
-    // Visualize
-    vtkSmartPointer<vtkPolyDataMapper> branches_contour_new_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    branches_contour_new_mapper->SetInputConnection(branches_contour_new_cleanFilter->GetOutputPort());
-
-    vtkSmartPointer<vtkLODActor> branches_contour_new_actor = vtkSmartPointer<vtkLODActor>::New();
-    branches_contour_new_actor->SetMapper(branches_contour_new_mapper);
-    branches_contour_new_actor->GetProperty()->SetColor(1, 0,1);
-    branches_contour_new_actor->VisibilityOff();
-    //vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
-
-    m_Ren1->AddActor(branches_contour_new_actor);
-    ui->qVTK1->update();
-
-    name="Filaments_branches_contour_new_"+QString::number( visualized_actor_list.count() );
-    visualized_actor_list.insert(name,branches_contour_new_actor);
-
-    vtkfitstoolwidgetobject* branches_contour_new_filamentObject=new vtkfitstoolwidgetobject(2);
-    branches_contour_new_filamentObject->setName(name);
-    branches_contour_new_filamentObject->setActor(branches_contour_new_actor);
-    addLayer(branches_contour_new_filamentObject,false);
-*/
     //branches Contour
     vtkSmartPointer<vtkCleanPolyData> branches_contour_cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     branches_contour_cleanFilter->SetInputConnection(branches_contour_appendFilter->GetOutputPort());
     branches_contour_cleanFilter->Update();
-
-    // Visualize
     vtkSmartPointer<vtkPolyDataMapper> branches_contour_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     branches_contour_mapper->SetInputConnection(branches_contour_cleanFilter->GetOutputPort());
-
     vtkSmartPointer<vtkLODActor> branches_contour_actor = vtkSmartPointer<vtkLODActor>::New();
     branches_contour_actor->SetMapper(branches_contour_mapper);
-    branches_contour_actor->GetProperty()->SetColor(0, 1,1);
+    branches_contour_actor->GetProperty()->SetColor(0, 1, 1);
+    name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour");
+    names << name;
+    addCombinedLayer(name, branches_contour_actor, 2, false);
 
-//    m_Ren1->AddActor(branches_contour_actor);
- //   ui->qVTK1->update();
-
-//    name="Filaments_branches_contour_"+QString::number( visualized_actor_list.count() );
-    name=stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour");
-
-   // visualized_actor_list.insert(name,branches_contour_actor);
-
-
-
-/*
-    vtkfitstoolwidgetobject* branches_contour_filamentObject=new vtkfitstoolwidgetobject(2);
-    branches_contour_filamentObject->setName(name);
-    branches_contour_filamentObject->setActor(branches_contour_actor);
-    branches_contour_actor->VisibilityOff();
-    addLayer(branches_contour_filamentObject,false);
- */
-    addCombinedLayer(name,  branches_contour_actor,2, false);
-
-
-
+    filamentsList.insert(QString::fromStdString(m_VisIVOTable->getName()), names);
+    sessionModified();
 }
 
 
@@ -2436,23 +2347,30 @@ void vtkwindow_new::addSources(VSTableDesktop* m_VisIVOTable)
     }
 
     file_wavelength.insert(QString::fromStdString(m_VisIVOTable->getName()),m_VisIVOTable->getWavelength());
-    drawEllipse(ellipse_list,  QString::fromStdString(m_VisIVOTable->getName()) );
+    drawEllipse(ellipse_list, QString::fromStdString(m_VisIVOTable->getName()), QString::fromStdString(m_VisIVOTable->getName()));
 
     this->update();
-
-
+    sessionModified();
 }
 
 void vtkwindow_new::closeEvent(QCloseEvent *event)
 {
-    if(vtkwintype==1)
+    if (vtkwintype == 1) {
         removeContour();
+        if (myParentVtkWindow != 0)
+            myParentVtkWindow->sessionModified();
+    }
 
     auto vl = &Singleton<ViaLactea>::Instance();
-    if (vl->isMasterWin(this))
-        vl->resetMasterWin();
+    if (vl->isMasterWin(this)) {
+        if (!isSessionSaved() && !confirmSaveAndExit()) {
+            // Cancel button was clicked, therefore do not close
+            event->ignore();
+            return;
+        }
 
-    this->close();
+        vl->resetMasterWin();
+    }
 }
 
 void vtkwindow_new::updateSpecies(){
@@ -2560,16 +2478,18 @@ void vtkwindow_new::setTransition(QString q){
 }
 */
 
-void vtkwindow_new::drawEllipse(QHash<QString,vtkEllipse *> ellipse, QString sourceFilename )
+void vtkwindow_new::drawEllipse(QHash<QString,vtkEllipse *> ellipse, QString sourceFilename, QString sourcePath)
 {
-    QString ori_sourceFilename=sourceFilename;
+    if (QDir::isAbsolutePath(sourceFilename))
+        sourceFilename = QFileInfo(sourceFilename).fileName();
+
+    QString ori_sourceFilename = sourceFilename;
     // sourceFilename=sourceFilename+"_"+QString::number( visualized_actor_list.count() );
 
     vtkSmartPointer<vtkAppendPolyData> appendFilter =vtkSmartPointer<vtkAppendPolyData>::New();
 
    //ellipse_list.unite(ellipse);
-
-ellipse_list=ellipse;
+    ellipse_list=ellipse;
 
 
     foreach(vtkEllipse *el, ellipse )
@@ -2635,6 +2555,7 @@ ellipse_list=ellipse;
         vtkfitstoolwidgetobject* singleBandObject=new vtkfitstoolwidgetobject(1);
         singleBandObject->setParentItem(imageObject);
         singleBandObject->setName(sourceFilename);
+        singleBandObject->setPath(sourcePath);
 
         QColor c= QColor( Qt::GlobalColor( Qt::red+VisualizedEllipseSourcesList.count() ) );
         ellipseActor->GetProperty()->SetColor(c.redF(), c.greenF(), c.blueF());
@@ -2981,10 +2902,17 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop* m_VisIVOTable)
 
 
         qDebug()<<"\t draw "<<wavelen[i]<<" - "<<stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]);
+
+        auto ellipse_list = wavelen[i].compare("ft") == 0 ? ft_ellipse_list : ellipse_list_local;
+        auto sourcePath = QString::fromStdString(m_VisIVOTable->getName());
+        drawEllipse(ellipse_list, stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]), sourcePath);
+
+        /*
         if(wavelen[i].compare("ft")==0)
-            drawEllipse(ft_ellipse_list,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]) );
+            drawEllipse(ft_ellipse_list,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]), m_VisIVOTable->getName());
         else
-            drawEllipse(ellipse_list_local,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]) );
+            drawEllipse(ellipse_list_local,  stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wavelen[i]), m_VisIVOTable->getName());
+        */
         /*
 
         if(wavelen[i].compare("ft")==0)
@@ -3002,7 +2930,7 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop* m_VisIVOTable)
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
     this->update();
-
+    sessionModified();
 }
 
 
@@ -3109,8 +3037,19 @@ QHash<QString,  vtkSmartPointer<vtkLODActor> > vtkwindow_new::getEllipseActorLis
     return ellipse_actor_list;
 }
 
+QStringList vtkwindow_new::getSourcesLoadedFromFile(const QString &sourcePath)
+{
+    QStringList list;
+    foreach (const auto &it, elementLayerList) {
+        if (it->getType() == 1 && it->getPath() == sourcePath)
+            list << it->getName();
+    }
+    return list;
+}
+
 void vtkwindow_new::setCuttingPlaneValue(int arg1)
 {
+    /*
     sliceA->SetPosition(0,0,arg1);
     ui->qVTK1->update();
     if(!isDatacube)
@@ -3118,6 +3057,8 @@ void vtkwindow_new::setCuttingPlaneValue(int arg1)
     else
         this->updateScene();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    */
+    ui->cuttingPlane_Slider->setValue(arg1);
 }
 
 void vtkwindow_new::on_actionInfo_triggered()
@@ -3599,12 +3540,12 @@ void vtkwindow_new::addToList(vtkfitstoolwidgetobject *o, bool enabled)
 
 }
 
-void vtkwindow_new::checkboxImageClicked(int cb)
+void vtkwindow_new::checkboxImageClicked(int cb, bool status)
 {
-    if( vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject(cb))->GetVisibility())
-        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
-    else
+    if(status)
         vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOn();
+    else
+        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
@@ -3628,36 +3569,34 @@ void vtkwindow_new::checkboxClicked(int cb,bool status)
         getVisualizedActorList().value(ui->tableWidget->item(cb, 1)->text())->VisibilityOn();
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 
 void vtkwindow_new::on_tableWidget_doubleClicked(const QModelIndex &index)
 {
+    if (elementLayerList.at(index.row())->getType() != 0) {
+        // Initial color
+        double r = getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()->GetColor()[0]*255;
+        double g = getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()->GetColor()[1]*255;
+        double b = getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()->GetColor()[2]*255;
 
+        QColor color = QColorDialog::getColor(QColor(r, g, b), this);
+        if (color.isValid()) {
+            // Update actor color
+            getVisualizedActorList().value(ui->tableWidget->item(index.row(), 1)->text())->GetProperty()\
+                    ->SetColor(color.redF(), color.greenF(), color.blueF());
+            ui->qVTK1->update();
+            ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    // if(index.column()==0)
-    if (elementLayerList.at(index.row())->getType()==0)
-    {
-        //settaggi dell'immagine selezionata
+            // Update color on table
+            ui->tableWidget->cellWidget(index.row(), 0)->setStyleSheet("background-color: rgb(" + \
+                                                                       QString::number(color.redF()*255) + "," + \
+                                                                       QString::number(color.greenF()*255) + " ,"+ \
+                                                                       QString::number(color.blueF()*255) +")");
+            sessionModified();
+        }
     }
-    else
-    {
-
-        //Initial color
-        double r=getVisualizedActorList().value(ui->tableWidget->item( index.row(), 1)->text())->GetProperty()->GetColor()[0]*255;
-        double g=getVisualizedActorList().value(ui->tableWidget->item(index.row() , 1)->text())->GetProperty()->GetColor()[1]*255;
-        double b=getVisualizedActorList().value(ui->tableWidget->item( index.row() , 1)->text())->GetProperty()->GetColor()[2]*255;
-
-        QColor color = QColorDialog::getColor(QColor(r,g,b), this);
-        getVisualizedActorList().value(ui->tableWidget->item( index.row(), 1)->text())->GetProperty()->SetColor(color.redF(), color.greenF(), color.blueF());
-        ui->qVTK1->update();
-        ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
-        //update color on table
-        ui->tableWidget->cellWidget(index.row(),0)->setStyleSheet("background-color: rgb("+QString::number(color.redF()*255)+","+QString::number(color.greenF()*255)+" ,"+QString::number(color.blueF()*255)+")");
-    }
-
 }
 
 void vtkwindow_new::on_fil_rectPushButton_clicked()
@@ -3872,7 +3811,7 @@ void vtkwindow_new::addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString su
     this->update();
     activateWindow();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::downloadStartingLayers(QList < QPair<QString, QString> > selectedSurvey)
@@ -3961,6 +3900,7 @@ void vtkwindow_new::on_lutComboBox_activated(const QString &arg1)
 {
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    sessionModified();
 }
 
 void vtkwindow_new::on_logRadioButton_toggled(bool checked)
@@ -3972,7 +3912,7 @@ void vtkwindow_new::on_logRadioButton_toggled(bool checked)
 
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(), selected_scale.toStdString().c_str());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::on_tdRectPushButton_clicked()
@@ -3996,10 +3936,10 @@ void vtkwindow_new::on_ElementListWidget_doubleClicked(const QModelIndex &index)
 
 void vtkwindow_new::on_thresholdValueLineEdit_editingFinished()
 {
-
     shellE->SetValue(0,  ui->thresholdValueLineEdit->text().toFloat());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    if (myParentVtkWindow != 0)
+        myParentVtkWindow->sessionModified();
 }
 
 void vtkwindow_new::on_upperBoundLineEdit_editingFinished()
@@ -4011,6 +3951,23 @@ void vtkwindow_new::on_upperBoundLineEdit_editingFinished()
 void vtkwindow_new::on_lowerBoundLineEdit_editingFinished()
 {
     if(ui->contourCheckBox->isChecked())
+        goContour();
+}
+
+bool vtkwindow_new::getContoursInfo(int &level, double &lowerBound, double &upperBound)
+{
+    level = ui->levelLineEdit->text().toInt();
+    lowerBound = ui->lowerBoundLineEdit->text().toDouble();
+    upperBound = ui->upperBoundLineEdit->text().toDouble();
+    return ui->contourCheckBox->isChecked();
+}
+
+void vtkwindow_new::setContoursInfo(const int &level, const double &lowerBound, const double &upperBound, const bool &enabled)
+{
+    ui->levelLineEdit->setText(QString::number(level));
+    ui->lowerBoundLineEdit->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundLineEdit->setText(QString::number(upperBound, 'f', 4));
+    if (enabled)
         goContour();
 }
 
@@ -4028,12 +3985,12 @@ void vtkwindow_new::goContour()
     cutter->Update();
 
     vtkSmartPointer<vtkPolyDataMapper> cutterMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    cutterMapper->SetInputConnection( cutter->GetOutputPort());
+    cutterMapper->SetInputConnection(cutter->GetOutputPort());
 
     vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
-    vtkSmartPointer<vtkContourFilter> contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
     polyData = cutter->GetOutput();
 
+    vtkSmartPointer<vtkContourFilter> contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
     contoursFilter->GenerateValues(ui->levelLineEdit->text().toInt(), ui->lowerBoundLineEdit->text().toDouble(), ui->upperBoundLineEdit->text().toDouble());
     contoursFilter->SetInputConnection(cutter->GetOutputPort());
 
@@ -4044,37 +4001,25 @@ void vtkwindow_new::goContour()
     contourLineMapperer->SetScalarModeToUsePointData();
     contourLineMapperer->SetColorModeToMapScalars();
 
-
     currentContourActor->SetMapper(contourLineMapperer);
     currentContourActor->GetProperty()->SetLineWidth(1);
-
+    ui->contourCheckBox->setChecked(true);
     ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 
-    //TEST FV
-
-
-    if(myParentVtkWindow!=0){
-
+    if (myParentVtkWindow != 0) {
         //Riporto i contorni su visualizzazione principale
-        vtkfitstoolwidgetobject *img=new vtkfitstoolwidgetobject(3);
-        img->setName("isocontour");
-
-
-
         double *sky_coord_gal = new double[2];
         AstroUtils().xy2sky(myfits->GetFileName(),0,0,sky_coord_gal,3);
         double *coord= new double[3];
         AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0], sky_coord_gal[1], coord);
 
         double angle  = 0;
-
         double x1=coord[0];
         double y1=coord[1];
 
         AstroUtils().xy2sky(myfits->GetFileName(),0,100,sky_coord_gal,3);
         AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0], sky_coord_gal[1], coord);
-
 
         if (x1!=coord[0])
         {
@@ -4083,7 +4028,6 @@ void vtkwindow_new::goContour()
         }
 
         double bounds[6];
-
         vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
         myfits->GetOutput()->GetBounds(bounds);
 
@@ -4095,57 +4039,6 @@ void vtkwindow_new::goContour()
         // transform->Translate( 0,0, -1*viewer->GetSlice());
         double scaledPixel=AstroUtils().arcsecPixel(myfits->GetFileName())/AstroUtils().arcsecPixel(myParentVtkWindow->myfits->GetFileName());
 
-
-        /*
-
-
-    viewer->GetImageActor()->Update();
-    vtkSmartPointer<vtkImageData> imgDataContourForMainWindow=  vtkSmartPointer<vtkImageData>::New();
-    imgDataContourForMainWindow->ShallowCopy(viewer->GetImageActor()->GetInput());
-
-    double scaledPixel=AstroUtils().arcsecPixel(myfits->GetFileName())/AstroUtils().arcsecPixel(myParentVtkWindow->myfits->GetFileName());
-    imgDataContourForMainWindow->SetSpacing(scaledPixel,scaledPixel,1);
-
-
-    double *sky_coord_gal = new double[2];
-    AstroUtils().xy2sky(myfits->GetFileName(),0,0,sky_coord_gal,3);
-    double *coord= new double[3];
-    AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0], sky_coord_gal[1], coord);
-
-
-    imgDataContourForMainWindow->SetOrigin( x1,y1,0);
-
-
-    vtkSmartPointer<vtkImageSliceMapper> imageSliceMapperLayer = vtkSmartPointer<vtkImageSliceMapper>::New();
-    imageSliceMapperLayer->SetInputData(imgDataContourForMainWindow);
-
-
-    vtkSmartPointer<vtkImageSlice> imageSliceLayer = vtkSmartPointer<vtkImageSlice>::New();
-    imageSliceLayer->SetMapper(imageSliceMapperLayer);
-    imageSliceLayer->GetProperty()->SetOpacity(1.0);
-    imageSliceLayer->GetProperty()->SetInterpolationTypeToNearest();
-
-
-    imageSliceLayer->SetUserTransform(transform);
-
-    vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-    lut->SetScaleToLinear();
-    lut->SetTableRange( myfits->GetRangeSlice(viewer->GetSlice())[0], myfits->GetRangeSlice(viewer->GetSlice())[1] );
-
-    SelectLookTable("Gray",lut);
-
-    img->setLutScale("Log");
-    img->setLutType("Gray");
-
-    imageSliceLayer->GetProperty()->SetLookupTable(lut);
-    imageSliceLayer->GetProperty()->UseLookupTableScalarRangeOn();
-   // myParentVtkWindow->imageStack->AddImage(imageSliceLayer);
-
-    //myParentVtkWindow-> addLayer(img);
-
-
-*/
-
         vtkSmartPointer<vtkPolyDataMapper> mapperForMainWindow = vtkSmartPointer<vtkPolyDataMapper>::New();
         mapperForMainWindow->ShallowCopy(contourLineMapperer);
 
@@ -4156,29 +4049,11 @@ void vtkwindow_new::goContour()
         currentContourActorForMainWindow->SetPosition(x1,y1,1);
         currentContourActorForMainWindow->SetUserTransform(transform);
 
-        // myParentVtkWindow-> addLayer(img);
-
-
         myParentVtkWindow->m_Ren1->AddActor2D(currentContourActorForMainWindow);
-        //myParentVtkWindow->m_Ren1->Render();
         myParentVtkWindow->ui->qVTK1->update();
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+        myParentVtkWindow->sessionModified();
     }
-
-
-
-
-    //END
-
-
-    // myParentVtkWindow->m_Ren1->AddActor(currentContourActor);
-    // myParentVtkWindow->imageViewer->GetImageActor()->add
-
-    // myParentVtkWindow->m_Ren1->AddActor(currentContourActor);
-
-    // myParentVtkWindow->imageViewer->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(currentContourActor);
-    // ui->isocontourVtkWin->update();
-
 }
 
 void vtkwindow_new::on_levelLineEdit_editingFinished()
@@ -4195,7 +4070,9 @@ void vtkwindow_new::removeContour()
         myParentVtkWindow->m_Ren1->RemoveActor2D(currentContourActorForMainWindow);
         myParentVtkWindow->ui->qVTK1->update();
         myParentVtkWindow->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+        myParentVtkWindow->sessionModified();
     }
+    ui->contourCheckBox->setChecked(false);
     ui->isocontourVtkWin->update();
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 }
@@ -4544,7 +4421,7 @@ void vtkwindow_new::on_horizontalSlider_valueChanged(int value)
 
     vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject(pos))->GetProperty()->SetOpacity(value/100.0);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::on_glyphShapeComboBox_activated(int index)
@@ -4738,27 +4615,22 @@ bool vtkwindow_new::eventFilter(QObject *object, QEvent *event)
 
 void vtkwindow_new::on_listWidget_clicked(const QModelIndex &index)
 {
-
-    if( ui->listWidget->selectionModel()->selectedRows().count()!=0 && imgLayerList.at(index.row())->getType()==0 )
+    if (ui->listWidget->selectionModel()->selectedRows().count() != 0 && imgLayerList.at(index.row())->getType() == 0)
     {
-        imageStack->SetActiveLayer( ui->listWidget->selectionModel()->selectedRows().at(0).row() );
-
-        ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast( imageStack->GetImages()->GetItemAsObject( ui->listWidget->selectionModel()->selectedRows().at(0).row() ))->GetProperty()->GetOpacity()*100.0);
-
-        ui->lutComboBox->setCurrentText(imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutType());
-
-        if( imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getLutScale() == "Linear")
-            ui->linearadioButton->setChecked(true);
-        else
-            ui->logRadioButton->setChecked(true);
-
+        int row = ui->listWidget->selectionModel()->selectedRows().at(0).row();
+        imageStack->SetActiveLayer(row);
+        ui->horizontalSlider->setValue(vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->GetProperty()->GetOpacity() * 100.0);
+        ui->lutComboBox->setCurrentText(imgLayerList.at(row)->getLutType());
+        auto radioBtn = imgLayerList.at(row)->getLutScale() == "Linear" ? ui->linearadioButton : ui->logRadioButton;
+        radioBtn->setChecked(true);
     }
 }
 
 void vtkwindow_new::on_listWidget_itemChanged(QListWidgetItem *item)
 {
     //checkbox img
-    checkboxImageClicked(item->listWidget()->row(item));
+    checkboxImageClicked(item->listWidget()->row(item), item->checkState() == Qt::Checked);
+    sessionModified();
 }
 
 void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int sourceStart, int sourceEnd, const QModelIndex & destinationParent, int destinationRow )
@@ -4790,7 +4662,7 @@ void vtkwindow_new::movedLayersRow( const QModelIndex & sourceParent, int source
 
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    sessionModified();
 }
 
 void vtkwindow_new::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
@@ -4976,10 +4848,415 @@ void vtkwindow_new::on_actionLeft_triggered()
     setCameraAzimuth(-90);
 }
 
-
 void vtkwindow_new::on_actionCAESAR_triggered()
 {
     auto caesar = new CaesarWidget(this, myfits);
     caesar->show();
 }
 
+void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir)
+{
+    auto loadingWindow = new LoadingWidget(this);
+    loadingWindow->setWindowFlag(Qt::Window);
+    loadingWindow->setWindowFlag(Qt::WindowStaysOnTopHint);
+    loadingWindow->setWindowTitle("Loading session");
+    loadingWindow->setText("Loading the session, please wait...");
+    loadingWindow->setButtonStatus(false);
+    loadingWindow->show();
+
+    QFile f(sessionFile);
+    f.open(QFile::ReadOnly);
+    QJsonObject session = QJsonDocument::fromJson(f.readAll()).object();
+    f.close();
+    this->sessionFile = sessionFile;
+
+    auto layers = session["image"].toObject()["layers"].toArray();
+    setImageLayers(layers, filesDir);
+
+    auto compactSources = session["image"].toObject()["compact_sources"].toArray();
+    if (!compactSources.isEmpty())
+        setSources(compactSources, filesDir);
+
+    auto filaments = session["image"].toObject()["filaments"].toArray();
+    if (!filaments.isEmpty())
+        setFilaments(filaments, filesDir);
+
+    auto datacubes = session["datacubes"].toArray();
+    if (!datacubes.isEmpty())
+        loadDatacubes(datacubes, filesDir);
+
+    sessionSaved = true;
+    loadingWindow->deleteLater();
+}
+
+void vtkwindow_new::sessionModified()
+{
+    sessionSaved = false;
+}
+
+bool vtkwindow_new::isSessionSaved() const
+{
+    return sessionSaved;
+}
+
+bool vtkwindow_new::confirmSaveAndExit()
+{
+    auto res = QMessageBox::question(this, "Unsaved changes", "Do you want to save your work before leaving?",
+                                     QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+    if (res == QMessageBox::Cancel) {
+        // Do nothing
+        return false;
+    }
+
+    if (res == QMessageBox::Yes) {
+        on_actionSave_session_triggered();
+    }
+
+    return true;
+}
+
+void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
+{
+    // Clear current layers
+    ui->listWidget->clear();
+    imgLayerList.clear();
+    imageStack->GetImages()->RemoveAllItems();
+
+    foreach (const auto &it, layers) {
+        auto layer = it.toObject();
+
+        vtkSmartPointer<vtkFitsReader> fitsReader;
+        // If this layer is origin, then we already have the fitsReader
+        if (layer["origin"].toBool()) {
+            fitsReader = myfits;
+        } else {
+            auto fn = filesDir.absoluteFilePath(layer["fits"].toString());
+            fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+            fitsReader->SetFileName(fn.toStdString());
+            if (layer["type"].toString() == "Moment") {
+                fitsReader->isMoment3D = true;
+                fitsReader->setMomentOrder(layer["moment_order"].toInt());
+            }
+        }
+
+        // Setup
+        addLayerImage(fitsReader);
+        ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
+        auto listItem = ui->listWidget->currentItem();
+        listItem->setText(layer["text"].toString());
+        changeFitsScale(layer["lutType"].toString().toStdString(), layer["lutScale"].toString().toStdString());
+        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))->GetProperty()->SetOpacity(layer["opacity"].toInt()/100.0);
+        listItem->setCheckState(layer["enabled"].toBool() ? Qt::Checked : Qt::Unchecked);
+    }
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    ui->listWidget->setCurrentRow(0);
+    emit ui->listWidget->clicked(ui->listWidget->selectionModel()->currentIndex());
+}
+
+bool vtkwindow_new::getTableItemInfo(const QString &text, int &row, bool &enabled, double *color)
+{
+    auto list = ui->tableWidget->findItems(text, Qt::MatchExactly);
+    if (list.count() > 0) {
+        row = list.first()->row();
+        enabled = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0))->isChecked();
+        getVisualizedActorList().value(text)->GetProperty()->GetColor(color);
+        return true;
+    }
+    return false;
+}
+
+void vtkwindow_new::setTableItemInfo(const QString &text, const bool &enabled, const double *color)
+{
+    auto list = ui->tableWidget->findItems(text, Qt::MatchExactly);
+    if (list.count() > 0) {
+        auto row = list.first()->row();
+        auto cb = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
+        auto ellipseActor = getVisualizedActorList().value(text);
+        ellipseActor->GetProperty()->SetColor(color[0], color[1], color[2]);
+        cb->setStyleSheet("background-color: rgb("+QString::number(color[0]*255)+","+\
+                QString::number(color[1]*255)+" ,"+QString::number(color[2]*255)+")");
+        if (enabled) {
+            cb->setChecked(true);
+            ellipseActor->VisibilityOn();
+        } else {
+            cb->setChecked(false);
+            ellipseActor->VisibilityOff();
+        }
+    }
+}
+
+void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
+{
+    auto fileLoad = new Vialactea_FileLoad("", true);
+    fileLoad->setVtkWin(this);
+    fileLoad->setCatalogueActive();
+
+    foreach (const auto &it, sources) {
+        auto compactSource = it.toObject();
+        auto file = filesDir.absoluteFilePath(compactSource["file"].toString());
+        fileLoad->init(file);
+
+        if (compactSource["bandmerged"].toBool()) {
+            fileLoad->setWavelength("all");
+            fileLoad->on_okPushButton_clicked();
+            foreach (const auto &item, compactSource["tableItems"].toArray()) {
+                auto text = item["text"].toString();
+                auto enabled = item["enabled"].toBool();
+                auto color = item["color"].toArray();
+                double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+                setTableItemInfo(text, enabled, rgb);
+            }
+        } else {
+            fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
+            fileLoad->on_okPushButton_clicked();
+            auto text = compactSource["text"].toString();
+            auto enabled = compactSource["enabled"].toBool();
+            auto color = compactSource["color"].toArray();
+            double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+            setTableItemInfo(text, enabled, rgb);
+        }
+    }
+
+    fileLoad->deleteLater();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &filesDir)
+{
+    auto fileLoad = new Vialactea_FileLoad("", true);
+    fileLoad->setVtkWin(this);
+
+    foreach (const auto &it, filaments) {
+        auto filament = it.toObject();
+        auto file = filesDir.absoluteFilePath(filament["file"].toString());
+        fileLoad->init(file);
+        fileLoad->importFilaments();
+
+        foreach (const auto &item, filament["tableItems"].toArray()) {
+            auto text = item["text"].toString();
+            auto enabled = item["enabled"].toBool();
+            auto color = item["color"].toArray();
+            double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+            setTableItemInfo(text, enabled, rgb);
+        }
+    }
+
+    fileLoad->deleteLater();
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir)
+{
+    foreach (const auto &dc, datacubes) {
+        auto fitsPath = filesDir.absoluteFilePath(dc["fits"].toString());
+        auto threshold = dc["threshold"].toInt();
+        auto slice = dc["slice"].toInt();
+
+        auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
+        fitsReader->SetFileName(fitsPath.toStdString());
+        fitsReader->is3D = true;
+        auto win = new vtkwindow_new(this, fitsReader, 1, this);
+        win->setThresholdValue(threshold);
+        win->setCuttingPlaneValue(slice);
+
+        auto contours = dc["contours"].toObject();
+        auto level = contours["level"].toInt();
+        auto lowerB = contours["lowerBound"].toDouble();
+        auto upperB = contours["upperBound"].toDouble();
+        auto enabled = contours["enabled"].toBool();
+        win->setContoursInfo(level, lowerB, upperB, enabled);
+    }
+}
+
+void vtkwindow_new::on_actionSave_session_triggered()
+{
+    auto currentTime = QDateTime::currentDateTimeUtc();
+
+    bool overwriting = false;
+    if (!this->sessionFile.isEmpty()) {
+        auto res = QMessageBox::question(this, "Save session", "Do you want to overwrite the current session?");
+        overwriting = res == QMessageBox::Yes;
+    }
+
+    QString dir;
+    if (overwriting) {
+        dir = QFileInfo(this->sessionFile).absolutePath();
+        // session.json and files are already there, no need to create them
+    } else {
+        dir = QFileDialog::getExistingDirectory(this, "Save session", QDir::homePath(), QFileDialog::ShowDirsOnly);
+        if (dir.isEmpty())
+            return;
+
+        QDir tmp(dir);
+        if (!tmp.isEmpty()) {
+            QMessageBox::warning(this, "Save session", "The directory is not empty, please select an empty folder.");
+            return;
+        }
+        this->sessionFile = tmp.absoluteFilePath("session.json");
+        tmp.mkdir("files");
+    }
+
+    QDir sessionFolder(dir);
+    QFile sessionFile(this->sessionFile);
+    QDir filesFolder(sessionFolder.absoluteFilePath("files"));
+
+    QJsonObject image;
+    // Layers
+    QJsonArray layers;
+    for (int row = 0; row < ui->listWidget->count(); ++row) {
+        auto listItem = ui->listWidget->item(row);
+        auto img = imgLayerList.at(row);
+        auto fits = QFileInfo(QString::fromStdString(img->getFits()->GetFileName()));
+
+        // Copy the fits file into the files directory
+        auto src = fits.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(fits.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject layer;
+        if (img->getFits()->isMoment3D) {
+            layer["type"] = QString("Moment");
+            layer["moment_order"] = img->getFits()->getMomentOrder();
+        } else {
+            layer["type"] = QString("Continuum");
+        }
+        layer["origin"] = img->getFits() == myfits;
+        layer["text"] = listItem->text();
+        layer["fits"] = fits.fileName();
+        layer["lutType"] = img->getLutType().isEmpty() ? "Gray" : img->getLutType();
+        layer["lutScale"] = img->getLutScale().isEmpty() ? "Log" : img->getLutScale();
+        layer["opacity"] = vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->\
+                GetProperty()->GetOpacity() * 100;
+        layer["enabled"] = listItem->checkState() == Qt::Checked;
+        layers.append(layer);
+    }
+    image["layers"] = layers;
+
+
+    // Compact sources
+    QJsonArray sources;
+    for (auto i = file_wavelength.constBegin(); i != file_wavelength.constEnd(); ++i) {
+        auto srcInfo = QFileInfo(i.key());
+        auto bandmerged = i.value() == 0;
+
+        // Copy the file into the files directory
+        auto src = srcInfo.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject compactSource;
+        compactSource["file"] = srcInfo.fileName();
+        compactSource["bandmerged"] = bandmerged;
+
+        if (bandmerged) {
+            QJsonArray tableItems;
+            auto items = getSourcesLoadedFromFile(src);
+            foreach (const auto &item, items) {
+                int row;
+                bool enabled;
+                double ellipseColor[3];
+                getTableItemInfo(item, row, enabled, ellipseColor);
+                QJsonArray rgb;
+                rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+
+                QJsonObject obj;
+                obj["text"] = item;
+                obj["enabled"] = enabled;
+                obj["color"] = rgb;
+                tableItems.append(obj);
+            }
+            compactSource["tableItems"] = tableItems;
+        } else {
+            auto text = getSourcesLoadedFromFile(src).first();
+            int row;
+            bool enabled;
+            double ellipseColor[3];
+            getTableItemInfo(text, row, enabled, ellipseColor);
+            QJsonArray rgb;
+            rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+
+            compactSource["wavelength"] = i.value();
+            compactSource["text"] = text;
+            compactSource["enabled"] = enabled;
+            compactSource["color"] = rgb;
+        }
+
+        sources.append(compactSource);
+    }
+    image["compact_sources"] = sources;
+
+
+    // Filaments
+    QJsonArray filaments;
+    for (auto i = filamentsList.constBegin(); i != filamentsList.constEnd(); ++i) {
+        auto srcInfo = QFileInfo(i.key());
+
+        // Copy the file into the files directory
+        auto src = srcInfo.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject filament;
+        filament["file"] = srcInfo.fileName();
+        QJsonArray tableItems;
+        foreach (const auto &text, i.value()) {
+            int row;
+            bool enabled;
+            double ellipseColor[3];
+            getTableItemInfo(text, row, enabled, ellipseColor);
+            QJsonArray rgb;
+            rgb << ellipseColor[0] << ellipseColor[1] << ellipseColor[2];
+
+            QJsonObject obj;
+            obj["text"] = text;
+            obj["enabled"] = enabled;
+            obj["color"] = rgb;
+            tableItems.append(obj);
+        }
+        filament["tableItems"] = tableItems;
+        filaments.append(filament);
+    }
+    image["filaments"] = filaments;
+
+
+    // Datacubes
+    QJsonArray datacubes;
+    foreach (const auto &win, this->findChildren<vtkwindow_new*>()) {
+        if (!win->isDatacube || !win->isVisible())
+            continue;
+
+        auto fits = QFileInfo(QString::fromStdString(win->getFitsImage()->GetFileName()));
+        auto src = fits.absoluteFilePath();
+        auto dst = filesFolder.absoluteFilePath(fits.fileName());
+        QFile::copy(src, dst);
+
+        QJsonObject dc;
+        dc["fits"] = fits.fileName();
+        dc["threshold"] = win->getThresholdValue();
+        dc["slice"] = win->getCuttingPlaneValue();
+
+        QJsonObject contours;
+        int level;
+        double lowerB, upperB;
+        bool enabled = win->getContoursInfo(level, lowerB, upperB);
+        contours["level"] = level;
+        contours["lowerBound"] = lowerB;
+        contours["upperBound"] = upperB;
+        contours["enabled"] = enabled;
+        dc["contours"] = contours;
+        datacubes.append(dc);
+    }
+
+
+    // Save the session.json configuration file
+    QJsonObject root;
+    root["image"] = image;
+    root["datacubes"] = datacubes;
+    root["saved"] = currentTime.toString(Qt::ISODate);
+    QJsonDocument session(root);
+    sessionFile.open(QFile::WriteOnly);
+    sessionFile.write(session.toJson());
+    sessionFile.close();
+    sessionSaved = true;
+    QMessageBox::information(this, tr("Save session"), tr("Session saved in ") + sessionFolder.absolutePath());
+}

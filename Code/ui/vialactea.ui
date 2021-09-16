@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1266</width>
-    <height>835</height>
+    <height>843</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -570,16 +570,14 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
-   </property>
-   <property name="nativeMenuBar">
-    <bool>false</bool>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionLoad_session"/>
     <addaction name="actionSettings"/>
     <addaction name="actionExit"/>
     <addaction name="actionLoad_SED_2"/>
@@ -617,6 +615,11 @@
   <action name="actionLoad_SED_2">
    <property name="text">
     <string>Load SED</string>
+   </property>
+  </action>
+  <action name="actionLoad_session">
+   <property name="text">
+    <string>Load session</string>
    </property>
   </action>
  </widget>

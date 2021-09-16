@@ -84,7 +84,7 @@ void CaesarWidget::uploadData(const QString &fn)
     multipart->append(filePart);
 
     auto loadingWidget = new LoadingWidget;
-    loadingWidget->setFileName(fn);
+    loadingWidget->setText(fn);
     loadingWidget->show();
     loadingWidget->activateWindow();
 
@@ -355,7 +355,7 @@ void CaesarWidget::on_dataDownloadButton_clicked()
         return;
 
     auto loadingWidget = new LoadingWidget;
-    loadingWidget->setFileName(filename);
+    loadingWidget->setText(filename);
     loadingWidget->show();
     loadingWidget->activateWindow();
 
@@ -475,7 +475,7 @@ void CaesarWidget::on_jobDownloadButton_clicked()
         return;
 
     auto loadingWidget = new LoadingWidget;
-    loadingWidget->setFileName(filename);
+    loadingWidget->setText(filename);
     loadingWidget->show();
     loadingWidget->activateWindow();
 

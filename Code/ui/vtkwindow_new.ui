@@ -1501,6 +1501,7 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionSave_session"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -1596,6 +1597,11 @@
   <action name="actionCAESAR">
    <property name="text">
     <string>CAESAR</string>
+   </property>
+  </action>
+  <action name="actionSave_session">
+   <property name="text">
+    <string>Save session</string>
    </property>
   </action>
  </widget>

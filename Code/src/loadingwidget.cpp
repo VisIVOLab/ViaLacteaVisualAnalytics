@@ -30,7 +30,7 @@ void LoadingWidget::updateProgressBar(qint64 current, qint64 max)
     }
 }
 
-void LoadingWidget::setFileName(QString name)
+void LoadingWidget::setText(QString name)
 {
     ui->titleLabel->setText(name);
 }
@@ -38,6 +38,11 @@ void LoadingWidget::setFileName(QString name)
 void LoadingWidget::setLoadingProcess(QNetworkReply *reply)
 {
     this->reply = reply;
+}
+
+void LoadingWidget::setButtonStatus(bool enabled)
+{
+    ui->dismissPushButton->setEnabled(enabled);
 }
 
 void LoadingWidget::loadingEnded()

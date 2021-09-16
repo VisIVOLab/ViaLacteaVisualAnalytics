@@ -1,11 +1,3 @@
-build-VisIVODesktop-vtk6_qt5-Desktop_Qt_5_14_2_GCC_64bit-Debug/
-Code/VisIVODesktop-vtk6_qt5.pro
 Code/VisIVODesktop-vtk6_qt5.pro.user
-build-VisIVODesktop-vtk6_qt5_mac-Unnamed-Debug/
-*.pro.user.*
-*.pro
-*.pro.user
-Code/.DS_Store
-Code/src/.DS_Store
 build-*
-Code/.DS_Store
+**/.DS_Store
