@@ -22,7 +22,7 @@ Prerequisites:
 1. `$ sudo make install`
 
 ## Boost 1.75.0 (Headers only)
-1. `$ wget https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.gz`
+1. `$ wget https://boostorg.jfrog.io/ui/native/main/release/1.75.0/source/boost_1_75_0.tar.gz`
 1. `$ tar xzf boost_1_75_0.tar.gz`
 1. `$ cd boost_1_75_0`
 1. `$ sudo cp -r boost /usr/local/include`
