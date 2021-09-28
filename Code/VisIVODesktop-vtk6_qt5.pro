@@ -151,6 +151,7 @@ SOURCES += src/main.cpp\
     src/mainwindow.cpp \
     src/treemodel.cpp \
     src/treeitem.cpp \
+    src/usertablewindow.cpp \
     src/vlvaurlschemehandler.cpp \
     src/vtkfitsreader.cpp \
     src/vispoint.cpp \
@@ -238,6 +239,7 @@ HEADERS  += src/mainwindow.h \
     src/singleton.h \
     src/treemodel.h \
     src/treeitem.h \
+    src/usertablewindow.h \
     src/vlvaurlschemehandler.h \
     src/vtkfitsreader.h \
     src/vispoint.h \
@@ -302,6 +304,7 @@ HEADERS  += src/mainwindow.h \
 
 
 FORMS    += ui/mainwindow.ui \
+    ui/usertablewindow.ui \
     ui/operationqueue.ui \
     ui/vtkwindow.ui \
     ui/vlkbquery.ui \

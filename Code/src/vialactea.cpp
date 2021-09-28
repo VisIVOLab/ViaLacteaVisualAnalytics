@@ -12,6 +12,7 @@
 #include "authwrapper.h"
 #include "settingform.h"
 #include "aboutform.h"
+#include "usertablewindow.h"
 #include "vlkbsimplequerycomposer.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
@@ -671,5 +672,16 @@ void ViaLactea::on_actionLoad_session_triggered()
         vq->deleteLater();
     });
     vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+}
+
+
+void ViaLactea::on_loadTableButton_clicked()
+{
+    QString fn = QFileDialog::getOpenFileName(this, "Load user table", QDir::homePath());
+    if (fn.isEmpty())
+        return;
+
+    auto win = new UserTableWindow(fn, this);
+    win->show();
 }
 
