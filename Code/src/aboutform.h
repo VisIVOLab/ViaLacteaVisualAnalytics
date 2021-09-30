@@ -2,6 +2,7 @@
 #define ABOUTFORM_H
 
 #include <QWidget>
+#include <QUrl>
 
 namespace Ui {
 class AboutForm;
@@ -15,8 +16,12 @@ public:
     explicit AboutForm(QWidget *parent = 0);
     ~AboutForm();
 
+private slots:
+    void on_neaniasLogo_clicked();
+
 private:
     Ui::AboutForm *ui;
+    QUrl neaniasUrl;
 };
 
 #endif // ABOUTFORM_H
