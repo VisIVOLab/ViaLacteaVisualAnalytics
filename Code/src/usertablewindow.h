@@ -73,7 +73,6 @@ public:
     ~UserTableWindow();
 
 private slots:
-    void on_loadButton_clicked();
     void on_queryButton_clicked();
 
     void on_higal_70_checkBox_clicked();
@@ -110,6 +109,7 @@ private:
     QSet<QString> filters;
 
     void readFile();
+    void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
     void query(int index);
     //

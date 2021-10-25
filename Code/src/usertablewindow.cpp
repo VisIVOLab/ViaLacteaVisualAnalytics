@@ -15,6 +15,9 @@ UserTableWindow::UserTableWindow(QString filepath, QWidget *parent) :
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
 
+    ui->tabWidget->setTabEnabled(1, false);
+    ui->tabWidget->setTabEnabled(2, false);
+
     ui->sourcesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->imagesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->cubesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -54,7 +57,7 @@ void UserTableWindow::readFile()
     ui->idBox->addItems(columns);
     ui->glonBox->addItems(columns);
     ui->glatBox->addItems(columns);
-    ui->loadButton->setEnabled(true);
+    loadSourceTable(columns);
 }
 
 void UserTableWindow::changeSelectionMode(const QString &selectionMode)
@@ -76,42 +79,52 @@ void UserTableWindow::changeSelectionMode(const QString &selectionMode)
     }
 }
 
-void UserTableWindow::on_loadButton_clicked()
+void UserTableWindow::loadSourceTable(const QStringList &columns)
 {
     ui->sourcesTable->setRowCount(0);
 
     QStringList tableColumns;
-    tableColumns << QString() << ui->idBox->currentText() << ui->glonBox->currentText() << ui->glatBox->currentText();
-    ui->sourcesTable->setColumnCount(4);
+    // Prepend a new empty column for the checkbox
+    tableColumns << QString() << columns;
+
+    ui->sourcesTable->setColumnCount(tableColumns.count());
     ui->sourcesTable->setHorizontalHeaderLabels(tableColumns);
 
     foreach (const auto &source, sources) {
         ui->sourcesTable->insertRow(ui->sourcesTable->rowCount());
+        int row = ui->sourcesTable->rowCount() - 1;
+
         auto checkBox = new QTableWidgetItem();
         checkBox->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         checkBox->setCheckState(Qt::Checked);
+
         ui->sourcesTable->setItem(ui->sourcesTable->rowCount() - 1, 0, checkBox);
-        ui->sourcesTable->setItem(ui->sourcesTable->rowCount() - 1, 1, new QTableWidgetItem(source[ui->idBox->currentText()]));
-        ui->sourcesTable->setItem(ui->sourcesTable->rowCount() - 1, 2, new QTableWidgetItem(source[ui->glonBox->currentText()]));
-        ui->sourcesTable->setItem(ui->sourcesTable->rowCount() - 1, 3, new QTableWidgetItem(source[ui->glatBox->currentText()]));
+        for (int col = 1; col < tableColumns.count(); ++col) {
+            ui->sourcesTable->setItem(row, col, new QTableWidgetItem(source[tableColumns[col]]));
+        }
     }
 
     ui->queryButton->setEnabled(true);
 }
 
 void UserTableWindow::on_queryButton_clicked()
-{   
+{
+    // Clean up the previous search
     qDeleteAll(selectedSources);
     selectedSources.clear();
-
     ui->imagesTable->setRowCount(0);
     ui->cubesTable->setRowCount(0);
 
+    // Add 1 to skip the first column (the checkbox column)
+    int designationCol = ui->idBox->currentIndex() + 1;
+    int glonCol = ui->glonBox->currentIndex() + 1;
+    int glatCol = ui->glatBox->currentIndex() + 1;
+
     for (int i = 0; i < ui->sourcesTable->rowCount(); ++i) {
         if (ui->sourcesTable->item(i, 0)->checkState() == Qt::Checked) {
-            QString designation = ui->sourcesTable->item(i, 1)->text();
-            double glon = ui->sourcesTable->item(i, 2)->text().toDouble();
-            double glat = ui->sourcesTable->item(i, 3)->text().toDouble();
+            QString designation = ui->sourcesTable->item(i, designationCol)->text();
+            double glon = ui->sourcesTable->item(i, glonCol)->text().toDouble();
+            double glat = ui->sourcesTable->item(i, glatCol)->text().toDouble();
             selectedSources.append(new Source(designation, glon, glat, this));
         }
     }
@@ -133,6 +146,8 @@ void UserTableWindow::query(int index)
             query(index+1);
         } else {
             updateTables();
+            ui->tabWidget->setTabEnabled(1, true);
+            ui->tabWidget->setTabEnabled(2, true);
             ui->tabWidget->setCurrentIndex(1);
         }
         vlkb->deleteLater();
@@ -143,21 +158,6 @@ void UserTableWindow::query(int index)
     else
         vlkb->searchRequest(source->getGlon(), source->getGlat(), ui->dlLineEdit->text().toDouble(), ui->dbLineEdit->text().toDouble());
 }
-
-//void UserTableWindow::parseResults(const QList<QMap<QString, QString>> &results)
-//{
-//    foreach (const auto &item, results) {
-//        QString x = item.value("Survey") + item.value("Species") + item.value("Transition") + \
-//                item.value("longitudeP1") + item.value("longitudeP2") + item.value("longitudeP3") + item.value("longitudeP4") + \
-//                item.value("latitudeP1") + item.value("latitudeP2") + item.value("latitudeP3") + item.value("latitudeP4");
-
-//        if (!set.contains(x)) {
-//            auto &targetList = (item.value("Species").compare("Continuum") == 0) ? images : cubes;
-//            targetList.append(item);
-//            set.insert(x);
-//        }
-//    }
-//}
 
 void UserTableWindow::toggleFilter(QString transition)
 {
@@ -190,12 +190,12 @@ void UserTableWindow::updateTables()
 
     foreach (const auto &source, selectedSources) {
         qDebug() << "UserTableWindow.updateTables" << source->getDesignation() << source->getImages().count() << source->getCubes().count();
-
         ui->imagesTable->insertRow(ui->imagesTable->rowCount());
 
         auto x = new QTableWidgetItem();
         x->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         x->setCheckState(Qt::Unchecked);
+
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 0, x);
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 1, new QTableWidgetItem(source->getDesignation()));
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 2, new QTableWidgetItem(QString::number(source->getGlon())));
