@@ -34,6 +34,24 @@ public:
     Qt::CheckState getInfoBgps(QString &tooltipText) const;
     Qt::CheckState getInfoCornish(QString &tooltipText) const;
 
+    Qt::CheckState getInfoMopra(QString &tooltipText) const;
+    Qt::CheckState getInfoChimps(QString &tooltipText) const;
+    Qt::CheckState getInfoChamp(QString &tooltipText) const;
+    Qt::CheckState getInfoHops(QString &tooltipText) const;
+    Qt::CheckState getInfoGrs(QString &tooltipText) const;
+    Qt::CheckState getInfoMalt(QString &tooltipText) const;
+    Qt::CheckState getInfoThrumms(QString &tooltipText) const;
+    Qt::CheckState getInfoNanten(QString &tooltipText) const;
+    Qt::CheckState getInfoOgs(QString &tooltipText) const;
+    Qt::CheckState getInfoCohrs(QString &tooltipText) const;
+    Qt::CheckState getInfoVgps(QString &tooltipText) const;
+    Qt::CheckState getInfoCgps(QString &tooltipText) const;
+    Qt::CheckState getInfoSgps(QString &tooltipText) const;
+    Qt::CheckState getInfoAro(QString &tooltipText) const;
+    Qt::CheckState getInfoThor(QString &tooltipText) const;
+    Qt::CheckState getInfoSedigism(QString &tooltipText) const;
+    Qt::CheckState getInfoFugin(QString &tooltipText) const;
+
 private:
     QString designation;
     double glon;
@@ -41,6 +59,9 @@ private:
     QList<QMap<QString, QString>> searchResults;
     QList<QMap<QString, QString>> images;
     QList<QMap<QString, QString>> cubes;
+
+    Qt::CheckState testSet(QString &tooltipText, const QSet<QString> &expected, const QSet<QString> &actual) const;
+    Qt::CheckState testSingle(QString &tooltipText, const QString &expected, bool actual) const;
 
     QSet<QString> expectedHiGal = {"70 um", "160 um", "250 um", "350 um", "500 um"};
     QSet<QString> actualHiGal;
@@ -62,6 +83,57 @@ private:
 
     QString expectedCornish = "5 GHz";
     bool actualCornish;
+
+    QSet<QString> expectedMopra = {"12CO", "13CO", "C17O", "C18O"};
+    QSet<QString> actualMopra;
+
+    QSet<QString> expectedChimps = {"C18O", "13CO"};
+    QSet<QString> actualChimps;
+
+    QString expectedChamp = "HCO+";
+    bool actualChamp;
+
+    QSet<QString> expectedHops = {"H2O", "NH3"};
+    QSet<QString> actualHops;
+
+    QString expectedGrs = "13CO";
+    bool actualGrs;
+
+    QSet<QString> expectedMalt = {"N2H+", "13CS", "H", "CH3CN", "HC3N", "13C34S", "HNC", "HC13CCN", "HCO+", "HCN", "HNCO", "C2H", "HN13C", "SiO", "H13CO+"};
+    QSet<QString> actualMalt;
+
+    QSet<QString> expectedThrumms = {"12CO", "13CO", "C18O", "CN"};
+    QSet<QString> actualThrumms;
+
+    QString expectedNanten = "12CO";
+    bool actualNanten;
+
+    QSet<QString> expectedOgs = {"12CO", "13CO"};
+    QSet<QString> actualOgs;
+
+    QString expectedCohrs = "12CO";
+    bool actualCohrs;
+
+    QString expectedVgps = "HI";
+    bool actualVgps;
+
+    QString expectedCgps = "HI";
+    bool actualCgps;
+
+    QString expectedSgps = "HI";
+    bool actualSgps;
+
+    QSet<QString> expectedAro = {"12CO", "13CO"};
+    QSet<QString> actualAro;
+
+    QSet<QString> expectedThor = {"HI", "OH"};
+    QSet<QString> actualThor;
+
+    QSet<QString> expectedSedigism = {"13CO", "C18O"};
+    QSet<QString> actualSedigism;
+
+    QSet<QString> expectedFugin = {"12CO", "13CO", "C18O"};
+    QSet<QString> actualFugin;
 };
 
 class UserTableWindow : public QMainWindow
@@ -74,31 +146,6 @@ public:
 
 private slots:
     void on_queryButton_clicked();
-
-    void on_higal_70_checkBox_clicked();
-    void on_higal_160_checkBox_clicked();
-    void on_higal_250_checkBox_clicked();
-    void on_higal_350_checkBox_clicked();
-    void on_higal_500_checkBox_clicked();
-
-    void on_glimpse_8_checkBox_clicked();
-    void on_glimpse_58_checkBox_clicked();
-    void on_glimpse_45_checkBox_clicked();
-    void on_glimpse_36_checkBox_clicked();
-
-    void on_wise_22_checkBox_clicked();
-    void on_wise_12_checkBox_clicked();
-    void on_wise_46_checkBox_clicked();
-    void on_wise_34_checkBox_clicked();
-
-    void on_mipsgal_24_checkBox_clicked();
-
-    void on_atlasgal_870_checkBox_clicked();
-
-    void on_bolocam_11_checkBox_clicked();
-
-    void on_cornish_5_checkBox_clicked();
-
     void on_selectionComboBox_activated(const QString &arg1);
 
 private:
@@ -112,11 +159,7 @@ private:
     void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
     void query(int index);
-    //
-    void parseResults(const QList<QMap<QString, QString>> &results);
-    void toggleFilter(QString transition);
     void updateTables();
-    //
 };
 
 #endif // USERTABLEWINDOW_H
