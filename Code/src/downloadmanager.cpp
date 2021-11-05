@@ -94,27 +94,23 @@ QString DownloadManager::saveFileName(const QUrl &url,QString outputFile )
 
 void DownloadManager::downloadFinished(QNetworkReply *reply)
 {
+    currentDownloads.removeAll(reply);
+    loading->hide();
+
     QUrl url = reply->url();
     if (reply->error()) {
-        qDebug()<<"Download of"<< url.toEncoded().constData()<<"failed: "<<qPrintable(reply->errorString());
-
+        qDebug()<<"Download of"<< url.toEncoded().constData()<<"failed: "<<reply->errorString();
         QMessageBox::critical(loading ,"Error", qPrintable(reply->errorString()));
-
-        //fprintf(stderr, "Download of %s failed: %s\n",url.toEncoded().constData(),qPrintable(reply->errorString()));
+        reply->deleteLater();
     } else {
         qDebug()<<"Download Finished: "<<reply->url().toString();
         filenamePath = saveFileName(url,savedFilename);
         if (saveToDisk(filenamePath, reply))
             qDebug()<<"Download of"<<url.toEncoded().constData()<<" succeeded and saved to"<<qPrintable(filenamePath);
 
+        reply->deleteLater();
         emit downloadCompleted();
-
     }
-
-    currentDownloads.removeAll(reply);
-    reply->deleteLater();
-    loading->hide();
-
 }
 
 bool DownloadManager::saveToDisk(const QString &filename, QIODevice *reply)
