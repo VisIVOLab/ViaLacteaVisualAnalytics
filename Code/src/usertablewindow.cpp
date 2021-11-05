@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QFile>
+#include <QFileDialog>
 #include <QTextStream>
 #include "vialacteainitialquery.h"
 
@@ -187,13 +188,14 @@ void UserTableWindow::updateTables()
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 1, new QTableWidgetItem(source->getDesignation()));
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 2, new QTableWidgetItem(QString::number(source->getGlon())));
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 3, new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 4, NewSurveyCheckBox(source, &Source::getInfoGlimpse));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 5, NewSurveyCheckBox(source, &Source::getInfoWise));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 6, NewSurveyCheckBox(source, &Source::getInfoMipsgal));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 7, NewSurveyCheckBox(source, &Source::getInfoHiGal));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 8, NewSurveyCheckBox(source, &Source::getInfoAtlasgal));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 9, NewSurveyCheckBox(source, &Source::getInfoBgps));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 10, NewSurveyCheckBox(source, &Source::getInfoCornish));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 4, new QTableWidgetItem(QString::number(source->getImages().count())));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 5, NewSurveyCheckBox(source, &Source::getInfoGlimpse));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 6, NewSurveyCheckBox(source, &Source::getInfoWise));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 7, NewSurveyCheckBox(source, &Source::getInfoMipsgal));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 8, NewSurveyCheckBox(source, &Source::getInfoHiGal));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 9, NewSurveyCheckBox(source, &Source::getInfoAtlasgal));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 10, NewSurveyCheckBox(source, &Source::getInfoBgps));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 11, NewSurveyCheckBox(source, &Source::getInfoCornish));
 
         // Cubes Table
         ui->cubesTable->insertRow(ui->cubesTable->rowCount());
@@ -224,9 +226,158 @@ void UserTableWindow::updateTables()
     }
 }
 
+void UserTableWindow::setFilter(const QString &survey, const QString &transition, bool on)
+{
+    if (on) {
+        filters.insert(QPair<QString, QString>(survey, transition));
+    } else {
+        filters.remove(QPair<QString, QString>(survey, transition));
+    }
+
+    qDebug() << "Filters" << filters;
+}
+
+void UserTableWindow::downloadImages(const QMap<QString, QStringList> &cutouts, const QDir &dir)
+{
+    auto vlkb = new VialacteaInitialQuery();
+    for (auto i = cutouts.constBegin(); i != cutouts.constEnd(); ++i) {
+        dir.mkdir(i.key());
+        foreach (const auto &link, i.value()) {
+            vlkb->cutoutRequest(link, QDir(dir.absoluteFilePath(i.key())));
+        }
+    }
+}
+
+void UserTableWindow::on_downloadImagesButton_clicked()
+{
+    QMap<QString, QStringList> cutouts;
+    for (int row = 0; row < ui->imagesTable->rowCount(); ++row) {
+       QTableWidgetItem *item = ui->imagesTable->item(row, 0);
+       if (item->checkState() == Qt::Checked) {
+           const Source *source = selectedSources.at(row);
+           QStringList downloadLinks;
+
+           foreach (const auto image, source->getImages()) {
+               QPair<QString, QString> pair(image.value("Survey"), image.value("Transition"));
+               if (filters.contains(pair)) {
+                   downloadLinks << image.value("URL");
+               }
+           }
+
+           if (!downloadLinks.isEmpty()) {
+               cutouts.insert(source->getDesignation(), downloadLinks);
+           }
+       }
+    }
+
+    if (cutouts.isEmpty()) {
+        // Nothing to do
+        return;
+    }
+
+    QString tmp = QFileDialog::getExistingDirectory(this, "Select a folder", QDir::homePath(), QFileDialog::ShowDirsOnly);
+    if (!tmp.isEmpty()) {
+        downloadImages(cutouts, QDir(tmp));
+    }
+}
+
 void UserTableWindow::on_selectionComboBox_activated(const QString &arg1)
 {
     changeSelectionMode(arg1);
+}
+
+void UserTableWindow::on_higal_70_checkBox_clicked(bool checked)
+{
+    setFilter("Hi-GAL Tiles", "70 um", checked);
+    setFilter("Hi-GAL Mosaic", "70 um", checked);
+}
+
+void UserTableWindow::on_higal_160_checkBox_clicked(bool checked)
+{
+    setFilter("Hi-GAL Tiles", "160 um", checked);
+    setFilter("Hi-GAL Mosaic", "160 um", checked);
+}
+
+void UserTableWindow::on_higal_250_checkBox_clicked(bool checked)
+{
+    setFilter("Hi-GAL Tiles", "250 um", checked);
+    setFilter("Hi-GAL Mosaic", "250 um", checked);
+}
+
+void UserTableWindow::on_higal_350_checkBox_clicked(bool checked)
+{
+    setFilter("Hi-GAL Tiles", "350 um", checked);
+    setFilter("Hi-GAL Mosaic", "350 um", checked);
+}
+
+void UserTableWindow::on_higal_500_checkBox_clicked(bool checked)
+{
+    setFilter("Hi-GAL Tiles", "500 um", checked);
+    setFilter("Hi-GAL Mosaic", "500 um", checked);
+}
+
+void UserTableWindow::on_glimpse_36_checkBox_clicked(bool checked)
+{
+    setFilter("GLIMPSE I", "3.6 um", checked);
+    setFilter("GLIMPSE II", "3.6 um", checked);
+}
+
+void UserTableWindow::on_glimpse_45_checkBox_clicked(bool checked)
+{
+    setFilter("GLIMPSE I", "4.5 um", checked);
+    setFilter("GLIMPSE II", "4.5 um", checked);
+}
+
+void UserTableWindow::on_glimpse_58_checkBox_clicked(bool checked)
+{
+    setFilter("GLIMPSE I", "5.8 um", checked);
+    setFilter("GLIMPSE II", "5.8 um", checked);
+}
+
+void UserTableWindow::on_glimpse_80_checkBox_clicked(bool checked)
+{
+    setFilter("GLIMPSE I", "8.0 um", checked);
+    setFilter("GLIMPSE II", "8.0 um", checked);
+}
+
+void UserTableWindow::on_wise_34_checkBox_clicked(bool checked)
+{
+    setFilter("WISE", "3.4 um", checked);
+}
+
+void UserTableWindow::on_wise_46_checkBox_clicked(bool checked)
+{
+    setFilter("WISE", "5.6 um", checked);
+}
+
+void UserTableWindow::on_wise_12_checkBox_clicked(bool checked)
+{
+    setFilter("WISE", "12 um", checked);
+}
+
+void UserTableWindow::on_wise_22_checkBox_clicked(bool checked)
+{
+    setFilter("WISE", "22 um", checked);
+}
+
+void UserTableWindow::on_atlasgal_870_checkBox_clicked(bool checked)
+{
+    setFilter("ATLASGAL", "870 um", checked);
+}
+
+void UserTableWindow::on_mipsgal_24_checkBox_clicked(bool checked)
+{
+    setFilter("MIPSGAL", "24 um", checked);
+}
+
+void UserTableWindow::on_bgps_11_checkBox_clicked(bool checked)
+{
+    setFilter("CSO BGPS", "1.1 mm", checked);
+}
+
+void UserTableWindow::on_cornish_5_checkBox_clicked(bool checked)
+{
+    setFilter("CORNISH", "5 GHz", checked);
 }
 
 // -----------------------------------------------------------------------------------
@@ -267,37 +418,37 @@ void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
 
             auto transition = item.value("Transition");
 
-            if (survey.contains("HI-GAL")) {
+            if (survey == "HI-GAL TILES" || survey == "HI-GAL MOSAIC") {
                 actualHiGal << transition;
                 continue;
             }
 
-            if (survey.contains("GLIMPSE")) {
+            if (survey == "GLIMPSE I" || survey == "GLIMPSE II") {
                 actualGlimpse << transition;
                 continue;
             }
 
-            if (survey.contains("WISE")) {
+            if (survey == "WISE") {
                 actualWise << transition;
                 continue;
             }
 
-            if (survey.contains("MIPSGAL")) {
+            if (survey == "MIPSGAL") {
                 actualMipsgal = true;
                 continue;
             }
 
-            if (survey.contains("ATLASGAL")) {
+            if (survey == "ATLASGAL") {
                 actualAtlasgal = true;
                 continue;
             }
 
-            if (survey.contains("BGPS")) {
+            if (survey == "CSO BGPS") {
                 actualBgps = true;
                 continue;
             }
 
-            if (survey.contains("CORNISH")) {
+            if (survey == "CORNISH") {
                 actualCornish = true;
                 continue;
             }

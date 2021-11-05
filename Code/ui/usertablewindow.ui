@@ -180,10 +180,13 @@
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
+          <property name="childrenCollapsible">
+           <bool>false</bool>
+          </property>
           <widget class="QScrollArea" name="imagesScrollArea">
            <property name="minimumSize">
             <size>
-             <width>150</width>
+             <width>160</width>
              <height>0</height>
             </size>
            </property>
@@ -195,8 +198,8 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>148</width>
-              <height>682</height>
+              <width>143</width>
+              <height>655</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -228,7 +231,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="glimpse_8_checkBox">
+                 <widget class="QCheckBox" name="glimpse_80_checkBox">
                   <property name="text">
                    <string>8.0 μm</string>
                   </property>
@@ -354,13 +357,13 @@
               </widget>
              </item>
              <item>
-              <widget class="QGroupBox" name="bolocamBox">
+              <widget class="QGroupBox" name="bgpsBox">
                <property name="title">
                 <string>BOLOCAM GPS</string>
                </property>
                <layout class="QVBoxLayout" name="verticalLayout_16">
                 <item>
-                 <widget class="QCheckBox" name="bolocam_11_checkBox">
+                 <widget class="QCheckBox" name="bgps_11_checkBox">
                   <property name="text">
                    <string>1.1 mm</string>
                   </property>
@@ -438,6 +441,14 @@
            </column>
            <column>
             <property name="text">
+             <string># cutouts</string>
+            </property>
+            <property name="textAlignment">
+             <set>AlignCenter</set>
+            </property>
+           </column>
+           <column>
+            <property name="text">
              <string>GLIMPSE</string>
             </property>
             <property name="textAlignment">
@@ -493,6 +504,13 @@
             </property>
            </column>
           </widget>
+         </widget>
+        </item>
+        <item alignment="Qt::AlignRight">
+         <widget class="QPushButton" name="downloadImagesButton">
+          <property name="text">
+           <string>Download</string>
+          </property>
          </widget>
         </item>
        </layout>
@@ -1224,7 +1242,7 @@
   <tabstop>glimpse_36_checkBox</tabstop>
   <tabstop>glimpse_45_checkBox</tabstop>
   <tabstop>glimpse_58_checkBox</tabstop>
-  <tabstop>glimpse_8_checkBox</tabstop>
+  <tabstop>glimpse_80_checkBox</tabstop>
   <tabstop>wise_34_checkBox</tabstop>
   <tabstop>wise_46_checkBox</tabstop>
   <tabstop>wise_12_checkBox</tabstop>
@@ -1236,7 +1254,7 @@
   <tabstop>higal_350_checkBox</tabstop>
   <tabstop>higal_500_checkBox</tabstop>
   <tabstop>atlasgal_870_checkBox</tabstop>
-  <tabstop>bolocam_11_checkBox</tabstop>
+  <tabstop>bgps_11_checkBox</tabstop>
   <tabstop>cornish_5_checkBox</tabstop>
   <tabstop>imagesTable</tabstop>
   <tabstop>cubesScrollArea</tabstop>

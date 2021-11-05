@@ -6,6 +6,7 @@
 #include <QList>
 #include <QPair>
 #include <QSet>
+#include <QDir>
 
 namespace Ui {
 class UserTableWindow;
@@ -73,16 +74,16 @@ private:
     QSet<QString> actualWise;
 
     QString expectedMipsgal = "24 um";
-    bool actualMipsgal;
+    bool actualMipsgal = false;
 
     QString expectedAtlasgal = "870 um";
-    bool actualAtlasgal;
+    bool actualAtlasgal = false;
 
     QString expectedBgps = "1.1 mm";
-    bool actualBgps;
+    bool actualBgps = false;
 
     QString expectedCornish = "5 GHz";
-    bool actualCornish;
+    bool actualCornish = false;
 
     QSet<QString> expectedMopra = {"12CO", "13CO", "C17O", "C18O"};
     QSet<QString> actualMopra;
@@ -91,13 +92,13 @@ private:
     QSet<QString> actualChimps;
 
     QString expectedChamp = "HCO+";
-    bool actualChamp;
+    bool actualChamp = false;
 
     QSet<QString> expectedHops = {"H2O", "NH3"};
     QSet<QString> actualHops;
 
     QString expectedGrs = "13CO";
-    bool actualGrs;
+    bool actualGrs = false;
 
     QSet<QString> expectedMalt = {"N2H+", "13CS", "H", "CH3CN", "HC3N", "13C34S", "HNC", "HC13CCN", "HCO+", "HCN", "HNCO", "C2H", "HN13C", "SiO", "H13CO+"};
     QSet<QString> actualMalt;
@@ -106,22 +107,22 @@ private:
     QSet<QString> actualThrumms;
 
     QString expectedNanten = "12CO";
-    bool actualNanten;
+    bool actualNanten = false;
 
     QSet<QString> expectedOgs = {"12CO", "13CO"};
     QSet<QString> actualOgs;
 
     QString expectedCohrs = "12CO";
-    bool actualCohrs;
+    bool actualCohrs = false;
 
     QString expectedVgps = "HI";
-    bool actualVgps;
+    bool actualVgps = false;
 
     QString expectedCgps = "HI";
-    bool actualCgps;
+    bool actualCgps = false;
 
     QString expectedSgps = "HI";
-    bool actualSgps;
+    bool actualSgps = false;
 
     QSet<QString> expectedAro = {"12CO", "13CO"};
     QSet<QString> actualAro;
@@ -147,19 +148,39 @@ public:
 private slots:
     void on_queryButton_clicked();
     void on_selectionComboBox_activated(const QString &arg1);
+    void on_downloadImagesButton_clicked();
+    void on_higal_70_checkBox_clicked(bool checked);
+    void on_higal_160_checkBox_clicked(bool checked);
+    void on_higal_250_checkBox_clicked(bool checked);
+    void on_higal_350_checkBox_clicked(bool checked);
+    void on_higal_500_checkBox_clicked(bool checked);
+    void on_glimpse_36_checkBox_clicked(bool checked);
+    void on_glimpse_45_checkBox_clicked(bool checked);
+    void on_glimpse_58_checkBox_clicked(bool checked);
+    void on_glimpse_80_checkBox_clicked(bool checked);
+    void on_wise_34_checkBox_clicked(bool checked);
+    void on_wise_46_checkBox_clicked(bool checked);
+    void on_wise_12_checkBox_clicked(bool checked);
+    void on_wise_22_checkBox_clicked(bool checked);
+    void on_atlasgal_870_checkBox_clicked(bool checked);
+    void on_mipsgal_24_checkBox_clicked(bool checked);
+    void on_bgps_11_checkBox_clicked(bool checked);
+    void on_cornish_5_checkBox_clicked(bool checked);
 
 private:
     Ui::UserTableWindow *ui;
     QString filepath;
     QList<QMap<QString, QString>> sources;
     QList<Source*> selectedSources;
-    QSet<QString> filters;
+    QSet<QPair<QString, QString>> filters;
 
     void readFile();
     void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
     void query(int index);
     void updateTables();
+    void setFilter(const QString &survey, const QString &transition, bool on);
+    void downloadImages(const QMap<QString, QStringList> &cutouts, const QDir &dir);
 };
 
 #endif // USERTABLEWINDOW_H
