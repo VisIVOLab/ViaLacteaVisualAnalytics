@@ -146,7 +146,66 @@ void VialacteaInitialQuery::searchRequest(double l, double b, double r)
     searchRequest(url);
 }
 
-void VialacteaInitialQuery::searchRequest(QString url)
+void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
+{
+    loading->setText("Querying cutout service");
+    loading->show();
+    loading->activateWindow();
+
+    QUrl url_enc(url);
+    QUrlQuery urlQuery(url_enc);
+    auto queryItems = urlQuery.queryItems();
+    for (auto i = queryItems.begin(); i != queryItems.end(); ++i) {
+        i->second = QUrl::toPercentEncoding(i->second);
+    }
+    urlQuery.setQueryItems(queryItems);
+    url_enc.setQuery(urlQuery);
+
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
+
+    QNetworkRequest req(url_enc);
+    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    auth->putAccessToken(req);
+    QNetworkReply *reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir](){
+        if (reply->error() == QNetworkReply::NoError) {
+            QXmlStreamReader xml(reply);
+            QString downloadStr;
+            xmlparser parser;
+            parser.parseXML(xml, downloadStr);
+
+            if (!downloadStr.contains("NULL")) {
+                QStringList list = downloadStr.trimmed().split("/");
+                QString fn = list.takeLast();
+                QString filePath = dir.absoluteFilePath(fn);
+                list.push_back(fn.replace("+", "%2B"));
+                QUrl downloadUrl = QUrl(list.join("/"));
+
+                DownloadManager *manager = new DownloadManager();
+                manager->doDownload(downloadUrl, filePath);
+                connect(manager, &DownloadManager::downloadCompleted, manager, &DownloadManager::deleteLater);
+            } else {
+                QStringList result_splitted = downloadStr.split(" ");
+                QString msg = (result_splitted.length() > 1) ?
+                        "Null values percentage is "+ result_splitted[1] + " (greater than 95%)" :
+                        "Inconsistent data (PubDID vs Region only partially overlap)";
+
+                QMessageBox::critical(nullptr, "Error", msg);
+            }
+        } else {
+            QMessageBox::critical(nullptr, "Error", reply->errorString());
+        }
+
+        loading->loadingEnded();
+        loading->hide();
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+    loading->setLoadingProcess(reply);
+}
+
+void VialacteaInitialQuery::searchRequest(const QString &url)
 {
     loading->setText("Querying search service");
     loading->show();
@@ -154,26 +213,24 @@ void VialacteaInitialQuery::searchRequest(QString url)
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
     connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
-    connect(nam, &QNetworkAccessManager::finished, [&](QNetworkReply *reply){
+    connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply){
         if (reply->error() == QNetworkReply::NoError) {
             QXmlStreamReader xml(reply);
             auto results = parser->parseXmlAndGetList(xml);
             emit searchDone(results);
         } else {
-            QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr(qPrintable(reply->errorString())));
+            QMessageBox::critical(nullptr, QObject::tr("Error"), QObject::tr(qPrintable(reply->errorString())));
         }
 
         loading->loadingEnded();
         loading->hide();
         reply->deleteLater();
+        nam->deleteLater();
     });
 
     QNetworkRequest req(url);
-    if (vlkbtype == "neanias")
-    {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
-        auth->putAccessToken(req);
-    }
+    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    auth->putAccessToken(req);
 
     QNetworkReply* reply = nam->get(req);
     loading->setLoadingProcess(reply);
@@ -306,7 +363,13 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 loading->setText("Datacube found");
                 DownloadManager *manager= new DownloadManager();
                 QString urlString=string.trimmed();
-                QUrl url3(urlString);
+
+                // Encode '+' sign in filename
+                QStringList list = urlString.split("/");
+                QString fn = list.takeLast().replace("+", "%2B");
+                list.push_back(fn);
+
+                QUrl url3(list.join("/"));
 
                 connect(manager, SIGNAL(downloadCompleted()),this, SLOT(on_download_completed()));
 
