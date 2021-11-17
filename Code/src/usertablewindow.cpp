@@ -1,17 +1,25 @@
 #include "usertablewindow.h"
 #include "ui_usertablewindow.h"
 
+#include "authwrapper.h"
+#include "singleton.h"
+#include "vialacteainitialquery.h"
 #include <QDebug>
-#include <QMessageBox>
 #include <QFile>
 #include <QFileDialog>
+#include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QTextStream>
-#include "vialacteainitialquery.h"
+#include <QUrlQuery>
 
-UserTableWindow::UserTableWindow(QString filepath, QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::UserTableWindow),
-    filepath(filepath)
+UserTableWindow::UserTableWindow(const QString &filepath,
+                                 const QString &settingsFile,
+                                 QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::UserTableWindow)
+    , filepath(filepath)
+    , settings(settingsFile, QSettings::NativeFormat)
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
@@ -25,11 +33,150 @@ UserTableWindow::UserTableWindow(QString filepath, QWidget *parent) :
     changeSelectionMode(ui->selectionComboBox->currentText());
 
     readFile();
+    getSurveysData();
 }
 
 UserTableWindow::~UserTableWindow()
 {
     delete ui;
+}
+
+void UserTableWindow::getSurveysData()
+{
+    QString vlkbType = settings.value("vlkbtype", "public").toString();
+
+    QString table;
+    if (vlkbType == "public") {
+        table = "vlkb_datasets_public.surveys";
+    } else if (vlkbType == "private") {
+        table = "vlkb_radiocubes.surveys";
+    } else /* neanias */ {
+        table = "datasets.surveys";
+    }
+
+    QUrlQuery postData;
+    postData.addQueryItem("REQUEST", "doQuery");
+    postData.addQueryItem("VERSION", "1.0");
+    postData.addQueryItem("LANG", "ADQL");
+    postData.addQueryItem("FORMAT", "tsv");
+    postData.addQueryItem("QUERY", "SELECT name, species, transition FROM " + table);
+    QByteArray postDataEncoded = postData.toString(QUrl::FullyEncoded).toUtf8();
+
+    QString tapUrl = settings.value("vlkbtableurl").toString();
+    QNetworkRequest req(tapUrl + "/sync");
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    Singleton<AuthWrapper>::Instance().putAccessToken(req);
+
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+
+    connect(nam,
+            &QNetworkAccessManager::authenticationRequired,
+            this,
+            [this](QNetworkReply *reply, QAuthenticator *authenticator) {
+                Q_UNUSED(reply);
+                authenticator->setUser(settings.value("vlkbuser", "").toString());
+                authenticator->setPassword(settings.value("vlkbpass", "").toString());
+            });
+
+    connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
+        if (reply->error() == QNetworkReply::NoError) {
+            QString response = reply->readAll();
+            QStringList surveysData = response.split("\n");
+            surveysData.removeFirst(); // Remove column names line
+            buildTables(surveysData);
+        } else {
+            qDebug() << "UserTableWindow.getSurveysData.Error" << reply->errorString();
+            QMessageBox::critical(this, "Error", reply->errorString());
+        }
+
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+
+    nam->post(req, postDataEncoded);
+}
+
+void UserTableWindow::buildTables(const QStringList &surveysData)
+{
+    foreach (QString survey, surveysData) {
+        if (survey.isEmpty())
+            continue;
+
+        QStringList surveyInfo = survey.replace(QString("\""), QString()).split('\t');
+        QString name = surveyInfo[0], species = surveyInfo[1], transition = surveyInfo[2];
+
+        auto destMap = (species.contains("Continuum") ? &surveys2d : &surveys3d);
+
+        if (destMap->contains(name)) {
+            Survey *s = destMap->value(name);
+            s->addSpecies(species);
+            s->addTransition(transition);
+        } else {
+            Survey *s = new Survey(name, species, transition, this);
+            destMap->insert(name, s);
+        }
+    }
+
+    if (surveys2d.isEmpty() && surveys3d.isEmpty()) {
+        QMessageBox::information(this, "No surveys", "No surveys found");
+        return;
+    }
+
+    QStringList imagesCols;
+    for (int i = 0; i < ui->imagesTable->columnCount(); ++i) {
+        imagesCols << ui->imagesTable->horizontalHeaderItem(i)->text();
+    }
+    foreach (const auto &s, surveys2d) {
+        imagesCols << s->getName();
+
+        auto groupBox = new QGroupBox(s->getName(), ui->imagesScrollAreaContents);
+        auto layout = new QVBoxLayout(groupBox);
+
+        for (int i = 0; i < s->getTransitions().count(); ++i) {
+            auto box = new QCheckBox(groupBox);
+
+            box->setText(QString("%1 - %2").arg(s->getSpecies().at(i), s->getTransitions().at(i)));
+
+            connect(box, &QCheckBox::clicked, box, [s](bool b) {
+                qDebug() << s->getName() << s->getSpecies() << s->getTransitions() << b;
+            });
+            layout->addWidget(box);
+        }
+
+        groupBox->setLayout(layout);
+        ui->imagesScrollAreaContents->layout()->addWidget(groupBox);
+    }
+
+    QStringList cubesCols;
+    for (int i = 0; i < ui->cubesTable->columnCount(); ++i) {
+        cubesCols << ui->cubesTable->horizontalHeaderItem(i)->text();
+    }
+    foreach (const auto &s, surveys3d) {
+        cubesCols << s->getName();
+
+        auto groupBox = new QGroupBox(s->getName(), ui->cubesScrollAreaContents);
+        auto layout = new QVBoxLayout(groupBox);
+
+        for (int i = 0; i < s->getSpecies().count(); ++i) {
+            auto box = new QCheckBox(groupBox);
+
+            box->setText(QString("%1 - %2").arg(s->getSpecies().at(i), s->getTransitions().at(i)));
+
+            connect(box, &QCheckBox::clicked, box, [s](bool b) {
+                qDebug() << s->getName() << s->getSpecies() << s->getTransitions() << b;
+            });
+            layout->addWidget(box);
+        }
+
+        groupBox->setLayout(layout);
+        ui->cubesScrollAreaContents->layout()->addWidget(groupBox);
+    }
+
+    ui->imagesTable->setColumnCount(imagesCols.size());
+    ui->imagesTable->setHorizontalHeaderLabels(imagesCols);
+    ui->cubesTable->setColumnCount(cubesCols.size());
+    ui->cubesTable->setHorizontalHeaderLabels(cubesCols);
+    ui->queryButton->setEnabled(true);
 }
 
 void UserTableWindow::readFile()
@@ -104,8 +251,6 @@ void UserTableWindow::loadSourceTable(const QStringList &columns)
             ui->sourcesTable->setItem(row, col, new QTableWidgetItem(source[tableColumns[col]]));
         }
     }
-
-    ui->queryButton->setEnabled(true);
 }
 
 void UserTableWindow::on_queryButton_clicked()
@@ -137,27 +282,36 @@ void UserTableWindow::on_queryButton_clicked()
 
 void UserTableWindow::query(int index)
 {
-    auto source = selectedSources.at(index);
+    Source *source = selectedSources.at(index);
 
     auto vlkb = new VialacteaInitialQuery();
-    connect(vlkb, &VialacteaInitialQuery::searchDone, this, [this, vlkb, source, index](QList<QMap<QString, QString>> results){
-        source->parseSearchResults(results);
+    connect(vlkb,
+            &VialacteaInitialQuery::searchDone,
+            this,
+            [this, vlkb, source, index](QList<QMap<QString, QString>> results) {
+                source->parseSearchResults(results);
 
-        if ((index+1) < selectedSources.count()) {
-            query(index+1);
-        } else {
-            updateTables();
-            ui->tabWidget->setTabEnabled(1, true);
-            ui->tabWidget->setTabEnabled(2, true);
-            ui->tabWidget->setCurrentIndex(1);
-        }
-        vlkb->deleteLater();
-    });
+                if ((index + 1) < selectedSources.count()) {
+                    query(index + 1);
+                } else {
+                    updateTables();
+                    ui->tabWidget->setTabEnabled(1, true);
+                    ui->tabWidget->setTabEnabled(2, true);
+                    ui->tabWidget->setCurrentIndex(1);
+                }
+                vlkb->deleteLater();
+            });
 
-    if (ui->selectionComboBox->currentText() == "Point")
-        vlkb->searchRequest(source->getGlon(), source->getGlat(), ui->radiusLineEdit->text().toDouble());
-    else
-        vlkb->searchRequest(source->getGlon(), source->getGlat(), ui->dlLineEdit->text().toDouble(), ui->dbLineEdit->text().toDouble());
+    if (ui->selectionComboBox->currentText() == "Point") {
+        vlkb->searchRequest(source->getGlon(),
+                            source->getGlat(),
+                            ui->radiusLineEdit->text().toDouble());
+    } else {
+        vlkb->searchRequest(source->getGlon(),
+                            source->getGlat(),
+                            ui->dlLineEdit->text().toDouble(),
+                            ui->dbLineEdit->text().toDouble());
+    }
 }
 
 void UserTableWindow::updateTables()
@@ -165,64 +319,73 @@ void UserTableWindow::updateTables()
     ui->imagesTable->setRowCount(0);
     ui->cubesTable->setRowCount(0);
 
-    const auto NewSurveyCheckBox = [](const Source *s, Qt::CheckState (Source::* f)(QString &tooltip) const) {
-        QString tooltip;
-        Qt::CheckState state = (s->*f)(tooltip);
+    const auto NewSurveyCheckBox =
+        [this](const QString &surveyName, const Source *source, bool is3D) {
+            Survey *survey = (is3D ? surveys3d.value(surveyName) : surveys2d.value(surveyName));
 
-        auto tmp = new QTableWidgetItem();
-        tmp->setFlags(Qt::ItemIsUserTristate | Qt::ItemIsEnabled | Qt::ItemIsEditable | Qt::ItemIsSelectable);
-        tmp->setCheckState(state);
-        tmp->setToolTip(tooltip);
-        return tmp;
-    };
+            QString tooltip;
+            Qt::CheckState state = source->surveyInfo(tooltip, survey, is3D);
+
+            auto tmp = new QTableWidgetItem();
+            tmp->setFlags(Qt::ItemIsUserTristate | Qt::ItemIsEnabled | Qt::ItemIsEditable
+                          | Qt::ItemIsSelectable);
+            tmp->setCheckState(state);
+            tmp->setToolTip(tooltip);
+            return tmp;
+        };
 
     foreach (const auto &source, selectedSources) {
-        qDebug() << "UserTableWindow.updateTables" << source->getDesignation() << source->getImages().count() << source->getCubes().count();
-
         // Images Table
         ui->imagesTable->insertRow(ui->imagesTable->rowCount());
         QTableWidgetItem *x = new QTableWidgetItem();
         x->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         x->setCheckState(Qt::Unchecked);
         ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 0, x);
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 1, new QTableWidgetItem(source->getDesignation()));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 2, new QTableWidgetItem(QString::number(source->getGlon())));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 3, new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 4, new QTableWidgetItem(QString::number(source->getImages().count())));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 5, NewSurveyCheckBox(source, &Source::getInfoGlimpse));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 6, NewSurveyCheckBox(source, &Source::getInfoWise));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 7, NewSurveyCheckBox(source, &Source::getInfoMipsgal));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 8, NewSurveyCheckBox(source, &Source::getInfoHiGal));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 9, NewSurveyCheckBox(source, &Source::getInfoAtlasgal));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 10, NewSurveyCheckBox(source, &Source::getInfoBgps));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 11, NewSurveyCheckBox(source, &Source::getInfoCornish));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
+                                 1,
+                                 new QTableWidgetItem(source->getDesignation()));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
+                                 2,
+                                 new QTableWidgetItem(QString::number(source->getGlon())));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
+                                 3,
+                                 new QTableWidgetItem(QString::number(source->getGlat())));
+        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
+                                 4,
+                                 new QTableWidgetItem(QString::number(source->getImages().count())));
 
-        // Cubes Table
+        for (int i = 5; i < ui->imagesTable->columnCount(); ++i) {
+            auto survey = ui->imagesTable->horizontalHeaderItem(i)->text();
+            ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
+                                     i,
+                                     NewSurveyCheckBox(survey, source, false));
+        }
+
+        // Cubes table
         ui->cubesTable->insertRow(ui->cubesTable->rowCount());
         x = new QTableWidgetItem();
         x->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         x->setCheckState(Qt::Unchecked);
         ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 0, x);
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 1, new QTableWidgetItem(source->getDesignation()));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 2, new QTableWidgetItem(QString::number(source->getGlon())));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 3, new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 4, NewSurveyCheckBox(source, &Source::getInfoMopra));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 5, NewSurveyCheckBox(source, &Source::getInfoChimps));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 6, NewSurveyCheckBox(source, &Source::getInfoChamp));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 7, NewSurveyCheckBox(source, &Source::getInfoHops));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 8, NewSurveyCheckBox(source, &Source::getInfoGrs));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 9, NewSurveyCheckBox(source, &Source::getInfoMalt));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 10, NewSurveyCheckBox(source, &Source::getInfoThrumms));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 11, NewSurveyCheckBox(source, &Source::getInfoNanten));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 12, NewSurveyCheckBox(source, &Source::getInfoOgs));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 13, NewSurveyCheckBox(source, &Source::getInfoCohrs));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 14, NewSurveyCheckBox(source, &Source::getInfoVgps));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 15, NewSurveyCheckBox(source, &Source::getInfoCgps));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 16, NewSurveyCheckBox(source, &Source::getInfoSgps));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 17, NewSurveyCheckBox(source, &Source::getInfoAro));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 18, NewSurveyCheckBox(source, &Source::getInfoThor));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 19, NewSurveyCheckBox(source, &Source::getInfoSedigism));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 20, NewSurveyCheckBox(source, &Source::getInfoFugin));
+        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
+                                1,
+                                new QTableWidgetItem(source->getDesignation()));
+        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
+                                2,
+                                new QTableWidgetItem(QString::number(source->getGlon())));
+        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
+                                3,
+                                new QTableWidgetItem(QString::number(source->getGlat())));
+        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
+                                4,
+                                new QTableWidgetItem(QString::number(source->getCubes().count())));
+
+        for (int i = 5; i < ui->cubesTable->columnCount(); ++i) {
+            auto survey = ui->cubesTable->horizontalHeaderItem(i)->text();
+            ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
+                                    i,
+                                    NewSurveyCheckBox(survey, source, true));
+        }
     }
 }
 
@@ -252,22 +415,22 @@ void UserTableWindow::on_downloadImagesButton_clicked()
 {
     QMap<QString, QStringList> cutouts;
     for (int row = 0; row < ui->imagesTable->rowCount(); ++row) {
-       QTableWidgetItem *item = ui->imagesTable->item(row, 0);
-       if (item->checkState() == Qt::Checked) {
-           const Source *source = selectedSources.at(row);
-           QStringList downloadLinks;
+        QTableWidgetItem *item = ui->imagesTable->item(row, 0);
+        if (item->checkState() == Qt::Checked) {
+            const Source *source = selectedSources.at(row);
+            QStringList downloadLinks;
 
-           foreach (const auto image, source->getImages()) {
-               QPair<QString, QString> pair(image.value("Survey"), image.value("Transition"));
-               if (filters.contains(pair)) {
-                   downloadLinks << image.value("URL");
-               }
-           }
+            foreach (const auto image, source->getImages()) {
+                QPair<QString, QString> pair(image.value("Survey"), image.value("Transition"));
+                if (filters.contains(pair)) {
+                    downloadLinks << image.value("URL");
+                }
+            }
 
-           if (!downloadLinks.isEmpty()) {
-               cutouts.insert(source->getDesignation(), downloadLinks);
-           }
-       }
+            if (!downloadLinks.isEmpty()) {
+                cutouts.insert(source->getDesignation(), downloadLinks);
+            }
+        }
     }
 
     if (cutouts.isEmpty()) {
@@ -275,7 +438,10 @@ void UserTableWindow::on_downloadImagesButton_clicked()
         return;
     }
 
-    QString tmp = QFileDialog::getExistingDirectory(this, "Select a folder", QDir::homePath(), QFileDialog::ShowDirsOnly);
+    QString tmp = QFileDialog::getExistingDirectory(this,
+                                                    "Select a folder",
+                                                    QDir::homePath(),
+                                                    QFileDialog::ShowDirsOnly);
     if (!tmp.isEmpty()) {
         downloadImages(cutouts, QDir(tmp));
     }
@@ -286,109 +452,13 @@ void UserTableWindow::on_selectionComboBox_activated(const QString &arg1)
     changeSelectionMode(arg1);
 }
 
-void UserTableWindow::on_higal_70_checkBox_clicked(bool checked)
-{
-    setFilter("Hi-GAL Tiles", "70 um", checked);
-    setFilter("Hi-GAL Mosaic", "70 um", checked);
-}
-
-void UserTableWindow::on_higal_160_checkBox_clicked(bool checked)
-{
-    setFilter("Hi-GAL Tiles", "160 um", checked);
-    setFilter("Hi-GAL Mosaic", "160 um", checked);
-}
-
-void UserTableWindow::on_higal_250_checkBox_clicked(bool checked)
-{
-    setFilter("Hi-GAL Tiles", "250 um", checked);
-    setFilter("Hi-GAL Mosaic", "250 um", checked);
-}
-
-void UserTableWindow::on_higal_350_checkBox_clicked(bool checked)
-{
-    setFilter("Hi-GAL Tiles", "350 um", checked);
-    setFilter("Hi-GAL Mosaic", "350 um", checked);
-}
-
-void UserTableWindow::on_higal_500_checkBox_clicked(bool checked)
-{
-    setFilter("Hi-GAL Tiles", "500 um", checked);
-    setFilter("Hi-GAL Mosaic", "500 um", checked);
-}
-
-void UserTableWindow::on_glimpse_36_checkBox_clicked(bool checked)
-{
-    setFilter("GLIMPSE I", "3.6 um", checked);
-    setFilter("GLIMPSE II", "3.6 um", checked);
-}
-
-void UserTableWindow::on_glimpse_45_checkBox_clicked(bool checked)
-{
-    setFilter("GLIMPSE I", "4.5 um", checked);
-    setFilter("GLIMPSE II", "4.5 um", checked);
-}
-
-void UserTableWindow::on_glimpse_58_checkBox_clicked(bool checked)
-{
-    setFilter("GLIMPSE I", "5.8 um", checked);
-    setFilter("GLIMPSE II", "5.8 um", checked);
-}
-
-void UserTableWindow::on_glimpse_80_checkBox_clicked(bool checked)
-{
-    setFilter("GLIMPSE I", "8.0 um", checked);
-    setFilter("GLIMPSE II", "8.0 um", checked);
-}
-
-void UserTableWindow::on_wise_34_checkBox_clicked(bool checked)
-{
-    setFilter("WISE", "3.4 um", checked);
-}
-
-void UserTableWindow::on_wise_46_checkBox_clicked(bool checked)
-{
-    setFilter("WISE", "5.6 um", checked);
-}
-
-void UserTableWindow::on_wise_12_checkBox_clicked(bool checked)
-{
-    setFilter("WISE", "12 um", checked);
-}
-
-void UserTableWindow::on_wise_22_checkBox_clicked(bool checked)
-{
-    setFilter("WISE", "22 um", checked);
-}
-
-void UserTableWindow::on_atlasgal_870_checkBox_clicked(bool checked)
-{
-    setFilter("ATLASGAL", "870 um", checked);
-}
-
-void UserTableWindow::on_mipsgal_24_checkBox_clicked(bool checked)
-{
-    setFilter("MIPSGAL", "24 um", checked);
-}
-
-void UserTableWindow::on_bgps_11_checkBox_clicked(bool checked)
-{
-    setFilter("CSO BGPS", "1.1 mm", checked);
-}
-
-void UserTableWindow::on_cornish_5_checkBox_clicked(bool checked)
-{
-    setFilter("CORNISH", "5 GHz", checked);
-}
-
-// -----------------------------------------------------------------------------------
-Source::Source(const QString &designation, double glon, double glat, QObject *parent):
-    QObject(parent),
-    designation(designation),
-    glon(glon),
-    glat(glat)
-{
-
-}
+// ----------------------------------------------------------------------------------
+Source::Source(const QString &designation, double glon, double glat, QObject *parent)
+    : QObject(parent)
+    , designation(designation)
+    , glon(glon)
+    , glat(glat)
+{}
 
 const QString &Source::getDesignation() const
 {
@@ -407,137 +477,27 @@ double Source::getGlat() const
 
 void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
 {
-    searchResults = results;
-
     foreach (const auto &item, results) {
-        auto survey = item.value("Survey").toUpper();
+        auto survey = item.value("Survey");
         auto species = item.value("Species");
+        auto transition = item.value("Transition");
 
-        if (species.compare("Continuum") == 0) {
+        if (species.contains("Continuum")) {
             images.append(item);
 
-            auto transition = item.value("Transition");
-
-            if (survey == "HI-GAL TILES" || survey == "HI-GAL MOSAIC") {
-                actualHiGal << transition;
-                continue;
+            if (!transitions.contains(survey)) {
+                transitions.insert(survey, new QSet<QString>({transition}));
+            } else {
+                transitions.value(survey)->insert(transition);
             }
 
-            if (survey == "GLIMPSE I" || survey == "GLIMPSE II") {
-                actualGlimpse << transition;
-                continue;
-            }
-
-            if (survey == "WISE") {
-                actualWise << transition;
-                continue;
-            }
-
-            if (survey == "MIPSGAL") {
-                actualMipsgal = true;
-                continue;
-            }
-
-            if (survey == "ATLASGAL") {
-                actualAtlasgal = true;
-                continue;
-            }
-
-            if (survey == "CSO BGPS") {
-                actualBgps = true;
-                continue;
-            }
-
-            if (survey == "CORNISH") {
-                actualCornish = true;
-                continue;
-            }
         } else {
             cubes.append(item);
 
-            if (survey.contains("MOPRA")) {
-                actualMopra << species;
-                continue;
-            }
-
-            if (survey.contains("CHIMPS")) {
-                actualChimps << species;
-                continue;
-            }
-
-            if (survey.contains("CHAMP")) {
-                actualChamp = true;
-                continue;
-            }
-
-            if (survey.contains("HOPS")) {
-                actualHops << species;
-                continue;
-            }
-
-            if (survey.contains("GRS")) {
-                actualGrs = true;
-                continue;
-            }
-
-            if (survey.contains("MALT90")) {
-                actualMalt << species;
-                continue;
-            }
-
-            if (survey.contains("THRUMMS")) {
-                actualThrumms << species;
-                continue;
-            }
-
-            if (survey.contains("NANTEN")) {
-                actualNanten = true;
-                continue;
-            }
-
-            if (survey.contains("OGS")) {
-                actualOgs << species;
-                continue;
-            }
-
-            if (survey.contains("COHRS")) {
-                actualCohrs = true;
-                continue;
-            }
-
-            if (survey.contains("VGPS")) {
-                actualVgps = true;
-                continue;
-            }
-
-            if (survey.contains("CGPS")) {
-                actualCgps = true;
-                continue;
-            }
-
-            if (survey.contains("SGPS")) {
-                actualSgps = true;
-                continue;
-            }
-
-            if (survey.contains("ARO")) {
-                actualAro << species;
-                continue;
-            }
-
-            if (survey.contains("THOR") && !species.contains("Continuum")) {
-                actualThor << species;
-                continue;
-            }
-
-            if (survey.contains("SEDIGISM")) {
-                actualSedigism << species;
-                continue;
-            }
-
-            if (survey.contains("FUGIN")) {
-                actualFugin << species;
-                continue;
+            if (!this->species.contains(species)) {
+                this->species.insert(survey, new QSet<QString>({species}));
+            } else {
+                this->species.value(survey)->insert(species);
             }
         }
     }
@@ -553,150 +513,69 @@ const QList<QMap<QString, QString>> &Source::getCubes() const
     return cubes;
 }
 
-Qt::CheckState Source::testSet(QString &tooltipText, const QSet<QString> &expected, const QSet<QString> &actual) const
+Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bool is3D) const
 {
+    QSet<QString> expected;
+    QSet<QString> *actual;
+
+    if (is3D) {
+        expected = QSet<QString>(survey->getSpecies().constBegin(), survey->getSpecies().constEnd());
+        actual = species.value(survey->getName());
+    } else {
+        expected = QSet<QString>(survey->getTransitions().constBegin(),
+                                 survey->getTransitions().constEnd());
+        actual = transitions.value(survey->getName());
+    }
+
+    if (!actual) {
+        return Qt::Unchecked;
+    }
+
     tooltipText.clear();
-    foreach (const QString &el, expected) {
-        tooltipText += el + " : " + (actual.contains(el) ? "Yes" : "No") + "\n";
+    foreach (QString el, expected) {
+        tooltipText += el + " : " + (actual->contains(el) ? "Yes" : "No") + "\n";
     }
     tooltipText.chop(1);
 
-    if (actual == expected)
+    if (*actual == expected) {
         return Qt::Checked;
-
-    if (actual.count() == 0)
-        return Qt::Unchecked;
+    }
 
     return Qt::PartiallyChecked;
 }
 
-Qt::CheckState Source::testSingle(QString &tooltipText, const QString &expected, bool actual) const
+// --------------------------------------
+Survey::Survey(const QString &name,
+               const QString &species,
+               const QString &transition,
+               QObject *parent)
+    : QObject(parent)
+    , name(name)
+    , species(species)
+    , transitions(transition)
+{}
+
+const QString &Survey::getName() const
 {
-    if (actual) {
-        tooltipText = expected + " : Yes";
-        return Qt::Checked;
-    } else {
-        tooltipText = expected + " : No";
-        return Qt::Unchecked;
-    }
+    return name;
 }
 
-Qt::CheckState Source::getInfoHiGal(QString &tooltipText) const
+const QStringList &Survey::getSpecies() const
 {
-    return testSet(tooltipText, expectedHiGal, actualHiGal);
+    return species;
 }
 
-Qt::CheckState Source::getInfoGlimpse(QString &tooltipText) const
+const QStringList &Survey::getTransitions() const
 {
-    return testSet(tooltipText, expectedGlimpse, actualGlimpse);
+    return transitions;
 }
 
-Qt::CheckState Source::getInfoWise(QString &tooltipText) const
+void Survey::addSpecies(const QString &s)
 {
-    return testSet(tooltipText, expectedWise, actualWise);
+    species.append(s);
 }
 
-Qt::CheckState Source::getInfoMipsgal(QString &tooltipText) const
+void Survey::addTransition(const QString &t)
 {
-    return testSingle(tooltipText, expectedMipsgal, actualMipsgal);
-}
-
-Qt::CheckState Source::getInfoAtlasgal(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedAtlasgal, actualAtlasgal);
-}
-
-Qt::CheckState Source::getInfoBgps(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedBgps, actualBgps);
-}
-
-Qt::CheckState Source::getInfoCornish(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedCornish, actualCornish);
-}
-
-Qt::CheckState Source::getInfoMopra(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedMopra, actualMopra);
-}
-
-Qt::CheckState Source::getInfoChimps(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedChimps, actualChimps);
-}
-
-Qt::CheckState Source::getInfoChamp(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedChamp, actualChamp);
-}
-
-Qt::CheckState Source::getInfoHops(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedHops, actualHops);
-}
-
-Qt::CheckState Source::getInfoGrs(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedGrs, actualGrs);
-}
-
-Qt::CheckState Source::getInfoMalt(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedMalt, actualMalt);
-}
-
-Qt::CheckState Source::getInfoThrumms(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedThrumms, actualThrumms);
-}
-
-Qt::CheckState Source::getInfoNanten(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedNanten, actualNanten);
-}
-
-Qt::CheckState Source::getInfoOgs(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedOgs, actualOgs);
-}
-
-Qt::CheckState Source::getInfoCohrs(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedCohrs, actualCohrs);
-}
-
-Qt::CheckState Source::getInfoVgps(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedVgps, actualVgps);
-}
-
-Qt::CheckState Source::getInfoCgps(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedCgps, actualCgps);
-}
-
-Qt::CheckState Source::getInfoSgps(QString &tooltipText) const
-{
-    return testSingle(tooltipText, expectedSgps, actualSgps);
-}
-
-Qt::CheckState Source::getInfoAro(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedAro, actualAro);
-}
-
-Qt::CheckState Source::getInfoThor(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedThor, actualThor);
-}
-
-Qt::CheckState Source::getInfoSedigism(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedSedigism, actualSedigism);
-}
-
-Qt::CheckState Source::getInfoFugin(QString &tooltipText) const
-{
-    return testSet(tooltipText, expectedFugin, actualFugin);
+    transitions.append(t);
 }
