@@ -32,6 +32,7 @@ public:
 
     void searchRequest(double l, double b, double dl, double db);
     void searchRequest(double l, double b, double r);
+    void cutoutRequest(const QString &url, const QDir &dir);
 
 signals:
     void searchDone(QList<QMap<QString,QString>>);
@@ -71,7 +72,7 @@ private:
     vtkwindow_new *myCallingVtkWindow;
     bool isRadius;
 
-    void searchRequest(QString url);
+    void searchRequest(const QString &url);
 };
 
 #endif // VIALACTEAINITIALQUERY_H
