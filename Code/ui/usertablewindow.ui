@@ -287,7 +287,7 @@
               <x>0</x>
               <y>0</y>
               <width>178</width>
-              <height>682</height>
+              <height>648</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -335,6 +335,13 @@
             </property>
            </column>
           </widget>
+         </widget>
+        </item>
+        <item alignment="Qt::AlignRight">
+         <widget class="QPushButton" name="downloadCubesButton">
+          <property name="text">
+           <string>Download</string>
+          </property>
          </widget>
         </item>
        </layout>

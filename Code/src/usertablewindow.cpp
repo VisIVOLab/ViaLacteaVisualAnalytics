@@ -83,7 +83,7 @@ void UserTableWindow::getSurveysData()
             QString response = reply->readAll();
             QStringList surveysData = response.split("\n");
             surveysData.removeFirst(); // Remove column names line
-            buildTables(surveysData);
+            buildUI(surveysData);
         } else {
             qDebug() << "UserTableWindow.getSurveysData.Error" << reply->errorString();
             QMessageBox::critical(this, "Error", reply->errorString());
@@ -96,7 +96,7 @@ void UserTableWindow::getSurveysData()
     nam->post(req, postDataEncoded);
 }
 
-void UserTableWindow::buildTables(const QStringList &surveysData)
+void UserTableWindow::buildUI(const QStringList &surveysData)
 {
     foreach (QString survey, surveysData) {
         if (survey.isEmpty())
@@ -135,10 +135,17 @@ void UserTableWindow::buildTables(const QStringList &surveysData)
         for (int i = 0; i < s->getTransitions().count(); ++i) {
             auto box = new QCheckBox(groupBox);
 
-            box->setText(QString("%1 - %2").arg(s->getSpecies().at(i), s->getTransitions().at(i)));
+            auto species = s->getSpecies().at(i);
+            auto transition = s->getTransitions().at(i);
+            box->setText(QString("%1 - %2").arg(species, transition));
 
-            connect(box, &QCheckBox::clicked, box, [s](bool b) {
-                qDebug() << s->getName() << s->getSpecies() << s->getTransitions() << b;
+            connect(box, &QCheckBox::clicked, this, [this, s, species, transition](bool checked) {
+                QPair<QString, QString> pair(species, transition);
+                if (checked) {
+                    filters.insert(s->getName(), pair);
+                } else {
+                    filters.remove(s->getName(), pair);
+                }
             });
             layout->addWidget(box);
         }
@@ -160,10 +167,17 @@ void UserTableWindow::buildTables(const QStringList &surveysData)
         for (int i = 0; i < s->getSpecies().count(); ++i) {
             auto box = new QCheckBox(groupBox);
 
-            box->setText(QString("%1 - %2").arg(s->getSpecies().at(i), s->getTransitions().at(i)));
+            auto species = s->getSpecies().at(i);
+            auto transition = s->getTransitions().at(i);
+            box->setText(QString("%1 - %2").arg(species, transition));
 
-            connect(box, &QCheckBox::clicked, box, [s](bool b) {
-                qDebug() << s->getName() << s->getSpecies() << s->getTransitions() << b;
+            connect(box, &QCheckBox::clicked, this, [this, s, species, transition](bool checked) {
+                QPair<QString, QString> pair(species, transition);
+                if (checked) {
+                    filters.insert(s->getName(), pair);
+                } else {
+                    filters.remove(s->getName(), pair);
+                }
             });
             layout->addWidget(box);
         }
@@ -389,16 +403,16 @@ void UserTableWindow::updateTables()
     }
 }
 
-void UserTableWindow::setFilter(const QString &survey, const QString &transition, bool on)
-{
-    if (on) {
-        filters.insert(QPair<QString, QString>(survey, transition));
-    } else {
-        filters.remove(QPair<QString, QString>(survey, transition));
-    }
+//void UserTableWindow::setFilter(const QString &survey, const QString &transition, bool on)
+//{
+//    if (on) {
+//        filters2d.insert(QPair<QString, QString>(survey, transition));
+//    } else {
+//        filters2d.remove(QPair<QString, QString>(survey, transition));
+//    }
 
-    qDebug() << "Filters" << filters;
-}
+//    qDebug() << "Filters" << filters2d;
+//}
 
 void UserTableWindow::downloadImages(const QMap<QString, QStringList> &cutouts, const QDir &dir)
 {
@@ -421,8 +435,8 @@ void UserTableWindow::on_downloadImagesButton_clicked()
             QStringList downloadLinks;
 
             foreach (const auto image, source->getImages()) {
-                QPair<QString, QString> pair(image.value("Survey"), image.value("Transition"));
-                if (filters.contains(pair)) {
+                QPair<QString, QString> pair(image.value("Species"), image.value("Transition"));
+                if (filters.contains(image.value("Survey"), pair)) {
                     downloadLinks << image.value("URL");
                 }
             }
@@ -444,6 +458,42 @@ void UserTableWindow::on_downloadImagesButton_clicked()
                                                     QFileDialog::ShowDirsOnly);
     if (!tmp.isEmpty()) {
         downloadImages(cutouts, QDir(tmp));
+    }
+}
+
+void UserTableWindow::on_downloadCubesButton_clicked()
+{
+    QMap<QString, QStringList> cubes;
+    for (int row = 0; row < ui->cubesTable->rowCount(); ++row) {
+        QTableWidgetItem *item = ui->cubesTable->item(row, 0);
+        if (item->checkState() == Qt::Checked) {
+            const Source *source = selectedSources.at(row);
+            QStringList downloadLinks;
+
+            foreach (const auto cube, source->getCubes()) {
+                QPair<QString, QString> pair(cube.value("Species"), cube.value("Transition"));
+                if (filters.contains(cube.value("Survey"), pair)) {
+                    downloadLinks << cube.value("URL");
+                }
+            }
+
+            if (!downloadLinks.isEmpty()) {
+                cubes.insert(source->getDesignation(), downloadLinks);
+            }
+        }
+    }
+
+    if (cubes.isEmpty()) {
+        // Nothing to do
+        return;
+    }
+
+    QString tmp = QFileDialog::getExistingDirectory(this,
+                                                    "Select a folder",
+                                                    QDir::homePath(),
+                                                    QFileDialog::ShowDirsOnly);
+    if (!tmp.isEmpty()) {
+        downloadImages(cubes, QDir(tmp));
     }
 }
 
@@ -494,7 +544,7 @@ void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
         } else {
             cubes.append(item);
 
-            if (!this->species.contains(species)) {
+            if (!this->species.contains(survey)) {
                 this->species.insert(survey, new QSet<QString>({species}));
             } else {
                 this->species.value(survey)->insert(species);

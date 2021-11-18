@@ -77,6 +77,7 @@ private slots:
     void on_queryButton_clicked();
     void on_selectionComboBox_activated(const QString &arg1);
     void on_downloadImagesButton_clicked();
+    void on_downloadCubesButton_clicked();
 
 private:
     Ui::UserTableWindow *ui;
@@ -89,10 +90,10 @@ private:
     QList<QMap<QString, QString>> sources;
     QList<Source *> selectedSources;
 
-    QSet<QPair<QString, QString>> filters;
+    QMultiMap<QString, QPair<QString, QString>> filters;
 
     void getSurveysData();
-    void buildTables(const QStringList &surveysData);
+    void buildUI(const QStringList &surveysData);
     void readFile();
     void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
