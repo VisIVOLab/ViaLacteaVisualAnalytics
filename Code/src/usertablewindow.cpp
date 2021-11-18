@@ -122,75 +122,51 @@ void UserTableWindow::buildUI(const QStringList &surveysData)
         return;
     }
 
-    QStringList imagesCols;
-    for (int i = 0; i < ui->imagesTable->columnCount(); ++i) {
-        imagesCols << ui->imagesTable->horizontalHeaderItem(i)->text();
-    }
-    foreach (const auto &s, surveys2d) {
-        imagesCols << s->getName();
+    buildUI(surveys2d, ui->imagesTable, ui->imagesScrollAreaContents);
+    buildUI(surveys3d, ui->cubesTable, ui->cubesScrollAreaContents);
 
-        auto groupBox = new QGroupBox(s->getName(), ui->imagesScrollAreaContents);
-        auto layout = new QVBoxLayout(groupBox);
-
-        for (int i = 0; i < s->getTransitions().count(); ++i) {
-            auto box = new QCheckBox(groupBox);
-
-            auto species = s->getSpecies().at(i);
-            auto transition = s->getTransitions().at(i);
-            box->setText(QString("%1 - %2").arg(species, transition));
-
-            connect(box, &QCheckBox::clicked, this, [this, s, species, transition](bool checked) {
-                QPair<QString, QString> pair(species, transition);
-                if (checked) {
-                    filters.insert(s->getName(), pair);
-                } else {
-                    filters.remove(s->getName(), pair);
-                }
-            });
-            layout->addWidget(box);
-        }
-
-        groupBox->setLayout(layout);
-        ui->imagesScrollAreaContents->layout()->addWidget(groupBox);
-    }
-
-    QStringList cubesCols;
-    for (int i = 0; i < ui->cubesTable->columnCount(); ++i) {
-        cubesCols << ui->cubesTable->horizontalHeaderItem(i)->text();
-    }
-    foreach (const auto &s, surveys3d) {
-        cubesCols << s->getName();
-
-        auto groupBox = new QGroupBox(s->getName(), ui->cubesScrollAreaContents);
-        auto layout = new QVBoxLayout(groupBox);
-
-        for (int i = 0; i < s->getSpecies().count(); ++i) {
-            auto box = new QCheckBox(groupBox);
-
-            auto species = s->getSpecies().at(i);
-            auto transition = s->getTransitions().at(i);
-            box->setText(QString("%1 - %2").arg(species, transition));
-
-            connect(box, &QCheckBox::clicked, this, [this, s, species, transition](bool checked) {
-                QPair<QString, QString> pair(species, transition);
-                if (checked) {
-                    filters.insert(s->getName(), pair);
-                } else {
-                    filters.remove(s->getName(), pair);
-                }
-            });
-            layout->addWidget(box);
-        }
-
-        groupBox->setLayout(layout);
-        ui->cubesScrollAreaContents->layout()->addWidget(groupBox);
-    }
-
-    ui->imagesTable->setColumnCount(imagesCols.size());
-    ui->imagesTable->setHorizontalHeaderLabels(imagesCols);
-    ui->cubesTable->setColumnCount(cubesCols.size());
-    ui->cubesTable->setHorizontalHeaderLabels(cubesCols);
     ui->queryButton->setEnabled(true);
+}
+
+void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
+                              QTableWidget *table,
+                              QWidget *scrollArea)
+{
+    QStringList cols;
+    for (int i = 0; i < table->columnCount(); ++i) {
+        cols << table->horizontalHeaderItem(i)->text();
+    }
+
+    foreach (const auto &survey, surveys) {
+        auto name = survey->getName();
+        cols << name;
+
+        auto groupBox = new QGroupBox(survey->getName(), scrollArea);
+        auto layout = new QVBoxLayout(groupBox);
+
+        for (int i = 0; i < survey->count(); ++i) {
+            auto box = new QCheckBox(groupBox);
+            auto species = survey->getSpecies().at(i);
+            auto transition = survey->getTransitions().at(i);
+            box->setText(QString("%1 - %2").arg(species, transition));
+
+            connect(box, &QCheckBox::clicked, this, [this, name, species, transition](bool checked) {
+                QPair<QString, QString> pair(species, transition);
+                if (checked) {
+                    filters.insert(name, pair);
+                } else {
+                    filters.remove(name, pair);
+                }
+            });
+            layout->addWidget(box);
+        }
+
+        groupBox->setLayout(layout);
+        scrollArea->layout()->addWidget(groupBox);
+    }
+
+    table->setColumnCount(cols.size());
+    table->setHorizontalHeaderLabels(cols);
 }
 
 void UserTableWindow::readFile()
@@ -224,21 +200,13 @@ void UserTableWindow::readFile()
 
 void UserTableWindow::changeSelectionMode(const QString &selectionMode)
 {
-    if (selectionMode == "Point") {
-        ui->dbLabel->hide();
-        ui->dbLineEdit->hide();
-        ui->dlLabel->hide();
-        ui->dlLineEdit->hide();
-        ui->radiusLabel->show();
-        ui->radiusLineEdit->show();
-    } else {
-        ui->dbLabel->show();
-        ui->dbLineEdit->show();
-        ui->dlLabel->show();
-        ui->dlLineEdit->show();
-        ui->radiusLabel->hide();
-        ui->radiusLineEdit->hide();
-    }
+    bool pointMode = selectionMode.compare("Point") == 0;
+    ui->radiusLabel->setVisible(pointMode);
+    ui->radiusLineEdit->setVisible(pointMode);
+    ui->dbLabel->setVisible(!pointMode);
+    ui->dbLineEdit->setVisible(!pointMode);
+    ui->dlLabel->setVisible(!pointMode);
+    ui->dlLineEdit->setVisible(!pointMode);
 }
 
 void UserTableWindow::loadSourceTable(const QStringList &columns)
@@ -260,7 +228,7 @@ void UserTableWindow::loadSourceTable(const QStringList &columns)
         checkBox->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         checkBox->setCheckState(Qt::Checked);
 
-        ui->sourcesTable->setItem(ui->sourcesTable->rowCount() - 1, 0, checkBox);
+        ui->sourcesTable->setItem(row, 0, checkBox);
         for (int col = 1; col < tableColumns.count(); ++col) {
             ui->sourcesTable->setItem(row, col, new QTableWidgetItem(source[tableColumns[col]]));
         }
@@ -275,7 +243,7 @@ void UserTableWindow::on_queryButton_clicked()
     ui->imagesTable->setRowCount(0);
     ui->cubesTable->setRowCount(0);
 
-    // Add 1 to skip the first column (the checkbox column)
+    // Add 1 to skip the checkbox column in the table
     int designationCol = ui->idBox->currentIndex() + 1;
     int glonCol = ui->glonBox->currentIndex() + 1;
     int glatCol = ui->glatBox->currentIndex() + 1;
@@ -290,7 +258,7 @@ void UserTableWindow::on_queryButton_clicked()
     }
 
     if (!selectedSources.isEmpty()) {
-        query(0);
+        query();
     }
 }
 
@@ -351,93 +319,64 @@ void UserTableWindow::updateTables()
     foreach (const auto &source, selectedSources) {
         // Images Table
         ui->imagesTable->insertRow(ui->imagesTable->rowCount());
+        int rowI = ui->imagesTable->rowCount() - 1;
+
         QTableWidgetItem *x = new QTableWidgetItem();
         x->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         x->setCheckState(Qt::Unchecked);
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1, 0, x);
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
-                                 1,
-                                 new QTableWidgetItem(source->getDesignation()));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
-                                 2,
-                                 new QTableWidgetItem(QString::number(source->getGlon())));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
-                                 3,
-                                 new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
+        ui->imagesTable->setItem(rowI, 0, x);
+
+        ui->imagesTable->setItem(rowI, 1, new QTableWidgetItem(source->getDesignation()));
+        ui->imagesTable->setItem(rowI, 2, new QTableWidgetItem(QString::number(source->getGlon())));
+        ui->imagesTable->setItem(rowI, 3, new QTableWidgetItem(QString::number(source->getGlat())));
+        ui->imagesTable->setItem(rowI,
                                  4,
-                                 new QTableWidgetItem(QString::number(source->getImages().count())));
+                                 new QTableWidgetItem(QString::number(source->getImagesCount())));
 
         for (int i = 5; i < ui->imagesTable->columnCount(); ++i) {
-            auto survey = ui->imagesTable->horizontalHeaderItem(i)->text();
-            ui->imagesTable->setItem(ui->imagesTable->rowCount() - 1,
-                                     i,
-                                     NewSurveyCheckBox(survey, source, false));
+            auto surveyName = ui->imagesTable->horizontalHeaderItem(i)->text();
+            ui->imagesTable->setItem(rowI, i, NewSurveyCheckBox(surveyName, source, false));
         }
 
         // Cubes table
         ui->cubesTable->insertRow(ui->cubesTable->rowCount());
+        int rowC = ui->cubesTable->rowCount() - 1;
+
         x = new QTableWidgetItem();
         x->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         x->setCheckState(Qt::Unchecked);
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1, 0, x);
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
-                                1,
-                                new QTableWidgetItem(source->getDesignation()));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
-                                2,
-                                new QTableWidgetItem(QString::number(source->getGlon())));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
-                                3,
-                                new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
+        ui->cubesTable->setItem(rowC, 0, x);
+
+        ui->cubesTable->setItem(rowC, 1, new QTableWidgetItem(source->getDesignation()));
+        ui->cubesTable->setItem(rowC, 2, new QTableWidgetItem(QString::number(source->getGlon())));
+        ui->cubesTable->setItem(rowC, 3, new QTableWidgetItem(QString::number(source->getGlat())));
+        ui->cubesTable->setItem(rowC,
                                 4,
-                                new QTableWidgetItem(QString::number(source->getCubes().count())));
+                                new QTableWidgetItem(QString::number(source->getCubesCount())));
 
         for (int i = 5; i < ui->cubesTable->columnCount(); ++i) {
             auto survey = ui->cubesTable->horizontalHeaderItem(i)->text();
-            ui->cubesTable->setItem(ui->cubesTable->rowCount() - 1,
-                                    i,
-                                    NewSurveyCheckBox(survey, source, true));
+            ui->cubesTable->setItem(rowC, i, NewSurveyCheckBox(survey, source, true));
         }
     }
 }
 
-//void UserTableWindow::setFilter(const QString &survey, const QString &transition, bool on)
-//{
-//    if (on) {
-//        filters2d.insert(QPair<QString, QString>(survey, transition));
-//    } else {
-//        filters2d.remove(QPair<QString, QString>(survey, transition));
-//    }
-
-//    qDebug() << "Filters" << filters2d;
-//}
-
-void UserTableWindow::downloadImages(const QMap<QString, QStringList> &cutouts, const QDir &dir)
+void UserTableWindow::downloadCutouts(int t)
 {
-    auto vlkb = new VialacteaInitialQuery();
-    for (auto i = cutouts.constBegin(); i != cutouts.constEnd(); ++i) {
-        dir.mkdir(i.key());
-        foreach (const auto &link, i.value()) {
-            vlkb->cutoutRequest(link, QDir(dir.absoluteFilePath(i.key())));
-        }
-    }
-}
-
-void UserTableWindow::on_downloadImagesButton_clicked()
-{
+    // t = 0 -> images; t = 1 -> cubes
+    const QTableWidget *table = (t == 0) ? ui->imagesTable : ui->cubesTable;
     QMap<QString, QStringList> cutouts;
-    for (int row = 0; row < ui->imagesTable->rowCount(); ++row) {
-        QTableWidgetItem *item = ui->imagesTable->item(row, 0);
-        if (item->checkState() == Qt::Checked) {
+
+    for (int row = 0; row < table->rowCount(); ++row) {
+        if (table->item(row, 0)->checkState() == Qt::Checked) {
             const Source *source = selectedSources.at(row);
             QStringList downloadLinks;
 
-            foreach (const auto image, source->getImages()) {
-                QPair<QString, QString> pair(image.value("Species"), image.value("Transition"));
-                if (filters.contains(image.value("Survey"), pair)) {
-                    downloadLinks << image.value("URL");
+            const auto &container = (t == 0) ? source->getImages() : source->getCubes();
+            foreach (const auto &cutout, container) {
+                QPair<QString, QString> pair(cutout.value("Species"), cutout.value("Transition"));
+                if (filters.contains(cutout.value("Survey"), pair)) {
+                    downloadLinks << cutout.value("URL");
                 }
             }
 
@@ -456,45 +395,28 @@ void UserTableWindow::on_downloadImagesButton_clicked()
                                                     "Select a folder",
                                                     QDir::homePath(),
                                                     QFileDialog::ShowDirsOnly);
+
     if (!tmp.isEmpty()) {
-        downloadImages(cutouts, QDir(tmp));
+        auto vlkb = new VialacteaInitialQuery();
+        QDir dir(tmp);
+
+        for (auto i = cutouts.constBegin(); i != cutouts.constEnd(); ++i) {
+            dir.mkdir(i.key());
+            foreach (const auto &link, i.value()) {
+                vlkb->cutoutRequest(link, QDir(dir.absoluteFilePath(i.key())));
+            }
+        }
     }
+}
+
+void UserTableWindow::on_downloadImagesButton_clicked()
+{
+    downloadCutouts(0);
 }
 
 void UserTableWindow::on_downloadCubesButton_clicked()
 {
-    QMap<QString, QStringList> cubes;
-    for (int row = 0; row < ui->cubesTable->rowCount(); ++row) {
-        QTableWidgetItem *item = ui->cubesTable->item(row, 0);
-        if (item->checkState() == Qt::Checked) {
-            const Source *source = selectedSources.at(row);
-            QStringList downloadLinks;
-
-            foreach (const auto cube, source->getCubes()) {
-                QPair<QString, QString> pair(cube.value("Species"), cube.value("Transition"));
-                if (filters.contains(cube.value("Survey"), pair)) {
-                    downloadLinks << cube.value("URL");
-                }
-            }
-
-            if (!downloadLinks.isEmpty()) {
-                cubes.insert(source->getDesignation(), downloadLinks);
-            }
-        }
-    }
-
-    if (cubes.isEmpty()) {
-        // Nothing to do
-        return;
-    }
-
-    QString tmp = QFileDialog::getExistingDirectory(this,
-                                                    "Select a folder",
-                                                    QDir::homePath(),
-                                                    QFileDialog::ShowDirsOnly);
-    if (!tmp.isEmpty()) {
-        downloadImages(cubes, QDir(tmp));
-    }
+    downloadCutouts(1);
 }
 
 void UserTableWindow::on_selectionComboBox_activated(const QString &arg1)
@@ -558,9 +480,19 @@ const QList<QMap<QString, QString>> &Source::getImages() const
     return images;
 }
 
+int Source::getImagesCount() const
+{
+    return images.count();
+}
+
 const QList<QMap<QString, QString>> &Source::getCubes() const
 {
     return cubes;
+}
+
+int Source::getCubesCount() const
+{
+    return cubes.count();
 }
 
 Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bool is3D) const
@@ -581,15 +513,15 @@ Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bo
         return Qt::Unchecked;
     }
 
+    if (*actual == expected) {
+        return Qt::Checked;
+    }
+
     tooltipText.clear();
     foreach (QString el, expected) {
         tooltipText += el + " : " + (actual->contains(el) ? "Yes" : "No") + "\n";
     }
     tooltipText.chop(1);
-
-    if (*actual == expected) {
-        return Qt::Checked;
-    }
 
     return Qt::PartiallyChecked;
 }
@@ -628,4 +560,9 @@ void Survey::addSpecies(const QString &s)
 void Survey::addTransition(const QString &t)
 {
     transitions.append(t);
+}
+
+int Survey::count() const
+{
+    return transitions.count();
 }

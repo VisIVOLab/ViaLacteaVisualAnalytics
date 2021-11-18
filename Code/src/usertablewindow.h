@@ -8,6 +8,7 @@
 #include <QPair>
 #include <QSet>
 #include <QSettings>
+#include <QTableWidget>
 
 namespace Ui {
 class UserTableWindow;
@@ -29,6 +30,8 @@ public:
     void addSpecies(const QString &s);
     void addTransition(const QString &t);
 
+    int count() const;
+
 private:
     QString name;
     QStringList species;
@@ -48,7 +51,10 @@ public:
     double getGlat() const;
 
     const QList<QMap<QString, QString>> &getImages() const;
+    int getImagesCount() const;
+
     const QList<QMap<QString, QString>> &getCubes() const;
+    int getCubesCount() const;
 
     Qt::CheckState surveyInfo(QString &tooltipText, const Survey *survey, bool is3D = false) const;
 
@@ -94,13 +100,13 @@ private:
 
     void getSurveysData();
     void buildUI(const QStringList &surveysData);
+    void buildUI(const QMap<QString, Survey *> &surveys, QTableWidget *table, QWidget *scrollArea);
     void readFile();
     void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
-    void query(int index);
+    void query(int index = 0);
     void updateTables();
-    void setFilter(const QString &survey, const QString &transition, bool on);
-    void downloadImages(const QMap<QString, QStringList> &cutouts, const QDir &dir);
+    void downloadCutouts(int t);
 };
 
 #endif // USERTABLEWINDOW_H
