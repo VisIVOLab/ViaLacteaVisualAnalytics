@@ -7,7 +7,7 @@
 QT += core gui widgets network networkauth printsupport xml concurrent webenginewidgets
 #QMAKE_MAC_SDK = macosx10.15
 CONFIG+=sdk_no_version_check
-CONFIG-=app_bundle
+#CONFIG-=app_bundle
 
 TARGET = ViaLacteaVisualAnalytics
 TEMPLATE = app
@@ -235,6 +235,7 @@ SOURCES += src/main.cpp\
 
 
 HEADERS += src/mainwindow.h \
+    src/authkeys.h \
     src/caesarwidget.h \
     src/authwrapper.h \
     src/singleton.h \
