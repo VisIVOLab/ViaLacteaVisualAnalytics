@@ -1,3 +1,4 @@
-Code/VisIVODesktop-vtk6_qt5.pro.user
+Code/*.pro.user
+Code/src/authkeys.h
 build-*
 **/.DS_Store
