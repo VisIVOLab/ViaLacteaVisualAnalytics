@@ -65,12 +65,8 @@ void AuthWrapper::on_logged_out()
 
 void AuthWrapper::open_webview(const QUrl &url)
 {
-    // The default UA does not allow standard @gmail.com users to login
-    QString userAgent("Mozilla/5.0 (Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0");
-
     view = new QWebEngineView;
     view->setAttribute(Qt::WA_DeleteOnClose);
-    view->page()->profile()->setHttpUserAgent(userAgent);
     view->page()->profile()->installUrlSchemeHandler("vlva", handler);
     view->load(url);
     view->setContextMenuPolicy(Qt::NoContextMenu);
