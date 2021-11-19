@@ -1,14 +1,18 @@
 #include "caesarwidget.h"
 #include "ui_caesarwidget.h"
 
-#include <QJsonDocument>
-#include <QMessageBox>
-#include <QFileDialog>
-#include <QSpinBox>
-#include <QDoubleSpinBox>
 #include <QCheckBox>
-#include <QTimer>
 #include <QDateTime>
+#include <QDoubleSpinBox>
+#include <QFileDialog>
+#include <QHttpMultiPart>
+#include <QHttpPart>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMessageBox>
+#include <QSpinBox>
+#include <QTimer>
 
 #include "loadingwidget.h"
 
@@ -64,7 +68,7 @@ CaesarWidget::~CaesarWidget()
 
 QString CaesarWidget::baseUrl()
 {
-    return QString("http://caesar-api.dev.neanias.eu/caesar/api/v1.0");
+    return QString("http://caesar-api.neanias.eu/caesar/api/v1.0");
 }
 
 void CaesarWidget::uploadData(const QString &fn)

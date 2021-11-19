@@ -1,12 +1,18 @@
 #include "authwrapper.h"
+#include "authkeys.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QTimer>
-#include <QtNetwork>
-#include <QWebEngineProfile>
+#include <QUrlQuery>
 #include <QWebEngineCookieStore>
+#include <QWebEngineProfile>
 
-AuthWrapper::AuthWrapper(QObject *parent) : QObject(parent)
-{    
+AuthWrapper::AuthWrapper(QObject *parent)
+    : QObject(parent)
+{
     mgr = new QNetworkAccessManager(this);
 
     // Install vlva:// scheme handler
@@ -38,7 +44,7 @@ void AuthWrapper::logout()
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     QNetworkReply *reply = mgr->post(req, postDataEncoded);
-    connect(reply, &QNetworkReply::finished, this, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             emit logged_out();
         } else {
@@ -57,21 +63,23 @@ void AuthWrapper::on_logged_out()
     _authenticated = false;
 }
 
-void AuthWrapper::open_webview(const QUrl & url)
+void AuthWrapper::open_webview(const QUrl &url)
 {
     // The default UA does not allow standard @gmail.com users to login
     QString userAgent("Mozilla/5.0 (Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0");
 
     view = new QWebEngineView;
+    view->setAttribute(Qt::WA_DeleteOnClose);
     view->page()->profile()->setHttpUserAgent(userAgent);
     view->page()->profile()->installUrlSchemeHandler("vlva", handler);
     view->load(url);
     view->setContextMenuPolicy(Qt::NoContextMenu);
     view->resize(1024, 768);
     view->show();
+    view->activateWindow();
 }
 
-void AuthWrapper::exchange_tokens(const QString & code)
+void AuthWrapper::exchange_tokens(const QString &code)
 {
     QUrlQuery postData;
     postData.addQueryItem("grant_type", "authorization_code");
@@ -85,7 +93,7 @@ void AuthWrapper::exchange_tokens(const QString & code)
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     QNetworkReply *reply = mgr->post(req, postDataEncoded);
-    connect(reply, &QNetworkReply::finished, this, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             // Get tokens from response body
             QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
@@ -93,13 +101,10 @@ void AuthWrapper::exchange_tokens(const QString & code)
 
             // Schedule next refresh 2m before expiration time
             int timeout = json["expires_in"].toInt() - 120;
-            QTimer::singleShot(timeout * 1000, this, [this]{
-                emit refresh_timeout();
-            });
+            QTimer::singleShot(timeout * 1000, this, [this] { emit refresh_timeout(); });
 
             emit authenticated();
-        }
-        else {
+        } else {
             qDebug() << "Error in exchangeTokenFromCode: " << reply->errorString();
             qDebug() << reply->readAll();
         }
@@ -124,7 +129,7 @@ void AuthWrapper::on_refresh_timeout()
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     QNetworkReply *reply = mgr->post(req, postDataEncoded);
-    connect(reply, &QNetworkReply::finished, this, [this, reply](){
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             // Get tokens from response body
             QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
@@ -132,11 +137,8 @@ void AuthWrapper::on_refresh_timeout()
 
             // Schedule next refresh 2m before expiration time
             int timeout = json["expires_in"].toInt() - 120;
-            QTimer::singleShot(timeout * 1000, this, [this]{
-                emit refresh_timeout();
-            });
-        }
-        else {
+            QTimer::singleShot(timeout * 1000, this, [this] { emit refresh_timeout(); });
+        } else {
             _authenticated = false;
 
             qDebug() << "Error in on_refresh_timeout: " << reply->errorString();
@@ -149,8 +151,7 @@ void AuthWrapper::on_refresh_timeout()
 
 void AuthWrapper::putAccessToken(QNetworkRequest &req) const
 {
-    if (isAuthenticated())
-    {
+    if (isAuthenticated()) {
         QString bearer = "Bearer " + accessToken();
         req.setRawHeader(QByteArray("Authorization"), bearer.toUtf8());
     }
@@ -167,7 +168,7 @@ void AuthWrapper::on_authenticated()
     }
 }
 
-void AuthWrapper::extractTokensFromJson(QJsonObject & json)
+void AuthWrapper::extractTokensFromJson(QJsonObject &json)
 {
     tokens[ID] = json["id_token"].toString();
     tokens[ACCESS] = json["access_token"].toString();
@@ -194,17 +195,20 @@ QString AuthWrapper::refreshToken() const
     return QString(tokens[REFRESH]);
 }
 
-NeaniasVlkbAuth::NeaniasVlkbAuth(QObject *parent): AuthWrapper(parent)
-{
-}
+NeaniasVlkbAuth::NeaniasVlkbAuth(QObject *parent)
+    : AuthWrapper(parent)
+{}
 
 void NeaniasVlkbAuth::setup()
 {
-    authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
-    tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
-    logoutUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
-    clientId = QString("vlkb");
-    clientSecret = QString("b6f98dba-a409-432a-bb21-13b692d86172");
+    authUrl = QUrl(
+        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
+    tokenUrl = QUrl(
+        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
+    logoutUrl = QUrl(
+        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
+    clientId = QString(NEANIAS_VLKB_CLIENT);
+    clientSecret = QString(NEANIAS_VLKB_KEY);
     scope = QString("openid profile email phone address");
 
     auto replyHandler = new CustomOAuthReplyHandler(this);
@@ -214,10 +218,13 @@ void NeaniasVlkbAuth::setup()
     oauth2->setAccessTokenUrl(tokenUrl);
     oauth2->setClientIdentifier(clientId);
     oauth2->setScope(scope);
-    connect(oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this, &NeaniasVlkbAuth::open_webview);
+    connect(oauth2,
+            &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser,
+            this,
+            &NeaniasVlkbAuth::open_webview);
 }
 
-AuthWrapper& NeaniasVlkbAuth::Instance()
+AuthWrapper &NeaniasVlkbAuth::Instance()
 {
     static NeaniasVlkbAuth instance;
     if (!instance._init) {
@@ -227,17 +234,20 @@ AuthWrapper& NeaniasVlkbAuth::Instance()
     return instance;
 }
 
-NeaniasCaesarAuth::NeaniasCaesarAuth(QObject *parent): AuthWrapper(parent)
-{
-}
+NeaniasCaesarAuth::NeaniasCaesarAuth(QObject *parent)
+    : AuthWrapper(parent)
+{}
 
 void NeaniasCaesarAuth::setup()
 {
-    authUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/auth");
-    tokenUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/token");
-    logoutUrl = QUrl("https://sso.neanias.eu/auth/realms/neanias-development/protocol/openid-connect/logout");
-    clientId = QString("caesar-service");
-    clientSecret = QString("d06f6533-4d21-4ae8-8fa6-eed159fe02bb");
+    authUrl = QUrl(
+        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
+    tokenUrl = QUrl(
+        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
+    logoutUrl = QUrl(
+        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
+    clientId = QString(NEANIAS_CAESAR_CLIENT);
+    clientSecret = QString(NEANIAS_CAESAR_KEY);
     scope = QString("openid profile email phone address");
 
     auto replyHandler = new CustomOAuthReplyHandler(this);
@@ -247,10 +257,13 @@ void NeaniasCaesarAuth::setup()
     oauth2->setAccessTokenUrl(tokenUrl);
     oauth2->setClientIdentifier(clientId);
     oauth2->setScope(scope);
-    connect(oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this, &NeaniasCaesarAuth::open_webview);
+    connect(oauth2,
+            &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser,
+            this,
+            &NeaniasCaesarAuth::open_webview);
 }
 
-AuthWrapper& NeaniasCaesarAuth::Instance()
+AuthWrapper &NeaniasCaesarAuth::Instance()
 {
     static NeaniasCaesarAuth instance;
     if (!instance._init) {
