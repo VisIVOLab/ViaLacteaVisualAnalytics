@@ -1,13 +1,14 @@
 #include "settingform.h"
 #include "ui_settingform.h"
-#include <QSettings>
+
+#include "caesarwindow.h"
+#include "singleton.h"
+#include "vialactea.h"
 #include <QApplication>
 #include <QDebug>
 #include <QFileDialog>
 #include <QMessageBox>
-#include "vialactea.h"
-#include "singleton.h"
-#include "caesarwidget.h"
+#include <QSettings>
 
 SettingForm::SettingForm(QWidget *parent) :
     QWidget(parent),
@@ -17,7 +18,7 @@ SettingForm::SettingForm(QWidget *parent) :
     ui->groupBox_4->hide();
     ui->vlkbLogoutButton->hide();
     ui->caesarLogoutButton->hide();
-    ui->caesarEndpoint->setText(CaesarWidget::baseUrl());
+    ui->caesarEndpoint->setText(CaesarWindow::baseUrl);
 
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
@@ -309,4 +310,3 @@ void SettingForm::on_caesarLogoutButton_clicked()
     if (m_caesarAuth->isAuthenticated())
         m_caesarAuth->logout();
 }
-

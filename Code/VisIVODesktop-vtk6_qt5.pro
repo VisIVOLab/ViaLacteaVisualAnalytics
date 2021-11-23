@@ -146,8 +146,8 @@ macx:LIBS +=  -framework \
 
 
 
-SOURCES += src/main.cpp\
-    src/caesarwidget.cpp \
+SOURCES += src/main.cpp \
+    src/caesarwindow.cpp \
     src/authwrapper.cpp \
     src/mainwindow.cpp \
     src/treemodel.cpp \
@@ -231,12 +231,12 @@ SOURCES += src/main.cpp\
     src/visivoutilsdesktop.cpp \
     src/vsobjectdesktop.cpp \
     src/filtercustomize.cpp \
-    src/vialacteastringdictwidget.cpp
+    src/vialacteastringdictwidget.cpp \
 
 
 HEADERS += src/mainwindow.h \
     src/authkeys.h \
-    src/caesarwidget.h \
+    src/caesarwindow.h \
     src/authwrapper.h \
     src/singleton.h \
     src/treemodel.h \
@@ -301,11 +301,11 @@ HEADERS += src/mainwindow.h \
     src/vsobjectdesktop.h \
     src/visivofilterdesktop.h \
     src/filtercustomize.h \
-    src/vialacteastringdictwidget.h
+    src/vialacteastringdictwidget.h \
 
 
 FORMS += ui/mainwindow.ui \
-    ui/caesarwidget.ui \
+    ui/caesarwindow.ui \
     ui/operationqueue.ui \
     ui/vtkwindow.ui \
     ui/vlkbquery.ui \
