@@ -28,8 +28,8 @@ UserTableWindow::UserTableWindow(const QString &filepath,
     ui->tabWidget->setTabEnabled(2, false);
 
     ui->sourcesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->imagesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->cubesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->imagesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    ui->cubesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     changeSelectionMode(ui->selectionComboBox->currentText());
 
     readFile();
@@ -301,20 +301,21 @@ void UserTableWindow::updateTables()
     ui->imagesTable->setRowCount(0);
     ui->cubesTable->setRowCount(0);
 
-    const auto NewSurveyCheckBox =
-        [this](const QString &surveyName, const Source *source, bool is3D) {
-            Survey *survey = (is3D ? surveys3d.value(surveyName) : surveys2d.value(surveyName));
+    const auto NewSurveyCell = [this](const QString &surveyName, const Source *source, bool is3D) {
+        Survey *survey = (is3D ? surveys3d.value(surveyName) : surveys2d.value(surveyName));
 
-            QString tooltip;
-            Qt::CheckState state = source->surveyInfo(tooltip, survey, is3D);
+        QString tooltip;
+        Qt::CheckState state = source->surveyInfo(tooltip, survey, is3D);
 
-            auto tmp = new QTableWidgetItem();
-            tmp->setFlags(Qt::ItemIsUserTristate | Qt::ItemIsEnabled | Qt::ItemIsEditable
-                          | Qt::ItemIsSelectable);
-            tmp->setCheckState(state);
-            tmp->setToolTip(tooltip);
-            return tmp;
-        };
+        Qt::GlobalColor color = (state == Qt::Checked
+                                     ? Qt::green
+                                     : (state == Qt::Unchecked ? Qt::red : Qt::yellow));
+
+        auto tmp = new QTableWidgetItem();
+        tmp->setToolTip(tooltip);
+        tmp->setBackground(color);
+        return tmp;
+    };
 
     foreach (const auto &source, selectedSources) {
         // Images Table
@@ -335,7 +336,7 @@ void UserTableWindow::updateTables()
 
         for (int i = 5; i < ui->imagesTable->columnCount(); ++i) {
             auto surveyName = ui->imagesTable->horizontalHeaderItem(i)->text();
-            ui->imagesTable->setItem(rowI, i, NewSurveyCheckBox(surveyName, source, false));
+            ui->imagesTable->setItem(rowI, i, NewSurveyCell(surveyName, source, false));
         }
 
         // Cubes table
@@ -356,7 +357,7 @@ void UserTableWindow::updateTables()
 
         for (int i = 5; i < ui->cubesTable->columnCount(); ++i) {
             auto survey = ui->cubesTable->horizontalHeaderItem(i)->text();
-            ui->cubesTable->setItem(rowC, i, NewSurveyCheckBox(survey, source, true));
+            ui->cubesTable->setItem(rowC, i, NewSurveyCell(survey, source, true));
         }
     }
 }

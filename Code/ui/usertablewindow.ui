@@ -199,27 +199,18 @@
               <x>0</x>
               <y>0</y>
               <width>198</width>
-              <height>648</height>
+              <height>646</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_2"/>
            </widget>
           </widget>
           <widget class="QTableWidget" name="imagesTable">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>1</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
            <property name="editTriggers">
             <set>QAbstractItemView::NoEditTriggers</set>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::SingleSelection</enum>
-           </property>
-           <property name="selectionBehavior">
-            <enum>QAbstractItemView::SelectRows</enum>
+            <enum>QAbstractItemView::NoSelection</enum>
            </property>
            <column>
             <property name="text">
@@ -228,7 +219,7 @@
            </column>
            <column>
             <property name="text">
-             <string>Source Designation</string>
+             <string>designation</string>
             </property>
            </column>
            <column>
@@ -287,27 +278,18 @@
               <x>0</x>
               <y>0</y>
               <width>178</width>
-              <height>648</height>
+              <height>646</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4"/>
            </widget>
           </widget>
           <widget class="QTableWidget" name="cubesTable">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>1</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
            <property name="editTriggers">
             <set>QAbstractItemView::NoEditTriggers</set>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::SingleSelection</enum>
-           </property>
-           <property name="selectionBehavior">
-            <enum>QAbstractItemView::SelectRows</enum>
+            <enum>QAbstractItemView::NoSelection</enum>
            </property>
            <column>
             <property name="text">
@@ -316,7 +298,7 @@
            </column>
            <column>
             <property name="text">
-             <string>Source Designation</string>
+             <string>designation</string>
             </property>
            </column>
            <column>
@@ -356,7 +338,7 @@
      <x>0</x>
      <y>0</y>
      <width>900</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
   </widget>
