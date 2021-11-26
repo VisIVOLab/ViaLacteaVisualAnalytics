@@ -148,13 +148,17 @@ void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
         auto groupBox = new QGroupBox(survey->getName(), scrollArea);
         auto layout = new QVBoxLayout(groupBox);
         for (int i = 0; i < survey->count(); ++i) {
-            auto box = new QCheckBox(groupBox);
             auto species = survey->getSpecies().at(i);
             auto transition = survey->getTransitions().at(i);
-            box->setText(QString("%1 - %2").arg(species, transition));
 
-            connect(box, &QCheckBox::clicked, this, [this, name, species, transition](bool checked) {
-                QPair<QString, QString> pair(species, transition);
+            QPair<QString, QString> pair(species, transition);
+            filters.insert(name, pair);
+
+            auto box = new QCheckBox(groupBox);
+            box->setText(QString("%1 - %2").arg(species, transition));
+            box->setChecked(true);
+
+            connect(box, &QCheckBox::clicked, this, [this, name, pair](bool checked) {
                 if (checked) {
                     filters.insert(name, pair);
                 } else {
