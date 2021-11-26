@@ -19,11 +19,13 @@ class Survey : public QObject
     Q_OBJECT
 public:
     explicit Survey(const QString &name,
+                    const QString &desc,
                     const QString &species,
                     const QString &transition,
                     QObject *parent = nullptr);
 
     const QString &getName() const;
+    const QString &getDescription() const;
     const QStringList &getSpecies() const;
     const QStringList &getTransitions() const;
 
@@ -34,6 +36,7 @@ public:
 
 private:
     QString name;
+    QString description;
     QStringList species;
     QStringList transitions;
 };

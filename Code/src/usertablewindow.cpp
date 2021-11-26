@@ -59,7 +59,7 @@ void UserTableWindow::getSurveysData()
     postData.addQueryItem("VERSION", "1.0");
     postData.addQueryItem("LANG", "ADQL");
     postData.addQueryItem("FORMAT", "tsv");
-    postData.addQueryItem("QUERY", "SELECT name, species, transition FROM " + table);
+    postData.addQueryItem("QUERY", "SELECT name, description, species, transition FROM " + table);
     QByteArray postDataEncoded = postData.toString(QUrl::FullyEncoded).toUtf8();
 
     QString tapUrl = settings.value("vlkbtableurl").toString();
@@ -103,7 +103,8 @@ void UserTableWindow::buildUI(const QStringList &surveysData)
             continue;
 
         QStringList surveyInfo = survey.replace(QString("\""), QString()).split('\t');
-        QString name = surveyInfo[0], species = surveyInfo[1], transition = surveyInfo[2];
+        QString name = surveyInfo[0], description = surveyInfo[1], species = surveyInfo[2],
+                transition = surveyInfo[3];
 
         auto destMap = (species.contains("Continuum") ? &surveys2d : &surveys3d);
 
@@ -112,7 +113,7 @@ void UserTableWindow::buildUI(const QStringList &surveysData)
             s->addSpecies(species);
             s->addTransition(transition);
         } else {
-            Survey *s = new Survey(name, species, transition, this);
+            Survey *s = new Survey(name, description, species, transition, this);
             destMap->insert(name, s);
         }
     }
@@ -132,18 +133,15 @@ void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
                               QTableWidget *table,
                               QWidget *scrollArea)
 {
-    QStringList cols;
-    for (int i = 0; i < table->columnCount(); ++i) {
-        cols << table->horizontalHeaderItem(i)->text();
-    }
-
     foreach (const auto &survey, surveys) {
         auto name = survey->getName();
-        cols << name;
+        table->insertColumn(table->columnCount());
+        auto columnHeader = new QTableWidgetItem(name);
+        columnHeader->setToolTip(survey->getDescription());
+        table->setHorizontalHeaderItem(table->columnCount() - 1, columnHeader);
 
         auto groupBox = new QGroupBox(survey->getName(), scrollArea);
         auto layout = new QVBoxLayout(groupBox);
-
         for (int i = 0; i < survey->count(); ++i) {
             auto box = new QCheckBox(groupBox);
             auto species = survey->getSpecies().at(i);
@@ -164,9 +162,6 @@ void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
         groupBox->setLayout(layout);
         scrollArea->layout()->addWidget(groupBox);
     }
-
-    table->setColumnCount(cols.size());
-    table->setHorizontalHeaderLabels(cols);
 }
 
 void UserTableWindow::readFile()
@@ -529,11 +524,13 @@ Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bo
 
 // --------------------------------------
 Survey::Survey(const QString &name,
+               const QString &desc,
                const QString &species,
                const QString &transition,
                QObject *parent)
     : QObject(parent)
     , name(name)
+    , description(desc)
     , species(species)
     , transitions(transition)
 {}
@@ -541,6 +538,11 @@ Survey::Survey(const QString &name,
 const QString &Survey::getName() const
 {
     return name;
+}
+
+const QString &Survey::getDescription() const
+{
+    return description;
 }
 
 const QStringList &Survey::getSpecies() const
