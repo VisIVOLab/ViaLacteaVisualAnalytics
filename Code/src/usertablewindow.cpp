@@ -106,6 +106,11 @@ void UserTableWindow::buildUI(const QStringList &surveysData)
         QString name = surveyInfo[0], description = surveyInfo[1], species = surveyInfo[2],
                 transition = surveyInfo[3];
 
+        if (name == "ExtMaps") {
+            // Exclude extinction maps
+            continue;
+        }
+
         auto destMap = (species.contains("Continuum") ? &surveys2d : &surveys3d);
 
         if (destMap->contains(name)) {
