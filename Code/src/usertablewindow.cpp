@@ -128,13 +128,14 @@ void UserTableWindow::buildUI(const QStringList &surveysData)
         return;
     }
 
-    buildUI(surveys2d, ui->imagesTable, ui->imagesScrollAreaContents);
-    buildUI(surveys3d, ui->cubesTable, ui->cubesScrollAreaContents);
+    buildUI(surveys2d, selectedSurveys2d, ui->imagesTable, ui->imagesScrollAreaContents);
+    buildUI(surveys3d, selectedSurveys3d, ui->cubesTable, ui->cubesScrollAreaContents);
 
     ui->queryButton->setEnabled(true);
 }
 
 void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
+                              QMultiMap<QString, QPair<QString, QString>> &selectedSurveys,
                               QTableWidget *table,
                               QWidget *scrollArea)
 {
@@ -152,17 +153,17 @@ void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
             auto transition = survey->getTransitions().at(i);
 
             QPair<QString, QString> pair(species, transition);
-            filters.insert(name, pair);
+            selectedSurveys.insert(name, pair);
 
             auto box = new QCheckBox(groupBox);
             box->setText(QString("%1 - %2").arg(species, transition));
             box->setChecked(true);
 
-            connect(box, &QCheckBox::clicked, this, [this, name, pair](bool checked) {
+            connect(box, &QCheckBox::clicked, this, [&selectedSurveys, name, pair](bool checked) {
                 if (checked) {
-                    filters.insert(name, pair);
+                    selectedSurveys.insert(name, pair);
                 } else {
-                    filters.remove(name, pair);
+                    selectedSurveys.remove(name, pair);
                 }
             });
             layout->addWidget(box);
@@ -370,6 +371,8 @@ void UserTableWindow::downloadCutouts(int t)
 {
     // t = 0 -> images; t = 1 -> cubes
     const QTableWidget *table = (t == 0) ? ui->imagesTable : ui->cubesTable;
+    const auto &surveys = (t == 0) ? selectedSurveys2d : selectedSurveys3d;
+
     QMap<QString, QStringList> cutouts;
 
     for (int row = 0; row < table->rowCount(); ++row) {
@@ -377,11 +380,14 @@ void UserTableWindow::downloadCutouts(int t)
             const Source *source = selectedSources.at(row);
             QStringList downloadLinks;
 
-            const auto &container = (t == 0) ? source->getImages() : source->getCubes();
-            foreach (const auto &cutout, container) {
-                QPair<QString, QString> pair(cutout.value("Species"), cutout.value("Transition"));
-                if (filters.contains(cutout.value("Survey"), pair)) {
-                    downloadLinks << cutout.value("URL");
+            for (auto it = surveys.constBegin(); it != surveys.constEnd(); ++it) {
+                auto survey = it.key();
+                auto species = it.value().first;
+                auto transition = it.value().second;
+
+                QString url;
+                if (source->getBestCutout(survey, species, transition, url)) {
+                    downloadLinks << url;
                 }
             }
 
@@ -402,7 +408,7 @@ void UserTableWindow::downloadCutouts(int t)
                                                     QFileDialog::ShowDirsOnly);
 
     if (!tmp.isEmpty()) {
-        auto vlkb = new VialacteaInitialQuery();
+        auto vlkb = new VialacteaInitialQuery("", this);
         QDir dir(tmp);
 
         for (auto i = cutouts.constBegin(); i != cutouts.constEnd(); ++i) {
@@ -450,6 +456,36 @@ double Source::getGlon() const
 double Source::getGlat() const
 {
     return glat;
+}
+
+bool Source::getBestCutout(const QString &survey,
+                           const QString &species,
+                           const QString &transition,
+                           QString &url) const
+{
+    QString current;
+    const auto &container = species.contains("Continuum") ? images : cubes;
+
+    foreach (const auto &cutout, container) {
+        auto _survey = cutout.value("Survey");
+        auto _species = cutout.value("Species");
+        auto _transition = cutout.value("Transition");
+
+        if (survey != _survey || species != _species || transition != _transition) {
+            continue;
+        }
+
+        if (current.isEmpty() || cutout.value("code").toInt() == 3) {
+            current = cutout.value("URL");
+        }
+    }
+
+    if (current.isEmpty()) {
+        return false;
+    }
+
+    url = current;
+    return true;
 }
 
 void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)

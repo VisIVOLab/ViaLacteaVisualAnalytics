@@ -53,6 +53,11 @@ public:
     double getGlon() const;
     double getGlat() const;
 
+    bool getBestCutout(const QString &survey,
+                       const QString &species,
+                       const QString &transition,
+                       QString &url) const;
+
     const QList<QMap<QString, QString>> &getImages() const;
     int getImagesCount() const;
 
@@ -94,16 +99,20 @@ private:
     QSettings settings;
 
     QMap<QString, Survey *> surveys2d;
+    QMultiMap<QString, QPair<QString, QString>> selectedSurveys2d;
+
     QMap<QString, Survey *> surveys3d;
+    QMultiMap<QString, QPair<QString, QString>> selectedSurveys3d;
 
     QList<QMap<QString, QString>> sources;
     QList<Source *> selectedSources;
 
-    QMultiMap<QString, QPair<QString, QString>> filters;
-
     void getSurveysData();
     void buildUI(const QStringList &surveysData);
-    void buildUI(const QMap<QString, Survey *> &surveys, QTableWidget *table, QWidget *scrollArea);
+    void buildUI(const QMap<QString, Survey *> &surveys,
+                 QMultiMap<QString, QPair<QString, QString>> &selectedSurveys,
+                 QTableWidget *table,
+                 QWidget *scrollArea);
     void readFile();
     void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
