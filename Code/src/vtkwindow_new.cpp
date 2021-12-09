@@ -1274,11 +1274,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         resultScale->Update();
 
         vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
+        float min = myfits->GetMin();
+        if (min < 0)
+            min = 0;
+        lut->SetTableRange(min, myfits->GetMax());
         lut->SetScaleToLog10();
-        min=myfits->GetMin();
-        if ( min <= 0 )
-            min=1;
-        lut->SetTableRange( min, myfits->GetMax() );
 
         SelectLookTable("Gray",lut);
         imageObject->setLutScale("Log");
@@ -2758,12 +2758,12 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale)
 
     }
 
-    float min= imgLayerList.at(  pos)->getFits()->GetMin() ;
-    if(min<=0)
-        min=1;
-    float max= imgLayerList.at(pos)->getFits()->GetMax();
+    float min = imgLayerList.at(pos)->getFits()->GetMin();
+    if (min < 0)
+        min = 0;
+    float max = imgLayerList.at(pos)->getFits()->GetMax();
 
-    lut->SetTableRange(  min , max );
+    lut->SetTableRange(min, max);
 
     imgLayerList.at(pos)->setLutScale(myscale);
     imgLayerList.at(pos)->setLutType(QString::fromStdString(palette));
@@ -3709,17 +3709,14 @@ void vtkwindow_new::addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString su
 
     vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
 
-    min=vis->GetMin();
-    max= vis->GetMax();
+    double min = vis->GetMin();
+    double max = vis->GetMax();
 
-    if (min<=0)
-    {
-        min=1;
-
+    if (min < 0) {
+        min = 0;
     }
 
-    lut->SetTableRange(  min , max );
-
+    lut->SetTableRange(min, max);
     lut->SetScaleToLog10();
 
     SelectLookTable("Gray",lut);
