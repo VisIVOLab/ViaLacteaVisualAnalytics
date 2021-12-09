@@ -311,6 +311,7 @@ void CaesarWindow::buildJobForm(const QJsonObject &app)
         if (type == "str") {
             p.first = QVariant::String;
             auto tmp = new QComboBox(box);
+            tmp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             auto values = app[input].toObject()["allowed_values"].toArray();
             foreach (const auto &v, values) {
                 tmp->insertItem(tmp->count(), v.toString());
@@ -322,6 +323,7 @@ void CaesarWindow::buildJobForm(const QJsonObject &app)
             auto min = app[input].toObject()["min"].toInt();
             auto max = app[input].toObject()["max"].toInt();
             auto tmp = new QSpinBox(box);
+            tmp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             tmp->setRange(min, max);
             tmp->setValue(default_value.toInt());
             widget = tmp;
@@ -330,6 +332,7 @@ void CaesarWindow::buildJobForm(const QJsonObject &app)
             auto min = app[input].toObject()["min"].toDouble();
             auto max = app[input].toObject()["max"].toDouble();
             auto tmp = new QDoubleSpinBox(box);
+            tmp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             tmp->setDecimals(3);
             tmp->setRange(min, max);
             tmp->setValue(default_value.toDouble());
