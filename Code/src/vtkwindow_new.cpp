@@ -93,8 +93,7 @@
 
 #include "vtkAssembly.h"
 
-
-
+#include <QtConcurrent>
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
@@ -1233,34 +1232,35 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren1->SetBackground(0.21,0.23,0.25);
 
-        QAction* select = new QAction("Select",this);
+        QAction *select = new QAction("Select", this);
         select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
-
-        connect(select,SIGNAL(triggered()), this,SLOT(setSelectionFitsViewerInteractorStyle()));
+        connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
         ui->menuWindow->addAction(select);
 
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
-
-        QAction* local = new QAction("Local",this);
+        QAction *local = new QAction("Local", this);
         local->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
-        connect(local,SIGNAL(triggered()), this,SLOT(addLocalSources()));
-
-        QAction* remote = new QAction("Remote",this);
-        remote->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
-        connect(remote,SIGNAL(triggered()), this,SLOT(setSkyRegionSelectorInteractorStyle()));
-
-        QAction* normal_selector = new QAction("Normal",this);
-        normal_selector->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_N));
-        connect(normal_selector,SIGNAL(triggered()), this,SLOT(setVtkInteractorStyleImage()));
-
-        QAction* selector_3D = new QAction("3D",this);
-        selector_3D->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_3));
-        connect(selector_3D,SIGNAL(triggered()), this,SLOT(on_tdRectPushButton_clicked()));
-
+        connect(local, SIGNAL(triggered()), this, SLOT(addLocalSources()));
         compact->addAction(local);
+
+        QAction *localJson = new QAction("From JSON catalogue");
+        connect(localJson, &QAction::triggered, this, &vtkwindow_new::addSourcesFromJson);
+        compact->addAction(localJson);
+
+        QAction *remote = new QAction("Remote", this);
+        remote->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
+        connect(remote, SIGNAL(triggered()), this, SLOT(setSkyRegionSelectorInteractorStyle()));
         compact->addAction(remote);
-        compact->addAction(selector_3D);
+
+        QAction *normal_selector = new QAction("Normal", this);
+        normal_selector->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_N));
+        connect(normal_selector, SIGNAL(triggered()), this, SLOT(setVtkInteractorStyleImage()));
         compact->addAction(normal_selector);
+
+        QAction *selector_3D = new QAction("3D", this);
+        selector_3D->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_3));
+        connect(selector_3D, SIGNAL(triggered()), this, SLOT(on_tdRectPushButton_clicked()));
+        compact->addAction(selector_3D);
 
         setVtkInteractorStyleImage();
 
@@ -2349,6 +2349,89 @@ void vtkwindow_new::addSources(VSTableDesktop* m_VisIVOTable)
 
     this->update();
     sessionModified();
+}
+
+void vtkwindow_new::addSourcesFromJson()
+{
+    QString fn = QFileDialog::getOpenFileName(this,
+                                              "Open JSON Catalogue",
+                                              QDir::homePath(),
+                                              "JSON Catalogue (*.json)");
+    if (fn.isEmpty()) {
+        return;
+    }
+
+    QFile jsonFile(fn);
+    jsonFile.open(QFile::ReadOnly);
+    QJsonObject root = QJsonDocument::fromJson(jsonFile.readAll()).object();
+    jsonFile.close();
+
+    QJsonArray sources = root["sources"].toArray();
+
+    if (sources.count() == 0) {
+        QMessageBox::information(this, "No sources", "The file does not contain any sources.");
+        return;
+    }
+
+    double arcsec = AstroUtils().arcsecPixel(myfits->GetFileName());
+    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+    QMutex mutex;
+
+    QtConcurrent::blockingMap(sources, [arcsec, &appendFilter, &mutex](QJsonValueRef obj_s) {
+        QJsonObject source = obj_s.toObject();
+        QJsonArray islands = source["islands"].toArray();
+
+        foreach (auto obj_i, islands) {
+            QJsonObject island = obj_i.toObject();
+            QJsonArray vertices = island["vertices"].toArray();
+
+            if (vertices.isEmpty())
+                continue;
+
+            auto points = vtkSmartPointer<vtkPoints>::New();
+            auto polyLine = vtkSmartPointer<vtkPolyLine>::New();
+            polyLine->GetPointIds()->SetNumberOfIds(vertices.count() + 1);
+
+            int i = 0;
+            foreach (auto arr_v, vertices) {
+                QJsonArray vertex = arr_v.toArray();
+                points->InsertNextPoint(vertex.at(0).toDouble(), vertex.at(1).toDouble(), arcsec);
+                polyLine->GetPointIds()->SetId(i, i);
+                ++i;
+            }
+
+            // Connect the last and the first vertices
+            QJsonArray firstVertex = vertices.at(0).toArray();
+            points->InsertNextPoint(firstVertex.at(0).toDouble(),
+                                    firstVertex.at(1).toDouble(),
+                                    arcsec);
+            polyLine->GetPointIds()->SetId(i, i);
+
+            auto cells = vtkSmartPointer<vtkCellArray>::New();
+            cells->InsertNextCell(polyLine);
+
+            auto polyData = vtkSmartPointer<vtkPolyData>::New();
+            polyData->SetPoints(points);
+            polyData->SetLines(cells);
+
+            mutex.lock();
+            appendFilter->AddInputData(polyData);
+            mutex.unlock();
+        }
+    });
+
+    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
+    cleanFilter->Update();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(1, 0, 0);
+
+    addCombinedLayer(QFileInfo(fn).baseName(), actor, 2, true);
 }
 
 void vtkwindow_new::closeEvent(QCloseEvent *event)

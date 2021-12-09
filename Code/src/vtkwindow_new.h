@@ -142,6 +142,7 @@ public:
 
     vtkSmartPointer<vtkImageViewer2> imageViewer;
     void addSources(VSTableDesktop* m_VisIVOTable);
+    void addSourcesFromJson();
     void addFilaments(VSTableDesktop* m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop* m_VisIVOTable);
     void addBubble(VSTableDesktop* m_VisIVOTable);
