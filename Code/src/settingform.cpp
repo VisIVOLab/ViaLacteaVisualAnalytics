@@ -8,29 +8,34 @@
 #include "vialactea.h"
 #include "singleton.h"
 
-SettingForm::SettingForm(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::SettingForm)
+SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
 {
     ui->setupUi(this);
     ui->groupBox_4->hide();
     ui->logoutButton->hide();
 
+    setAttribute(Qt::WA_DeleteOnClose);
+
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
     m_authWrapper = &Singleton<AuthWrapper>::Instance();
-    connect(m_authWrapper, &AuthWrapper::authenticated, [&](){
+    connect(m_authWrapper, &AuthWrapper::authenticated, [&]() {
         ui->authStatusLabel->setText("Authenticated");
         ui->loginButton->hide();
         ui->logoutButton->show();
     });
-    connect(m_authWrapper, &AuthWrapper::logged_out, [&](){
+    connect(m_authWrapper, &AuthWrapper::logged_out, [&]() {
         ui->authStatusLabel->setText("Not authenticated");
         ui->loginButton->show();
         ui->logoutButton->hide();
     });
 
-    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+    m_sSettingsFile = QDir::homePath()
+                              .append(QDir::separator())
+                              .append("VisIVODesktopTemp")
+                              .append("/setting.ini");
+
+    readSettingsFromFile();
 }
 
 SettingForm::~SettingForm()

@@ -8,6 +8,7 @@
 
 #include "vtkwindow_new.h"
 #include "aboutform.h"
+#include "settingform.h"
 
 namespace Ui {
 class ViaLactea;
@@ -84,6 +85,8 @@ private slots:
 private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
+    QPointer<SettingForm> settingForm;
+
     QString selectedBand;
     QString m_sSettingsFile;
     QString tilePath;
