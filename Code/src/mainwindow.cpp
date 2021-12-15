@@ -39,7 +39,6 @@
 #include "sed.h"
 //#include "vosamp.h"
 //#include "visivofilterdesktop.h"
-#include "customprocess.h"
 
 /*
 extern "C" {
