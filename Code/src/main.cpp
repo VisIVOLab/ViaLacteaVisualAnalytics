@@ -1,13 +1,10 @@
-#include "mainwindow.h"
 #include <QApplication>
-#include "singleton.h"
-#include <QSplashScreen>
-#include <QBitmap>
-#include <QDebug>
-//#include "vosamp.h"
 #include <QSurfaceFormat>
-#include "QVTKOpenGLNativeWidget.h"
+#include <QVTKOpenGLNativeWidget.h>
 #include <QWebEngineUrlScheme>
+
+#include "mainwindow.h"
+#include "singleton.h"
 
 int main(int argc, char *argv[])
 {
@@ -20,15 +17,11 @@ int main(int argc, char *argv[])
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
     QApplication a(argc, argv);
-    MainWindow *w = &Singleton<MainWindow>::Instance();
     a.setApplicationName("Vialactea - Visual Analytics client");
+    a.setApplicationVersion("1.4");
+    a.setWindowIcon(QIcon(":/icons/logo_256.png"));
 
-
- //  vosamp *samp = &Singleton<vosamp>::Instance();
-
-   // w->show();
-
+    Singleton<MainWindow>::Instance();
 
     return a.exec();
-
 }

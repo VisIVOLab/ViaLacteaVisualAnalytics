@@ -535,8 +535,12 @@ void ViaLactea::closeEvent(QCloseEvent *event)
 
 void ViaLactea::on_actionAbout_triggered()
 {
-    AboutForm *w = &Singleton<AboutForm>::Instance();
-    w->show();
+    if (!aboutForm) {
+        aboutForm = new AboutForm(this);
+    }
+    aboutForm->show();
+    aboutForm->activateWindow();
+    aboutForm->raise();
 }
 
 void ViaLactea::on_select3dPushButton_clicked()

@@ -3,9 +3,11 @@
 
 #include <QMainWindow>
 #include <QMap>
+#include <QPointer>
 #include <QPair>
-#include "vtkwindow_new.h"
 
+#include "vtkwindow_new.h"
+#include "aboutform.h"
 
 namespace Ui {
 class ViaLactea;
@@ -81,6 +83,7 @@ private slots:
 
 private:
     Ui::ViaLactea *ui;
+    QPointer<AboutForm> aboutForm;
     QString selectedBand;
     QString m_sSettingsFile;
     QString tilePath;
