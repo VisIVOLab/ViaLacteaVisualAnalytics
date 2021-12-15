@@ -1446,25 +1446,38 @@ void SEDVisualizerPlot::checkboxClicked(int cb)
 void SEDVisualizerPlot::doThinLocalFit()
 {
     sd_thin->close();
-
     ui->outputTextBrowser->setText("");
 
-    process= new QProcess();
-    connect(process,SIGNAL(readyReadStandardError()),this,SLOT(onReadyReadStdOutput()));
-    connect(process,SIGNAL(readyReadStandardOutput()),this,SLOT(onReadyReadStdOutput()));
-    connect(process,SIGNAL(finished(int)),this,SLOT(finishedThinLocalFit()));
-
+    process = new QProcess(this);
     process->setProcessChannelMode(QProcess::MergedChannels);
+    connect(process, SIGNAL(readyReadStandardError()), this, SLOT(onReadyReadStdOutput()));
+    connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(onReadyReadStdOutput()));
+    connect(process, SIGNAL(finished(int)), this, SLOT(finishedThinLocalFit()));
 
-    QString mrange="["+ sd_thin->ui->minMassLineEdit->text()+", "+sd_thin->ui->maxMassLineEdit->text()+", "+ sd_thin->ui->stepMassLineEdit->text() +"]";
-    QString trange="["+ sd_thin->ui->tempMinLineEdit->text()+", "+sd_thin->ui->tempMaxLineEdit->text()+", "+ sd_thin->ui->tempStepLineEdit->text() +"]";
-    QString brange="["+ sd_thin->ui->betaMinLineEdit->text()+", "+sd_thin->ui->betaMaxLineEdit->text()+", "+ sd_thin->ui->betaStepLineEdit->text() +"]";
-    QString srefRange="["+ sd_thin->ui->srefOpacityLineEdit->text()+", "+ sd_thin->ui->srefWavelengthLineEdit->text() +"]";
+    QString mrange = "[" + sd_thin->ui->minMassLineEdit->text() + ", "
+                     + sd_thin->ui->maxMassLineEdit->text() + ", "
+                     + sd_thin->ui->stepMassLineEdit->text() + "]";
+    QString trange = "[" + sd_thin->ui->tempMinLineEdit->text() + ", "
+                     + sd_thin->ui->tempMaxLineEdit->text() + ", "
+                     + sd_thin->ui->tempStepLineEdit->text() + "]";
+    QString brange = "[" + sd_thin->ui->betaMinLineEdit->text() + ", "
+                     + sd_thin->ui->betaMaxLineEdit->text() + ", "
+                     + sd_thin->ui->betaStepLineEdit->text() + "]";
+    QString srefRange = "[" + sd_thin->ui->srefOpacityLineEdit->text() + ", "
+                        + sd_thin->ui->srefWavelengthLineEdit->text() + "]";
 
-    qDebug()<<idlPath<<" -e \"sedfitgrid_engine_thin_vialactea,"<<sedFitInputW<<", "<<sedFitInputF<<","<<mrange<<","<<trange<<" ,"<<brange<<" ,"<<sd_thin->ui->distLineEdit->text()<<","<<srefRange<<",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars="<<sedFitInputErrF<<",ulimit="<<sedFitInputUlimitString<<",printfile= '"<<QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv")<<"'";
-    process->start (idlPath+" -e \"sedfitgrid_engine_thin_vialactea,"+sedFitInputW+","+sedFitInputF+","+mrange+","+trange+" ,"+brange+" ,"+sd_thin->ui->distLineEdit->text()+","+srefRange+",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= '"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv")+"'");
+    QString outputFile = QDir::homePath()
+                             .append(QDir::separator())
+                             .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                                     + "_thinfile.csv");
 
-    // process.waitForFinished(); // sets current thread to sleep and waits for process end
+    QStringList args;
+    args << "sedfit_main.py"
+         << "thin" << sedFitInputW << sedFitInputF << mrange << trange << brange
+         << sd_thin->ui->distLineEdit->text() << srefRange << sedFitInputErrF
+         << sedFitInputUlimitString << outputFile;
+
+    process->start("python3", args);
 }
 
 void SEDVisualizerPlot::doThinRemoteFit()
@@ -1647,32 +1660,43 @@ bool SEDVisualizerPlot::readThickFit(QString resultPath){
 
 void SEDVisualizerPlot::doThickLocalFit()
 {
-
     sd_thick->close();
     ui->outputTextBrowser->setText("");
 
-    process= new QProcess();
-    connect(process,SIGNAL(readyReadStandardError()),this,SLOT(onReadyReadStdOutput()));
-    connect(process,SIGNAL(readyReadStandardOutput()),this,SLOT(onReadyReadStdOutput()));
-    connect(process,SIGNAL(finished(int)),this,SLOT(finishedThickLocalFit()));
-
+    process = new QProcess(this);
     process->setProcessChannelMode(QProcess::MergedChannels);
-    QString trange="["+ sd_thick->ui->tempMinLineEdit->text()+", "+sd_thick->ui->tempMaxLineEdit->text()+", "+ sd_thick->ui->tempStepLineEdit->text() +"]";
-    QString brange="["+ sd_thick->ui->betaMinLineEdit->text()+", "+sd_thick->ui->betaMaxLineEdit->text()+", "+ sd_thick->ui->betaStepLineEdit->text() +"]";
-    QString l0range="["+ sd_thick->ui->minLambda_0LineEdit->text()+", "+sd_thick->ui->maxLambda_0LineEdit->text()+", "+ sd_thick->ui->stepLambda_0LineEdit->text() +"]";
-    QString sfactrange="["+ sd_thick->ui->scaleMinLineEdit->text()+", "+sd_thick->ui->scaleMaxLineEdit->text()+", "+ sd_thick->ui->scaleStepLineEdit->text() +"]";
-    QString srefRange="["+ sd_thick->ui->srefOpacityLineEdit->text()+", "+ sd_thick->ui->srefWavelengthLineEdit->text() +"]";
+    connect(process, SIGNAL(readyReadStandardError()), this, SLOT(onReadyReadStdOutput()));
+    connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(onReadyReadStdOutput()));
+    connect(process, SIGNAL(finished(int)), this, SLOT(finishedThickLocalFit()));
 
-    //qDebug()<<"sedfitgrid_engine_thick_vialactea,"+sedFitInputW+","+sedFitInputF+","+sd_thick->ui->sizeLineEdit->text()+","+trange+" ,"+brange+" ,"+l0range+", "+sfactrange+","+sd_thick->ui->distLineEdit->text()+","+srefRange+",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString;
+    QString trange = "[" + sd_thick->ui->tempMinLineEdit->text() + ", "
+                     + sd_thick->ui->tempMaxLineEdit->text() + ", "
+                     + sd_thick->ui->tempStepLineEdit->text() + "]";
+    QString brange = "[" + sd_thick->ui->betaMinLineEdit->text() + ", "
+                     + sd_thick->ui->betaMaxLineEdit->text() + ", "
+                     + sd_thick->ui->betaStepLineEdit->text() + "]";
+    QString l0range = "[" + sd_thick->ui->minLambda_0LineEdit->text() + ", "
+                      + sd_thick->ui->maxLambda_0LineEdit->text() + ", "
+                      + sd_thick->ui->stepLambda_0LineEdit->text() + "]";
+    QString sfactrange = "[" + sd_thick->ui->scaleMinLineEdit->text() + ", "
+                         + sd_thick->ui->scaleMaxLineEdit->text() + ", "
+                         + sd_thick->ui->scaleStepLineEdit->text() + "]";
+    QString srefRange = "[" + sd_thick->ui->srefOpacityLineEdit->text() + ", "
+                        + sd_thick->ui->srefWavelengthLineEdit->text() + "]";
 
-    process->start (idlPath+" -e \"sedfitgrid_engine_thick_vialactea,"+sedFitInputW+","+sedFitInputF+","+sd_thick->ui->sizeLineEdit->text()+","+trange+" ,"+brange+" ,"+l0range+", "+sfactrange+","+sd_thick->ui->distLineEdit->text()+","+srefRange+",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= '"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv")+"'");
+    QString outputFile = QDir::homePath()
+                             .append(QDir::separator())
+                             .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                                     + "_thickfile.csv");
 
+    QStringList args;
+    args << "sedfit_main.py"
+         << "thick" << sedFitInputW << sedFitInputF << sd_thick->ui->sizeLineEdit->text() << trange
+         << brange << l0range << sfactrange << sd_thick->ui->distLineEdit->text() << srefRange
+         << sedFitInputErrF << sedFitInputUlimitString << outputFile;
 
-
+    process->start("python3", args);
 }
-
-
-
 
 void SEDVisualizerPlot::finishedThinRemoteFit()
 {
