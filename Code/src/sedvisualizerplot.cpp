@@ -29,7 +29,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QString  m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    idlPath = settings.value("idlpath", "").toString();
 
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes | QCP::iSelectLegend | QCP::iSelectPlottables| QCP::iMultiSelect | QCP::iSelectItems);
@@ -196,9 +195,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     resultsOutputColumn.insert("bol11",-1);
     resultsOutputColumn.insert("CHI2",-1);
     resultsOutputColumn.insert("DIST",-1);
-
-    QString libPath= QFileInfo(idlPath).absolutePath().append("/../lib/")+":"+qApp->applicationDirPath().append("/script_idl/")+":"+qApp->applicationDirPath().append("/script_idl/astrolib")  ;
-    setenv("IDL_PATH",libPath.toStdString().c_str(),0);
 
     ui->generatedSedBox->setHidden(true);
     nSED=0;
@@ -1176,7 +1172,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
 
 }
 
-
+/// Currently disabled
 void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
 {
     sedFitInputFflag = "]";
@@ -1216,13 +1212,14 @@ void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
 
         process->setProcessChannelMode(QProcess::MergedChannels);
 
-        //qDebug()<<idlPath+" -e \"sedpar=vialactea_tap_sedfit_v7("+sedFitInputW+","+sedFitInputF+","+sedFitInputErrF+","+sedFitInputFflag+","+ui->distTheoLineEdit->text()+","+ui->prefilterLineEdit->text()+",sed_weights=["+ui->mid_irLineEdit->text()+","+ui->far_irLineEdit->text()+","+ui->submmLineEdit->text()+"],use_wave="+sedFitInputW+",outdir='"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED))+"_',delta_chi2="+ui->delta_chi2_lineEdit->text()+")\" ";
 
         connect(process,SIGNAL(readyReadStandardError()),this,SLOT(onReadyReadStdOutput()));
         connect(process,SIGNAL(readyReadStandardOutput()),this,SLOT(onReadyReadStdOutput()));
         connect(process,SIGNAL(finished(int)),this,SLOT(finishedTheoreticalLocaleFit()));
 
-        process->start (idlPath+" -e \"sedpar=vialactea_tap_sedfit_v7("+sedFitInputW+","+sedFitInputF+","+sedFitInputErrF+","+sedFitInputFflag+","+ui->distTheoLineEdit->text()+","+ui->prefilterLineEdit->text()+",sed_weights=["+ui->mid_irLineEdit->text()+","+ui->far_irLineEdit->text()+","+ui->submmLineEdit->text()+"],use_wave="+sedFitInputW+",outdir='"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED))+"_',delta_chi2="+ui->delta_chi2_lineEdit->text()+")\" ");
+        // process->start (idlPath+" -e
+        // \"sedpar=vialactea_tap_sedfit_v7("+sedFitInputW+","+sedFitInputF+","+sedFitInputErrF+","+sedFitInputFflag+","+ui->distTheoLineEdit->text()+","+ui->prefilterLineEdit->text()+",sed_weights=["+ui->mid_irLineEdit->text()+","+ui->far_irLineEdit->text()+","+ui->submmLineEdit->text()+"],use_wave="+sedFitInputW+",outdir='"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED))+"_',delta_chi2="+ui->delta_chi2_lineEdit->text()+")\"
+        // ");
     }
 }
 
@@ -1498,8 +1495,6 @@ void SEDVisualizerPlot::doThinRemoteFit()
     QString brange="["+ sd_thin->ui->betaMinLineEdit->text()+", "+sd_thin->ui->betaMaxLineEdit->text()+", "+ sd_thin->ui->betaStepLineEdit->text() +"]";
     QString srefRange="["+ sd_thin->ui->srefOpacityLineEdit->text()+", "+ sd_thin->ui->srefWavelengthLineEdit->text() +"]";
 
-    ////qDebug()<<"java -jar  \"sedfitgrid_engine_thin_vialactea,"<<sedFitInputW<<", "<<sedFitInputF<<","<<mrange<<","<<trange<<" ,"<<brange<<" ,"<<sd_thin->ui->distLineEdit->text()<<","<<srefRange<<",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars="<<sedFitInputErrF<<",ulimit="<<sedFitInputUlimitString<<",printfile= '"<<QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv")<<"'";
-    //process->start (idlPath+" -e \"sedfitgrid_engine_thin_vialactea,"+sedFitInputW+","+sedFitInputF+","+mrange+","+trange+" ,"+brange+" ,"+sd_thin->ui->distLineEdit->text()+","+srefRange+",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= '"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thinfile.csv")+"'");
 
 
 
@@ -1545,7 +1540,6 @@ void SEDVisualizerPlot::doThickRemoteFit()
     QString sfactrange="["+ sd_thick->ui->scaleMinLineEdit->text()+", "+sd_thick->ui->scaleMaxLineEdit->text()+", "+ sd_thick->ui->scaleStepLineEdit->text() +"]";
     QString srefRange="["+ sd_thick->ui->srefOpacityLineEdit->text()+", "+ sd_thick->ui->srefWavelengthLineEdit->text() +"]";
 
-    // process->start (idlPath+" -e \"sedfitgrid_engine_thick_vialactea,"+sedFitInputW+","+sedFitInputF+","+sd_thick->ui->sizeLineEdit->text()+","+trange+" ,"+brange+" ,"+l0range+", "+sfactrange+","+sd_thick->ui->distLineEdit->text()+","+srefRange+",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= '"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_thickfile.csv")+"'");
 
     process->setWorkingDirectory(QApplication::applicationDirPath());
     process->start ("java -jar "+QApplication::applicationDirPath().append("/vsh-ws-client.jar")+" \"sedfitgrid_engine_thick_vialactea,"+sedFitInputW+","+sedFitInputF+","+sd_thick->ui->sizeLineEdit->text()+","+trange+" ,"+brange+" ,"+l0range+", "+sfactrange+","+sd_thick->ui->distLineEdit->text()+","+srefRange+",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="+sedFitInputErrF+",ulimit="+sedFitInputUlimitString+",printfile= 'sedfit_output.dat'\" ");

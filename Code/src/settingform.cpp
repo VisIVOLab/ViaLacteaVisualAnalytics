@@ -52,9 +52,6 @@ void SettingForm::readSettingsFromFile()
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
 
-    QString idlPath = settings.value("idlpath", "").toString();
-    ui->IdlLineEdit->setText(idlPath);
-
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
 
@@ -119,16 +116,6 @@ void SettingForm::readSettingsFromFile()
     ui->urlLineEdit->setText(settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
 }
 
-void SettingForm::on_IdlPushButton_clicked()
-{
-    QString fn = QFileDialog::getOpenFileName(this, "IDL bin", QString(), "idl");
-
-    if (!fn.isEmpty() )
-    {
-        ui->IdlLineEdit->setText(fn);
-    }
-}
-
 void SettingForm::on_TilePushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
@@ -145,7 +132,6 @@ void SettingForm::on_OkPushButton_clicked()
 
     settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath",  ui->TileLineEdit->text());
-    settings.setValue("idlpath", ui->IdlLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     if(ui->privateVLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "private");

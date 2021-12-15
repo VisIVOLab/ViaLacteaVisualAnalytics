@@ -18,8 +18,6 @@ public:
     void readSettingsFromFile();
 
 private slots:
-    void on_IdlPushButton_clicked();
-
     void on_TilePushButton_clicked();
 
 
