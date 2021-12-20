@@ -86,7 +86,7 @@ public:
     //explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
 
-    void loadSession(const QString &sessionFile, const QDir &filesDir);
+    void loadSession(const QString &sessionFile, const QDir &sessionRootFolder);
     bool isSessionSaved() const;
 
     /// Returns true if the application can be closed, false if the user does not want to close it anymore
@@ -262,11 +262,11 @@ private:
     void setTableItemInfo(const QString &text, const bool &enabled, const double *color);
 
     void sessionModified();
-    void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
-    void setSources(const QJsonArray &sources, const QDir &filesDir);
-    void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
+    void setImageLayers(const QJsonArray &layers, const QDir &sessionRootFolder);
+    void setSources(const QJsonArray &sources, const QDir &sessionRootFolder);
+    void setFilaments(const QJsonArray &filaments, const QDir &sessionRootFolder);
 
-    void loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir);
+    void loadDatacubes(const QJsonArray &datacubes, const QDir &sessionRootFolder);
     int getThresholdValue();
     void setThresholdValue(int sliderValue);
     int getCuttingPlaneValue();

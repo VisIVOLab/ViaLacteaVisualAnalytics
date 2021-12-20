@@ -623,18 +623,26 @@ void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 void ViaLactea::on_actionLoad_session_triggered()
 {
     if (masterWin != nullptr) {
-        QMessageBox::warning(this, tr("Load a session"), tr("A session is already open, close it to load another session."));
+        QMessageBox::warning(this, tr("Load a session"),
+                             tr("A session is already open, close it to load another session."));
         return;
     }
 
-    QString fn = QFileDialog::getOpenFileName(this, "Load a session", QDir::homePath(), "JSON (*.json)");
+    QString fn =
+            QFileDialog::getOpenFileName(this, "Load a session", QDir::homePath(), "JSON (*.json)");
     if (fn.isEmpty())
         return;
 
     QFile sessionFile(fn);
     sessionFile.open(QFile::ReadOnly);
-    auto root = QJsonDocument::fromJson(sessionFile.readAll()).object();
+    QJsonObject root = QJsonDocument::fromJson(sessionFile.readAll()).object();
     sessionFile.close();
+
+    if (root.isEmpty()) {
+        QMessageBox::critical(this, tr("Load a session"),
+                              tr("Failed to parse the session configuration. Loading aborted."));
+        return;
+    }
 
     // Check for the origin layer and start a new window
     auto layers = root["image"].toObject()["layers"].toArray();
@@ -650,12 +658,13 @@ void ViaLactea::on_actionLoad_session_triggered()
     }
 
     if (!found) {
-        QMessageBox::critical(this, tr("Load a session"), tr("Cannot load the session: there is no origin layer."));
+        QMessageBox::critical(this, tr("Load a session"),
+                              tr("Cannot load the session: there is no origin layer."));
         return;
     }
 
-    QDir filesFolder = QFileInfo(fn).dir().absoluteFilePath("files");
-    auto fits = filesFolder.absoluteFilePath(originLayer["fits"].toString());
+    QDir sessionRootFolder = QFileInfo(fn).dir();
+    QString fits = sessionRootFolder.absoluteFilePath(originLayer["fits"].toString());
     auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader->SetFileName(fits.toStdString());
     if (originLayer["type"].toString() == "Moment") {
@@ -667,13 +676,13 @@ void ViaLactea::on_actionLoad_session_triggered()
     AstroUtils().GetCenterCoords(fits.toStdString(), coords);
     AstroUtils().GetRectSize(fits.toStdString(), rectSize);
     auto vq = new VialacteaInitialQuery;
-    connect(vq, &VialacteaInitialQuery::searchDone, this, [this, vq, fitsReader, fn, filesFolder](QList<QMap<QString,QString>> results){
-        auto win = new vtkwindow_new(this, fitsReader);
-        win->setDbElements(results);
-        win->loadSession(fn, filesFolder);
-        setMasterWin(win);
-        vq->deleteLater();
-    });
+    connect(vq, &VialacteaInitialQuery::searchDone, this,
+            [this, vq, fitsReader, fn, sessionRootFolder](QList<QMap<QString, QString>> results) {
+                auto win = new vtkwindow_new(this, fitsReader);
+                win->setDbElements(results);
+                win->loadSession(fn, sessionRootFolder);
+                setMasterWin(win);
+                vq->deleteLater();
+            });
     vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
 }
-

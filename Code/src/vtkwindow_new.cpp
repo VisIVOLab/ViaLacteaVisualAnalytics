@@ -4846,7 +4846,7 @@ void vtkwindow_new::on_actionLeft_triggered()
     setCameraAzimuth(-90);
 }
 
-void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir)
+void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)
 {
     auto loadingWindow = new LoadingWidget(this);
     loadingWindow->setWindowFlag(Qt::Window);
@@ -4863,19 +4863,19 @@ void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &filesDir
     this->sessionFile = sessionFile;
 
     auto layers = session["image"].toObject()["layers"].toArray();
-    setImageLayers(layers, filesDir);
+    setImageLayers(layers, sessionRootFolder);
 
     auto compactSources = session["image"].toObject()["compact_sources"].toArray();
     if (!compactSources.isEmpty())
-        setSources(compactSources, filesDir);
+        setSources(compactSources, sessionRootFolder);
 
     auto filaments = session["image"].toObject()["filaments"].toArray();
     if (!filaments.isEmpty())
-        setFilaments(filaments, filesDir);
+        setFilaments(filaments, sessionRootFolder);
 
     auto datacubes = session["datacubes"].toArray();
     if (!datacubes.isEmpty())
-        loadDatacubes(datacubes, filesDir);
+        loadDatacubes(datacubes, sessionRootFolder);
 
     sessionSaved = true;
     loadingWindow->deleteLater();
@@ -4907,7 +4907,7 @@ bool vtkwindow_new::confirmSaveAndExit()
     return true;
 }
 
-void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDir)
+void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &sessionRootFolder)
 {
     // Clear current layers
     ui->listWidget->clear();
@@ -4916,15 +4916,16 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDi
 
     foreach (const auto &it, layers) {
         auto layer = it.toObject();
+        QString filepath;
 
         vtkSmartPointer<vtkFitsReader> fitsReader;
         // If this layer is origin, then we already have the fitsReader
         if (layer["origin"].toBool()) {
             fitsReader = myfits;
         } else {
-            auto fn = filesDir.absoluteFilePath(layer["fits"].toString());
+            filepath = sessionRootFolder.absoluteFilePath(layer["fits"].toString());
             fitsReader = vtkSmartPointer<vtkFitsReader>::New();
-            fitsReader->SetFileName(fn.toStdString());
+            fitsReader->SetFileName(filepath.toStdString());
             if (layer["type"].toString() == "Moment") {
                 fitsReader->isMoment3D = true;
                 fitsReader->setMomentOrder(layer["moment_order"].toInt());
@@ -4932,13 +4933,18 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &filesDi
         }
 
         // Setup
+        QString filename = QFileInfo(filepath).baseName();
         addLayerImage(fitsReader);
-        ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
+        ui->listWidget->setCurrentRow(ui->listWidget->count() - 1);
         auto listItem = ui->listWidget->currentItem();
-        listItem->setText(layer["text"].toString());
-        changeFitsScale(layer["lutType"].toString().toStdString(), layer["lutScale"].toString().toStdString());
-        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))->GetProperty()->SetOpacity(layer["opacity"].toInt()/100.0);
-        listItem->setCheckState(layer["enabled"].toBool() ? Qt::Checked : Qt::Unchecked);
+        listItem->setText(layer["text"].toString(filename));
+        changeFitsScale(layer["lutType"].toString("Gray").toStdString(),
+                        layer["lutScale"].toString("Log").toStdString());
+        vtkImageSlice::SafeDownCast(
+                imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
+                ->GetProperty()
+                ->SetOpacity(layer["opacity"].toInt(100) / 100.0);
+        listItem->setCheckState(layer["enabled"].toBool(false) ? Qt::Checked : Qt::Unchecked);
     }
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
     ui->listWidget->setCurrentRow(0);
@@ -4977,7 +4983,7 @@ void vtkwindow_new::setTableItemInfo(const QString &text, const bool &enabled, c
     }
 }
 
-void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
+void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &sessionRootFolder)
 {
     auto fileLoad = new Vialactea_FileLoad("", true);
     fileLoad->setVtkWin(this);
@@ -4985,26 +4991,29 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
 
     foreach (const auto &it, sources) {
         auto compactSource = it.toObject();
-        auto file = filesDir.absoluteFilePath(compactSource["file"].toString());
-        fileLoad->init(file);
+        QString filepath = sessionRootFolder.absoluteFilePath(compactSource["file"].toString());
+        QString filename = QFileInfo(filepath).baseName();
+        fileLoad->init(filepath);
 
         if (compactSource["bandmerged"].toBool()) {
             fileLoad->setWavelength("all");
             fileLoad->on_okPushButton_clicked();
             foreach (const auto &item, compactSource["tableItems"].toArray()) {
                 auto text = item["text"].toString();
-                auto enabled = item["enabled"].toBool();
+                auto enabled = item["enabled"].toBool(false);
                 auto color = item["color"].toArray();
-                double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+                double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
+                                  color.at(2).toDouble() };
                 setTableItemInfo(text, enabled, rgb);
             }
         } else {
             fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
             fileLoad->on_okPushButton_clicked();
-            auto text = compactSource["text"].toString();
-            auto enabled = compactSource["enabled"].toBool();
+            auto text = compactSource["text"].toString(filename);
+            auto enabled = compactSource["enabled"].toBool(false);
             auto color = compactSource["color"].toArray();
-            double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+            double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
+                              color.at(2).toDouble() };
             setTableItemInfo(text, enabled, rgb);
         }
     }
@@ -5013,22 +5022,24 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &filesDir)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &filesDir)
+void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &sessionRootFolder)
 {
     auto fileLoad = new Vialactea_FileLoad("", true);
     fileLoad->setVtkWin(this);
 
     foreach (const auto &it, filaments) {
         auto filament = it.toObject();
-        auto file = filesDir.absoluteFilePath(filament["file"].toString());
-        fileLoad->init(file);
+        QString filepath = sessionRootFolder.absoluteFilePath(filament["file"].toString());
+        QString filename = QFileInfo(filepath).baseName();
+        fileLoad->init(filepath);
         fileLoad->importFilaments();
 
         foreach (const auto &item, filament["tableItems"].toArray()) {
-            auto text = item["text"].toString();
-            auto enabled = item["enabled"].toBool();
+            auto text = item["text"].toString(filename);
+            auto enabled = item["enabled"].toBool(false);
             auto color = item["color"].toArray();
-            double rgb[3] = {color.at(0).toDouble(), color.at(1).toDouble(), color.at(2).toDouble()};
+            double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
+                              color.at(2).toDouble() };
             setTableItemInfo(text, enabled, rgb);
         }
     }
@@ -5037,12 +5048,12 @@ void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &filesD
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir)
+void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &sessionRootFolder)
 {
     foreach (const auto &dc, datacubes) {
-        auto fitsPath = filesDir.absoluteFilePath(dc["fits"].toString());
-        auto threshold = dc["threshold"].toInt();
-        auto slice = dc["slice"].toInt();
+        auto fitsPath = sessionRootFolder.absoluteFilePath(dc["fits"].toString());
+        auto threshold = dc["threshold"].toInt(0);
+        auto slice = dc["slice"].toInt(1);
 
         auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
         fitsReader->SetFileName(fitsPath.toStdString());
@@ -5052,45 +5063,57 @@ void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &files
         win->setCuttingPlaneValue(slice);
 
         auto contours = dc["contours"].toObject();
-        auto level = contours["level"].toInt();
-        auto lowerB = contours["lowerBound"].toDouble();
-        auto upperB = contours["upperBound"].toDouble();
-        auto enabled = contours["enabled"].toBool();
-        win->setContoursInfo(level, lowerB, upperB, enabled);
+        if (!contours.isEmpty()) {
+            auto level = contours["level"].toInt(15);
+            auto lowerB = contours["lowerBound"].toDouble(3 * fitsReader->GetRMS());
+            auto upperB = contours["upperBound"].toDouble(fitsReader->GetMax());
+            auto enabled = contours["enabled"].toBool(false);
+            win->setContoursInfo(level, lowerB, upperB, enabled);
+        }
     }
 }
 
 void vtkwindow_new::on_actionSave_session_triggered()
 {
-    auto currentTime = QDateTime::currentDateTimeUtc();
-
     bool overwriting = false;
     if (!this->sessionFile.isEmpty()) {
-        auto res = QMessageBox::question(this, "Save session", "Do you want to overwrite the current session?");
+        auto res = QMessageBox::question(this, "Save session",
+                                         "Do you want to overwrite the current session?");
         overwriting = res == QMessageBox::Yes;
     }
 
     QString dir;
     if (overwriting) {
+        // The session folder already exists and contains the json file
         dir = QFileInfo(this->sessionFile).absolutePath();
-        // session.json and files are already there, no need to create them
     } else {
-        dir = QFileDialog::getExistingDirectory(this, "Save session", QDir::homePath(), QFileDialog::ShowDirsOnly);
+        dir = QFileDialog::getExistingDirectory(this, "Save session", QDir::homePath(),
+                                                QFileDialog::ShowDirsOnly);
         if (dir.isEmpty())
             return;
 
         QDir tmp(dir);
         if (!tmp.isEmpty()) {
-            QMessageBox::warning(this, "Save session", "The directory is not empty, please select an empty folder.");
+            QMessageBox::warning(this, "Save session",
+                                 "The directory is not empty, please select an empty folder.");
             return;
         }
         this->sessionFile = tmp.absoluteFilePath("session.json");
-        tmp.mkdir("files");
     }
 
     QDir sessionFolder(dir);
-    QFile sessionFile(this->sessionFile);
-    QDir filesFolder(sessionFolder.absoluteFilePath("files"));
+
+    const auto fileInSession = [&sessionFolder](const QFileInfo &file, QString subfolder) {
+        QString src = file.absoluteFilePath();
+        QString dst = src;
+        if (!dst.startsWith(sessionFolder.absolutePath())) {
+            sessionFolder.mkdir(subfolder);
+            dst = sessionFolder.absoluteFilePath(
+                    subfolder.append(QDir::separator()).append(file.fileName()));
+            QFile::copy(src, dst);
+        }
+        return dst;
+    };
 
     QJsonObject image;
     // Layers
@@ -5100,10 +5123,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
         auto img = imgLayerList.at(row);
         auto fits = QFileInfo(QString::fromStdString(img->getFits()->GetFileName()));
 
-        // Copy the fits file into the files directory
-        auto src = fits.absoluteFilePath();
-        auto dst = filesFolder.absoluteFilePath(fits.fileName());
-        QFile::copy(src, dst);
+        QString dst = fileInSession(fits, "fits");
 
         QJsonObject layer;
         if (img->getFits()->isMoment3D) {
@@ -5114,16 +5134,18 @@ void vtkwindow_new::on_actionSave_session_triggered()
         }
         layer["origin"] = img->getFits() == myfits;
         layer["text"] = listItem->text();
-        layer["fits"] = fits.fileName();
+        layer["fits"] = sessionFolder.relativeFilePath(dst);
         layer["lutType"] = img->getLutType().isEmpty() ? "Gray" : img->getLutType();
         layer["lutScale"] = img->getLutScale().isEmpty() ? "Log" : img->getLutScale();
-        layer["opacity"] = vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))->\
-                GetProperty()->GetOpacity() * 100;
+        layer["opacity"] =
+                vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))
+                        ->GetProperty()
+                        ->GetOpacity()
+                * 100;
         layer["enabled"] = listItem->checkState() == Qt::Checked;
         layers.append(layer);
     }
     image["layers"] = layers;
-
 
     // Compact sources
     QJsonArray sources;
@@ -5131,13 +5153,11 @@ void vtkwindow_new::on_actionSave_session_triggered()
         auto srcInfo = QFileInfo(i.key());
         auto bandmerged = i.value() == 0;
 
-        // Copy the file into the files directory
-        auto src = srcInfo.absoluteFilePath();
-        auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
-        QFile::copy(src, dst);
+        QString src = srcInfo.absoluteFilePath();
+        QString dst = fileInSession(srcInfo, "compact_sources");
 
         QJsonObject compactSource;
-        compactSource["file"] = srcInfo.fileName();
+        compactSource["file"] = sessionFolder.relativeFilePath(dst);
         compactSource["bandmerged"] = bandmerged;
 
         if (bandmerged) {
@@ -5177,19 +5197,15 @@ void vtkwindow_new::on_actionSave_session_triggered()
     }
     image["compact_sources"] = sources;
 
-
     // Filaments
     QJsonArray filaments;
     for (auto i = filamentsList.constBegin(); i != filamentsList.constEnd(); ++i) {
         auto srcInfo = QFileInfo(i.key());
 
-        // Copy the file into the files directory
-        auto src = srcInfo.absoluteFilePath();
-        auto dst = filesFolder.absoluteFilePath(srcInfo.fileName());
-        QFile::copy(src, dst);
+        QString dst = fileInSession(srcInfo, "filaments");
 
         QJsonObject filament;
-        filament["file"] = srcInfo.fileName();
+        filament["file"] = sessionFolder.relativeFilePath(dst);
         QJsonArray tableItems;
         foreach (const auto &text, i.value()) {
             int row;
@@ -5210,20 +5226,17 @@ void vtkwindow_new::on_actionSave_session_triggered()
     }
     image["filaments"] = filaments;
 
-
     // Datacubes
     QJsonArray datacubes;
-    foreach (const auto &win, this->findChildren<vtkwindow_new*>()) {
+    foreach (const auto &win, this->findChildren<vtkwindow_new *>()) {
         if (!win->isDatacube || !win->isVisible())
             continue;
 
         auto fits = QFileInfo(QString::fromStdString(win->getFitsImage()->GetFileName()));
-        auto src = fits.absoluteFilePath();
-        auto dst = filesFolder.absoluteFilePath(fits.fileName());
-        QFile::copy(src, dst);
+        QString dst = fileInSession(fits, "fits");
 
         QJsonObject dc;
-        dc["fits"] = fits.fileName();
+        dc["fits"] = sessionFolder.relativeFilePath(dst);
         dc["threshold"] = win->getThresholdValue();
         dc["slice"] = win->getCuttingPlaneValue();
 
@@ -5239,16 +5252,17 @@ void vtkwindow_new::on_actionSave_session_triggered()
         datacubes.append(dc);
     }
 
-
     // Save the session.json configuration file
     QJsonObject root;
     root["image"] = image;
     root["datacubes"] = datacubes;
-    root["saved"] = currentTime.toString(Qt::ISODate);
+    root["saved"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
     QJsonDocument session(root);
+    QFile sessionFile(this->sessionFile);
     sessionFile.open(QFile::WriteOnly);
     sessionFile.write(session.toJson());
     sessionFile.close();
     sessionSaved = true;
-    QMessageBox::information(this, tr("Save session"), tr("Session saved in ") + sessionFolder.absolutePath());
+    QMessageBox::information(this, tr("Save session"),
+                             tr("Session saved in ") + sessionFolder.absolutePath());
 }
