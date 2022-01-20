@@ -116,7 +116,7 @@ void VLKBQueryComposer::availReplyFinished (QNetworkReply *reply)
             QNetworkAccessManager * manager = new QNetworkAccessManager(this);
             connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(tableReplyFinished(QNetworkReply*)));
             QNetworkRequest req(QUrl(url+"/tables"));
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
            // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/tables")),postData);
@@ -137,7 +137,7 @@ void VLKBQueryComposer::checkAvailability()
 
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
     QNetworkRequest req(QUrl(url+"/availability"));
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     manager->get(req);
    // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
@@ -152,7 +152,7 @@ void VLKBQueryComposer::on_connectButton_clicked()
 
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
     QNetworkRequest req(QUrl(url+"/availability"));
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     manager->get(req);
    // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
@@ -219,7 +219,7 @@ void VLKBQueryComposer::on_okButton_clicked()
               SLOT(onAuthenticationRequestSlot(QNetworkReply*,QAuthenticator*)) );
     connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinished(QNetworkReply*)));
     QNetworkRequest req(url+"/sync");
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     manager->post(req,postData);
    // manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
@@ -273,7 +273,7 @@ void VLKBQueryComposer::queryReplyFinished (QNetworkReply *reply)
 
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         }

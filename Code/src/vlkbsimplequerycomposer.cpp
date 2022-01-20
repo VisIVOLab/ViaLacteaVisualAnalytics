@@ -123,7 +123,7 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 
         if (vlkbtype == "neanias")
         {
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(request);
         }
 
@@ -196,7 +196,7 @@ void VLKBSimpleQueryComposer::availReplyFinished (QNetworkReply *reply)
                 QNetworkRequest req(QUrl(url+"/tables"));
                 if (vlkbtype == "neanias")
                 {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 
@@ -430,7 +430,7 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
 
     if (vlkbtype == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -481,7 +481,7 @@ void VLKBSimpleQueryComposer::queryReplyFinished (QNetworkReply *reply)
         {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         }

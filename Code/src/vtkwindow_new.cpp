@@ -1,91 +1,94 @@
 #include "vtkwindow_new.h"
 #include "ui_vtkwindow_new.h"
-#include "qdebug.h"
-#include "vtkOutlineFilter.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkProperty.h"
-#include "vtkImageDataGeometryFilter.h"
-#include "vtkPlanes.h"
-#include "vtkClipPolyData.h"
-#include "vtkPlane.h"
-#include "vtkCutter.h"
-#include "vtkStripper.h"
-#include "vtkFrustumSource.h"
-#include "vtkfitstoolswidget.h"
-#include "luteditor.h"
-#include "vtkImageMapToWindowLevelColors.h"
-#include "vtkTextProperty.h"
-#include "vtkCaptionActor2D.h"
-#include "vtkTextActor.h"
+
+#include "authwrapper.h"
 #include "astroutils.h"
-#include "vtkAppendPolyData.h"
-#include "vtkCleanPolyData.h"
-#include "vtkRendererCollection.h"
-#include "vtkImageActorPointPlacer.h"
-#include <QSignalMapper>
+#include "caesarwindow.h"
 #include "dbquery.h"
+#include "extendedglyph3d.h"
 #include "fitsimagestatisiticinfo.h"
-#include "vispoint.h"
-#include <QDir>
-#include "vtktoolswidget.h"
-#include "vtkInteractorStyleDrawPolygon.h"
-#include "vtkNew.h"
-#include "vtkHardwareSelector.h"
-#include "vtkSelection.h"
-#include "vtkCollection.h"
-#include "vtkExtractSelection.h"
-#include "vtkUnstructuredGrid.h"
-#include "vtkGeometryFilter.h"
-#include "vtkMath.h"
-#include "vtkObjectFactory.h"
-#include "vtkInteractorStyleRubberBandPick.h"
-#include "vtkAreaPicker.h"
-#include "vtkAbstractPicker.h"
-#include "vtkExtractGeometry.h"
-#include "vtkInteractorStyleRubberBand2D.h"
-#include "vtkVertexGlyphFilter.h"
-#include "vtkInteractorStyleImage.h"
 #include "higalselectedsources.h"
-#include "ui_higalselectedsources.h"
-#include "vlkbsimplequerycomposer.h"
-#include "vtkCellPicker.h"
-#include "vtkCubeAxesActor2D.h"
-#include "vtkTransform.h"
+#include "lutcustomize.h"
+#include "luteditor.h"
+#include "qdebug.h"
 #include "selectedsourcefieldsselect.h"
-#include "vtkImageShiftScale.h"
+#include "selectedsourcesform.h"
+#include "singleton.h"
+#include "ui_higalselectedsources.h"
+#include "vialactea.h"
+#include "vialactea_fileload.h"
+#include "vialacteainitialquery.h"
+#include "vispoint.h"
+#include "vlkbsimplequerycomposer.h"
+#include "vtkAbstractPicker.h"
+#include "vtkAppendPolyData.h"
+#include "vtkAreaPicker.h"
+#include "vtkAxisActor2D.h"
+#include "vtkCaptionActor2D.h"
+#include "vtkCellPicker.h"
+#include "vtkCleanPolyData.h"
+#include "vtkClipPolyData.h"
+#include "vtkCollection.h"
+#include "vtkContourFilter.h"
 #include "vtkCornerAnnotation.h"
+#include "vtkCubeAxesActor.h"
+#include "vtkCubeAxesActor2D.h"
+#include "vtkCutter.h"
+#include "vtkDataSetMapper.h"
+#include "vtkDoubleArray.h"
+#include "vtkExtractGeometry.h"
+#include "vtkExtractSelection.h"
+#include "vtkFrustumSource.h"
+#include "vtkGenericOpenGLRenderWindow.h"
+#include "vtkGeometryFilter.h"
+#include "vtkHardwareSelector.h"
+#include "vtkImageActorPointPlacer.h"
+#include "vtkImageBlend.h"
+#include "vtkImageChangeInformation.h"
+#include "vtkImageDataGeometryFilter.h"
+#include "vtkImageMapToWindowLevelColors.h"
+#include "vtkImageProperty.h"
+#include "vtkImageResize.h"
+#include "vtkImageShiftScale.h"
+#include "vtkImageSliceCollection.h"
+#include "vtkImageSliceMapper.h"
+#include "vtkImageStack.h"
+#include "vtkInteractorStyleDrawPolygon.h"
+#include "vtkInteractorStyleImage.h"
+#include "vtkInteractorStyleRubberBand2D.h"
+#include "vtkInteractorStyleRubberBandPick.h"
+#include "vtkMath.h"
+#include "vtkNew.h"
+#include "vtkObjectFactory.h"
+#include "vtkOutlineFilter.h"
+#include "vtkPlane.h"
+#include "vtkPlanes.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkPolyLine.h"
+#include "vtkProp3D.h"
+#include "vtkProperty.h"
+#include "vtkProperty2D.h"
+#include "vtkRegularPolygonSource.h"
+#include "vtkRendererCollection.h"
+#include "vtkSelection.h"
+#include "vtkStripper.h"
+#include "vtkTable.h"
+#include "vtkTextActor.h"
+#include "vtkTextProperty.h"
+#include "vtkTransform.h"
+#include "vtkUnstructuredGrid.h"
+#include "vtkVertexGlyphFilter.h"
+#include "vtkextracthistogram.h"
+#include "vtkfitstoolswidget.h"
 #include "vtkfitstoolwidget_new.h"
 #include "vtkfitstoolwidgetobject.h"
-#include "singleton.h"
-#include <vtkAutoInit.h>
-#include "vtkPolyLine.h"
-#include "vialactea.h"
-#include "vialacteainitialquery.h"
-#include "vialactea_fileload.h"
-#include "selectedsourcesform.h"
-#include "vtkContourFilter.h"
 #include "vtklegendscaleactor.h"
-#include "vtkAxisActor2D.h"
-#include "vtkCubeAxesActor.h"
-#include "lutcustomize.h"
-#include "vtkextracthistogram.h"
-#include "vtkDoubleArray.h"
-#include "vtkTable.h"
+#include "vtktoolswidget.h"
+#include <vtkAutoInit.h>
 #include <vtkGlyph2D.h>
-#include "vtkRegularPolygonSource.h"
+#include <QDir>
 #include <QSettings>
-#include "vtkImageBlend.h"
-#include "vtkDataSetMapper.h"
-#include "vtkProperty2D.h"
-#include "extendedglyph3d.h"
-#include "vtkImageSliceMapper.h"
-#include "vtkImageProperty.h"
-#include "vtkImageStack.h"
-#include "vtkProp3D.h"
-#include "vtkImageChangeInformation.h"
-#include "vtkImageResize.h"
-#include "vtkImageSliceCollection.h"
-#include "vtkGenericOpenGLRenderWindow.h"
+#include <QSignalMapper>
 
 #include "filtercustomize.h"
 
@@ -1339,6 +1342,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->naxis3=vis->GetNaxes(2);
 
         ui->setupUi(this);
+        ui->menuTools->menuAction()->setVisible(false);
         ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
@@ -4841,6 +4845,23 @@ void vtkwindow_new::on_actionBottom_triggered()
 void vtkwindow_new::on_actionLeft_triggered()
 {
     setCameraAzimuth(-90);
+}
+
+void vtkwindow_new::on_actionCAESAR_triggered()
+{
+    auto caesarAuth = &NeaniasCaesarAuth::Instance();
+    if (!caesarAuth->isAuthenticated()) {
+        QMessageBox::warning(this, "Authentication required",
+                             "This service is restricted to authenticated users.\n"
+                             "Sign in to the service through the Settings window to continue.");
+        return;
+    }
+
+    QString imagePath = QString::fromStdString(myfits->GetFileName());
+    auto caesar = new CaesarWindow(this, imagePath);
+    caesar->show();
+    caesar->activateWindow();
+    caesar->raise();
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)

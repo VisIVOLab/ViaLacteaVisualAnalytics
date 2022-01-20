@@ -7,7 +7,7 @@
 QT += core gui widgets network networkauth printsupport xml concurrent webenginewidgets
 #QMAKE_MAC_SDK = macosx10.15
 CONFIG+=sdk_no_version_check
-CONFIG-=app_bundle
+#CONFIG-=app_bundle
 
 TARGET = ViaLacteaVisualAnalytics
 TEMPLATE = app
@@ -146,7 +146,8 @@ macx:LIBS +=  -framework \
 
 
 
-SOURCES += src/main.cpp\
+SOURCES += src/main.cpp \
+    src/caesarwindow.cpp \
     src/authwrapper.cpp \
     src/mainwindow.cpp \
     src/treemodel.cpp \
@@ -230,10 +231,12 @@ SOURCES += src/main.cpp\
     src/visivoutilsdesktop.cpp \
     src/vsobjectdesktop.cpp \
     src/filtercustomize.cpp \
-    src/vialacteastringdictwidget.cpp
+    src/vialacteastringdictwidget.cpp \
 
 
-HEADERS  += src/mainwindow.h \
+HEADERS += src/mainwindow.h \
+    src/authkeys.h \
+    src/caesarwindow.h \
     src/authwrapper.h \
     src/singleton.h \
     src/treemodel.h \
@@ -298,10 +301,11 @@ HEADERS  += src/mainwindow.h \
     src/vsobjectdesktop.h \
     src/visivofilterdesktop.h \
     src/filtercustomize.h \
-    src/vialacteastringdictwidget.h
+    src/vialacteastringdictwidget.h \
 
 
-FORMS    += ui/mainwindow.ui \
+FORMS += ui/mainwindow.ui \
+    ui/caesarwindow.ui \
     ui/operationqueue.ui \
     ui/vtkwindow.ui \
     ui/vlkbquery.ui \

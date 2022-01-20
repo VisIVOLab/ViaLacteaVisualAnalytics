@@ -1,0 +1,10 @@
+#ifndef AUTHKEYS_H
+#define AUTHKEYS_H
+
+#define NEANIAS_VLKB_CLIENT
+#define NEANIAS_VLKB_KEY
+
+#define NEANIAS_CAESAR_CLIENT
+#define NEANIAS_CAESAR_KEY
+
+#endif // AUTHKEYS_H

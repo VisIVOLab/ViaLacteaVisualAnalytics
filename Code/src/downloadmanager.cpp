@@ -43,7 +43,7 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
 
     savedFilename=fn;
     QNetworkRequest request(url);
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(request);
     QNetworkReply *reply = man->get(request);
     loading->setLoadingProcess(reply);

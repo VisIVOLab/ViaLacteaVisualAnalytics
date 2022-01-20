@@ -76,7 +76,7 @@ ViaLactea::ViaLactea(QWidget *parent) :
             if(btn == QMessageBox::AcceptRole)
             {
                 // Open NEANIAS login page
-                AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                 connect(auth, &AuthWrapper::authenticated,
                         &Singleton<VialacteaStringDictWidget>::Instance(), &VialacteaStringDictWidget::buildDict);
                 auth->grant();

@@ -165,7 +165,7 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
     connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
 
     QNetworkRequest req(url_enc);
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     QNetworkReply *reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir](){
@@ -229,8 +229,11 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
     });
 
     QNetworkRequest req(url);
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
-    auth->putAccessToken(req);
+    if (vlkbtype == "neanias")
+    {
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
+        auth->putAccessToken(req);
+    }
 
     QNetworkReply* reply = nam->get(req);
     loading->setLoadingProcess(reply);
@@ -270,7 +273,7 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -293,7 +296,7 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -327,7 +330,7 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
 
     if (settings.value("vlkbtype", "") == "neanias")
     {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -431,7 +434,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 QNetworkRequest req(url);
                 if (settings.value("vlkbtype", "") == "neanias")
                 {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 
@@ -486,7 +489,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 QNetworkRequest req(url);
                 if (settings.value("vlkbtype", "") == "neanias")
                 {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 

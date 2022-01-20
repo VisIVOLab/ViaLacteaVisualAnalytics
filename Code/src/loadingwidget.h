@@ -23,6 +23,9 @@ public:
     void setButtonStatus(bool enabled);
 
 
+public slots:
+    void updateProgressBar(qint64 current, qint64 max);
+
 private slots:
     void on_dismissPushButton_clicked();
 
