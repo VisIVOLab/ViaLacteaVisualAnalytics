@@ -2,12 +2,10 @@
 #include "ui_loadingwidget.h"
 #include <QDebug>
 
-LoadingWidget::LoadingWidget(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::LoadingWidget)
+LoadingWidget::LoadingWidget(QWidget *parent) : QWidget(parent), ui(new Ui::LoadingWidget)
 {
     ui->setupUi(this);
-    //this->setWindowFlags(this->windowFlags() |  Qt::WindowStaysOnTopHint);
+    // this->setWindowFlags(this->windowFlags() |  Qt::WindowStaysOnTopHint);
     reply = 0;
 }
 
@@ -55,8 +53,7 @@ void LoadingWidget::loadingEnded()
 
 void LoadingWidget::on_dismissPushButton_clicked()
 {
-    if (reply)
-    {
+    if (reply) {
         qDebug() << "Stop request " << qPrintable(reply->url().toString());
         reply->abort();
         reply = 0;

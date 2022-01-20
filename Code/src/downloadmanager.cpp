@@ -1,30 +1,29 @@
 #include <QCoreApplication>
 #include <QDebug>
 
+#include "authwrapper.h"
 #include "downloadmanager.h"
 #include "loadingwidget.h"
+#include "singleton.h"
 #include <QDir>
 #include <QMessageBox>
-#include "authwrapper.h"
-#include "singleton.h"
 
 // constructor
 DownloadManager::DownloadManager()
 {
-    qDebug()<<"Download manager Constructor";
+    qDebug() << "Download manager Constructor";
 
     man = new QNetworkAccessManager(this);
-    connect(man, SIGNAL(finished(QNetworkReply*)),
-            this, SLOT(downloadFinished(QNetworkReply*)));
+    connect(man, SIGNAL(finished(QNetworkReply *)), this, SLOT(downloadFinished(QNetworkReply *)));
 
     loading = new LoadingWidget();
-
 }
 
 void DownloadManager::execute()
 {
     /*
-    QString urlString="http://ia2-vo.oats.inaf.it/vialactea/cutouts/vlkb-cutout_2015-03-12_18-29-49_584568_NANTEN_L291_L279_hup.fits";
+    QString
+    urlString="http://ia2-vo.oats.inaf.it/vialactea/cutouts/vlkb-cutout_2015-03-12_18-29-49_584568_NANTEN_L291_L279_hup.fits";
     QUrl url = QUrl::fromEncoded(urlString.toLocal8Bit());
     // makes a request
     doDownload(url);
@@ -35,19 +34,19 @@ void DownloadManager::execute()
 QString DownloadManager::doDownload(const QUrl &url, QString fn)
 {
 
-    qDebug()<<" ********************************** FN: "<<fn;
-    loading ->show();
+    qDebug() << " ********************************** FN: " << fn;
+    loading->show();
     loading->activateWindow();
     loading->setText("Downloading...");
 
-    savedFilename=fn;
+    savedFilename = fn;
     QNetworkRequest request(url);
     AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(request);
     QNetworkReply *reply = man->get(request);
     loading->setLoadingProcess(reply);
 
-    qDebug()<<"doDownload, request:"<<request.url()<<" and saving to: "<<savedFilename;
+    qDebug() << "doDownload, request:" << request.url() << " and saving to: " << savedFilename;
 #ifndef QT_NO_SSL
     connect(reply, SIGNAL(sslErrors(QList<QSslError>)), SLOT(sslErrors(QList<QSslError>)));
 #endif
@@ -55,22 +54,29 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
     // List of reply
     currentDownloads.append(reply);
     QUrl myurl = reply->url();
-    
-    return saveFileName(myurl,savedFilename);
+
+    return saveFileName(myurl, savedFilename);
 }
 
-QString DownloadManager::saveFileName(const QUrl &url,QString outputFile )
+QString DownloadManager::saveFileName(const QUrl &url, QString outputFile)
 {
-    if (outputFile=="")
-    {
-        //    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+    if (outputFile == "") {
+        //    m_sSettingsFile =
+        //    QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
 
-        //  QString path = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append
+        //  QString path =
+        //  QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append
         QString path = url.path();
-        QString basename =QFileInfo(path).fileName() ;
-        basename=  QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append(QDir::separator()).append("tmp_download").append(QDir::separator()).append( basename);
+        QString basename = QFileInfo(path).fileName();
+        basename = QDir::homePath()
+                           .append(QDir::separator())
+                           .append("VisIVODesktopTemp")
+                           .append(QDir::separator())
+                           .append("tmp_download")
+                           .append(QDir::separator())
+                           .append(basename);
 
-        qDebug()<<"QFileInfo(path):"<<basename;
+        qDebug() << "QFileInfo(path):" << basename;
 
         if (basename.isEmpty())
             basename = "download";
@@ -86,9 +92,8 @@ QString DownloadManager::saveFileName(const QUrl &url,QString outputFile )
         }
 
         return basename;
-    }
-    else
-        return outputFile ;
+    } else
+        return outputFile;
 }
 
 void DownloadManager::downloadFinished(QNetworkReply *reply)
@@ -98,14 +103,16 @@ void DownloadManager::downloadFinished(QNetworkReply *reply)
 
     QUrl url = reply->url();
     if (reply->error()) {
-        qDebug()<<"Download of"<< url.toEncoded().constData()<<"failed: "<<reply->errorString();
-        QMessageBox::critical(loading ,"Error", qPrintable(reply->errorString()));
+        qDebug() << "Download of" << url.toEncoded().constData()
+                 << "failed: " << reply->errorString();
+        QMessageBox::critical(loading, "Error", qPrintable(reply->errorString()));
         reply->deleteLater();
     } else {
-        qDebug()<<"Download Finished: "<<reply->url().toString();
-        filenamePath = saveFileName(url,savedFilename);
+        qDebug() << "Download Finished: " << reply->url().toString();
+        filenamePath = saveFileName(url, savedFilename);
         if (saveToDisk(filenamePath, reply))
-            qDebug()<<"Download of"<<url.toEncoded().constData()<<" succeeded and saved to"<<qPrintable(filenamePath);
+            qDebug() << "Download of" << url.toEncoded().constData() << " succeeded and saved to"
+                     << qPrintable(filenamePath);
 
         reply->deleteLater();
         emit downloadCompleted();
@@ -116,9 +123,8 @@ bool DownloadManager::saveToDisk(const QString &filename, QIODevice *reply)
 {
     QFile file(filename);
     if (!file.open(QIODevice::WriteOnly)) {
-        qDebug()<<"Could not open";
-        fprintf(stderr, "Could not open %s for writing: %s\n",
-                qPrintable(filename),
+        qDebug() << "Could not open";
+        fprintf(stderr, "Could not open %s for writing: %s\n", qPrintable(filename),
                 qPrintable(file.errorString()));
         return false;
     }
@@ -126,12 +132,10 @@ bool DownloadManager::saveToDisk(const QString &filename, QIODevice *reply)
     file.write(reply->readAll());
     file.close();
 
-
     // dcvisualizer *datacubeVisualizer=new dcvisualizer();
-    //datacubeVisualizer->visualize(filename);
+    // datacubeVisualizer->visualize(filename);
     return true;
 }
-
 
 void DownloadManager::sslErrors(const QList<QSslError> &sslErrors)
 {
@@ -142,4 +146,3 @@ void DownloadManager::sslErrors(const QList<QSslError> &sslErrors)
     Q_UNUSED(sslErrors);
 #endif
 }
-

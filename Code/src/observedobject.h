@@ -1,10 +1,10 @@
 #ifndef OBSERVEDOBJECT_H
 #define OBSERVEDOBJECT_H
-#include"treeitem.h"
+
+#include "treeitem.h"
 
 class ObservedObject
 {
-
 
 public:
     ObservedObject();

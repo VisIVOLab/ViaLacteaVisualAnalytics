@@ -1,9 +1,9 @@
 #ifndef LOADINGWIDGET_H
 #define LOADINGWIDGET_H
 
-#include <QWidget>
 #include <QNetworkReply>
 #include <QPointer>
+#include <QWidget>
 
 namespace Ui {
 class LoadingWidget;
@@ -21,7 +21,6 @@ public:
     void setText(QString name);
     void setLoadingProcess(QNetworkReply *);
     void setButtonStatus(bool enabled);
-
 
 public slots:
     void updateProgressBar(qint64 current, qint64 max);

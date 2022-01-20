@@ -22,7 +22,6 @@ SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new 
 
     // this->setWindowFlags(Qt::WindowStaysOnTopHint);
 
-
     m_vlkbAuth = &NeaniasVlkbAuth::Instance();
     connect(m_vlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
     connect(m_vlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
@@ -57,8 +56,7 @@ void SettingForm::readSettingsFromFile()
     ui->glyphLineEdit->setText(glyphmax);
 
     QString vlkbtype = settings.value("vlkbtype", "public").toString();
-    if(vlkbtype == "public")
-    {
+    if (vlkbtype == "public") {
         ui->publicVLKB_radioButton->setChecked(true);
         ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PUBLIC);
         ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PUBLIC);
@@ -70,9 +68,7 @@ void SettingForm::readSettingsFromFile()
         ui->vlkbAuthLabel->hide();
         ui->vlkbAuthStatusLabel->hide();
         ui->vlkbLoginButton->hide();
-    }
-    else if(vlkbtype == "private")
-    {
+    } else if (vlkbtype == "private") {
         ui->privateVLKB_radioButton->setChecked(true);
         ui->vlkbAuthLabel->hide();
         ui->vlkbAuthStatusLabel->hide();
@@ -84,9 +80,7 @@ void SettingForm::readSettingsFromFile()
 
         ui->username_LineEdit->setText(settings.value("vlkbuser", "").toString());
         ui->password_LineEdit->setText(settings.value("vlkbpass", "").toString());
-    }
-    else if (vlkbtype == "neanias")
-    {
+    } else if (vlkbtype == "neanias") {
         ui->neaniasVLKB_radioButton->setChecked(true);
         ui->username_LineEdit->hide();
         ui->password_LineEdit->hide();
@@ -95,7 +89,7 @@ void SettingForm::readSettingsFromFile()
 
         ui->vlkbAuthLabel->show();
 
-        if(m_vlkbAuth->isAuthenticated()){
+        if (m_vlkbAuth->isAuthenticated()) {
             vlkb_loggedin();
         } else {
             vlkb_loggedout();
@@ -104,13 +98,12 @@ void SettingForm::readSettingsFromFile()
         ui->vlkbAuthStatusLabel->show();
     }
 
-    if (settings.value("online",false) == true)
-    {
+    if (settings.value("online", false) == true) {
         ui->checkBox->setChecked(true);
-
     }
 
-    ui->urlLineEdit->setText(settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
+    ui->urlLineEdit->setText(
+            settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
 
     if (m_caesarAuth->isAuthenticated()) {
         caesar_loggedin();
@@ -151,8 +144,7 @@ void SettingForm::on_TilePushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
 
-    if (!fn.isEmpty() )
-    {
+    if (!fn.isEmpty()) {
         ui->TileLineEdit->setText(fn);
     }
 }
@@ -162,19 +154,18 @@ void SettingForm::on_OkPushButton_clicked()
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
     settings.setValue("termsaccepted", m_termsAccepted);
-    settings.setValue("tilepath",  ui->TileLineEdit->text());
+    settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
-    if(ui->privateVLKB_radioButton->isChecked())
+    if (ui->privateVLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "private");
     else if (ui->publicVLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "public");
     else
         settings.setValue("vlkbtype", "neanias");
 
-
     settings.setValue("vlkbuser", ui->username_LineEdit->text());
     settings.setValue("vlkbpass", ui->password_LineEdit->text());
-  //  settings.setValue("workdir",  ui->lineEdit_2->text());
+    //  settings.setValue("workdir",  ui->lineEdit_2->text());
 
     settings.setValue("online", ui->checkBox->isChecked());
     settings.setValue("onlinetilepath", ui->urlLineEdit->text());
@@ -193,22 +184,19 @@ void SettingForm::on_pushButton_clicked()
 
 void SettingForm::on_checkBox_clicked(bool checked)
 {
-    qDebug()<<"checked: "<<checked;
+    qDebug() << "checked: " << checked;
 }
 
 void SettingForm::on_privateVLKB_radioButton_toggled(bool checked)
 {
-    if (checked)
-    {
+    if (checked) {
         ui->username_LineEdit->show();
         ui->password_LineEdit->show();
         ui->userLabel->show();
         ui->passLabel->show();
         ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PRIVATE);
         ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PRIVATE);
-    }
-    else
-    {
+    } else {
         ui->username_LineEdit->hide();
         ui->password_LineEdit->hide();
         ui->userLabel->hide();
@@ -218,15 +206,13 @@ void SettingForm::on_privateVLKB_radioButton_toggled(bool checked)
 
 void SettingForm::on_workdirButton_clicked()
 {
-    QString fn =QFileDialog::getExistingDirectory(this, tr("Open Directory"),
-                                                  "~",
-                                                  QFileDialog::ShowDirsOnly
-                                                  | QFileDialog::DontResolveSymlinks);
+    QString fn = QFileDialog::getExistingDirectory(this, tr("Open Directory"), "~",
+                                                   QFileDialog::ShowDirsOnly
+                                                           | QFileDialog::DontResolveSymlinks);
 
-    //QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
+    // QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
 
-    if (!fn.isEmpty() )
-    {
+    if (!fn.isEmpty()) {
         ui->lineEdit_2->setText(fn);
     }
 }
@@ -241,8 +227,7 @@ void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
 
         if (!m_vlkbAuth->isAuthenticated()) {
             vlkb_loggedout();
-        }
-        else {
+        } else {
             vlkb_loggedin();
         }
 
@@ -260,9 +245,10 @@ void SettingForm::on_vlkbLoginButton_clicked()
         return;
 
     if (!m_termsAccepted) {
-        auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
-                .arg(m_privacyPolicyUrl)
-                .arg(m_termsOfUseUrl);
+        auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and "
+                            "the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
+                            .arg(m_privacyPolicyUrl)
+                            .arg(m_termsOfUseUrl);
 
         QMessageBox msgBox(this);
         msgBox.setIcon(QMessageBox::Question);
@@ -272,8 +258,7 @@ void SettingForm::on_vlkbLoginButton_clicked()
         int ret = msgBox.exec();
         if (ret == QMessageBox::Yes) {
             m_termsAccepted = true;
-        }
-        else {
+        } else {
             return;
         }
     }
@@ -301,7 +286,6 @@ void SettingForm::on_caesarLoginButton_clicked()
         return;
     m_caesarAuth->grant();
 }
-
 
 void SettingForm::on_caesarLogoutButton_clicked()
 {

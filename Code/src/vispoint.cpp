@@ -1,7 +1,6 @@
 #include "vispoint.h"
-#include "vstabledesktop.h"
 #include "treeitem.h"
-
+#include "vstabledesktop.h"
 
 VisPoint::VisPoint()
 {
@@ -23,8 +22,8 @@ VisPoint::VisPoint()
     setLogY(false);
     setLogZ(false);
     setName("Visual Object");
-    m_Table=NULL;
-    m_isSetOrigin=false;
+    m_Table = NULL;
+    m_isSetOrigin = false;
 }
 VisPoint::VisPoint(VSTableDesktop *table)
 {
@@ -47,92 +46,91 @@ VisPoint::VisPoint(VSTableDesktop *table)
     setLogY(false);
     setLogZ(false);
     setName(QString(table->getName().c_str()));
-    m_Table=table;
-    m_isSetOrigin=true;
+    m_Table = table;
+    m_isSetOrigin = true;
 }
-void  VisPoint::setX(QString value)
+void VisPoint::setX(QString value)
 {
-    m_X=value;
+    m_X = value;
 }
-void  VisPoint::setY(QString value)
+void VisPoint::setY(QString value)
 {
-    m_Y=value;
+    m_Y = value;
 }
-void  VisPoint::setZ(QString value)
+void VisPoint::setZ(QString value)
 {
-    m_Z=value;
+    m_Z = value;
 }
-void  VisPoint::setVectorX(QString value)
+void VisPoint::setVectorX(QString value)
 {
-    m_VectorX=value;
+    m_VectorX = value;
 }
-void  VisPoint::setVectorY(QString value)
+void VisPoint::setVectorY(QString value)
 {
-    m_VectorY=value;
+    m_VectorY = value;
 }
-void  VisPoint::setVectorZ(QString value)
+void VisPoint::setVectorZ(QString value)
 {
-    m_VectorZ=value;
+    m_VectorZ = value;
 }
-void  VisPoint::setLutScalar(QString value)
+void VisPoint::setLutScalar(QString value)
 {
-    m_LutScalar=value;
+    m_LutScalar = value;
 }
-void  VisPoint::setRadiusScalar(QString value)
+void VisPoint::setRadiusScalar(QString value)
 {
-    m_RadiusScalar=value;
+    m_RadiusScalar = value;
 }
-void  VisPoint::setHeightScalar(QString value)
+void VisPoint::setHeightScalar(QString value)
 {
-    m_HeightScalar=value;
+    m_HeightScalar = value;
 }
-void  VisPoint::setLut(vtkLookupTable* lut)
+void VisPoint::setLut(vtkLookupTable *lut)
 {
-    m_lut=lut;
+    m_lut = lut;
 }
-
 
 void VisPoint::setShowPoints(bool value)
 {
-    m_ShowPoints=value;
+    m_ShowPoints = value;
 }
 void VisPoint::setShowVectors(bool value)
 {
-    m_ShowVectors=value;
+    m_ShowVectors = value;
 }
 void VisPoint::setScale(bool value)
 {
-    m_Scale=value;
+    m_Scale = value;
 }
 void VisPoint::setLogX(bool value)
 {
-    m_LogX=value;
+    m_LogX = value;
 }
 void VisPoint::setLogY(bool value)
 {
-    m_LogY=value;
+    m_LogY = value;
 }
 void VisPoint::setLogZ(bool value)
 {
-    m_LogY=value;
+    m_LogY = value;
 }
-QString  VisPoint::getX()
+QString VisPoint::getX()
 {
     return m_X;
 }
-QString  VisPoint::getY()
+QString VisPoint::getY()
 {
     return m_Y;
 }
-QString  VisPoint::getZ()
+QString VisPoint::getZ()
 {
     return m_Z;
 }
-QString  VisPoint::getVectorX()
+QString VisPoint::getVectorX()
 {
     return m_VectorX;
 }
-QString  VisPoint::getVectorY()
+QString VisPoint::getVectorY()
 {
     return m_VectorY;
 }
@@ -154,28 +152,28 @@ QString VisPoint::getHeightScalar()
 }
 bool VisPoint::isEnabledShowPoints()
 {
-    return  m_ShowPoints;
+    return m_ShowPoints;
 }
 bool VisPoint::isEnabledShowVectors()
 {
-    return  m_ShowVectors;
+    return m_ShowVectors;
 }
 bool VisPoint::isEnabledScale()
 {
-    return  m_Scale;
+    return m_Scale;
 }
 
 bool VisPoint::isEnabledLogX()
 {
-    return  m_LogX;
+    return m_LogX;
 }
 bool VisPoint::isEnabledLogY()
 {
-    return  m_LogY;
+    return m_LogY;
 }
 bool VisPoint::isEnabledLogZ()
 {
-    return  m_LogZ;
+    return m_LogZ;
 }
 VSTableDesktop *VisPoint::getOrigin()
 {

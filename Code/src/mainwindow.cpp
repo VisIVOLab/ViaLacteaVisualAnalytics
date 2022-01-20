@@ -19,24 +19,24 @@
  ***************************************************************************/
 
 #include "mainwindow.h"
+#include "sed.h"
+#include "singleton.h"
 #include "ui_mainwindow.h"
-#include <QDebug>
-#include <QFileDialog>
-#include <QTreeView>
-#include <QFile>
-#include <QFileInfo>
-#include <QThread>
-#include <QIcon>
-#include <QFont>
-#include <QFileSystemModel>
-#include "vtkwindow_new.h"
+#include "vialactea.h"
 #include "visivoimporterdesktop.h"
 #include "vispoint.h"
-#include "singleton.h"
 #include "vtkfitsreader.h"
 #include "vtkSmartPointer.h"
-#include "vialactea.h"
-#include "sed.h"
+#include "vtkwindow_new.h"
+#include <QDebug>
+#include <QFile>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QFileSystemModel>
+#include <QFont>
+#include <QIcon>
+#include <QThread>
+#include <QTreeView>
 //#include "vosamp.h"
 //#include "visivofilterdesktop.h"
 
@@ -57,38 +57,34 @@ extern "C" {
  *
  */
 
-
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
 
-
-    //m_RenderingWindow = NULL;
-    // QWidget::setWindowIcon(QIcon( ":/icons/VisIVODesktop.icns" ));
+    // m_RenderingWindow = NULL;
+    //  QWidget::setWindowIcon(QIcon( ":/icons/VisIVODesktop.icns" ));
     ui->setupUi(this);
     createModel();
-    ui->treeView->setModel( m_VisIVOTreeModel );
+    ui->treeView->setModel(m_VisIVOTreeModel);
     m_VisPointsObject = new VisPoint();
     QObject::connect(ui->actionClose, SIGNAL(triggered()), this, SLOT(close()));
     QObject::connect(ui->actionImportAscii, SIGNAL(triggered()), this, SLOT(importAscii()));
     QObject::connect(ui->actionImportVoTable, SIGNAL(triggered()), this, SLOT(importVoTable()));
     QObject::connect(ui->actionImportBinary, SIGNAL(triggered()), this, SLOT(importBinary()));
     QObject::connect(ui->actionVTK_ImageData, SIGNAL(triggered()), this, SLOT(importVTI()));
-    // QObject::connect(ui->actionVTK_PolyData, SIGNAL(TreeModeltriggered()), this, SLOT(importVTP()));
+    // QObject::connect(ui->actionVTK_PolyData, SIGNAL(TreeModeltriggered()), this,
+    // SLOT(importVTP()));
     QDir::home().mkdir("VisIVODesktopTemp");
-    QDir tmp_download(QDir::homePath()+"/VisIVODesktopTemp/tmp_download");
-    qDebug()<<QDir::homePath()+"/VisIVODesktopTemp/tmp_download";
+    QDir tmp_download(QDir::homePath() + "/VisIVODesktopTemp/tmp_download");
+    qDebug() << QDir::homePath() + "/VisIVODesktopTemp/tmp_download";
     tmp_download.removeRecursively();
     QDir::home().mkdir("VisIVODesktopTemp/tmp_download");
 
     workingPath = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
-    importer= QString("/opt/VisIVOServer-vtk6/VisIVOImporter");
+    importer = QString("/opt/VisIVOServer-vtk6/VisIVOImporter");
     filter = QString("/opt/VisIVOServer-vtk6/VisIVOFilters");
     util = QString("/opt/VisIVOServer/VisIVOUtils");
 
-
     queue = &Singleton<OperationQueue>::Instance();
-
 
     ui->importerGroupBox->hide();
     ui->filterGroupBox->hide();
@@ -99,20 +95,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->volumeGroupBox->hide();
     on_actionVialactea_triggered();
-
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-
 }
 void MainWindow::createModel()
 {
     QStringList headerLabels;
     headerLabels << "Item";
     headerLabels << "Name";
-    m_VisIVOTreeModel = new TreeModel(headerLabels,"");
+    m_VisIVOTreeModel = new TreeModel(headerLabels, "");
     ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
 }
 void MainWindow::resetInterface()
@@ -136,91 +130,83 @@ void MainWindow::genericImport(int t)
 {
     int errorCode;
 
-    fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
-    if (fileName.compare("")!=0)
-    {
-        type=t;
+    fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
+    if (fileName.compare("") != 0) {
+        type = t;
         ui->tabWidget->setCurrentWidget(ui->tabOpParameters);
         ui->importerGroupBox->show();
         ui->filterGroupBox->hide();
         ui->addIdentifierParameterGroupBox->hide();
     }
-
 }
-
 
 void MainWindow::importAsciiFilaments(QString fileName, vtkwindow_new *v)
 {
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI= new VisIVOImporterDesktop(fileName,v);
-
+    if (fileName.isEmpty())
+        return;
+    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop(fileName, v);
 }
 
 void MainWindow::importAsciiBubbles(QString fileName, vtkwindow_new *v)
 {
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI= new VisIVOImporterDesktop(fileName,v,false,true);
-
+    if (fileName.isEmpty())
+        return;
+    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop(fileName, v, false, true);
 }
 
 void MainWindow::importAscii3dSelection(QString fileName, vtkwindow_new *v)
 {
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI= new VisIVOImporterDesktop(fileName,v,false);
+    if (fileName.isEmpty())
+        return;
+    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop(fileName, v, false);
 }
 
-
-void MainWindow::importAscii(QString fileName, QString wavelen, bool higal, bool bm, vtkwindow_new *v)
+void MainWindow::importAscii(QString fileName, QString wavelen, bool higal, bool bm,
+                             vtkwindow_new *v)
 {
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty())
+        return;
     VisIVOImporterDesktop *VI;
-    if(higal)
-    {
-        VI = new VisIVOImporterDesktop(fileName,m_VisIVOTreeModel,bm,v,wavelen);
-    }
-    else
-    {
-        VI = new VisIVOImporterDesktop("ascii",fileName,m_VisIVOTreeModel);
+    if (higal) {
+        VI = new VisIVOImporterDesktop(fileName, m_VisIVOTreeModel, bm, v, wavelen);
+    } else {
+        VI = new VisIVOImporterDesktop("ascii", fileName, m_VisIVOTreeModel);
         VI->setBm(bm);
         VI->setVtkWin(v);
         //        ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
         //        ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
         // ui->tabWidget->setCurrentWidget(ui->tabOpParameters);
-        VI->doImport(wavelen,true);
-
+        VI->doImport(wavelen, true);
     }
 }
-
 
 void MainWindow::importCSV(QString fileName)
 {
 
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty())
+        return;
     VisIVOImporterDesktop *VI;
-    VI = new VisIVOImporterDesktop("csv",fileName,m_VisIVOTreeModel);
-    VI->doImport("",true);
-
-
+    VI = new VisIVOImporterDesktop("csv", fileName, m_VisIVOTreeModel);
+    VI->doImport("", true);
 }
 
 void MainWindow::importVOTable(QString fileName)
 {
 
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty())
+        return;
     VisIVOImporterDesktop *VI;
-    VI = new VisIVOImporterDesktop("votable",fileName,m_VisIVOTreeModel);
-    VI->doImport("",true);
-
-
+    VI = new VisIVOImporterDesktop("votable", fileName, m_VisIVOTreeModel);
+    VI->doImport("", true);
 }
 
-
-void MainWindow::importVoTable() {
+void MainWindow::importVoTable()
+{
 
     genericImport(2);
 
@@ -236,10 +222,10 @@ void MainWindow::importVoTable() {
     */
 }
 
-void MainWindow::importBinary() {
+void MainWindow::importBinary()
+{
 
     genericImport(3);
-
 
     /*Browse and choose the filename*/
     /*
@@ -261,111 +247,121 @@ void MainWindow::importBinaryTable(QString fileName)
 {
 
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty())
+        return;
     VisIVOImporterDesktop *VI;
-    VI = new VisIVOImporterDesktop("binary",fileName,m_VisIVOTreeModel);
-    VI->doImport("",true);
-
-
+    VI = new VisIVOImporterDesktop("binary", fileName, m_VisIVOTreeModel);
+    VI->doImport("", true);
 }
 
-void MainWindow::importVTI() {
+void MainWindow::importVTI()
+{
     /*Browse and choose the filename*/
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("VTI",fileName,m_VisIVOTreeModel);
+    if (fileName.isEmpty())
+        return;
+    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("VTI", fileName, m_VisIVOTreeModel);
     VI->doImport();
 
     ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
     ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    //ui->treeView->update();
-    // Check if the importing is OK
-    if (VI->getStatus()) return;
+    // ui->treeView->update();
+    //  Check if the importing is OK
+    if (VI->getStatus())
+        return;
     return;
 }
 
-void MainWindow::importVTP() {
+void MainWindow::importVTP()
+{
     /*Browse and choose the filename*/
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("VTP",fileName,m_VisIVOTreeModel);
+    if (fileName.isEmpty())
+        return;
+    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("VTP", fileName, m_VisIVOTreeModel);
     VI->doImport();
 
     ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
     ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    //ui->treeView->update();
-    // Check if the importing is OK
-    if (VI->getStatus()) return;
+    // ui->treeView->update();
+    //  Check if the importing is OK
+    if (VI->getStatus())
+        return;
     return;
 }
 
 void MainWindow::on_actionDatacube_triggered()
 {
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty())
+        return;
     importFitsImage(fileName);
 
-    //IMPORT DATACUBE
+    // IMPORT DATACUBE
 }
-
 
 void MainWindow::on_actionImportFitsImage_triggered()
 {
 
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
     // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty())
+        return;
 
     importFitsImage(fileName);
 }
 
-void MainWindow::importFitsImage(QString filename, QList<QMap<QString, QString> > elementsOnDb, QString l,QString b,QString r, QString db,QString dl, bool layer )
+void MainWindow::importFitsImage(QString filename, QList<QMap<QString, QString>> elementsOnDb,
+                                 QString l, QString b, QString r, QString db, QString dl,
+                                 bool layer)
 {
 
-    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("FITSIMG",filename,m_VisIVOTreeModel);
+    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("FITSIMG", filename, m_VisIVOTreeModel);
     VI->doImport();
 
-    class_l=l;
-    class_b=b;
-    class_r=r;
-    class_db=db;
-    class_dl=dl;
+    class_l = l;
+    class_b = b;
+    class_r = r;
+    class_db = db;
+    class_dl = dl;
 
-    int rows = m_VisIVOTreeModel->rowCount()-1;
+    int rows = m_VisIVOTreeModel->rowCount() - 1;
 
     QModelIndex first = m_VisIVOTreeModel->index(rows, 0, QModelIndex());
     ui->treeView->setCurrentIndex(first);
-    itemSelected(elementsOnDb,layer);
-
+    itemSelected(elementsOnDb, layer);
 }
 
 void MainWindow::switchTab(int index)
 {
-    switch (index){
-    case 0:break;  // tabObjectTree
-    case 1:// tabViewSettings
+    switch (index) {
+    case 0:
+        break; // tabObjectTree
+    case 1: // tabViewSettings
     {
         MainWindow::viewSetting();
     }
-    case 2:break;  // tabOpParameters
+    case 2:
+        break; // tabOpParameters
     default:
         return;
     }
 }
 
-TreeModel* MainWindow::getTreeModel()
+TreeModel *MainWindow::getTreeModel()
 {
     return m_VisIVOTreeModel;
 }
 
-void MainWindow::viewSetting() {
+void MainWindow::viewSetting()
+{
 
-    qDebug()<<"***pre.setCurrentWidget.viewSetting().MainWindow";
+    qDebug() << "***pre.setCurrentWidget.viewSetting().MainWindow";
     ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
-    qDebug()<<"***post.setCurrentWidget.viewSetting().MainWindow";
+    qDebug() << "***post.setCurrentWidget.viewSetting().MainWindow";
 
     // Retrieve the first index among the selected indexes
     QModelIndexList list = ui->treeView->selectionModel()->selectedIndexes();
@@ -373,21 +369,20 @@ void MainWindow::viewSetting() {
     // Don't use an empty list (with no selected items)
     // Hide the tabViewSettings widget
     if (list.isEmpty()) {
-        //qDebug() << "MainWindow::viewSetting: No selected items";
+        // qDebug() << "MainWindow::viewSetting: No selected items";
         ui->tabViewSettings->hide();
         return;
     }
 
-    QModelIndex  selectedItemIndex  = list[0];
+    QModelIndex selectedItemIndex = list[0];
 
     TreeItem::TreeItemType type = m_VisIVOTreeModel->getType(selectedItemIndex);
 
     // a TreeModel Object can return a table both for PointTable and VisualObject objects
-    m_Table= m_VisIVOTreeModel->getTable(selectedItemIndex);
+    m_Table = m_VisIVOTreeModel->getTable(selectedItemIndex);
 
     // Don't use an invalid table
-    if (!m_Table->checkTable())
-    {
+    if (!m_Table->checkTable()) {
         qDebug() << "MainWindow::viewSetting: Error in importing the table";
         ui->tabViewSettings->hide();
         return;
@@ -407,10 +402,13 @@ void MainWindow::viewSetting() {
     ui->YVectorsComboBox->clear();
     ui->ZVectorsComboBox->clear();
 
-    switch(type){
-    case TreeItem::Null: break;
-    case TreeItem::VTI: break;
-    case TreeItem::VTP: break;
+    switch (type) {
+    case TreeItem::Null:
+        break;
+    case TreeItem::VTI:
+        break;
+    case TreeItem::VTP:
+        break;
     case TreeItem::VisualObject: {
         m_VisPointsObject = m_VisIVOTreeModel->getVisualObject(selectedItemIndex);
         ui->XLogCheckBox->setChecked(m_VisPointsObject->isEnabledLogX());
@@ -424,9 +422,8 @@ void MainWindow::viewSetting() {
         ui->ShowVectorsCheckBox->setChecked(m_VisPointsObject->isEnabledShowVectors());
 
         ui->namelineEdit->setText(m_VisPointsObject->getName());
-        for (unsigned int i =0; i < numberOfFields;i++)
-        {
-            QString field =  QString(m_Table->getColName(i).c_str());
+        for (unsigned int i = 0; i < numberOfFields; i++) {
+            QString field = QString(m_Table->getColName(i).c_str());
             fields << field;
             ui->XcomboBox->addItem(field);
             ui->YcomboBox->addItem(field);
@@ -436,7 +433,6 @@ void MainWindow::viewSetting() {
             ui->YVectorsComboBox->addItem(field);
             ui->ZVectorsComboBox->addItem(field);
         }
-
 
         ui->XcomboBox->setCurrentIndex(fields.indexOf(m_VisPointsObject->getX()));
         ui->YcomboBox->setCurrentIndex(fields.indexOf(m_VisPointsObject->getY()));
@@ -467,11 +463,10 @@ void MainWindow::viewSetting() {
         ui->ShowVectorsCheckBox->hide();
         // end hide some controls...
         // end control setting case TreeItem::VisualObject
-
     }
-    case TreeItem::VolumeTable: break;
-    case TreeItem::PointTable:
-    {
+    case TreeItem::VolumeTable:
+        break;
+    case TreeItem::PointTable: {
         m_VisPointsObject = new VisPoint(m_Table);
 
         // hide some controls...
@@ -499,9 +494,8 @@ void MainWindow::viewSetting() {
         // control setting case TreeItem::PointTable
         ui->namelineEdit->setText(m_VisPointsObject->getName());
 
-        for (unsigned int i =0; i < numberOfFields;i++)
-        {
-            QString field =  QString(m_Table->getColName(i).c_str());
+        for (unsigned int i = 0; i < numberOfFields; i++) {
+            QString field = QString(m_Table->getColName(i).c_str());
             fields << field;
             ui->XcomboBox->addItem(field);
             ui->YcomboBox->addItem(field);
@@ -535,7 +529,6 @@ void MainWindow::viewSetting() {
     default:
         return;
     }
-
 }
 
 void MainWindow::viewSettingOk()
@@ -544,27 +537,25 @@ void MainWindow::viewSettingOk()
     QModelIndexList list = ui->treeView->selectionModel()->selectedIndexes();
 
     // Don't use an empty list (from an empty model)
-    if (list.isEmpty()) return;
+    if (list.isEmpty())
+        return;
 
-    QModelIndex  selectedItemIndex  = list[0];
+    QModelIndex selectedItemIndex = list[0];
 
     TreeItem::TreeItemType type = m_VisIVOTreeModel->getType(selectedItemIndex);
 
     // a TreeModel Object can return a table both for PointTable and VisualObject objects
-    m_Table= m_VisIVOTreeModel->getTable(selectedItemIndex);
+    m_Table = m_VisIVOTreeModel->getTable(selectedItemIndex);
 
     // Don't use an invalid table
-    if (!m_Table->checkTable())
-    {
+    if (!m_Table->checkTable()) {
         qDebug() << "MainWindow::viewSettingOk: Error in importing the table";
         return;
     }
 
-
     unsigned int numberOfFields;
     numberOfFields = m_Table->getNumberOfColumns();
-    if (numberOfFields < 3 )
-    {
+    if (numberOfFields < 3) {
         qDebug() << "numberOfFields < 3";
         return;
     }
@@ -572,13 +563,10 @@ void MainWindow::viewSettingOk()
     QStringList fields;
 
     // A brand new m_VisPointsObject is needed if type==PoinTable
-    if (type==TreeItem::PointTable)
-    {
+    if (type == TreeItem::PointTable) {
         m_VisPointsObject = new VisPoint(m_Table);
     }
-    if (type==TreeItem::PointTable || type==TreeItem::VisualObject)
-    {
-
+    if (type == TreeItem::PointTable || type == TreeItem::VisualObject) {
 
         m_VisPointsObject->setLogX(ui->XLogCheckBox->isChecked());
         m_VisPointsObject->setLogY(ui->YLogCheckBox->isChecked());
@@ -602,22 +590,25 @@ void MainWindow::viewSettingOk()
         // mentre lo slot expandall() cancella tutta la vista dell'albero
         // indagare please....
         ui->treeView->expand(selectedItemIndex);
-        QModelIndex  parentIndex  = selectedItemIndex;
+        QModelIndex parentIndex = selectedItemIndex;
 
-        // If the selected item is a VisualObject you will create another Visual Object with the same parent
-        if (type==TreeItem::VisualObject) parentIndex = m_VisIVOTreeModel->parent(parentIndex);
+        // If the selected item is a VisualObject you will create another Visual Object with the
+        // same parent
+        if (type == TreeItem::VisualObject)
+            parentIndex = m_VisIVOTreeModel->parent(parentIndex);
 
         int rows = m_VisIVOTreeModel->rowCount(parentIndex);
-        if (m_VisIVOTreeModel->insertRows(rows,1,parentIndex))
-        {
-            m_VisIVOTreeModel->setVisualObject(m_VisIVOTreeModel->index(rows,0,parentIndex),m_VisPointsObject);
-            m_VisIVOTreeModel->setData(m_VisIVOTreeModel->index(rows,0,parentIndex),QIcon( ":/icons/VBT_CLOUD.bmp" ));
-            m_VisIVOTreeModel->setData(m_VisIVOTreeModel->index(rows,1,parentIndex),"VisualObject");
+        if (m_VisIVOTreeModel->insertRows(rows, 1, parentIndex)) {
+            m_VisIVOTreeModel->setVisualObject(m_VisIVOTreeModel->index(rows, 0, parentIndex),
+                                               m_VisPointsObject);
+            m_VisIVOTreeModel->setData(m_VisIVOTreeModel->index(rows, 0, parentIndex),
+                                       QIcon(":/icons/VBT_CLOUD.bmp"));
+            m_VisIVOTreeModel->setData(m_VisIVOTreeModel->index(rows, 1, parentIndex),
+                                       "VisualObject");
             // Set tabObjectTree as Current tab
-            //ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
+            // ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
         }
-        if (m_VisPointsObject->isOriginSpecified())
-        {
+        if (m_VisPointsObject->isOriginSpecified()) {
             ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
             m_OldRenderingWindow = new vtkwindow_new(this, m_VisPointsObject);
             /*
@@ -640,45 +631,43 @@ int b=numberOfVisualObject;
 */
 }
 
-void MainWindow::itemSelected(QList<QMap<QString, QString> > elementsOnDb,bool layer)
+void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool layer)
 {
-    qDebug()<<"itemSelected";
+    qDebug() << "itemSelected";
     // Retrieve the first index among the selected indexes
     QModelIndexList list = ui->treeView->selectionModel()->selectedIndexes();
 
     // Don't use an empty list (with no selected items)
     // Hide the tabViewSettings widget
     if (list.isEmpty()) {
-        //qDebug() << "MainWindow::viewSetting: No selected items";
+        // qDebug() << "MainWindow::viewSetting: No selected items";
         ui->tabViewSettings->hide();
         return;
     }
 
-    QModelIndex  selectedItemIndex  = list[0];
+    QModelIndex selectedItemIndex = list[0];
     TreeItem::TreeItemType type = m_VisIVOTreeModel->getType(selectedItemIndex);
 
-    if(type == TreeItem::FITSIMAGE )
-    {
-        qDebug()<<"mainwindow::itemSelected layer: "<<layer;
-        if(layer)
-        {
-            qDebug()<<"*******++ "<<survey<<" "<<species<<" "<<transition;
+    if (type == TreeItem::FITSIMAGE) {
+        qDebug() << "mainwindow::itemSelected layer: " << layer;
+        if (layer) {
+            qDebug() << "*******++ " << survey << " " << species << " " << transition;
 
-            myCallingVtkWindow->addLayerImage(m_VisIVOTreeModel->getFITSIMG(selectedItemIndex),survey,species,transition);
-        }
-        else
-        {
-            vtkSmartPointer<vtkFitsReader> fitsreader= m_VisIVOTreeModel->getFITSIMG(selectedItemIndex);
+            myCallingVtkWindow->addLayerImage(m_VisIVOTreeModel->getFITSIMG(selectedItemIndex),
+                                              survey, species, transition);
+        } else {
+            vtkSmartPointer<vtkFitsReader> fitsreader =
+                    m_VisIVOTreeModel->getFITSIMG(selectedItemIndex);
             fitsreader->setSurvey(survey);
             fitsreader->setSpecies(species);
             fitsreader->setTransition(transition);
 
-            qDebug()<<"*******++ "<<survey<<" "<<species<<" "<<transition;
+            qDebug() << "*******++ " << survey << " " << species << " " << transition;
 
-            m_OldRenderingWindow = new vtkwindow_new(this, m_VisIVOTreeModel->getFITSIMG(selectedItemIndex));
+            m_OldRenderingWindow =
+                    new vtkwindow_new(this, m_VisIVOTreeModel->getFITSIMG(selectedItemIndex));
 
-            if (elementsOnDb.size()>0)
-            {
+            if (elementsOnDb.size() > 0) {
                 m_OldRenderingWindow->setDbElements(elementsOnDb);
                 m_OldRenderingWindow->setCallingL(class_l);
                 m_OldRenderingWindow->setCallingB(class_b);
@@ -686,8 +675,7 @@ void MainWindow::itemSelected(QList<QMap<QString, QString> > elementsOnDb,bool l
                 m_OldRenderingWindow->setCallingDl(class_dl);
                 m_OldRenderingWindow->setCallingDb(class_db);
             }
-            if (selectedSurvey.size()>1)
-            {
+            if (selectedSurvey.size() > 1) {
 
                 m_OldRenderingWindow->setCallingL(class_l);
                 m_OldRenderingWindow->setCallingB(class_b);
@@ -696,19 +684,15 @@ void MainWindow::itemSelected(QList<QMap<QString, QString> > elementsOnDb,bool l
                 m_OldRenderingWindow->setCallingDb(class_db);
                 m_OldRenderingWindow->downloadStartingLayers(selectedSurvey);
             }
-
         }
 
     }
-    //IF IS NOT FITS IMAGE
-    else
-    {
-        m_Table= m_VisIVOTreeModel->getTable(selectedItemIndex);
-
+    // IF IS NOT FITS IMAGE
+    else {
+        m_Table = m_VisIVOTreeModel->getTable(selectedItemIndex);
 
         // Don't use an invalid table
-        if (!m_Table->checkTable())
-        {
+        if (!m_Table->checkTable()) {
             ui->tabViewSettings->hide();
             return;
         }
@@ -746,13 +730,14 @@ void MainWindow::itemSelected(QList<QMap<QString, QString> > elementsOnDb,bool l
         ui->buttonPlot->setEnabled(false);
         ui->buttonMergeDO->setEnabled(false);
 
-
-        switch(type){
-        case TreeItem::Null: break;
-        case TreeItem::VTI: break;
-        case TreeItem::VTP: break;
-        case TreeItem::VisualObject:
-        {
+        switch (type) {
+        case TreeItem::Null:
+            break;
+        case TreeItem::VTI:
+            break;
+        case TreeItem::VTP:
+            break;
+        case TreeItem::VisualObject: {
 
             ui->typeLabel->setText("Type");
             ui->nameLabel_2->setText("Name");
@@ -760,43 +745,43 @@ void MainWindow::itemSelected(QList<QMap<QString, QString> > elementsOnDb,bool l
             ui->valueNameLabel->setText(name);
             ui->valueTypeLabel->setText("Visual Object");
         }
-        case TreeItem::VolumeTable: break;
-        case TreeItem::PointTable:
-        {
+        case TreeItem::VolumeTable:
+            break;
+        case TreeItem::PointTable: {
 
             ui->buttonCreateDO->setEnabled(true);
             ui->buttonFilter->setEnabled(true);
 
             ui->fieldTable->setColumnCount(3);
             QStringList headers;
-            headers << "Field Name" << "Min" << "Max";
+            headers << "Field Name"
+                    << "Min"
+                    << "Max";
 
             ui->fieldTable->setHorizontalHeaderLabels(headers);
 
-            for (unsigned int i =0; i < numberOfFields;i++)
-            {
+            for (unsigned int i = 0; i < numberOfFields; i++) {
 
-                QString field =  QString(m_Table->getColName(i).c_str());
+                QString field = QString(m_Table->getColName(i).c_str());
                 fields << field;
 
                 ui->fieldTable->insertRow(i);
 
-                QTableWidgetItem *nameItem= new QTableWidgetItem(field);
-                nameItem->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
-                ui->fieldTable->setItem(i,0, nameItem);
+                QTableWidgetItem *nameItem = new QTableWidgetItem(field);
+                nameItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+                ui->fieldTable->setItem(i, 0, nameItem);
 
                 float *range = new float[2];
-                m_Table->getRange(i,range);
-                QTableWidgetItem *minItem= new QTableWidgetItem(QString::number(range[0]));
-                minItem->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
+                m_Table->getRange(i, range);
+                QTableWidgetItem *minItem = new QTableWidgetItem(QString::number(range[0]));
+                minItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
 
-                ui->fieldTable->setItem(i,1, minItem);
+                ui->fieldTable->setItem(i, 1, minItem);
 
-                QTableWidgetItem *maxItem= new QTableWidgetItem(QString::number(range[1]));
-                maxItem->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
-                ui->fieldTable->setItem(i,2, maxItem);
+                QTableWidgetItem *maxItem = new QTableWidgetItem(QString::number(range[1]));
+                maxItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+                ui->fieldTable->setItem(i, 2, maxItem);
             }
-
 
             ui->typeLabel->setText("Type");
             ui->nameLabel_2->setText("Name");
@@ -807,14 +792,11 @@ void MainWindow::itemSelected(QList<QMap<QString, QString> > elementsOnDb,bool l
             ui->valueTypeLabel->setText("Point Table");
             ui->valueFieldLabel->setText(QString::number(numberOfFields));
             ui->valueElementLabel->setText(QString::number(numberOfElements));
-
         }
-        default:return;
+        default:
+            return;
         }
-
     }
-
-
 }
 
 void MainWindow::on_actionOperation_queue_triggered()
@@ -825,25 +807,22 @@ void MainWindow::on_actionOperation_queue_triggered()
 void MainWindow::on_actionHi_Gal_triggered()
 {
 
-    //HiGal *higalWin = &Singleton<HiGal>::Instance();
-    //higalWin->show();
-
+    // HiGal *higalWin = &Singleton<HiGal>::Instance();
+    // higalWin->show();
 }
 
 void MainWindow::on_actionVialactea_triggered()
 {
     ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
- //   vialactealWin->showMaximized();
+    //   vialactealWin->showMaximized();
 
     vialactealWin->show();
-
 }
 
 void MainWindow::on_actionCsv_triggered()
 {
 
     genericImport(1);
-
 
     /*Browse and choose the filename*/
     /*
@@ -866,18 +845,18 @@ void MainWindow::on_actionTEST_DC3D_triggered()
 void MainWindow::importFitsDC(QString fileName)
 {
     vtkSmartPointer<vtkFitsReader> fitsReader = vtkSmartPointer<vtkFitsReader>::New();
-    fitsReader->is3D=true;
+    fitsReader->is3D = true;
     fitsReader->SetFileName(fileName.toStdString());
     // fitsReader->GetOutput();
 
-    //TEST
-    //new vtkwindow(this,fitsReader,1);
-    new vtkwindow_new(this,fitsReader,1,myCallingVtkWindow);
+    // TEST
+    // new vtkwindow(this,fitsReader,1);
+    new vtkwindow_new(this, fitsReader, 1, myCallingVtkWindow);
 }
 
-void   MainWindow::closeEvent(QCloseEvent*)
+void MainWindow::closeEvent(QCloseEvent *)
 {
-    qDebug()<<"close";
+    qDebug() << "close";
 
     // vosamp *samp = &Singleton<vosamp>::Instance();
     // samp->unregister();
@@ -887,18 +866,15 @@ void   MainWindow::closeEvent(QCloseEvent*)
 
 void MainWindow::on_volumeRadioButton_toggled(bool checked)
 {
-    if (checked)
-    {
+    if (checked) {
         ui->volumeGroupBox->show();
-    }
-    else
+    } else
         ui->volumeGroupBox->hide();
-
 }
 
 void MainWindow::on_importPushButton_clicked()
 {
-    //Removed VisIVO Integrations
+    // Removed VisIVO Integrations
     /*
     qDebug()<<"filename: "<<fileName;
     qDebug()<<"type: "<<type;
@@ -929,13 +905,13 @@ void MainWindow::on_importPushButton_clicked()
     QFileInfo infoFile = QFileInfo(fileName);
 
 
-    QString outputPathString=QDir::homePath()+"/VisIVODesktopTemp/tmp_download/"+infoFile.fileName();
-    char *outputPath= outputPathString.toLocal8Bit().data();
+    QString
+    outputPathString=QDir::homePath()+"/VisIVODesktopTemp/tmp_download/"+infoFile.fileName(); char
+    *outputPath= outputPathString.toLocal8Bit().data();
     errorCode=VI_SetAtt(&envVI1,VI_SET_OUTFILEVBT,outputPath);
 
     VI_Import(&envVI1);
 */
-
 }
 
 void MainWindow::on_buttonFilter_clicked()
@@ -947,138 +923,212 @@ void MainWindow::on_buttonFilter_clicked()
 
     ui->tabWidget->setCurrentWidget(ui->tabOpParameters);
 
-    QModelIndex  selectedItemIndex  = ui->treeView->selectionModel()->selectedIndexes()[0];
+    QModelIndex selectedItemIndex = ui->treeView->selectionModel()->selectedIndexes()[0];
 
-
-    selectedFile=QString::fromStdString( m_VisIVOTreeModel->getTable(selectedItemIndex)->getLocator() );
-
+    selectedFile =
+            QString::fromStdString(m_VisIVOTreeModel->getTable(selectedItemIndex)->getLocator());
 }
 
 void MainWindow::on_selectFilterComboBox_currentIndexChanged(int index)
 {
     hideAllFilterParameter();
     switch (index) {
-    //add identifier
+    // add identifier
     case 0:
-        ui->filterDescriptionTextBrowser->setText("This filter adds a new column to the input table. The column name is given in Column Name field, with a sequence of value starting from a Start Number value (Default value is 0).");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter adds a new column to the input table. The column name is given in "
+                "Column Name field, with a sequence of value starting from a Start Number value "
+                "(Default value is 0).");
         ui->addIdentifierParameterGroupBox->show();
         break;
-        //Append
+        // Append
     case 1:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table appending data from a list of selected tables. The selected Tables must contain the same numbers of columns.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table appending data from a list of selected tables. "
+                "The selected Tables must contain the same numbers of columns.");
 
         // add vbt on left
-        for(int i=0; i<m_VisIVOTreeModel->rowCount();i++)
-        {
-            QModelIndex itemIndex  = ui->treeView->model()->index(i,0);
+        for (int i = 0; i < m_VisIVOTreeModel->rowCount(); i++) {
+            QModelIndex itemIndex = ui->treeView->model()->index(i, 0);
             TreeItem::TreeItemType type = m_VisIVOTreeModel->getType(itemIndex);
-            int colNum=m_VisIVOTreeModel->getTable(itemIndex)->getNumberOfColumns();
-            qDebug()<<"type: "<<type <<" colNum: "<<colNum<<" oriColNum: "<< m_VisIVOTreeModel->getTable(ui->treeView->selectionModel()->selectedIndexes()[0])->getNumberOfColumns();
-            if(type == TreeItem::PointTable && colNum== m_VisIVOTreeModel->getTable(ui->treeView->selectionModel()->selectedIndexes()[0])->getNumberOfColumns() )
-            {
-                qDebug()<<"stica :"<<i;
+            int colNum = m_VisIVOTreeModel->getTable(itemIndex)->getNumberOfColumns();
+            qDebug() << "type: " << type << " colNum: " << colNum << " oriColNum: "
+                     << m_VisIVOTreeModel
+                                ->getTable(ui->treeView->selectionModel()->selectedIndexes()[0])
+                                ->getNumberOfColumns();
+            if (type == TreeItem::PointTable
+                && colNum
+                        == m_VisIVOTreeModel
+                                   ->getTable(ui->treeView->selectionModel()->selectedIndexes()[0])
+                                   ->getNumberOfColumns()) {
+                qDebug() << "stica :" << i;
             }
-
         }
 
         ui->selectedVBT->setText(selectedFile);
         ui->appendParameterGroupBox->show();
         break;
-        //Cartesian 2 Polar
+        // Cartesian 2 Polar
     case 2:
-        ui->filterDescriptionTextBrowser->setText("This filter creates creates three new columns with names given in Column name for fields as the result of the spherical polar transformation of three existing columns given in Columns for point coordinates fields. A new table is created if the New Table option is selected.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates creates three new columns with names given in Column name for "
+                "fields as the result of the spherical polar transformation of three existing "
+                "columns given in Columns for point coordinates fields. A new table is created if "
+                "the New Table option is selected.");
         break;
-        //cut
+        // cut
     case 3:
-        ui->filterDescriptionTextBrowser->setText("This filter fixes to a given threshold all the column values included in an interval. Limits of the interval on all selected fields can combined with logic AND/OR operator.The 'unlimited' word can be used to indicate the infinite value.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter fixes to a given threshold all the column values included in an "
+                "interval. Limits of the interval on all selected fields can combined with logic "
+                "AND/OR operator.The 'unlimited' word can be used to indicate the infinite value.");
         break;
-        //Decimator
+        // Decimator
     case 4:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a subtable as a regular subsample from the input table. Values are extracted in a regular sequence, skipping step element every time. The skip value is an integer number > 1 and represents the number of skipped values.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a subtable as a regular subsample from the input table. "
+                "Values are extracted in a regular sequence, skipping step element every time. The "
+                "skip value is an integer number > 1 and represents the number of skipped values.");
         break;
-        //Extract List
+        // Extract List
     case 5:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table from an input table with the elements (rows) listed in a given multi-list.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table from an input table with the elements (rows) "
+                "listed in a given multi-list.");
         break;
-        //Extraction
+        // Extraction
     case 6:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table from a sub-box or from a sphere in a 3D space. Three fields must be selected and the value must be given as follow: Sphere: sphere center coordinates Box: rectangular region center coordinates Corner: lower corner region coordinates. The Size field represent the sub volume dimension.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table from a sub-box or from a sphere in a 3D space. "
+                "Three fields must be selected and the value must be given as follow: Sphere: "
+                "sphere center coordinates Box: rectangular region center coordinates Corner: "
+                "lower corner region coordinates. The Size field represent the sub volume "
+                "dimension.");
         break;
-        //Grid 2 Point
+        // Grid 2 Point
     case 7:
-        ui->filterDescriptionTextBrowser->setText("This operation distributes a volume property to a point data set on the same computational domain using a field distribution (CIC/NGP/TSC algorithm) on a regular mesh. CIC is the default adopted algorithm. The Cell geometry is considered only to compute the cell volume value in this operation. This filter produces a new table or adds a new field to the input table.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This operation distributes a volume property to a point data set on the same "
+                "computational domain using a field distribution (CIC/NGP/TSC algorithm) on a "
+                "regular mesh. CIC is the default adopted algorithm. The Cell geometry is "
+                "considered only to compute the cell volume value in this operation. This filter "
+                "produces a new table or adds a new field to the input table.");
         break;
-        //Include
+        // Include
     case 8:
-        ui->filterDescriptionTextBrowser->setText("This operation assigns a different offset value to points inside and/or outside a sphere in the domain. This filter produces a new table or adds a new field to the input table. Points inside the sphere (given with center and radius) will have the value invalue, otherwise outvalue.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This operation assigns a different offset value to points inside and/or outside a "
+                "sphere in the domain. This filter produces a new table or adds a new field to the "
+                "input table. Points inside the sphere (given with center and radius) will have "
+                "the value invalue, otherwise outvalue.");
         break;
-        //Math Operation
+        // Math Operation
     case 9:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new field in a new table or add a new field as the result of a mathematical operation between the existing fields.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new field in a new table or add a new field as the result "
+                "of a mathematical operation between the existing fields.");
         break;
-        //Merge
+        // Merge
     case 10:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table from two or more existing data tables. The user must select tables to be merged The filter produces a new table having the size of the smallest table or a new table having the size of the greatest table. In this case the PAD field value is used to pad the table rows of the smallest table.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table from two or more existing data tables. The user "
+                "must select tables to be merged The filter produces a new table having the size "
+                "of the smallest table or a new table having the size of the greatest table. In "
+                "this case the PAD field value is used to pad the table rows of the smallest "
+                "table.");
         break;
-        //Module
+        // Module
     case 11:
-        ui->filterDescriptionTextBrowser->setText("This operation computes the module of three fields (x, y, z) of the input data table sqrt(x^2+y^2+z^2).");
+        ui->filterDescriptionTextBrowser->setText(
+                "This operation computes the module of three fields (x, y, z) of the input data "
+                "table sqrt(x^2+y^2+z^2).");
         break;
-        //Multi Resolution
+        // Multi Resolution
     case 12:
-        ui->filterDescriptionTextBrowser->setText("This operation creates a new VBT as a random subsample from the input table, with different resolutions. Starting from a fixed position, that represent the center of inner sphere, concentric spheres are considered. Different level of randomization can be given, creating more detail table in the inner sphere and lower detail in the outer regions, or vice versa. The region that is external to the last sphere represents the background.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This operation creates a new VBT as a random subsample from the input table, with "
+                "different resolutions. Starting from a fixed position, that represent the center "
+                "of inner sphere, concentric spheres are considered. Different level of "
+                "randomization can be given, creating more detail table in the inner sphere and "
+                "lower detail in the outer regions, or vice versa. The region that is external to "
+                "the last sphere represents the background.");
         break;
-        //Point distribute
+        // Point distribute
     case 13:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a volume using a field distribution, CIC (default) or NGP or TSC algorithm, on a regular mesh. The filter produces (by default) a density field: the field is distributed and divided for the cell volume.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a volume using a field distribution, CIC (default) or NGP or "
+                "TSC algorithm, on a regular mesh. The filter produces (by default) a density "
+                "field: the field is distributed and divided for the cell volume.");
         break;
-        //Point Property
+        // Point Property
     case 14:
-        ui->filterDescriptionTextBrowser->setText("This operation assigns a property to each data point on the table. The operation performs the following: 1) It creates a temporary volume using a field distribution (CIC algorithm) on a regular mesh. 2) It computes, with the same CIC algorithm, the property for each data point, considering the cells where the point is spread on the volume; 3) It saves the property in a new table or adds the field to the original input table.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This operation assigns a property to each data point on the table. The operation "
+                "performs the following: 1) It creates a temporary volume using a field "
+                "distribution (CIC algorithm) on a regular mesh. 2) It computes, with the same CIC "
+                "algorithm, the property for each data point, considering the cells where the "
+                "point is spread on the volume; 3) It saves the property in a new table or adds "
+                "the field to the original input table.");
         break;
-        //Randomizer
+        // Randomizer
     case 15:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table as a random subsample from the input table. Percentage (from 0.0 to 95.0) of the input file obtained in the output file. Note: only the first decimal place is considered.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table as a random subsample from the input table. "
+                "Percentage (from 0.0 to 95.0) of the input file obtained in the output file. "
+                "Note: only the first decimal place is considered.");
         break;
-        //Scalar distribution
+        // Scalar distribution
     case 16:
-        ui->filterDescriptionTextBrowser->setText("This filter computes average, min and max value of fields and creates an histogram of selected fields.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter computes average, min and max value of fields and creates an "
+                "histogram of selected fields.");
         break;
-        //Select Columns
+        // Select Columns
     case 17:
-        ui->filterDescriptionTextBrowser->setText("This filter creates e new table using one or more fields of a data table. 'Extract' produces the output table including only the selected fields, 'Remove' produces the output table excluding the selected fields.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates e new table using one or more fields of a data table. "
+                "'Extract' produces the output table including only the selected fields, 'Remove' "
+                "produces the output table excluding the selected fields.");
         break;
-        //Select Rows
+        // Select Rows
     case 18:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table setting limits on one or more fields of a the table. Limits on all selected can combined with logic AND/OR operator.The 'unlimited' word can be used to indicate the infinite value.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table setting limits on one or more fields of a the "
+                "table. Limits on all selected can combined with logic AND/OR operator.The "
+                "'unlimited' word can be used to indicate the infinite value.");
         break;
-        //Sigma Contours
+        // Sigma Contours
     case 19:
-        ui->filterDescriptionTextBrowser->setText("This filter creates a new table where one or more fields of a data table have values within (or outside) N sigma contours. The filter can be applied on fields that have a Gaussian distribution.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter creates a new table where one or more fields of a data table have "
+                "values within (or outside) N sigma contours. The filter can be applied on fields "
+                "that have a Gaussian distribution.");
         break;
-        //Split tables
+        // Split tables
     case 20:
-        ui->filterDescriptionTextBrowser->setText("This filter divides an existing table into two or more tables, using a field that will be used to divide the table. In case of Volume the split direction [1-3] must be specified.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter divides an existing table into two or more tables, using a field that "
+                "will be used to divide the table. In case of Volume the split direction [1-3] "
+                "must be specified.");
         break;
-        //Write VO Table
+        // Write VO Table
     case 21:
-        ui->filterDescriptionTextBrowser->setText("This filter produces a VOTable 1.2 with the selected fields.");
+        ui->filterDescriptionTextBrowser->setText(
+                "This filter produces a VOTable 1.2 with the selected fields.");
         break;
     default:
         break;
     }
 }
 
-
 void MainWindow::hideAllFilterParameter()
 {
 
     ui->addIdentifierParameterGroupBox->hide();
     ui->appendParameterGroupBox->hide();
-
 }
 
 void MainWindow::on_runFilterPushButton_clicked()
 {
-    //VisIVOFilterDesktop::runFilter(ui->selectFilterComboBox->currentIndex());
+    // VisIVOFilterDesktop::runFilter(ui->selectFilterComboBox->currentIndex());
 }

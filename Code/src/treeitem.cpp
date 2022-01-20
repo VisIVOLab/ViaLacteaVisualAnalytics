@@ -74,7 +74,7 @@ int TreeItem::childCount() const
 int TreeItem::childNumber() const
 {
     if (m_parentItem)
-        return m_parentItem->childItems.indexOf(const_cast<TreeItem*>(this));
+        return m_parentItem->childItems.indexOf(const_cast<TreeItem *>(this));
 
     return 0;
 }
@@ -157,50 +157,47 @@ bool TreeItem::setData(int column, const QVariant &value)
 }
 bool TreeItem::setTable(VSTableDesktop *table)
 {
-    if (table->tableExist()){
+    if (table->tableExist()) {
         m_table = table;
-        if(table->getIsVolume())
-        {
-            m_Type=VolumeTable;
-        }
-        else
-        {
-            m_Type=PointTable;
+        if (table->getIsVolume()) {
+            m_Type = VolumeTable;
+        } else {
+            m_Type = PointTable;
         }
         return true;
-    }
-    else return false;
+    } else
+        return false;
 }
 
 bool TreeItem::setVisualObject(VisPoint *vis)
 {
-    if (vis->isOriginSpecified()){
-        m_Type=VisualObject;
-        m_visualObject=vis;
+    if (vis->isOriginSpecified()) {
+        m_Type = VisualObject;
+        m_visualObject = vis;
         return true;
-    }
-    else return false;
+    } else
+        return false;
 }
 bool TreeItem::setVTI(vtkVolume *volume)
 {
-    m_volume=volume;
-    m_Type=VTI;
+    m_volume = volume;
+    m_Type = VTI;
     return true;
 }
 
 bool TreeItem::setVTP(vtkLODActor *pActor)
 {
-    m_pActor=pActor;
-    m_Type=VTP;
+    m_pActor = pActor;
+    m_Type = VTP;
     return true;
 }
 
-//bool TreeItem::setFITSIMG(vtkImageActor *pActor)
+// bool TreeItem::setFITSIMG(vtkImageActor *pActor)
 bool TreeItem::setFITSIMG(vtkSmartPointer<vtkFitsReader> fitsReader)
 {
 
-    m_Type=FITSIMAGE;
-    m_fitsImg= fitsReader;
+    m_Type = FITSIMAGE;
+    m_fitsImg = fitsReader;
     return true;
 }
 
@@ -214,8 +211,7 @@ VisPoint *TreeItem::getVisualObject()
     return m_visualObject;
 }
 
-
-//vtkImageActor *TreeItem::getFITSIMG()
+// vtkImageActor *TreeItem::getFITSIMG()
 vtkSmartPointer<vtkFitsReader> TreeItem::getFITSIMG()
 {
 

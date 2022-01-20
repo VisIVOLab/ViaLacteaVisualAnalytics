@@ -1,9 +1,10 @@
 #ifndef VLKBQUERYCOMPOSER_H
 #define VLKBQUERYCOMPOSER_H
 
-#include <QWidget>
-#include <QNetworkReply>
 #include "vlkbtable.h"
+
+#include <QNetworkReply>
+#include <QWidget>
 
 namespace Ui {
 class VLKBQueryComposer;
@@ -21,15 +22,14 @@ private:
     Ui::VLKBQueryComposer *ui;
     QString url;
     QString m_sSettingsFile;
-    bool available=false;
+    bool available = false;
     QList<VlkbTable *> table_list;
-     QNetworkAccessManager * manager;
-     QUrl urlRedirectedTo;
+    QNetworkAccessManager *manager;
+    QUrl urlRedirectedTo;
 
 public slots:
-    void tableReplyFinished (QNetworkReply *reply);
-    void availReplyFinished (QNetworkReply *reply);
-
+    void tableReplyFinished(QNetworkReply *reply);
+    void availReplyFinished(QNetworkReply *reply);
 
 private slots:
     void on_connectButton_clicked();
@@ -38,9 +38,8 @@ private slots:
     void on_tableListComboBox_currentIndexChanged(int index);
     void on_okButton_clicked();
     void onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator);
-    void queryReplyFinished (QNetworkReply *reply);
-    QUrl redirectUrl(const QUrl& possibleRedirectUrl, const QUrl& oldRedirectUrl) const;
-
+    void queryReplyFinished(QNetworkReply *reply);
+    QUrl redirectUrl(const QUrl &possibleRedirectUrl, const QUrl &oldRedirectUrl) const;
 };
 
 #endif // VLKBQUERYCOMPOSER_H

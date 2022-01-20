@@ -20,11 +20,11 @@
 const QString CaesarWindow::baseUrl = "http://caesar-api.neanias.eu/caesar/api/v1.0";
 
 CaesarWindow::CaesarWindow(QWidget *parent, const QString &imagePath)
-    : QMainWindow(parent)
-    , ui(new Ui::CaesarWindow)
-    , auth(&NeaniasCaesarAuth::Instance())
-    , autoRefresh(false)
-    , jobRefreshPeriod(10)
+    : QMainWindow(parent),
+      ui(new Ui::CaesarWindow),
+      auth(&NeaniasCaesarAuth::Instance()),
+      autoRefresh(false),
+      jobRefreshPeriod(10)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(this);
@@ -45,9 +45,7 @@ CaesarWindow::CaesarWindow(QWidget *parent, const QString &imagePath)
         msg->setStandardButtons(QMessageBox::Yes | QMessageBox::No);
         msg->setDefaultButton(QMessageBox::No);
         msg->show();
-        connect(msg,
-                &QMessageBox::buttonClicked,
-                this,
+        connect(msg, &QMessageBox::buttonClicked, this,
                 [this, msg, imagePath](QAbstractButton *button) {
                     if (msg->standardButton(button) == QMessageBox::Yes) {
                         uploadData(imagePath);
@@ -153,7 +151,8 @@ void CaesarWindow::getSupportedApps()
             }
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QString status = QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
+            QString status =
+                    QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
             qDebug() << "CAESAR GET /apps" << statusCode << status;
             QMessageBox::critical(this, tr("Error"), status);
         }
@@ -178,7 +177,8 @@ void CaesarWindow::updateJobsTable(const QJsonArray &jobs)
         ui->jobsTable->setItem(ui->jobsTable->rowCount() - 1, 1, new QTableWidgetItem(tag));
         ui->jobsTable->setItem(ui->jobsTable->rowCount() - 1, 2, new QTableWidgetItem(date));
         ui->jobsTable->setItem(ui->jobsTable->rowCount() - 1, 3, new QTableWidgetItem(status));
-        ui->jobsTable->setItem(ui->jobsTable->rowCount() - 1, 4, new QTableWidgetItem(elapsed_time));
+        ui->jobsTable->setItem(ui->jobsTable->rowCount() - 1, 4,
+                               new QTableWidgetItem(elapsed_time));
     }
 }
 
@@ -218,9 +218,9 @@ void CaesarWindow::uploadData(const QString &fn)
 
     QHttpPart filePart;
     filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/fits"));
-    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                       QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(fn).fileName()
-                                + "\""));
+    filePart.setHeader(
+            QNetworkRequest::ContentDispositionHeader,
+            QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(fn).fileName() + "\""));
     filePart.setBodyDevice(file);
 
     QHttpPart tagPart;
@@ -245,7 +245,8 @@ void CaesarWindow::uploadData(const QString &fn)
     multipart->setParent(reply);
     loadingWidget->setLoadingProcess(reply);
 
-    connect(reply, &QNetworkReply::uploadProgress, loadingWidget, &LoadingWidget::updateProgressBar);
+    connect(reply, &QNetworkReply::uploadProgress, loadingWidget,
+            &LoadingWidget::updateProgressBar);
     connect(reply, &QNetworkReply::finished, this, [this, reply, loadingWidget]() {
         if (reply->error() == QNetworkReply::NoError) {
             auto response = QJsonDocument::fromJson(reply->readAll()).object();
@@ -254,7 +255,8 @@ void CaesarWindow::uploadData(const QString &fn)
             emit ui->dataRefreshButton->clicked();
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QString status = QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
+            QString status =
+                    QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
             qDebug() << "CAESAR POST /upload error" << statusCode << status;
             ;
             QMessageBox::critical(loadingWidget, tr("Error"), status);
@@ -399,11 +401,9 @@ void CaesarWindow::on_dataDeleteButton_clicked()
         return;
     }
 
-    int ret = QMessageBox::question(this,
-                                    tr("Confirm"),
+    int ret = QMessageBox::question(this, tr("Confirm"),
                                     tr("Do you want to delete the selected file?"),
-                                    QMessageBox::Yes | QMessageBox::No,
-                                    QMessageBox::No);
+                                    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret == QMessageBox::No)
         return;
 
@@ -419,7 +419,8 @@ void CaesarWindow::on_dataDeleteButton_clicked()
             emit ui->dataRefreshButton->clicked();
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QString status = QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
+            QString status =
+                    QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
             qDebug() << "CAESAR POST /delete error" << statusCode << status;
             QMessageBox::critical(this, tr("Error"), status);
         }
@@ -455,41 +456,39 @@ void CaesarWindow::on_dataDownloadButton_clicked()
     QNetworkReply *reply = nam->get(req);
     loadingWidget->setLoadingProcess(reply);
 
-    connect(reply,
-            &QNetworkReply::downloadProgress,
-            loadingWidget,
+    connect(reply, &QNetworkReply::downloadProgress, loadingWidget,
             &LoadingWidget::updateProgressBar);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, fileId, filename, loadingWidget]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            QFile file(filename);
-            if (!file.open(QIODevice::WriteOnly)) {
-                QMessageBox::critical(loadingWidget,
-                                      tr("Error"),
-                                      tr(qPrintable(file.errorString())));
-            } else {
-                file.write(reply->readAll());
-                file.close();
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, fileId, filename, loadingWidget]() {
+                if (reply->error() == QNetworkReply::NoError) {
+                    QFile file(filename);
+                    if (!file.open(QIODevice::WriteOnly)) {
+                        QMessageBox::critical(loadingWidget, tr("Error"),
+                                              tr(qPrintable(file.errorString())));
+                    } else {
+                        file.write(reply->readAll());
+                        file.close();
 
-                QMessageBox::information(loadingWidget, tr(""), tr("File downloaded."));
-            }
-        } else {
-            auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QString status = QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
-            qDebug() << "CAESAR GET /download error" << statusCode << status;
-            QMessageBox::critical(loadingWidget, tr("Error"), status);
-        }
-        reply->deleteLater();
-        loadingWidget->deleteLater();
+                        QMessageBox::information(loadingWidget, tr(""), tr("File downloaded."));
+                    }
+                } else {
+                    auto statusCode =
+                            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                    QString status =
+                            QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
+                    qDebug() << "CAESAR GET /download error" << statusCode << status;
+                    QMessageBox::critical(loadingWidget, tr("Error"), status);
+                }
+                reply->deleteLater();
+                loadingWidget->deleteLater();
 
-        ui->dataDownloadButton->setEnabled(true);
-    });
+                ui->dataDownloadButton->setEnabled(true);
+            });
 }
 
 void CaesarWindow::on_dataUploadButton_clicked()
 {
-    QString fn = QFileDialog::getOpenFileName(this,
-                                              tr("Upload file"),
-                                              QDir::homePath(),
+    QString fn = QFileDialog::getOpenFileName(this, tr("Upload file"), QDir::homePath(),
                                               tr("Images (*.fits)"));
     if (!fn.isEmpty()) {
         uploadData(fn);
@@ -522,16 +521,13 @@ void CaesarWindow::on_jobDownloadButton_clicked()
     QNetworkReply *reply = nam->get(req);
     loadingWidget->setLoadingProcess(reply);
 
-    connect(reply,
-            &QNetworkReply::downloadProgress,
-            loadingWidget,
+    connect(reply, &QNetworkReply::downloadProgress, loadingWidget,
             &LoadingWidget::updateProgressBar);
     connect(reply, &QNetworkReply::finished, this, [this, reply, jobId, filename, loadingWidget]() {
         if (reply->error() == QNetworkReply::NoError) {
             QFile file(filename);
             if (!file.open(QIODevice::WriteOnly)) {
-                QMessageBox::critical(loadingWidget,
-                                      tr("Error"),
+                QMessageBox::critical(loadingWidget, tr("Error"),
                                       tr(qPrintable(file.errorString())));
             } else {
                 file.write(reply->readAll());
@@ -541,7 +537,8 @@ void CaesarWindow::on_jobDownloadButton_clicked()
             }
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QString status = QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
+            QString status =
+                    QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
             qDebug() << "CAESAR GET /job/output error" << statusCode << status;
             QMessageBox::critical(loadingWidget, tr("Error"), status);
         }
@@ -560,11 +557,9 @@ void CaesarWindow::on_jobCancelButton_clicked()
         return;
     }
 
-    int ret = QMessageBox::question(this,
-                                    tr("Confirm"),
+    int ret = QMessageBox::question(this, tr("Confirm"),
                                     tr("Do you want to cancel the selected job?"),
-                                    QMessageBox::Yes | QMessageBox::No,
-                                    QMessageBox::No);
+                                    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret == QMessageBox::No)
         return;
 
@@ -620,7 +615,8 @@ void CaesarWindow::on_appsComboBox_currentTextChanged(const QString &app)
             buildJobForm(formInputs);
         } else {
             auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QString status = QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
+            QString status =
+                    QJsonDocument::fromJson(reply->readAll()).object()["status"].toString();
             qDebug() << "CAESAR GET /app/describe" << statusCode << status;
             QMessageBox::critical(this, tr("Error"), status);
         }

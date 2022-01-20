@@ -1,12 +1,14 @@
 #ifndef VLKBSIMPLEQUERYCOMPOSER_H
 #define VLKBSIMPLEQUERYCOMPOSER_H
 
-#include <QWidget>
+#include "loadingwidget.h"
+#include "vlkbtable.h"
+#include "vtkwindow_new.h"
+
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include "vlkbtable.h"
-#include "loadingwidget.h"
-#include "vtkwindow_new.h"
+#include <QWidget>
+
 namespace Ui {
 class VLKBSimpleQueryComposer;
 }
@@ -25,20 +27,19 @@ public:
     void setIs3dSelections();
     void setIsBubble();
 
-
 private slots:
     void on_connectPushButton_clicked();
-    void availReplyFinished (QNetworkReply *reply);
-    void tableReplyFinished (QNetworkReply *reply);
-    void queryReplyFinished (QNetworkReply *reply);
+    void availReplyFinished(QNetworkReply *reply);
+    void tableReplyFinished(QNetworkReply *reply);
+    void queryReplyFinished(QNetworkReply *reply);
     void onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator);
     void on_queryPushButton_clicked();
-    QUrl redirectUrl(const QUrl& possibleRedirectUrl, const QUrl& oldRedirectUrl) const;
+    QUrl redirectUrl(const QUrl &possibleRedirectUrl, const QUrl &oldRedirectUrl) const;
     void on_tableComboBox_currentIndexChanged(int index);
     void on_savedatasetCheckBox_clicked(bool checked);
     void on_navigateFSButtono_clicked();
     void closeSlot();
-    void closeEvent ( QCloseEvent * event );
+    void closeEvent(QCloseEvent *event);
 
 private:
     Ui::VLKBSimpleQueryComposer *ui;

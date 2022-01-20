@@ -1,68 +1,61 @@
 #include "sednode.h"
-#include <qdebug.h>
 #include <QDataStream>
+#include <qdebug.h>
 
-SEDNode::SEDNode(QObject *parent) :
-    QObject(parent)
-{
-
-}
+SEDNode::SEDNode(QObject *parent) : QObject(parent) { }
 
 void SEDNode::setSky(float lon, float lat)
 {
 
-    glon=lon;
-    glat=lat;
-
+    glon = lon;
+    glat = lat;
 }
 
 void SEDNode::setXY(double x, double y)
 {
-    image_x=x;
-    image_y=y;
+    image_x = x;
+    image_y = y;
 }
 
 void SEDNode::setChild(SEDNode *node)
 {
-    childNodes.insert(node->getDesignation(),node);
+    childNodes.insert(node->getDesignation(), node);
 }
 
 void SEDNode::setParent(SEDNode *node)
 {
-    parentNodes.insert(node->getDesignation(),node);
+    parentNodes.insert(node->getDesignation(), node);
 }
 
 void SEDNode::setErrFlux(double f)
 {
-    e_flux=f;
+    e_flux = f;
 }
 
 void SEDNode::setFlux(double f)
 {
-    flux=f;
+    flux = f;
 }
 
 bool SEDNode::hasChild()
 {
-    return childNodes.count()>0;
+    return childNodes.count() > 0;
 }
 
-void  SEDNode::setEllipse( double smin, double smax,double a, double ar)
+void SEDNode::setEllipse(double smin, double smax, double a, double ar)
 {
 
-
-    semiMajorAxisLength= smax;
-    semiMinorAxisLength=smin;
-    angle=a;
-    arcpixel=ar;
-
+    semiMajorAxisLength = smax;
+    semiMinorAxisLength = smin;
+    angle = a;
+    arcpixel = ar;
 }
 
-QDataStream &operator<<(QDataStream &out, SEDNode* node)
+QDataStream &operator<<(QDataStream &out, SEDNode *node)
 {
-    qDebug()<< "printing SEDNode";
+    qDebug() << "printing SEDNode";
     out << node->getDesignation();
-    qDebug()<<node->getDesignation();
+    qDebug() << node->getDesignation();
     out << node->getWavelength();
     out << node->getFlux();
     out << node->getErrFlux();
@@ -71,10 +64,9 @@ QDataStream &operator<<(QDataStream &out, SEDNode* node)
     return out;
 }
 
-
-QDataStream &operator>>(QDataStream &in, SEDNode* node)
+QDataStream &operator>>(QDataStream &in, SEDNode *node)
 {
-    qDebug()<< "reading SEDNode";
+    qDebug() << "reading SEDNode";
     QString d;
     int w;
     double f, ef;
@@ -86,16 +78,14 @@ QDataStream &operator>>(QDataStream &in, SEDNode* node)
     in >> lat;
     in >> lon;
 
-    //node=new SEDNode();
+    // node=new SEDNode();
     node->setDesignation(d);
     node->setWavelength(w);
     node->setFlux(f);
     node->setErrFlux(ef);
     node->setSky(lon, lat);
-    qDebug()<<node->getDesignation();
-    //in >> node->getWavelength();
-    //in >> node->getFlux();
+    qDebug() << node->getDesignation();
+    // in >> node->getWavelength();
+    // in >> node->getFlux();
     return in;
 }
-
-

@@ -17,23 +17,21 @@
 #include "treemodel.h"
 #include "vispoint.h"
 
-
-TreeModel::TreeModel(const QStringList &headers, const QString &data,
-                     QObject *parent)
+TreeModel::TreeModel(const QStringList &headers, const QString &data, QObject *parent)
     : QAbstractItemModel(parent)
 {
     /**
- * Constructor.
- *
- * The constructor creates a root item and initializes
- * it with the header data supplied
- *
- * @param headers   headers for the object initialization
- * @param data textual data being converted to a data structure
- * we can use with the model
- * @param parent
- *
- */
+     * Constructor.
+     *
+     * The constructor creates a root item and initializes
+     * it with the header data supplied
+     *
+     * @param headers   headers for the object initialization
+     * @param data textual data being converted to a data structure
+     * we can use with the model
+     * @param parent
+     *
+     */
     QVector<QVariant> rootData;
     foreach (QString header, headers)
         rootData << header;
@@ -53,9 +51,9 @@ QModelIndex TreeModel::getLastInsertItem()
     return lastInsertItem;
 }
 
-void  TreeModel::setLastInsertItem(QModelIndex item)
+void TreeModel::setLastInsertItem(QModelIndex item)
 {
-    lastInsertItem=item;
+    lastInsertItem = item;
 }
 
 int TreeModel::columnCount(const QModelIndex & /* parent */) const
@@ -76,19 +74,17 @@ QVariant TreeModel::data(const QModelIndex &index, int role) const
     return item->data(index.column());
 }
 
-
-
 TreeItem *TreeModel::getItem(const QModelIndex &index) const
 {
     if (index.isValid()) {
-        TreeItem *item = static_cast<TreeItem*>(index.internalPointer());
-        if (item) return item;
+        TreeItem *item = static_cast<TreeItem *>(index.internalPointer());
+        if (item)
+            return item;
     }
     return rootItem;
 }
 
-QVariant TreeModel::headerData(int section, Qt::Orientation orientation,
-                               int role) const
+QVariant TreeModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole)
         return rootItem->data(section);
@@ -129,8 +125,6 @@ bool TreeModel::insertRows(int position, int rows, const QModelIndex &parent)
     beginInsertRows(parent, position, position + rows - 1);
     success = parentItem->insertChildren(position, rows, rootItem->columnCount());
     endInsertRows();
-
-
 
     return success;
 }
@@ -182,8 +176,7 @@ int TreeModel::rowCount(const QModelIndex &parent) const
     return parentItem->childCount();
 }
 
-bool TreeModel::setData(const QModelIndex &index, const QVariant &value,
-                        int role)
+bool TreeModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     if (role != Qt::EditRole)
         return false;
@@ -197,8 +190,8 @@ bool TreeModel::setData(const QModelIndex &index, const QVariant &value,
     return result;
 }
 
-bool TreeModel::setHeaderData(int section, Qt::Orientation orientation,
-                              const QVariant &value, int role)
+bool TreeModel::setHeaderData(int section, Qt::Orientation orientation, const QVariant &value,
+                              int role)
 {
     if (role != Qt::EditRole || orientation != Qt::Horizontal)
         return false;
@@ -213,7 +206,7 @@ bool TreeModel::setHeaderData(int section, Qt::Orientation orientation,
 
 void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
 {
-    QList<TreeItem*> parents;
+    QList<TreeItem *> parents;
     QList<int> indentations;
     parents << parent;
     indentations << 0;
@@ -242,7 +235,7 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
                 // unless the current parent has no children.
 
                 if (parents.last()->childCount() > 0) {
-                    parents << parents.last()->child(parents.last()->childCount()-1);
+                    parents << parents.last()->child(parents.last()->childCount() - 1);
                     indentations << position;
                 }
             } else {
@@ -280,7 +273,7 @@ Qt::ItemFlags TreeModel::flags(const QModelIndex &index) const
     Qt:ItemIsEnabled             	The user can interact with the item.
     Qt:ItemIsTristate            	The item is checkable with three separate states.
 */
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;// | Qt::ItemIsUserCheckable;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable; // | Qt::ItemIsUserCheckable;
 }
 bool TreeModel::setTable(const QModelIndex &index, VSTableDesktop *table)
 {
@@ -294,7 +287,7 @@ bool TreeModel::setTable(const QModelIndex &index, VSTableDesktop *table)
 bool TreeModel::setVisualObject(const QModelIndex &index, VisPoint *vis)
 {
     TreeItem *item = getItem(index);
-    bool result =item->setVisualObject(vis);
+    bool result = item->setVisualObject(vis);
     if (result)
         emit dataChanged(index, index);
     return result;
@@ -309,7 +302,7 @@ bool TreeModel::setVTP(const QModelIndex &index, vtkLODActor *pActor)
     return result;
 }
 
-//bool TreeModel::setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkImageActor> imgActor)
+// bool TreeModel::setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkImageActor> imgActor)
 bool TreeModel::setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkFitsReader> fitsReader)
 {
     TreeItem *item = getItem(index);
@@ -333,11 +326,12 @@ bool TreeModel::setVTI(const QModelIndex &index, vtkVolume *volume)
 VSTableDesktop *TreeModel::getTable(const QModelIndex &index)
 {
     TreeItem *item = getItem(index);
-    if (item->getType() == TreeItem::VisualObject) return item->getVisualObject()->getOrigin();
+    if (item->getType() == TreeItem::VisualObject)
+        return item->getVisualObject()->getOrigin();
     return item->getTable();
 }
 
-VisPoint*TreeModel::getVisualObject(const QModelIndex &index)
+VisPoint *TreeModel::getVisualObject(const QModelIndex &index)
 {
     TreeItem *item = getItem(index);
     return item->getVisualObject();
@@ -348,7 +342,7 @@ vtkLODActor *TreeModel::getVTP(const QModelIndex &index)
     return item->getVTP();
 }
 
-//vtkImageActor *TreeModel::getFITSIMG(const QModelIndex &index)
+// vtkImageActor *TreeModel::getFITSIMG(const QModelIndex &index)
 
 vtkSmartPointer<vtkFitsReader> TreeModel::getFITSIMG(const QModelIndex &index)
 {
@@ -370,17 +364,16 @@ TreeItem::TreeItemType TreeModel::getType(const QModelIndex &index)
 QModelIndexList TreeModel::getActiveViewList()
 {
     /**
-      * It returns a QModelIndexList containing
-      * the whole list of VisIVOObject with m_isSetOrigin == true
-      * this list is passed to the rendering window (VisIVORW) for
-      * the visualization
-      */
+     * It returns a QModelIndexList containing
+     * the whole list of VisIVOObject with m_isSetOrigin == true
+     * this list is passed to the rendering window (VisIVORW) for
+     * the visualization
+     */
 
     m_activeViewIndexList.clear();
     int rows = this->rowCount();
-    for (int i=0;i<rows;i++)
-    {
-        activeViewListTraverse(this->index(i,0));
+    for (int i = 0; i < rows; i++) {
+        activeViewListTraverse(this->index(i, 0));
     }
     return m_activeViewIndexList;
 }
@@ -389,20 +382,16 @@ void TreeModel::activeViewListTraverse(QModelIndex index)
     TreeItem *currentItem = this->getItem(index);
     TreeItem::TreeItemType currentType = this->getItem(index)->getType();
 
-    if (currentType==TreeItem::VisualObject)
-    {
-        if(currentItem->getVisualObject()->isVisible()) // if the index item is a VisualObject;
+    if (currentType == TreeItem::VisualObject) {
+        if (currentItem->getVisualObject()->isVisible()) // if the index item is a VisualObject;
             m_activeViewIndexList.append(index);
     }
     int rows = this->getItem(index)->childCount();
-    if (rows > 0)
-    {
-        for (int i=0;i<rows;i++)
-        {
-            //TreeItem nextItem = this->getItem(index)->child(i);
-            QModelIndex  nextIndex = this->index(i,0,index);
+    if (rows > 0) {
+        for (int i = 0; i < rows; i++) {
+            // TreeItem nextItem = this->getItem(index)->child(i);
+            QModelIndex nextIndex = this->index(i, 0, index);
             activeViewListTraverse(nextIndex);
         }
     }
 }
-

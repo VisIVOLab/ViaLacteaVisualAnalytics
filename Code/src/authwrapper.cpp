@@ -10,8 +10,7 @@
 #include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
 
-AuthWrapper::AuthWrapper(QObject *parent)
-    : QObject(parent)
+AuthWrapper::AuthWrapper(QObject *parent) : QObject(parent)
 {
     mgr = new QNetworkAccessManager(this);
 
@@ -191,18 +190,16 @@ QString AuthWrapper::refreshToken() const
     return QString(tokens[REFRESH]);
 }
 
-NeaniasVlkbAuth::NeaniasVlkbAuth(QObject *parent)
-    : AuthWrapper(parent)
-{}
+NeaniasVlkbAuth::NeaniasVlkbAuth(QObject *parent) : AuthWrapper(parent) { }
 
 void NeaniasVlkbAuth::setup()
 {
     authUrl = QUrl(
-        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
+            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
     tokenUrl = QUrl(
-        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
+            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
     logoutUrl = QUrl(
-        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
+            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
     clientId = QString(NEANIAS_VLKB_CLIENT);
     clientSecret = QString(NEANIAS_VLKB_KEY);
     scope = QString("openid profile email phone address");
@@ -214,9 +211,7 @@ void NeaniasVlkbAuth::setup()
     oauth2->setAccessTokenUrl(tokenUrl);
     oauth2->setClientIdentifier(clientId);
     oauth2->setScope(scope);
-    connect(oauth2,
-            &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser,
-            this,
+    connect(oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this,
             &NeaniasVlkbAuth::open_webview);
 }
 
@@ -230,18 +225,16 @@ AuthWrapper &NeaniasVlkbAuth::Instance()
     return instance;
 }
 
-NeaniasCaesarAuth::NeaniasCaesarAuth(QObject *parent)
-    : AuthWrapper(parent)
-{}
+NeaniasCaesarAuth::NeaniasCaesarAuth(QObject *parent) : AuthWrapper(parent) { }
 
 void NeaniasCaesarAuth::setup()
 {
     authUrl = QUrl(
-        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
+            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
     tokenUrl = QUrl(
-        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
+            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
     logoutUrl = QUrl(
-        "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
+            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
     clientId = QString(NEANIAS_CAESAR_CLIENT);
     clientSecret = QString(NEANIAS_CAESAR_KEY);
     scope = QString("openid profile email phone address");
@@ -253,9 +246,7 @@ void NeaniasCaesarAuth::setup()
     oauth2->setAccessTokenUrl(tokenUrl);
     oauth2->setClientIdentifier(clientId);
     oauth2->setScope(scope);
-    connect(oauth2,
-            &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser,
-            this,
+    connect(oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this,
             &NeaniasCaesarAuth::open_webview);
 }
 

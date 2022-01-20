@@ -26,8 +26,8 @@
         @author Ugo Becciani <ugo.becciani@oact.inaf.it>
 */
 
-#include <string>
 #include <QString>
+#include <string>
 
 class VSObjectDesktop
 {
@@ -40,11 +40,11 @@ public:
 
     ~VSObjectDesktop();
     virtual void printSelf();
-    std::string getDescription() {return m_description;};
-    std::string getName()        {return m_name;};
+    std::string getDescription() { return m_description; };
+    std::string getName() { return m_name; };
 
-    void setDescription(std::string description) {m_description = description;};
-    void setName(std::string name) {m_name = name;};
+    void setDescription(std::string description) { m_description = description; };
+    void setName(std::string name) { m_name = name; };
 };
 
 #endif

@@ -1,58 +1,58 @@
 #include "vlkbquery.h"
 #include "ui_vlkbquery.h"
-#include <QDebug>
-#include <QDomDocument>
-#include <QDir>
-#include "vialactea_fileload.h"
-#include <QMessageBox>
+
+#include "authwrapper.h"
 #include "sedvisualizerplot.h"
 #include "singleton.h"
-#include "authwrapper.h"
+#include "vialactea_fileload.h"
+#include <QDebug>
+#include <QDir>
+#include <QDomDocument>
+#include <QMessageBox>
 
-VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt::GlobalColor color) :
-    QWidget(parent),
-    ui(new Ui::VLKBQuery)
+VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt::GlobalColor color)
+    : QWidget(parent), ui(new Ui::VLKBQuery)
 {
     ui->setupUi(this);
 
-    if (parent != 0)
-    {
-        sd = dynamic_cast<SEDVisualizerPlot*>(parent);
+    if (parent != 0) {
+        sd = dynamic_cast<SEDVisualizerPlot *>(parent);
     }
 
-    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+    m_sSettingsFile = QDir::homePath()
+                              .append(QDir::separator())
+                              .append("VisIVODesktopTemp")
+                              .append("/setting.ini");
 
-
-    query=q;//QUrl::toPercentEncoding(q);
+    query = q; // QUrl::toPercentEncoding(q);
 
     loading = new LoadingWidget();
     loading->init();
     loading->setText("Querying VLKB..");
-    loading ->show();
+    loading->show();
     loading->activateWindow();
 
-    vtkwin=v;
-    what=w;
-    modelColor=color;
+    vtkwin = v;
+    what = w;
+    modelColor = color;
     connectToVlkb();
-
 }
 
 void VLKBQuery::connectToVlkb()
 {
-    qDebug()<<"connectToVlkb";
+    qDebug() << "connectToVlkb";
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     // url= "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
     url = settings.value("vlkbtableurl").toString();
 
     manager = new QNetworkAccessManager(this);
-    qDebug()<<"connect";
-    connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
+    qDebug() << "connect";
+    connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+            SLOT(availReplyFinished(QNetworkReply *)));
     QUrl reqUrl(url + "/availability");
     QNetworkRequest req(reqUrl);
 
-    if (settings.value("vlkbtype", "") == "neanias")
-    {
+    if (settings.value("vlkbtype", "") == "neanias") {
         AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
@@ -60,32 +60,27 @@ void VLKBQuery::connectToVlkb()
     QNetworkReply *reply = manager->get(req);
     loading->setLoadingProcess(reply);
 
-    qDebug()<<"connected";
-
+    qDebug() << "connected";
 }
 
-void VLKBQuery::availReplyFinished (QNetworkReply *reply)
+void VLKBQuery::availReplyFinished(QNetworkReply *reply)
 {
-    qDebug()<<"availReplyFinished";
-    if(reply->error())
-    {
+    qDebug() << "availReplyFinished";
+    if (reply->error()) {
         qDebug() << "ERROR!";
         qDebug() << reply->errorString();
-        available=false;
-    }
-    else
-    {
+        available = false;
+    } else {
         QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
         QString vlkbtype = settings.value("vlkbtype", "public").toString();
         QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
 
         QDomDocument doc;
         doc.setContent(reply->readAll());
-        QDomNodeList list=doc.elementsByTagName(tag);
-        if(list.at(0).toElement().text()=="true")
-        {
+        QDomNodeList list = doc.elementsByTagName(tag);
+        if (list.at(0).toElement().text() == "true") {
 
-            available=true;
+            available = true;
             executeQuery();
         }
     }
@@ -95,8 +90,8 @@ void VLKBQuery::availReplyFinished (QNetworkReply *reply)
 void VLKBQuery::executeQuery()
 {
 
-    qDebug()<<"executeQuery";
-    qDebug()<<query;
+    qDebug() << "executeQuery";
+    qDebug() << query;
     manager = new QNetworkAccessManager(this);
 
     QByteArray postData;
@@ -105,26 +100,26 @@ void VLKBQuery::executeQuery()
     postData.append("VERSION=1.0&");
     postData.append("LANG=ADQL&");
     postData.append("FORMAT=tsv&");
-    postData.append("QUERY="+QUrl::toPercentEncoding(query));
+    postData.append("QUERY=" + QUrl::toPercentEncoding(query));
 
-    connect ( manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)),
-              this,
-              SLOT(onAuthenticationRequestSlot(QNetworkReply*,QAuthenticator*)) );
-    // connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinished(QNetworkReply*)));
-    if(what.compare("bm")==0)
-        connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinishedBM(QNetworkReply*)));
-    else if(what.compare("model")==0)
-        connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinishedModel(QNetworkReply*)));
+    connect(manager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
+            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
+    // connect(manager, SIGNAL(finished(QNetworkReply*)),  this,
+    // SLOT(queryReplyFinished(QNetworkReply*)));
+    if (what.compare("bm") == 0)
+        connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+                SLOT(queryReplyFinishedBM(QNetworkReply *)));
+    else if (what.compare("model") == 0)
+        connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+                SLOT(queryReplyFinishedModel(QNetworkReply *)));
 
-    QNetworkRequest req(url+"/sync");
+    QNetworkRequest req(url + "/sync");
     AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
-    QNetworkReply *reply = manager->post(req,postData);
-    //manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
+    QNetworkReply *reply = manager->post(req, postData);
+    // manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
     loading->setLoadingProcess(reply);
-
 }
-
 
 void VLKBQuery::executoSyncQuery()
 {
@@ -136,100 +131,87 @@ void VLKBQuery::executoSyncQuery()
     postData.append("LANG=ADQL&");
     postData.append("FORMAT=tsv&");
 
-
     QNetworkAccessManager *networkMgr = new QNetworkAccessManager(this);
-    connect ( networkMgr, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)),
-              this,
-              SLOT(onAuthenticationRequestSlot(QNetworkReply*,QAuthenticator*)) );
+    connect(networkMgr, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
+            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
 
-    QNetworkRequest req(url+"/sync?REQUEST=doQuery&VERSION=1.0&LANG=ADQL&FORMAT=tsv&QUERY="+QUrl::toPercentEncoding(query));
+    QNetworkRequest req(url + "/sync?REQUEST=doQuery&VERSION=1.0&LANG=ADQL&FORMAT=tsv&QUERY="
+                        + QUrl::toPercentEncoding(query));
     AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     QNetworkReply *reply = networkMgr->get(req);
 
-    qDebug()<<"pre loop >>> ";
+    qDebug() << "pre loop >>> ";
     QEventLoop loop;
     QObject::connect(reply, SIGNAL(readyRead()), &loop, SLOT(quit()));
 
     // Execute the event loop here, now we will wait here until readyRead() signal is emitted
     // which in turn will trigger event loop quit.
     loop.exec();
-    qDebug()<<"post loop";
+    qDebug() << "post loop";
 
     // Lets print the HTTP response.
-    qDebug( reply->readAll() );
+    qDebug(reply->readAll());
 }
-
 
 void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
-    qDebug() <<"auth";
-    QString user= "";
+    qDebug() << "auth";
+    QString user = "";
     QString pass = "";
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (settings.value("vlkbtype", "public").toString()=="private")
-    {
-           user= settings.value("vlkbuser", "").toString();
-           pass = settings.value("vlkbpass", "").toString();
-
+    if (settings.value("vlkbtype", "public").toString() == "private") {
+        user = settings.value("vlkbuser", "").toString();
+        pass = settings.value("vlkbpass", "").toString();
     }
 
     aAuthenticator->setUser(user);
     aAuthenticator->setPassword(pass);
 }
 
-void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)
+void VLKBQuery::queryReplyFinishedModel(QNetworkReply *reply)
 {
 
-    qDebug()<<"MODEL QUERY";
+    qDebug() << "MODEL QUERY";
 
-    if(reply->error())
-    {
+    if (reply->error()) {
         qDebug() << "ERROR!";
         qDebug() << reply->errorString();
-    }
-    else
-    {
+    } else {
 
-
-        QVariant possibleRedirectUrl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+        QVariant possibleRedirectUrl =
+                reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
 
         /* We'll deduct if the redirection is valid in the redirectUrl function */
         urlRedirectedTo = redirectUrl(possibleRedirectUrl.toUrl(), urlRedirectedTo);
 
         /* If the URL is not empty, we're being redirected. */
-        if(!urlRedirectedTo.isEmpty())
-        {
+        if (!urlRedirectedTo.isEmpty()) {
 
-            qDebug()<<"URL REDIREZIONE: "<< urlRedirectedTo.toString();
+            qDebug() << "URL REDIREZIONE: " << urlRedirectedTo.toString();
 
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
             AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
-        }
-        else
-        {
+        } else {
 
             QByteArray bytes = reply->readAll();
 
             loading->loadingEnded();
             loading->hide();
 
-
-
             QVector<QStringList> headerAndValueList;
             QList<QByteArray> lines = bytes.split('\r\n');
 
-            foreach ( const QByteArray &line, lines)
-            {
-                QString myString (line);
-                headerAndValueList.append( myString.split("\t") );
+            foreach (const QByteArray &line, lines) {
+                QString myString(line);
+                headerAndValueList.append(myString.split("\t"));
             }
 
-            qDebug()<<"headerAndValueList: "<< headerAndValueList;
+            qDebug() << "headerAndValueList: " << headerAndValueList;
 
             sd->setModelFitValue(headerAndValueList, modelColor);
             /*
@@ -243,7 +225,8 @@ void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)
             //Fare un controllo più serio, su quando non ci sono sed restituite
             else if (bytes.size()!=1187)
             {
-                QString output_file=QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
+                QString
+output_file=QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
                 output_file.append("/").append("test_model").append(".dat");
 
                 QFile file(output_file);
@@ -267,64 +250,53 @@ void VLKBQuery::queryReplyFinishedModel (QNetworkReply *reply)
                fileload->setVtkWin(vtkwin);
                fileload->show();
 */
-
         }
         /* Clean up. */
         reply->deleteLater();
     }
-
-
 }
 
-void VLKBQuery::queryReplyFinishedBM (QNetworkReply *reply)
+void VLKBQuery::queryReplyFinishedBM(QNetworkReply *reply)
 {
 
-    qDebug()<<"BM QUERY";
+    qDebug() << "BM QUERY";
 
-
-    if(reply->error())
-    {
+    if (reply->error()) {
         qDebug() << "ERROR!";
         qDebug() << reply->errorString();
-    }
-    else
-    {
+    } else {
 
-
-        QVariant possibleRedirectUrl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+        QVariant possibleRedirectUrl =
+                reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
 
         /* We'll deduct if the redirection is valid in the redirectUrl function */
         urlRedirectedTo = redirectUrl(possibleRedirectUrl.toUrl(), urlRedirectedTo);
 
         /* If the URL is not empty, we're being redirected. */
-        if(!urlRedirectedTo.isEmpty())
-        {
+        if (!urlRedirectedTo.isEmpty()) {
 
-            qDebug()<<"URL REDIREZIONE: "<< urlRedirectedTo.toString();
+            qDebug() << "URL REDIREZIONE: " << urlRedirectedTo.toString();
 
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
             AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
-        }
-        else
-        {
+        } else {
 
             QByteArray bytes = reply->readAll();
-            qDebug()<<"Size: "<< bytes.size();
+            qDebug() << "Size: " << bytes.size();
 
             QString s_data = QString::fromLatin1(bytes.data());
 
-            //se inizia per < è un xml, se è xml c'e' stato un errore
-            if(QString::compare(s_data.at(0), "<", Qt::CaseInsensitive) == 0)
-            {
-                QMessageBox::critical(this,"Error", "Error: \n"+bytes);
+            // se inizia per < è un xml, se è xml c'e' stato un errore
+            if (QString::compare(s_data.at(0), "<", Qt::CaseInsensitive) == 0) {
+                QMessageBox::critical(this, "Error", "Error: \n" + bytes);
             }
-            //Fare un controllo più serio, su quando non ci sono sed restituite
-            else if (bytes.size()!=1187)
-            {
-                QString output_file=QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
+            // Fare un controllo più serio, su quando non ci sono sed restituite
+            else if (bytes.size() != 1187) {
+                QString output_file =
+                        QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
                 output_file.append("/tmp_download/").append("test_bm").append(".dat");
 
                 QFile file(output_file);
@@ -332,13 +304,10 @@ void VLKBQuery::queryReplyFinishedBM (QNetworkReply *reply)
                 file.write(bytes);
                 file.close();
 
-                Vialactea_FileLoad *fileload = new Vialactea_FileLoad(output_file,vtkwin);
+                Vialactea_FileLoad *fileload = new Vialactea_FileLoad(output_file, vtkwin);
                 fileload->importBandMerged();
-            }
-            else
-            {
-                QMessageBox::information(this,"Alert", "No SED");
-
+            } else {
+                QMessageBox::information(this, "Alert", "No SED");
             }
             loading->loadingEnded();
             loading->hide();
@@ -348,31 +317,27 @@ void VLKBQuery::queryReplyFinishedBM (QNetworkReply *reply)
                fileload->setVtkWin(vtkwin);
                fileload->show();
 */
-
         }
         /* Clean up. */
         reply->deleteLater();
     }
-
 }
 
-QUrl VLKBQuery::redirectUrl(const QUrl& possibleRedirectUrl,   const QUrl& oldRedirectUrl) const {
+QUrl VLKBQuery::redirectUrl(const QUrl &possibleRedirectUrl, const QUrl &oldRedirectUrl) const
+{
     QUrl redirectUrl;
     /*
-* Check if the URL is empty and
-* that we aren't being fooled into a infinite redirect loop.
-* We could also keep track of how many redirects we have been to
-* and set a limit to it, but we'll leave that to you.
-*/
-    if(!possibleRedirectUrl.isEmpty() && possibleRedirectUrl != oldRedirectUrl) {
+     * Check if the URL is empty and
+     * that we aren't being fooled into a infinite redirect loop.
+     * We could also keep track of how many redirects we have been to
+     * and set a limit to it, but we'll leave that to you.
+     */
+    if (!possibleRedirectUrl.isEmpty() && possibleRedirectUrl != oldRedirectUrl) {
         redirectUrl = possibleRedirectUrl;
     }
 
     return redirectUrl;
 }
-
-
-
 
 VLKBQuery::~VLKBQuery()
 {

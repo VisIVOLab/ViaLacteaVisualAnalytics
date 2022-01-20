@@ -1,8 +1,9 @@
 #ifndef SETTINGFORM_H
 #define SETTINGFORM_H
 
-#include <QWidget>
 #include "authwrapper.h"
+
+#include <QWidget>
 
 namespace Ui {
 class SettingForm;

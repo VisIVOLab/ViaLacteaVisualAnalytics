@@ -1,77 +1,78 @@
 #include "vlkbquerycomposer.h"
 #include "ui_vlkbquerycomposer.h"
-#include <QNetworkAccessManager>
-#include <QUrl>
-#include <QNetworkRequest>
-#include <QDebug>
+
+#include "authwrapper.h"
+#include "singleton.h"
+#include "vlkbtable.h"
+#include <QAuthenticator>
 #include <QDateTime>
-#include <QFile>
+#include <QDebug>
+#include <QDir>
 #include <QDomDocument>
 #include <QDomNodeList>
-#include "vlkbtable.h"
+#include <QFile>
 #include <QMessageBox>
-#include <QDir>
-#include <QAuthenticator>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
 #include <QSettings>
-#include "singleton.h"
-#include "authwrapper.h"
+#include <QUrl>
 
-VLKBQueryComposer::VLKBQueryComposer(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::VLKBQueryComposer)
+VLKBQueryComposer::VLKBQueryComposer(QWidget *parent)
+    : QWidget(parent), ui(new Ui::VLKBQueryComposer)
 {
     ui->setupUi(this);
 
-    QHeaderView* header = ui->columnTableWidget->horizontalHeader();
+    QHeaderView *header = ui->columnTableWidget->horizontalHeader();
     header->setVisible(true);
     header->sectionResizeMode(QHeaderView::Stretch);
-    
-    m_sSettingsFile = QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini");
+
+    m_sSettingsFile = QDir::homePath()
+                              .append(QDir::separator())
+                              .append("VisIVODesktopTemp")
+                              .append("/setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    
-    
-    url=settings.value("vlkbtableurl", "").toString();
 
-
+    url = settings.value("vlkbtableurl", "").toString();
 }
 
-
-void VLKBQueryComposer::tableReplyFinished (QNetworkReply *reply)
+void VLKBQueryComposer::tableReplyFinished(QNetworkReply *reply)
 {
 
-    if(reply->error())
-    {
+    if (reply->error()) {
         qDebug() << "ERROR!";
         qDebug() << reply->errorString();
-    }
-    else
-    {
+    } else {
         QDomDocument doc;
         doc.setContent(reply->readAll());
-        QDomNodeList list=doc.elementsByTagName("table");
+        QDomNodeList list = doc.elementsByTagName("table");
 
-        for(int i=0;i<list.size();i++)
-        {
-            VlkbTable *table= new VlkbTable();
+        for (int i = 0; i < list.size(); i++) {
+            VlkbTable *table = new VlkbTable();
             QDomElement node = list.at(i).toElement();
-            for (int j=0;j<node.childNodes().size();j++)
-            {
-                if(node.childNodes().at(j).toElement().tagName()=="name")
-                {
+            for (int j = 0; j < node.childNodes().size(); j++) {
+                if (node.childNodes().at(j).toElement().tagName() == "name") {
                     table->setName(node.childNodes().at(j).toElement().text());
-                }
-                else if(node.childNodes().at(j).toElement().tagName()=="column")
-                {
-                    table->addColumn(node.childNodes().at(j).toElement().childNodes().at(0).toElement().text(),node.childNodes().at(j).toElement().childNodes().at(1).toElement().text());
+                } else if (node.childNodes().at(j).toElement().tagName() == "column") {
+                    table->addColumn(node.childNodes()
+                                             .at(j)
+                                             .toElement()
+                                             .childNodes()
+                                             .at(0)
+                                             .toElement()
+                                             .text(),
+                                     node.childNodes()
+                                             .at(j)
+                                             .toElement()
+                                             .childNodes()
+                                             .at(1)
+                                             .toElement()
+                                             .text());
                 }
             }
 
             table_list.append(table);
             ui->tableListComboBox->addItem(table->getName());
-
         }
-
-
     }
 
     reply->deleteLater();
@@ -81,10 +82,9 @@ VLKBQueryComposer::~VLKBQueryComposer()
 {
     delete ui;
 }
-void VLKBQueryComposer::availReplyFinished (QNetworkReply *reply)
+void VLKBQueryComposer::availReplyFinished(QNetworkReply *reply)
 {
-    if(reply->error())
-    {
+    if (reply->error()) {
         qDebug() << "ERROR!";
         qDebug() << reply->errorString();
 
@@ -95,68 +95,65 @@ void VLKBQueryComposer::availReplyFinished (QNetworkReply *reply)
         ui->queryTextEdit->setEnabled(false);
         ui->okButton->setEnabled(false);
 
-        available=false;
+        available = false;
 
-    }
-    else
-    {
+    } else {
         QDomDocument doc;
         doc.setContent(reply->readAll());
 
-        QDomNodeList list=doc.elementsByTagName("vosi:available");
-        if(list.at(0).toElement().text()=="true")
-        {
+        QDomNodeList list = doc.elementsByTagName("vosi:available");
+        if (list.at(0).toElement().text() == "true") {
             ui->tableListComboBox->setEnabled(true);
             ui->columnTableWidget->setEnabled(true);
             ui->syncCheckBox->setEnabled(true);
             ui->queryLangComboBox->setEnabled(true);
             ui->queryTextEdit->setEnabled(true);
             ui->okButton->setEnabled(true);
-            available=true;
-            QNetworkAccessManager * manager = new QNetworkAccessManager(this);
-            connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(tableReplyFinished(QNetworkReply*)));
-            QNetworkRequest req(QUrl(url+"/tables"));
+            available = true;
+            QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+            connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+                    SLOT(tableReplyFinished(QNetworkReply *)));
+            QNetworkRequest req(QUrl(url + "/tables"));
             AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
-           // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/tables")),postData);
-
+            // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/tables")),postData);
         }
     }
 
     reply->deleteLater();
-
 }
 
 void VLKBQueryComposer::checkAvailability()
 {
 
-    //url=ui->tapUrlLineEdit->text();
+    // url=ui->tapUrlLineEdit->text();
 
     manager = new QNetworkAccessManager(this);
 
-    connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
-    QNetworkRequest req(QUrl(url+"/availability"));
+    connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+            SLOT(availReplyFinished(QNetworkReply *)));
+    QNetworkRequest req(QUrl(url + "/availability"));
     AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     manager->get(req);
-   // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
+    // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
 }
 
 void VLKBQueryComposer::on_connectButton_clicked()
 {
 
-    //url=ui->tapUrlLineEdit->text();
+    // url=ui->tapUrlLineEdit->text();
 
     manager = new QNetworkAccessManager(this);
 
-    connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(availReplyFinished(QNetworkReply*)));
-    QNetworkRequest req(QUrl(url+"/availability"));
+    connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+            SLOT(availReplyFinished(QNetworkReply *)));
+    QNetworkRequest req(QUrl(url + "/availability"));
     AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     manager->get(req);
-   // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
-
+    // manager->get(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability")));
 
     /*
      *
@@ -167,8 +164,8 @@ void VLKBQueryComposer::on_connectButton_clicked()
     {
         qDebug()<<"#############################################Available";
         QNetworkAccessManager * manager = new QNetworkAccessManager(this);
-        connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(tableReplyFinished(QNetworkReply*)));
-        manager->get(QNetworkRequest(QUrl(url+"/tables")));
+        connect(manager, SIGNAL(finished(QNetworkReply*)),  this,
+    SLOT(tableReplyFinished(QNetworkReply*))); manager->get(QNetworkRequest(QUrl(url+"/tables")));
     }
 */
 }
@@ -178,24 +175,18 @@ void VLKBQueryComposer::on_tableListComboBox_currentIndexChanged(int index)
 
     int row;
 
-    for(int i=0;i<table_list.at(index)->getColumnList().size();i++)
-    {
+    for (int i = 0; i < table_list.at(index)->getColumnList().size(); i++) {
 
-        row= ui->columnTableWidget->model()->rowCount();
+        row = ui->columnTableWidget->model()->rowCount();
         ui->columnTableWidget->insertRow(row);
 
-
         QTableWidgetItem *name_item = new QTableWidgetItem();
-        name_item->setText(table_list.at(index)->getColumnList().at(i).name );
-        ui->columnTableWidget->setItem(row,0,name_item);
-
+        name_item->setText(table_list.at(index)->getColumnList().at(i).name);
+        ui->columnTableWidget->setItem(row, 0, name_item);
 
         QTableWidgetItem *datatype_item = new QTableWidgetItem();
-        datatype_item->setText(table_list.at(index)->getColumnList().at(i).type );
-        ui->columnTableWidget->setItem(row,1,datatype_item);
-
-
-
+        datatype_item->setText(table_list.at(index)->getColumnList().at(i).type);
+        ui->columnTableWidget->setItem(row, 1, datatype_item);
     }
 }
 
@@ -211,75 +202,65 @@ void VLKBQueryComposer::on_okButton_clicked()
     postData.append("LANG=ADQL&");
     postData.append("FORMAT=tsv&");
 
+    postData.append("QUERY=SELECT%20*%20FROM%20vlkb_compactsources.band500um%20WHERE%20(glon>=316."
+                    "009%20and%20glon<=317.178)%20AND%20(glat>=-0.78796%20and%20glat<=0.68552)");
 
-    postData.append("QUERY=SELECT%20*%20FROM%20vlkb_compactsources.band500um%20WHERE%20(glon>=316.009%20and%20glon<=317.178)%20AND%20(glat>=-0.78796%20and%20glat<=0.68552)");
-
-    connect ( manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)),
-              this,
-              SLOT(onAuthenticationRequestSlot(QNetworkReply*,QAuthenticator*)) );
-    connect(manager, SIGNAL(finished(QNetworkReply*)),  this, SLOT(queryReplyFinished(QNetworkReply*)));
-    QNetworkRequest req(url+"/sync");
+    connect(manager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
+            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
+    connect(manager, SIGNAL(finished(QNetworkReply *)), this,
+            SLOT(queryReplyFinished(QNetworkReply *)));
+    QNetworkRequest req(url + "/sync");
     AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
-    manager->post(req,postData);
-   // manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
-
-
+    manager->post(req, postData);
+    // manager->post(QNetworkRequest(QUrl("http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync")),postData);
 }
 
-void VLKBQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
+void VLKBQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply,
+                                                    QAuthenticator *aAuthenticator)
 {
 
-    qDebug() <<"auth";
-    QString user= "";
+    qDebug() << "auth";
+    QString user = "";
     QString pass = "";
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (settings.value("vlkbtype", "public").toString()=="private")
-    {
-            user= settings.value("vlkbuser", "").toString();
-            pass = settings.value("vlkbpass", "").toString();
-
+    if (settings.value("vlkbtype", "public").toString() == "private") {
+        user = settings.value("vlkbuser", "").toString();
+        pass = settings.value("vlkbpass", "").toString();
     }
 
     aAuthenticator->setUser(user);
     aAuthenticator->setPassword(pass);
-
 }
 
-
-void VLKBQueryComposer::queryReplyFinished (QNetworkReply *reply)
+void VLKBQueryComposer::queryReplyFinished(QNetworkReply *reply)
 {
-    if(reply->error())
-    {
+    if (reply->error()) {
         qDebug() << "ERROR!";
         qDebug() << reply->errorString();
-    }
-    else
-    {
+    } else {
 
-        qDebug()<<"else";
+        qDebug() << "else";
 
-        QVariant possibleRedirectUrl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+        QVariant possibleRedirectUrl =
+                reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
 
         /* We'll deduct if the redirection is valid in the redirectUrl function */
         urlRedirectedTo = redirectUrl(possibleRedirectUrl.toUrl(), urlRedirectedTo);
 
         /* If the URL is not empty, we're being redirected. */
-        if(!urlRedirectedTo.isEmpty())
-        {
+        if (!urlRedirectedTo.isEmpty()) {
 
-            qDebug()<<"URL REDIREZIONE: "<< urlRedirectedTo.toString();
+            qDebug() << "URL REDIREZIONE: " << urlRedirectedTo.toString();
 
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
             AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
-        }
-        else
-        {
-            qDebug()<<"END REDIRECT";
+        } else {
+            qDebug() << "END REDIRECT";
 
             QByteArray bytes = reply->readAll();
 
@@ -292,8 +273,7 @@ void VLKBQueryComposer::queryReplyFinished (QNetworkReply *reply)
 
                 qDebug()<<str;*/
 
-            qDebug()<< bytes;
-
+            qDebug() << bytes;
 
             QFile file("/Users/fxbio6600/test_out.txt");
             file.open(QIODevice::WriteOnly);
@@ -306,28 +286,23 @@ void VLKBQueryComposer::queryReplyFinished (QNetworkReply *reply)
                     for(int i=0;i<bytes.size();i++)
                         qDebug()<<"i: "<<i<<" - "<<bytes[i];
                 */
-
         }
         /* Clean up. */
         reply->deleteLater();
-
     }
-
 }
 
-
-
-
-
-QUrl VLKBQueryComposer::redirectUrl(const QUrl& possibleRedirectUrl,   const QUrl& oldRedirectUrl) const {
+QUrl VLKBQueryComposer::redirectUrl(const QUrl &possibleRedirectUrl,
+                                    const QUrl &oldRedirectUrl) const
+{
     QUrl redirectUrl;
     /*
-* Check if the URL is empty and
-* that we aren't being fooled into a infinite redirect loop.
-* We could also keep track of how many redirects we have been to
-* and set a limit to it, but we'll leave that to you.
-*/
-    if(!possibleRedirectUrl.isEmpty() && possibleRedirectUrl != oldRedirectUrl) {
+     * Check if the URL is empty and
+     * that we aren't being fooled into a infinite redirect loop.
+     * We could also keep track of how many redirects we have been to
+     * and set a limit to it, but we'll leave that to you.
+     */
+    if (!possibleRedirectUrl.isEmpty() && possibleRedirectUrl != oldRedirectUrl) {
         redirectUrl = possibleRedirectUrl;
     }
 

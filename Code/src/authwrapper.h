@@ -1,21 +1,19 @@
 #ifndef AUTHWRAPPER_H
 #define AUTHWRAPPER_H
 
+#include "vlvaurlschemehandler.h"
+
 #include <QNetworkAccessManager>
 #include <QOAuth2AuthorizationCodeFlow>
 #include <QOAuthHttpServerReplyHandler>
 #include <QObject>
 #include <QWebEngineView>
 
-#include "vlvaurlschemehandler.h"
-
 class CustomOAuthReplyHandler : public QOAuthHttpServerReplyHandler
 {
     Q_OBJECT
 public:
-    CustomOAuthReplyHandler(QObject *parent = nullptr)
-        : QOAuthHttpServerReplyHandler(parent)
-    {}
+    CustomOAuthReplyHandler(QObject *parent = nullptr) : QOAuthHttpServerReplyHandler(parent) { }
 
     QString callback() const { return QString("vlva://callback"); }
 };

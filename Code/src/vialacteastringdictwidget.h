@@ -2,10 +2,9 @@
 #define VIALACTEASTRINGDICTWIDGET_H
 
 #include <QHash>
-#include <QWidget>
-
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
+#include <QWidget>
 
 namespace Ui {
 class VialacteaStringDictWidget;
@@ -19,10 +18,10 @@ public:
     explicit VialacteaStringDictWidget(QWidget *parent = 0);
     ~VialacteaStringDictWidget();
     void buildDict();
-    QHash<QString, QString> getColUtypeStringDict(){return colUtypeStringDict;}
-    QHash<QString, QString> getColDescStringDict(){return colDescStringDict;}
-    QHash<QString, QString> getTableDescStringDict(){return tableDescStringDict;}
-    QHash<QString, QString> getTableUtypeStringDict(){return tableUtypeStringDict;}
+    QHash<QString, QString> getColUtypeStringDict() { return colUtypeStringDict; }
+    QHash<QString, QString> getColDescStringDict() { return colDescStringDict; }
+    QHash<QString, QString> getTableDescStringDict() { return tableDescStringDict; }
+    QHash<QString, QString> getTableUtypeStringDict() { return tableUtypeStringDict; }
 
 private:
     Ui::VialacteaStringDictWidget *ui;
@@ -36,17 +35,13 @@ private:
     void clearDict();
 
 private slots:
-    void availReplyFinished (QNetworkReply *reply);
-    void  executeQueryTapSchemaTables();
+    void availReplyFinished(QNetworkReply *reply);
+    void executeQueryTapSchemaTables();
     void executeQueryTapSchemaColumns();
     void onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator);
-    void queryReplyFinishedTapSchemaTables (QNetworkReply *reply);
+    void queryReplyFinishedTapSchemaTables(QNetworkReply *reply);
     void queryReplyFinishedTapSchemaColumns(QNetworkReply *reply);
-    QUrl redirectUrl(const QUrl& possibleRedirectUrl, const QUrl& oldRedirectUrl) const;
-
-
-
-
+    QUrl redirectUrl(const QUrl &possibleRedirectUrl, const QUrl &oldRedirectUrl) const;
 };
 
 #endif // VIALACTEASTRINGDICTWIDGET_H

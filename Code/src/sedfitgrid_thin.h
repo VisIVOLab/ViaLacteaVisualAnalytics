@@ -2,7 +2,6 @@
 #define SEDFITGRID_THIN_H
 
 #include <QWidget>
-#include "sedvisualizerplot.h"
 
 class SEDVisualizerPlot;
 
@@ -19,11 +18,9 @@ public:
     ~SedFitGrid_thin();
     Ui::SedFitGrid_thin *ui;
 
-
 private slots:
     void on_pushButton_clicked();
     void closeEvent(QCloseEvent *event);
-
 
 private:
     SEDVisualizerPlot *sedwin;

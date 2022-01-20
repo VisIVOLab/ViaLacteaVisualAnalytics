@@ -1,12 +1,12 @@
 #include "vtkfitstoolwidget_new.h"
 #include "ui_vtkfitstoolwidget_new.h"
-#include <QFileInfo>
-#include <QDebug>
-#include "vtkProperty.h"
 
-vtkfitstoolwidget_new::vtkfitstoolwidget_new(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::vtkfitstoolwidget_new)
+#include "vtkProperty.h"
+#include <QDebug>
+#include <QFileInfo>
+
+vtkfitstoolwidget_new::vtkfitstoolwidget_new(QWidget *parent)
+    : QMainWindow(parent), ui(new Ui::vtkfitstoolwidget_new)
 {
     ui->setupUi(this);
     ui->deletePushButton->setStyleSheet("background-color: red");
@@ -20,28 +20,25 @@ vtkfitstoolwidget_new::~vtkfitstoolwidget_new()
 void vtkfitstoolwidget_new::addLayer(vtkfitstoolwidgetobject *o)
 {
 
-    if (o->getType() == 0)
-    {
-        QTreeWidgetItem *treeItem=addTreeRoot(o->getName());
-        o->setTreeWidgetItem( treeItem );
+    if (o->getType() == 0) {
+        QTreeWidgetItem *treeItem = addTreeRoot(o->getName());
+        o->setTreeWidgetItem(treeItem);
     }
 
-    if (o->getType() == 1)
-    {
+    if (o->getType() == 1) {
 
-        double r=o->getActor()->GetProperty()->GetColor()[0]*255;
-        double g=o->getActor()->GetProperty()->GetColor()[1]*255;
-        double b=o->getActor()->GetProperty()->GetColor()[2]*255;
+        double r = o->getActor()->GetProperty()->GetColor()[0] * 255;
+        double g = o->getActor()->GetProperty()->GetColor()[1] * 255;
+        double b = o->getActor()->GetProperty()->GetColor()[2] * 255;
 
-        QBrush brush (QColor(r,g,b));
-        addTreeChild(o->getParent()->getTreeWidgetItem(),  o->getName(),brush);
+        QBrush brush(QColor(r, g, b));
+        addTreeChild(o->getParent()->getTreeWidgetItem(), o->getName(), brush);
     }
-
 
     layerList.append(o);
 }
 
-QTreeWidgetItem* vtkfitstoolwidget_new::addTreeRoot(QString name)
+QTreeWidgetItem *vtkfitstoolwidget_new::addTreeRoot(QString name)
 {
     QTreeWidgetItem *treeItem = new QTreeWidgetItem(ui->layerTreeWidget);
     treeItem->setText(1, name);
@@ -54,37 +51,38 @@ void vtkfitstoolwidget_new::addTreeChild(QTreeWidgetItem *parent, QString name, 
 
     QTreeWidgetItem *treeItem = new QTreeWidgetItem();
 
-
-
-    treeItem->setBackground(0,brush);
+    treeItem->setBackground(0, brush);
 
     treeItem->setText(1, name);
 
     parent->addChild(treeItem);
 }
 
-
-
 void vtkfitstoolwidget_new::setWavelength(QString w)
 {
-    wavelength=w;
+    wavelength = w;
 }
 
 void vtkfitstoolwidget_new::on_layerTreeWidget_itemSelectionChanged()
 {
-    ui->layerTreeWidget->selectionModel()->select(ui->layerTreeWidget->model()->index(ui->layerTreeWidget ->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()),0),QItemSelectionModel::Select);
-    int pos = ui->layerTreeWidget->currentIndex().row()+ qAbs(ui->layerTreeWidget->indexOfTopLevelItem ( ui->layerTreeWidget->currentItem()));
-    ui->nameLineEdit->setText( layerList.at(pos)->getName() );
-    ui->wavelenghtLineEdit->setText( layerList.at(pos)->getWavelength() );
-
+    ui->layerTreeWidget->selectionModel()->select(
+            ui->layerTreeWidget->model()->index(
+                    ui->layerTreeWidget->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()),
+                    0),
+            QItemSelectionModel::Select);
+    int pos = ui->layerTreeWidget->currentIndex().row()
+            + qAbs(ui->layerTreeWidget->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()));
+    ui->nameLineEdit->setText(layerList.at(pos)->getName());
+    ui->wavelenghtLineEdit->setText(layerList.at(pos)->getWavelength());
 }
 
 void vtkfitstoolwidget_new::on_savePushButton_clicked()
 {
-    int pos = ui->layerTreeWidget->currentIndex().row()+ qAbs(ui->layerTreeWidget->indexOfTopLevelItem ( ui->layerTreeWidget->currentItem()));
-    qDebug()<<"pos: "<<pos;
-    qDebug()<<"type: "<<layerList.at(pos)->getType();
-    qDebug()<<"name: "<<layerList.at(pos)->getName();
+    int pos = ui->layerTreeWidget->currentIndex().row()
+            + qAbs(ui->layerTreeWidget->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()));
+    qDebug() << "pos: " << pos;
+    qDebug() << "type: " << layerList.at(pos)->getType();
+    qDebug() << "name: " << layerList.at(pos)->getName();
 
     layerList.at(pos)->setName(ui->nameLineEdit->text());
     layerList.at(pos)->setWavelength(ui->wavelenghtLineEdit->text());
