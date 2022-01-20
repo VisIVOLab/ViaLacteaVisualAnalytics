@@ -299,7 +299,6 @@ HEADERS += src/mainwindow.h \
     src/vstabledesktop.h \
     src/visivoutilsdesktop.h \
     src/vsobjectdesktop.h \
-    src/visivofilterdesktop.h \
     src/filtercustomize.h \
     src/vialacteastringdictwidget.h \
 
@@ -307,7 +306,6 @@ HEADERS += src/mainwindow.h \
 FORMS += ui/mainwindow.ui \
     ui/caesarwindow.ui \
     ui/operationqueue.ui \
-    ui/vtkwindow.ui \
     ui/vlkbquery.ui \
     ui/loadingwidget.ui \
     ui/sedvisualizerplot.ui \

@@ -2,7 +2,6 @@
 #include <QDebug>
 
 #include "downloadmanager.h"
-#include "dcvisualizer.h"
 #include "loadingwidget.h"
 #include <QDir>
 #include <QMessageBox>

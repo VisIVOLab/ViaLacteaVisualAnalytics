@@ -91,13 +91,7 @@
 #include <QSignalMapper>
 
 #include "filtercustomize.h"
-
-#include "vosamp.h"
-
 #include "vtkAssembly.h"
-
-
-
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)

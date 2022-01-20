@@ -10,7 +10,6 @@
 #include "xmlparser.h"
 #include <QComboBox>
 #include "loadingwidget.h"
-#include "dcvisualizer.h"
 #include "vtkwindow_new.h"
 
 namespace Ui {
@@ -26,7 +25,6 @@ public:
     QNetworkAccessManager* nam;
     xmlparser *parser;
     LoadingWidget *loading;
-    dcvisualizer *visualizer;
     QString downloadedFile;
     ~dbquery();
     void setCoordinate(QString l, QString b);
