@@ -18,7 +18,6 @@ public:
     void readSettingsFromFile();
 
 private slots:
-    void on_IdlPushButton_clicked();
     void on_TilePushButton_clicked();
     void on_checkBox_clicked(bool checked);
     void on_workdirButton_clicked();

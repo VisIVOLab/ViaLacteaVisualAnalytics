@@ -48,7 +48,6 @@ private:
     QString sedFitInputFflag;
     QString sedFitInputUlimitString;
     double dist;
-    QString idlPath;
     QString outputSedLog;
     QString outputSedResults;
 
