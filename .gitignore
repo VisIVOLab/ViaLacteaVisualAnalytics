@@ -1,4 +1,3 @@
 Code/*.pro.user
-Code/src/authkeys.h
 build-*
 **/.DS_Store
