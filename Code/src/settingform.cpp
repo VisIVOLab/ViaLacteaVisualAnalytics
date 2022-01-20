@@ -111,6 +111,12 @@ void SettingForm::readSettingsFromFile()
     }
 
     ui->urlLineEdit->setText(settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
+
+    if (m_caesarAuth->isAuthenticated()) {
+        caesar_loggedin();
+    } else {
+        caesar_loggedout();
+    }
 }
 
 void SettingForm::vlkb_loggedin()

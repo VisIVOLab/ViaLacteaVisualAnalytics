@@ -1,4 +1,7 @@
 #include "vtkwindow_new.h"
+#include "ui_vtkwindow_new.h"
+
+#include "authwrapper.h"
 #include "astroutils.h"
 #include "caesarwindow.h"
 #include "dbquery.h"
@@ -12,7 +15,6 @@
 #include "selectedsourcesform.h"
 #include "singleton.h"
 #include "ui_higalselectedsources.h"
-#include "ui_vtkwindow_new.h"
 #include "vialactea.h"
 #include "vialactea_fileload.h"
 #include "vialacteainitialquery.h"
@@ -4847,10 +4849,19 @@ void vtkwindow_new::on_actionLeft_triggered()
 
 void vtkwindow_new::on_actionCAESAR_triggered()
 {
+    auto caesarAuth = &NeaniasCaesarAuth::Instance();
+    if (!caesarAuth->isAuthenticated()) {
+        QMessageBox::warning(this, "Authentication required",
+                             "This service is restricted to authenticated users.\n"
+                             "Sign in to the service through the Settings window to continue.");
+        return;
+    }
+
     QString imagePath = QString::fromStdString(myfits->GetFileName());
     auto caesar = new CaesarWindow(this, imagePath);
     caesar->show();
     caesar->activateWindow();
+    caesar->raise();
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)

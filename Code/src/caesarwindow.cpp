@@ -33,6 +33,9 @@ CaesarWindow::CaesarWindow(QWidget *parent, const QString &imagePath)
 
     nam = new QNetworkAccessManager(this);
 
+    refreshTimer = new QTimer(this);
+    connect(refreshTimer, &QTimer::timeout, this, &CaesarWindow::on_jobRefreshButton_clicked);
+
     // Ask to upload the current file
     if (!imagePath.isEmpty()) {
         auto msg = new QMessageBox(this);
@@ -52,9 +55,6 @@ CaesarWindow::CaesarWindow(QWidget *parent, const QString &imagePath)
                     msg->deleteLater();
                 });
     }
-
-    refreshTimer = new QTimer(this);
-    connect(refreshTimer, &QTimer::timeout, this, &CaesarWindow::on_jobRefreshButton_clicked);
 
     emit ui->dataRefreshButton->clicked();
     emit ui->jobRefreshButton->clicked();
