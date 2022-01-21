@@ -2,6 +2,7 @@
 #define FITSIMAGESTATISITICINFO_H
 
 #include <QWidget>
+
 #include "vtkwindow_new.h"
 
 namespace Ui {
@@ -20,9 +21,6 @@ public:
     void setFk5(double ra, double dec);
     void setImage(double x, double y);
     void setFilename();
-
-
-
 
 private:
     Ui::FitsImageStatisiticInfo *ui;

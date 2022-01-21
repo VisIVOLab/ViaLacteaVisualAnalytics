@@ -2,7 +2,6 @@
 #define SEDFITGRID_THICK_H
 
 #include <QWidget>
-#include "sedvisualizerplot.h"
 
 class SEDVisualizerPlot;
 

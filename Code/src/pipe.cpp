@@ -19,35 +19,35 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include <sstream>
-#include <cstdlib>
-#include <cstring>
-#include <map>
-#include <QStringList>
-#include <QString>
 #include "pipe.h"
 #include "visivoutilsdesktop.h"
 #include "vstabledesktop.h"
-#include "vtkWindowToImageFilter.h"
-#include "vtkPNGWriter.h"
-#include "vtkRenderWindow.h"
 #include "vtkCamera.h"
-#include "vtkRenderer.h"
 #include "vtkLookupTable.h"
+#include "vtkPNGWriter.h"
 #include "vtkPolyData.h"
+#include "vtkRenderer.h"
+#include "vtkRenderWindow.h"
+#include "vtkWindowToImageFilter.h"
+#include <cstdlib>
+#include <cstring>
+#include <map>
+#include <QString>
+#include <QStringList>
+#include <sstream>
 
 #include "vtkOutlineCornerFilter.h"
 #include "vtkProperty.h"
 #include "vtkScalarBarActor.h"
 
+#include "vstabledesktop.h"
 #include "vtkCubeAxesActor2D.h"
 #include "vtkDataSet.h"
-#include "vstabledesktop.h"
 #include "vtkLODActor.h"
 
 #include "qdebug.h"
-#include "vtkwindow_new.h"
 #include "vispoint.h"
+#include "vtkwindow_new.h"
 
 #include "vtkPolygon.h"
 
@@ -56,31 +56,28 @@ Pipe::Pipe(VSTableDesktop *table)
     m_VSTable = table;
 }
 
-VSTableDesktop* Pipe::getTable()
+VSTableDesktop *Pipe::getTable()
 {
     return m_VSTable;
 }
 
 void Pipe::constructVTK(vtkwindow_new *v)
 {
-    m_lut           = vtkLookupTable::New();
-    vtkwin=v;
+    m_lut = vtkLookupTable::New();
+    vtkwin = v;
     // m_pRenderer     = vtkRenderer::New();
     //  m_pRenderWindow = vtkRenderWindow::New();
-    m_pRenderer = vtkwin -> m_Ren1;
-    m_pRenderWindow = vtkwin -> renwin;
-
-
-
+    m_pRenderer = vtkwin->m_Ren1;
+    m_pRenderWindow = vtkwin->renwin;
 }
 
-int Pipe::createPipe ()
+int Pipe::createPipe()
 
 {
     return 0;
 }
 
-int  Pipe::getCamera ()
+int Pipe::getCamera()
 
 {
     return 0;
@@ -161,7 +158,8 @@ bool Pipe::readData (QStringList list)
         }
     }
 
- //int VSTable::getColumn(unsigned int *colList, unsigned int nOfCol, unsigned long long int fromRow, unsigned long long int toRow, float **fArray)
+ //int VSTable::getColumn(unsigned int *colList, unsigned int nOfCol, unsigned long long int
+fromRow, unsigned long long int toRow, float **fArray)
 
     //--------------------------------------------------------------------------
     // VSTable::getColumn reads the data
@@ -172,10 +170,10 @@ bool Pipe::readData (QStringList list)
 }
 */
 
-bool Pipe::readData (QStringList list)
+bool Pipe::readData(QStringList list)
 {
     //  std::ifstream inFile;
-    m_path=m_VSTable->getLocator();
+    m_path = m_VSTable->getLocator();
     /*
     inFile.open(m_path.c_str(), ios::binary);
     if(!inFile.good())
@@ -188,18 +186,17 @@ bool Pipe::readData (QStringList list)
     // m_fieldNames is a Vector of strings containing field names
     //--------------------------------------------------------------------------
 
-
     m_fieldNames.push_back(list[0].toStdString().c_str());
     m_fieldNames.push_back(list[1].toStdString().c_str());
     m_fieldNames.push_back(list[2].toStdString().c_str());
 
-    m_nRows= m_VSTable->getNumberOfRows();
-    m_nCols= m_VSTable->getNumberOfColumns();
+    m_nRows = m_VSTable->getNumberOfRows();
+    m_nCols = m_VSTable->getNumberOfColumns();
 
-    qDebug()<<"m_nCols="<<m_nCols<<" m_nRows: "<<m_nRows;
-    qDebug()<<list[0];
-    qDebug()<<list[1];
-    qDebug()<<list[2];
+    qDebug() << "m_nCols=" << m_nCols << " m_nRows: " << m_nRows;
+    qDebug() << list[0];
+    qDebug() << list[1];
+    qDebug() << list[2];
 
     //  unsigned int *colList;
     //  colList = new unsigned int [m_nCols];
@@ -222,125 +219,109 @@ bool Pipe::readData (QStringList list)
     // colList is an array containing indexes of the m_colNames map
     //--------------------------------------------------------------------------
     unsigned int *colList;
-    colList = new unsigned int [m_nCols];
-    int count=0;
-    for (int i = 0; i < m_fieldNames.size(); i++)
-    {
-        if (m_VSTable->getColId(m_fieldNames[i])>=0)
-        {
-            m_colNames.insert(make_pair(m_VSTable->getColName(i),i));
+    colList = new unsigned int[m_nCols];
+    int count = 0;
+    for (int i = 0; i < m_fieldNames.size(); i++) {
+        if (m_VSTable->getColId(m_fieldNames[i]) >= 0) {
+            m_colNames.insert(make_pair(m_VSTable->getColName(i), i));
 
-            colList[count]=m_VSTable->getColId(m_fieldNames[i]);
+            colList[count] = m_VSTable->getColId(m_fieldNames[i]);
             count++;
         }
     }
 
-
     //--------------------------------------------------------------------------
     // m_tableData is a bidimens. float array m_nCols*m_nRows
     //--------------------------------------------------------------------------
-    m_tableData = new float* [m_nCols];
-    for (int i = 0; i < m_nCols; i++)
-    {
-        try
-        {
-            m_tableData[i]=new  float[m_nRows];
+    m_tableData = new float *[m_nCols];
+    for (int i = 0; i < m_nCols; i++) {
+        try {
+            m_tableData[i] = new float[m_nRows];
+        } catch (std::bad_alloc &e) {
+            m_tableData[i] = NULL;
         }
-        catch(std::bad_alloc &e)
-        {
-            m_tableData[i]=NULL;
-        }
-        if(m_tableData[i]==NULL)
-        {
-            for(unsigned int j=0;j<i;j++) delete [] m_tableData[j];
-            delete [] m_tableData;
+        if (m_tableData[i] == NULL) {
+            for (unsigned int j = 0; j < i; j++)
+                delete[] m_tableData[j];
+            delete[] m_tableData;
             return false;
         }
     }
 
-
     //--------------------------------------------------------------------------
     // VSTable::getColumn reads the data
     //--------------------------------------------------------------------------
-    m_VSTable->getColumn(colList,m_nCols,0,m_nRows-1, m_tableData);
+    m_VSTable->getColumn(colList, m_nCols, 0, m_nRows - 1, m_tableData);
 
-    //delete table;
+    // delete table;
     return true;
 }
 
 void Pipe::destroyVTK()
 
 {
-    if ( m_pRenderer != 0 )
+    if (m_pRenderer != 0)
         m_pRenderer->Delete();
-    if(m_pRenderWindow!=0)
+    if (m_pRenderWindow != 0)
         m_pRenderWindow->Delete();
-    if ( m_lut!=0)
-        m_lut->Delete() ;
+    if (m_lut != 0)
+        m_lut->Delete();
 }
 
-void Pipe::saveImageAsPng(int num )
+void Pipe::saveImageAsPng(int num)
 
 {
 
-    int magnification=1;
-    vtkWindowToImageFilter *w2i=vtkWindowToImageFilter::New();
+    int magnification = 1;
+    vtkWindowToImageFilter *w2i = vtkWindowToImageFilter::New();
     std::string path;
     std::string numero;
     std::stringstream ss;
-    ss<<num;
-    ss>>numero;
+    ss << num;
+    ss >> numero;
     std::string fileName;
     w2i->SetInput(m_pRenderWindow);
-    w2i->SetScale(magnification,magnification);
+    w2i->SetScale(magnification, magnification);
     w2i->Update();
 
-
     this->destroyVTK();
-    return ;
-
+    return;
 }
 
-
-void Pipe::setCamera ()
+void Pipe::setCamera()
 {
 
-    m_camera =m_pRenderer->GetActiveCamera();
+    m_camera = m_pRenderer->GetActiveCamera();
 
-    //m_camera->SetFocalPoint(0,0,0);
+    // m_camera->SetFocalPoint(0,0,0);
     m_camera->Azimuth(0.0);
     m_camera->Elevation(0.0);
-    m_camera->Zoom (1);
+    m_camera->Zoom(1);
 
     vtkwin->updateScene();
-
 }
 
-void Pipe::setBoundingBox ( vtkDataObject *data )
+void Pipe::setBoundingBox(vtkDataObject *data)
 {
 
-    qDebug()<<"setBoundingBox";
+    qDebug() << "setBoundingBox";
 
-    vtkSmartPointer<vtkPoints> points =
-            vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 
-    //qui
-    points->InsertNextPoint(-15000, -10000, -200*scalingFactors);
-    points->InsertNextPoint(15000, -10000, -200*scalingFactors);
-    points->InsertNextPoint(-15000, 25000, -200*scalingFactors);
-    points->InsertNextPoint(15000, 25000, -200*scalingFactors);
+    // qui
+    points->InsertNextPoint(-15000, -10000, -200 * scalingFactors);
+    points->InsertNextPoint(15000, -10000, -200 * scalingFactors);
+    points->InsertNextPoint(-15000, 25000, -200 * scalingFactors);
+    points->InsertNextPoint(15000, 25000, -200 * scalingFactors);
 
-    points->InsertNextPoint(-15000, -10000, 200*scalingFactors);
-    points->InsertNextPoint(15000, -10000, 200*scalingFactors);
-    points->InsertNextPoint(-15000, 25000, 200*scalingFactors);
-    points->InsertNextPoint(15000, 25000, 200*scalingFactors);
-
-
+    points->InsertNextPoint(-15000, -10000, 200 * scalingFactors);
+    points->InsertNextPoint(15000, -10000, 200 * scalingFactors);
+    points->InsertNextPoint(-15000, 25000, 200 * scalingFactors);
+    points->InsertNextPoint(15000, 25000, 200 * scalingFactors);
 
     // Create the polygon
-    vtkSmartPointer<vtkPolygon> polygon =
-            vtkSmartPointer<vtkPolygon>::New();
-    polygon->GetPointIds()->SetNumberOfIds(8); //make a quad
+    vtkSmartPointer<vtkPolygon> polygon = vtkSmartPointer<vtkPolygon>::New();
+    polygon->GetPointIds()->SetNumberOfIds(8); // make a quad
     polygon->GetPointIds()->SetId(0, 0);
     polygon->GetPointIds()->SetId(1, 1);
     polygon->GetPointIds()->SetId(2, 2);
@@ -351,61 +332,53 @@ void Pipe::setBoundingBox ( vtkDataObject *data )
     polygon->GetPointIds()->SetId(7, 7);
 
     // Add the polygon to a list of polygons
-    vtkSmartPointer<vtkCellArray> polygons =
-            vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkCellArray> polygons = vtkSmartPointer<vtkCellArray>::New();
     polygons->InsertNextCell(polygon);
 
     // Create a PolyData
-    vtkSmartPointer<vtkPolyData> polygonPolyData =
-            vtkSmartPointer<vtkPolyData>::New();
+    vtkSmartPointer<vtkPolyData> polygonPolyData = vtkSmartPointer<vtkPolyData>::New();
     polygonPolyData->SetPoints(points);
     polygonPolyData->SetPolys(polygons);
 
-
-
-
-    bool showBox=true;
-    vtkOutlineCornerFilter*corner= vtkOutlineCornerFilter::New();
+    bool showBox = true;
+    vtkOutlineCornerFilter *corner = vtkOutlineCornerFilter::New();
     // corner->SetInputData(data);
     corner->SetInputData(polygonPolyData);
     corner->ReleaseDataFlagOn();
 
     vtkPolyDataMapper *outlineMapper = vtkPolyDataMapper::New();
     //   outlineMapper->SetInput ( corner->GetOutput() );
-    outlineMapper->SetInputConnection( corner->GetOutputPort() );
+    outlineMapper->SetInputConnection(corner->GetOutputPort());
 
     vtkProperty *outlineProperty = vtkProperty::New();
-    outlineProperty->SetColor ( 1,1,1 ); // Set the color to white
-    outlineProperty->SetAmbient ( 1 );
-    if(showBox)
-        outlineProperty->SetOpacity ( 0.999 );
+    outlineProperty->SetColor(1, 1, 1); // Set the color to white
+    outlineProperty->SetAmbient(1);
+    if (showBox)
+        outlineProperty->SetOpacity(0.999);
     else
-        outlineProperty->SetOpacity ( 0.0 );
+        outlineProperty->SetOpacity(0.0);
     outlineProperty->SetRepresentationToWireframe();
     outlineProperty->SetInterpolationToFlat();
 
-    //vtkLODActor* outlineActor = vtkLODActor::New();
+    // vtkLODActor* outlineActor = vtkLODActor::New();
     outlineActor = vtkLODActor::New();
-    outlineActor->SetMapper ( outlineMapper );
-    outlineActor->SetProperty ( outlineProperty );
-    outlineActor->SetPickable ( false );
-    outlineActor->SetVisibility ( true );
+    outlineActor->SetMapper(outlineMapper);
+    outlineActor->SetProperty(outlineProperty);
+    outlineActor->SetPickable(false);
+    outlineActor->SetVisibility(true);
 
+    m_pRenderer->AddActor(outlineActor);
 
-    m_pRenderer->AddActor ( outlineActor );
-
-    if (outlineActor!=0)
+    if (outlineActor != 0)
         outlineActor->Delete();
-    if (outlineMapper!=0)
+    if (outlineMapper != 0)
         outlineMapper->Delete();
-    if (outlineProperty!=0)
+    if (outlineProperty != 0)
         outlineProperty->Delete();
-    if (corner!=0)
+    if (corner != 0)
         corner->Delete();
 
-
-    qDebug()<<"setBoundingBox - end";
-
+    qDebug() << "setBoundingBox - end";
 }
 
 /*
@@ -454,31 +427,24 @@ void Pipe::setBoundingBox ( vtkDataObject *data )
 
 */
 
-
-void Pipe::colorBar (bool showColorBar)
+void Pipe::colorBar(bool showColorBar)
 {
 
+    if (scalarBar != 0) {
 
-
-
-    if (scalarBar != 0)
-    {
-
-        //scalarBar->Delete();
-        m_pRenderer->RemoveActor( scalarBar );
-
+        // scalarBar->Delete();
+        m_pRenderer->RemoveActor(scalarBar);
     }
 
+    scalarBar = vtkScalarBarActor::New();
+    scalarBar->SetTitle(colorScalar.c_str());
 
-    scalarBar=vtkScalarBarActor::New();
-    scalarBar->SetTitle ( colorScalar.c_str());
-
-    scalarBar->SetLabelFormat ( "%.3g" );
+    scalarBar->SetLabelFormat("%.3g");
     scalarBar->SetOrientationToHorizontal();
-    scalarBar->SetPosition ( 0.1,0 );
-    scalarBar->SetPosition2 ( 0.8,0.1 );
-    scalarBar->SetLookupTable (m_lut );
-    m_pRenderer->AddActor ( scalarBar );
+    scalarBar->SetPosition(0.1, 0);
+    scalarBar->SetPosition2(0.8, 0.1);
+    scalarBar->SetLookupTable(m_lut);
+    m_pRenderer->AddActor(scalarBar);
     scalarBar->SetVisibility(showColorBar);
 
     /*
@@ -487,31 +453,28 @@ void Pipe::colorBar (bool showColorBar)
 */
 }
 
-void Pipe::setAxes ( vtkDataSet *data, double *bounds  )
+void Pipe::setAxes(vtkDataSet *data, double *bounds)
 {
 
     double size = (bounds[5] - bounds[4] != 0 ? bounds[5] - bounds[4] : bounds[5]);
     scalingFactors = size * 0.1;
-    scalingFactors = 1000/scalingFactors;
-    scalingFactors=40;
-    qDebug()<<"size: "<<size<<" "<<scalingFactors;
+    scalingFactors = 1000 / scalingFactors;
+    scalingFactors = 40;
+    qDebug() << "size: " << size << " " << scalingFactors;
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->InsertNextPoint(-15000, -10000, -200*scalingFactors);
-    points->InsertNextPoint(15000, -10000, -200*scalingFactors);
-    points->InsertNextPoint(-15000, 25000, -200*scalingFactors);
-    points->InsertNextPoint(15000, 25000, -200*scalingFactors);
+    points->InsertNextPoint(-15000, -10000, -200 * scalingFactors);
+    points->InsertNextPoint(15000, -10000, -200 * scalingFactors);
+    points->InsertNextPoint(-15000, 25000, -200 * scalingFactors);
+    points->InsertNextPoint(15000, 25000, -200 * scalingFactors);
 
-    points->InsertNextPoint(-15000, -10000, 200*scalingFactors);
-    points->InsertNextPoint(15000, -10000, 200*scalingFactors);
-    points->InsertNextPoint(-15000, 25000, 200*scalingFactors);
-    points->InsertNextPoint(15000, 25000, 200*scalingFactors);
-
-
+    points->InsertNextPoint(-15000, -10000, 200 * scalingFactors);
+    points->InsertNextPoint(15000, -10000, 200 * scalingFactors);
+    points->InsertNextPoint(-15000, 25000, 200 * scalingFactors);
+    points->InsertNextPoint(15000, 25000, 200 * scalingFactors);
 
     // Create the polygon
-    vtkSmartPointer<vtkPolygon> polygon =
-            vtkSmartPointer<vtkPolygon>::New();
-    polygon->GetPointIds()->SetNumberOfIds(8); //make a quad
+    vtkSmartPointer<vtkPolygon> polygon = vtkSmartPointer<vtkPolygon>::New();
+    polygon->GetPointIds()->SetNumberOfIds(8); // make a quad
     polygon->GetPointIds()->SetId(0, 0);
     polygon->GetPointIds()->SetId(1, 1);
     polygon->GetPointIds()->SetId(2, 2);
@@ -522,65 +485,52 @@ void Pipe::setAxes ( vtkDataSet *data, double *bounds  )
     polygon->GetPointIds()->SetId(7, 7);
 
     // Add the polygon to a list of polygons
-    vtkSmartPointer<vtkCellArray> polygons =
-            vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkCellArray> polygons = vtkSmartPointer<vtkCellArray>::New();
     polygons->InsertNextCell(polygon);
 
     // Create a PolyData
-    vtkSmartPointer<vtkPolyData> polygonPolyData =
-            vtkSmartPointer<vtkPolyData>::New();
+    vtkSmartPointer<vtkPolyData> polygonPolyData = vtkSmartPointer<vtkPolyData>::New();
     polygonPolyData->SetPoints(points);
     polygonPolyData->SetPolys(polygons);
 
+    axesActor = vtkCubeAxesActor2D::New();
 
-
-
-
-
-    axesActor=vtkCubeAxesActor2D::New();
-
-
-    //axesActor->SetInputData ( data );
-    axesActor->SetInputData ( polygonPolyData );
-
+    // axesActor->SetInputData ( data );
+    axesActor->SetInputData(polygonPolyData);
 
     axesActor->UseRangesOn();
 
+    // FUNZIONANTI
+    // axesActor->SetBounds ( bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5]);
+    // axesActor->SetRanges (  bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5] );
 
-    //FUNZIONANTI
-    //axesActor->SetBounds ( bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5]);
-    //axesActor->SetRanges (  bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5] );
-
-    axesActor->SetBounds ( -15000, 15000, -10000,25000,-200*scalingFactors,200*scalingFactors);
-    axesActor->SetRanges (  -15000,15000, -10000,25000,-200,200);
-
+    axesActor->SetBounds(-15000, 15000, -10000, 25000, -200 * scalingFactors, 200 * scalingFactors);
+    axesActor->SetRanges(-15000, 15000, -10000, 25000, -200, 200);
 
     axesActor->SetNumberOfLabels(6);
 
-    axesActor->SetViewProp ( NULL );
-    axesActor->SetScaling ( 0 );
-    axesActor->SetPickable ( 0 );
-    axesActor->SetCamera ( m_pRenderer->GetActiveCamera() );
-    axesActor->SetCornerOffset ( 0.1 );
+    axesActor->SetViewProp(NULL);
+    axesActor->SetScaling(0);
+    axesActor->SetPickable(0);
+    axesActor->SetCamera(m_pRenderer->GetActiveCamera());
+    axesActor->SetCornerOffset(0.1);
 
-    //axesActor->SetLabelFormat ( "%6.5g" );
+    // axesActor->SetLabelFormat ( "%6.5g" );
 
-    axesActor->SetLabelFormat ( "%3.3g" );
+    axesActor->SetLabelFormat("%3.3g");
 
-    axesActor->SetInertia ( 100 );
+    axesActor->SetInertia(100);
     axesActor->SetFlyModeToOuterEdges();
-    axesActor->SetVisibility ( true );
+    axesActor->SetVisibility(true);
 
-    axesActor->SetXLabel (vtkwin->vispoint->getX().toUtf8().constData() );
-    axesActor->SetYLabel (vtkwin->vispoint->getY().toUtf8().constData() );
-    axesActor->SetZLabel ( vtkwin->vispoint->getZ().toUtf8().constData());
+    axesActor->SetXLabel(vtkwin->vispoint->getX().toUtf8().constData());
+    axesActor->SetYLabel(vtkwin->vispoint->getY().toUtf8().constData());
+    axesActor->SetZLabel(vtkwin->vispoint->getZ().toUtf8().constData());
 
     axesActor->Modified();
 
-    m_pRenderer->AddActor2D ( axesActor );
+    m_pRenderer->AddActor2D(axesActor);
 
-
-
-    if(axesActor!=0)
+    if (axesActor != 0)
         axesActor->Delete();
 }

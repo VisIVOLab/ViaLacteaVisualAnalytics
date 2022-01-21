@@ -2,12 +2,10 @@
 #include "ui_loadingwidget.h"
 #include <QDebug>
 
-LoadingWidget::LoadingWidget(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::LoadingWidget)
+LoadingWidget::LoadingWidget(QWidget *parent) : QWidget(parent), ui(new Ui::LoadingWidget)
 {
     ui->setupUi(this);
-    //this->setWindowFlags(this->windowFlags() |  Qt::WindowStaysOnTopHint);
+    // this->setWindowFlags(this->windowFlags() |  Qt::WindowStaysOnTopHint);
     reply = 0;
 }
 
@@ -20,6 +18,14 @@ void LoadingWidget::init()
 {
     ui->progressBar->setMaximum(0);
     ui->progressBar->setValue(0);
+}
+
+void LoadingWidget::updateProgressBar(qint64 current, qint64 max)
+{
+    if (max > 0) {
+        ui->progressBar->setMaximum(max);
+        ui->progressBar->setValue(current);
+    }
 }
 
 void LoadingWidget::setText(QString name)
@@ -47,8 +53,7 @@ void LoadingWidget::loadingEnded()
 
 void LoadingWidget::on_dismissPushButton_clicked()
 {
-    if (reply)
-    {
+    if (reply) {
         qDebug() << "Stop request " << qPrintable(reply->url().toString());
         reply->abort();
         reply = 0;

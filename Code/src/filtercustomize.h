@@ -1,7 +1,9 @@
 #ifndef FILTERCUSTOMIZE_H
 #define FILTERCUSTOMIZE_H
-#include <QWidget>
+
 #include "vtkwindow_new.h"
+
+#include <QWidget>
 
 namespace Ui {
 class FilterCustomize;
@@ -23,7 +25,6 @@ private slots:
 private:
     Ui::FilterCustomize *ui;
     vtkwindow_new *vtkwin;
-
 };
 
 #endif // FILTERCUSTOMIZE_H

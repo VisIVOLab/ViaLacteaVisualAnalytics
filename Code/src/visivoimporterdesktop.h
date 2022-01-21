@@ -17,8 +17,6 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-class TreeModel;
-
 #ifndef VISIVOIMPORTERDESKTOP_H
 #define VISIVOIMPORTERDESKTOP_H
 
@@ -27,38 +25,40 @@ class TreeModel;
         @author Ugo Becciani <ugo.becciani@oact.inaf.it>
 */
 
-#include <QWidget>
+#include "operationqueue.h"
+#include "sed.h"
+#include "sednode.h"
 #include "vstabledesktop.h"
+#include "vtkwindow_new.h"
+
 #include <QFileInfo>
 #include <QProcess>
+#include <QWidget>
 
-#include "operationqueue.h"
-#include "vtkwindow_new.h"
-#include "sednode.h"
-#include "sed.h"
+class TreeModel;
 
 class VisIVOImporterDesktop : public QWidget
 {
     Q_OBJECT
 public:
-    VisIVOImporterDesktop(QString t, QString f, TreeModel * m=NULL);
-    VisIVOImporterDesktop(QString f, TreeModel * m=NULL, bool isBandMergedCatalogue=false, vtkwindow_new *v=NULL, QString wavelen="");
-    VisIVOImporterDesktop(QString f, vtkwindow_new* v, bool isFilament=true, bool isBubble=false);
-    void doImport(QString wavelen="", bool usingAPI=false);
+    VisIVOImporterDesktop(QString t, QString f, TreeModel *m = NULL);
+    VisIVOImporterDesktop(QString f, TreeModel *m = NULL, bool isBandMergedCatalogue = false,
+                          vtkwindow_new *v = NULL, QString wavelen = "");
+    VisIVOImporterDesktop(QString f, vtkwindow_new *v, bool isFilament = true,
+                          bool isBubble = false);
+    void doImport(QString wavelen = "", bool usingAPI = false);
     int getStatus();
     VSTableDesktop *getTable();
-    void setVtkWin(vtkwindow_new* v);
+    void setVtkWin(vtkwindow_new *v);
     void setBm(bool bm);
-
-
 
 signals:
 
 private:
-    //QFileInfo infoFile;
+    // QFileInfo infoFile;
     int m_impStatus;
     VSTableDesktop *m_VisIVOTable;
-    TreeModel * model;
+    TreeModel *model;
     QString type;
     QString fileName;
     QString headerFileName;
@@ -75,19 +75,17 @@ private:
     QString outputName_atlas;
     QString outputName_designation;
     vtkwindow_new *vtkwin;
-    QHash < QString,SEDNode*> nodelist;
-    SEDNode* bmContainsNode(QString nodename);
-    QList <SED* > sedlist;
+    QHash<QString, SEDNode *> nodelist;
+    SEDNode *bmContainsNode(QString nodename);
+    QList<SED *> sedlist;
     bool firstSEDNode;
 
-    QHash < int,SED*> sedMap;
+    QHash<int, SED *> sedMap;
 
 public slots:
 
 private slots:
     void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
-
 };
-
 
 #endif // VISIVOIMPORTERDESKTOP_H

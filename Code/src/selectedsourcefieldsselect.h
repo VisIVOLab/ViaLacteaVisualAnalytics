@@ -1,12 +1,13 @@
 #ifndef SELECTEDSOURCEFIELDSSELECT_H
 #define SELECTEDSOURCEFIELDSSELECT_H
 
-#include <QWidget>
 #include "vstabledesktop.h"
+#include "vtkwindow_new.h"
+
 #include <QCheckBox>
 #include <QHash>
 #include <QListWidgetItem>
-#include "vtkwindow_new.h"
+#include <QWidget>
 
 namespace Ui {
 class selectedSourceFieldsSelect;
@@ -17,7 +18,8 @@ class selectedSourceFieldsSelect : public QWidget
     Q_OBJECT
 
 public:
-    explicit selectedSourceFieldsSelect(vtkwindow_new *v, QList<QListWidgetItem*> sel, QWidget *parent = 0);
+    explicit selectedSourceFieldsSelect(vtkwindow_new *v, QList<QListWidgetItem *> sel,
+                                        QWidget *parent = 0);
     ~selectedSourceFieldsSelect();
 
 private slots:
@@ -32,8 +34,8 @@ private:
     Ui::selectedSourceFieldsSelect *ui;
     VSTableDesktop *table;
     QVector<QCheckBox *> checkboxList;
-    QHash <int,QString> selectedFields;
-     QList<QListWidgetItem*> selectedSources;
+    QHash<int, QString> selectedFields;
+    QList<QListWidgetItem *> selectedSources;
     vtkwindow_new *vtkwin;
 };
 

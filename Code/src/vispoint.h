@@ -18,15 +18,18 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include <QString>
-#include "vtkLookupTable.h"
-#include "observedobject.h"
 #ifndef VISPOINT_H
 #define VISPOINT_H
+
+#include "observedobject.h"
+#include "vtkLookupTable.h"
+
+#include <QString>
+
 class VSTableDesktop;
 class TreeItem;
 
-class VisPoint: public ObservedObject
+class VisPoint : public ObservedObject
 
 {
     QString m_X;
@@ -41,13 +44,7 @@ class VisPoint: public ObservedObject
     QString m_RadiusScalar;
     QString m_HeightScalar;
 
-    enum m_GLYPH
-    {
-        POINTS,
-        SPHERES,
-        CYLINDERS,
-        CONES
-    };
+    enum m_GLYPH { POINTS, SPHERES, CYLINDERS, CONES };
 
     bool m_ShowPoints;
     bool m_ShowVectors;
@@ -55,15 +52,13 @@ class VisPoint: public ObservedObject
     bool m_LogX;
     bool m_LogY;
     bool m_LogZ;
-    vtkLookupTable* m_lut;
-    VSTableDesktop * m_Table;
-
-
+    vtkLookupTable *m_lut;
+    VSTableDesktop *m_Table;
 
 public:
     VisPoint();
-    VisPoint(VSTableDesktop * table);
-    VSTableDesktop* getOrigin();
+    VisPoint(VSTableDesktop *table);
+    VSTableDesktop *getOrigin();
     void setX(QString value);
     void setY(QString value);
     void setZ(QString value);
@@ -97,11 +92,8 @@ public:
     bool isEnabledLogY();
     bool isEnabledLogZ();
 
-
-
-    vtkLookupTable*getLut();
-    void setLut(vtkLookupTable* lut);
-
+    vtkLookupTable *getLut();
+    void setLut(vtkLookupTable *lut);
 };
 
 #endif // VISPOINT_H

@@ -1,66 +1,67 @@
 #include "vialacteainitialquery.h"
 #include "ui_vialacteainitialquery.h"
-#include <QUrl>
-#include <QDebug>
-#include <QNetworkAccessManager>
-#include <QXmlStreamReader>
+
+#include "authwrapper.h"
 #include "downloadmanager.h"
-#include <QMessageBox>
-#include <QFile>
-#include <QDir>
 #include "mainwindow.h"
 #include "singleton.h"
 #include "vialactea.h"
-#include <QSettings>
-#include <QUrlQuery>
 #include <QAuthenticator>
-#include "authwrapper.h"
+#include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QSettings>
+#include <QUrl>
+#include <QUrlQuery>
+#include <QXmlStreamReader>
 
-VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::VialacteaInitialQuery)
+VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
+    : QWidget(parent), ui(new Ui::VialacteaInitialQuery)
 {
     ui->setupUi(this);
 
     ui->rectGroupBox->hide();
 
-    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini"), QSettings::NativeFormat);
-    vlkbUrl= settings.value("vlkburl", "").toString();
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
+    vlkbUrl = settings.value("vlkburl", "").toString();
 
     nam = new QNetworkAccessManager(this);
-    QObject::connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finishedSlot(QNetworkReply*)));
-    QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
+    QObject::connect(nam, SIGNAL(finished(QNetworkReply *)), this,
+                     SLOT(finishedSlot(QNetworkReply *)));
+    QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this,
+                     &VialacteaInitialQuery::on_authentication_required);
 
     vlkbtype = settings.value("vlkbtype", "public").toString();
-    if (vlkbtype == "public")
-    {
+    if (vlkbtype == "public") {
         qDebug() << "public access to vlkb";
-    }
-    else if (vlkbtype == "private")
-    {
+    } else if (vlkbtype == "private") {
         qDebug() << "private access to vlkb";
         QString user = settings.value("vlkbuser", "").toString();
         QString pass = settings.value("vlkbpass", "").toString();
-        QString url_prefix="http://"+user+":"+pass+"@";
+        QString url_prefix = "http://" + user + ":" + pass + "@";
         vlkbUrl = vlkbUrl.replace("http://", url_prefix);
-    }
-    else if (vlkbtype == "neanias")
-    {
+    } else if (vlkbtype == "neanias") {
         qDebug() << "private access to vlkb through NEANIAS";
     }
 
-    parser =new xmlparser();
+    parser = new xmlparser();
     loading = new LoadingWidget();
-    outputFile=fn;
-    species="";
-    p=parent;
-    myCallingVtkWindow=0;
+    outputFile = fn;
+    species = "";
+    p = parent;
+    myCallingVtkWindow = 0;
 
-    transitions.insert("PLW","500um");
-    transitions.insert("PMW","350um");
-    transitions.insert("PSW","250um");
-    transitions.insert("red","160um");
-    transitions.insert("blue","70um");
+    transitions.insert("PLW", "500um");
+    transitions.insert("PMW", "350um");
+    transitions.insert("PSW", "250um");
+    transitions.insert("red", "160um");
+    transitions.insert("blue", "70um");
 }
 
 VialacteaInitialQuery::~VialacteaInitialQuery()
@@ -73,16 +74,12 @@ void VialacteaInitialQuery::on_pushButton_clicked()
     this->close();
 }
 
-
 void VialacteaInitialQuery::on_pointRadioButton_toggled(bool checked)
 {
-    if(checked)
-    {
+    if (checked) {
         ui->rectGroupBox->hide();
         ui->pointGroupBox->show();
-    }
-    else
-    {
+    } else {
         ui->rectGroupBox->show();
         ui->pointGroupBox->hide();
     }
@@ -94,33 +91,38 @@ void VialacteaInitialQuery::setL(QString l)
 }
 void VialacteaInitialQuery::setB(QString b)
 {
-    ui->b_lineEdit->setText(b.replace(" ",""));
+    ui->b_lineEdit->setText(b.replace(" ", ""));
 }
 void VialacteaInitialQuery::setR(QString r)
 {
-    isRadius=true;
+    isRadius = true;
     ui->r_lineEdit->setText(r);
 }
 
-void VialacteaInitialQuery::setDeltaRect(QString dl,QString db)
+void VialacteaInitialQuery::setDeltaRect(QString dl, QString db)
 {
-    isRadius=false;
+    isRadius = false;
     ui->dlLineEdit->setText(dl);
     ui->dbLineEdit->setText(db);
 }
 
 void VialacteaInitialQuery::setSurveyname(QString s)
 {
-    surveyname=s;
+    surveyname = s;
 }
 
 void VialacteaInitialQuery::setTransition(QString s)
 {
-    transition=s;
+    transition = s;
 }
 
-void VialacteaInitialQuery::on_authentication_required(QNetworkReply *r, QAuthenticator *a){
-    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini"), QSettings::NativeFormat);
+void VialacteaInitialQuery::on_authentication_required(QNetworkReply *r, QAuthenticator *a)
+{
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
     QString user = settings.value("vlkbuser", "").toString();
     QString pass = settings.value("vlkbpass", "").toString();
     a->setUser(user);
@@ -130,19 +132,19 @@ void VialacteaInitialQuery::on_authentication_required(QNetworkReply *r, QAuthen
 void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
 {
     QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&dl=%3&db=%4&vl=-500000&vu=500000")
-            .arg(l)
-            .arg(b)
-            .arg(dl)
-            .arg(db);
+                          .arg(l)
+                          .arg(b)
+                          .arg(dl)
+                          .arg(db);
     searchRequest(url);
 }
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double r)
 {
     QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&r=%3&vl=-500000&vu=500000")
-            .arg(l)
-            .arg(b)
-            .arg(r);
+                          .arg(l)
+                          .arg(b)
+                          .arg(r);
     searchRequest(url);
 }
 
@@ -162,13 +164,14 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
     url_enc.setQuery(urlQuery);
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
-    connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
+    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
+            &VialacteaInitialQuery::on_authentication_required);
 
     QNetworkRequest req(url_enc);
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(req);
     QNetworkReply *reply = nam->get(req);
-    connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir](){
+    connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir]() {
         if (reply->error() == QNetworkReply::NoError) {
             QXmlStreamReader xml(reply);
             QString downloadStr;
@@ -184,12 +187,13 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
 
                 DownloadManager *manager = new DownloadManager();
                 manager->doDownload(downloadUrl, filePath);
-                connect(manager, &DownloadManager::downloadCompleted, manager, &DownloadManager::deleteLater);
+                connect(manager, &DownloadManager::downloadCompleted, manager,
+                        &DownloadManager::deleteLater);
             } else {
                 QStringList result_splitted = downloadStr.split(" ");
-                QString msg = (result_splitted.length() > 1) ?
-                        "Null values percentage is "+ result_splitted[1] + " (greater than 95%)" :
-                        "Inconsistent data (PubDID vs Region only partially overlap)";
+                QString msg = (result_splitted.length() > 1)
+                        ? "Null values percentage is " + result_splitted[1] + " (greater than 95%)"
+                        : "Inconsistent data (PubDID vs Region only partially overlap)";
 
                 QMessageBox::critical(nullptr, "Error", msg);
             }
@@ -212,14 +216,16 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
     loading->activateWindow();
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
-    connect(nam, &QNetworkAccessManager::authenticationRequired, this, &VialacteaInitialQuery::on_authentication_required);
-    connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply){
+    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
+            &VialacteaInitialQuery::on_authentication_required);
+    connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
         if (reply->error() == QNetworkReply::NoError) {
             QXmlStreamReader xml(reply);
             auto results = parser->parseXmlAndGetList(xml);
             emit searchDone(results);
         } else {
-            QMessageBox::critical(nullptr, QObject::tr("Error"), QObject::tr(qPrintable(reply->errorString())));
+            QMessageBox::critical(nullptr, QObject::tr("Error"),
+                                  QObject::tr(qPrintable(reply->errorString())));
         }
 
         loading->loadingEnded();
@@ -229,34 +235,34 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
     });
 
     QNetworkRequest req(url);
-    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
-    auth->putAccessToken(req);
+    if (vlkbtype == "neanias") {
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
+        auth->putAccessToken(req);
+    }
 
-    QNetworkReply* reply = nam->get(req);
+    QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 }
 
-void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QString> > el, int pos)
+void VialacteaInitialQuery::cutoutRequest(QString url, QList<QMap<QString, QString>> el, int pos)
 {
     loading->show();
     loading->setText("Querying cutout services");
-    elementsOnDb=el;
-    species=elementsOnDb.at(pos).value("Species");
-    pubdid=elementsOnDb.at(pos).value("PublisherDID");
-    surveyname=elementsOnDb.at(pos).value("Survey");
-    descriptionFromDB=elementsOnDb.at(pos).value("Description");
-    transition=elementsOnDb.at(pos).value("Transition");
-    velfrom=elementsOnDb.at(pos).value("from");
-    velto=elementsOnDb.at(pos).value("to");
-    velocityUnit=elementsOnDb.at(pos).value("VelocityUnit");
-
+    elementsOnDb = el;
+    species = elementsOnDb.at(pos).value("Species");
+    pubdid = elementsOnDb.at(pos).value("PublisherDID");
+    surveyname = elementsOnDb.at(pos).value("Survey");
+    descriptionFromDB = elementsOnDb.at(pos).value("Description");
+    transition = elementsOnDb.at(pos).value("Transition");
+    velfrom = elementsOnDb.at(pos).value("from");
+    velto = elementsOnDb.at(pos).value("to");
+    velocityUnit = elementsOnDb.at(pos).value("VelocityUnit");
 
     QUrl url_enc = QUrl(url);
     QList<QPair<QString, QString>> urlQuery = QUrlQuery(url_enc).queryItems();
     QList<QPair<QString, QString>>::iterator j;
-    for (j = urlQuery.begin(); j != urlQuery.end(); ++j)
-    {
-        (*j).second=QUrl::toPercentEncoding((*j).second);
+    for (j = urlQuery.begin(); j != urlQuery.end(); ++j) {
+        (*j).second = QUrl::toPercentEncoding((*j).second);
     }
 
     QUrlQuery q;
@@ -265,12 +271,14 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList< QMap<QString,QStri
 
     QNetworkRequest req(url_enc);
 
-    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
-                       , QSettings::NativeFormat);
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
 
-    if (settings.value("vlkbtype", "") == "neanias")
-    {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    if (settings.value("vlkbtype", "") == "neanias") {
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
@@ -282,25 +290,29 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
 {
     loading->show();
     loading->setText("Querying cutout services");
-    qDebug()<<"1) L "<<ui->l_lineEdit->text()<<" B "<<ui->b_lineEdit->text()<<" DL "<<ui->dlLineEdit->text()<<" DB "<<ui->dbLineEdit->text()<<" R "<<ui->r_lineEdit->text();
-    qDebug()<<"\t"<<" species"<<species<<" trans "<<transition<<" survey "<<surveyname;
-    qDebug()<<url;
+    qDebug() << "1) L " << ui->l_lineEdit->text() << " B " << ui->b_lineEdit->text() << " DL "
+             << ui->dlLineEdit->text() << " DB " << ui->dbLineEdit->text() << " R "
+             << ui->r_lineEdit->text();
+    qDebug() << "\t"
+             << " species" << species << " trans " << transition << " survey " << surveyname;
+    qDebug() << url;
 
-    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
-                       , QSettings::NativeFormat);
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
 
     QNetworkRequest req(url);
 
-    if (settings.value("vlkbtype", "") == "neanias")
-    {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    if (settings.value("vlkbtype", "") == "neanias") {
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
     QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 }
-
 
 void VialacteaInitialQuery::on_queryPushButton_clicked()
 {
@@ -308,61 +320,63 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
     loading->activateWindow();
     loading->setText("Querying cutout services");
 
-    QString urlString=vlkbUrl+"/vlkb_search?l="+ui->l_lineEdit->text()+"&b="+ui->b_lineEdit->text();
-    if(isRadius)
-    {
-        urlString+="&r="+ui->r_lineEdit->text();
-    }
-    else
-        urlString+="&dl="+ui->dlLineEdit->text()+"&db="+ui->dbLineEdit->text();
+    QString urlString =
+            vlkbUrl + "/vlkb_search?l=" + ui->l_lineEdit->text() + "&b=" + ui->b_lineEdit->text();
+    if (isRadius) {
+        urlString += "&r=" + ui->r_lineEdit->text();
+    } else
+        urlString += "&dl=" + ui->dlLineEdit->text() + "&db=" + ui->dbLineEdit->text();
 
-    urlString+="&vl=-500000&vu=500000";
+    urlString += "&vl=-500000&vu=500000";
 
-    QUrl url2 (urlString);
+    QUrl url2(urlString);
 
     QNetworkRequest req(url2);
 
-    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
-                       , QSettings::NativeFormat);
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
 
-    if (settings.value("vlkbtype", "") == "neanias")
-    {
-        AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+    if (settings.value("vlkbtype", "") == "neanias") {
+        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
         auth->putAccessToken(req);
     }
 
     QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 
-    qDebug()<<"INITIAL QUERY:\n"<<urlString;
+    qDebug() << "INITIAL QUERY:\n" << urlString;
 }
 
-
-void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
+void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
 {
     QString string;
     QString file;
-    QSettings settings(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append("/setting.ini")
-                       , QSettings::NativeFormat);
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
 
-    qDebug()<<reply->errorString();
-    qDebug()<<"2) L "<<ui->l_lineEdit->text()<<" B "<<ui->b_lineEdit->text()<<" DL "<<ui->dlLineEdit->text()<<" DB "<<ui->dbLineEdit->text()<<" R "<<ui->r_lineEdit->text();
-    qDebug ()<<reply;
+    qDebug() << reply->errorString();
+    qDebug() << "2) L " << ui->l_lineEdit->text() << " B " << ui->b_lineEdit->text() << " DL "
+             << ui->dlLineEdit->text() << " DB " << ui->dbLineEdit->text() << " R "
+             << ui->r_lineEdit->text();
+    qDebug() << reply;
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QXmlStreamReader xml(reply);
-        QString url=reply->request().url().toString();
+        QString url = reply->request().url().toString();
 
-        if (url.contains("vlkb_cutout") || url.contains("vlkb_merge")  )
-        {
+        if (url.contains("vlkb_cutout") || url.contains("vlkb_merge")) {
             parser->parseXML(xml, string);
 
-            if(!string.contains("NULL"))
-            {
+            if (!string.contains("NULL")) {
                 loading->setText("Datacube found");
-                DownloadManager *manager= new DownloadManager();
-                QString urlString=string.trimmed();
+                DownloadManager *manager = new DownloadManager();
+                QString urlString = string.trimmed();
 
                 // Encode '+' sign in filename
                 QStringList list = urlString.split("/");
@@ -371,57 +385,59 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
 
                 QUrl url3(list.join("/"));
 
-                connect(manager, SIGNAL(downloadCompleted()),this, SLOT(on_download_completed()));
+                connect(manager, SIGNAL(downloadCompleted()), this, SLOT(on_download_completed()));
 
-                file=manager->doDownload(url3,outputFile);
+                file = manager->doDownload(url3, outputFile);
                 loading->loadingEnded();
                 loading->hide();
-                downloadedFile=file;
-            }
-            else
-            {
-                QStringList result_splitted=string.split(" ");
-                QString msg="Inconsistent data (PubDID vs Region only partially overlap)";
-                if(result_splitted.length()>1)
-                    msg="Null values percentage is "+ result_splitted[1]+" (greater than 95%)";
-                QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr(msg.toStdString().c_str()));
+                downloadedFile = file;
+            } else {
+                QStringList result_splitted = string.split(" ");
+                QString msg = "Inconsistent data (PubDID vs Region only partially overlap)";
+                if (result_splitted.length() > 1)
+                    msg = "Null values percentage is " + result_splitted[1] + " (greater than 95%)";
+                QMessageBox::critical(NULL, QObject::tr("Error"),
+                                      QObject::tr(msg.toStdString().c_str()));
 
                 loading->loadingEnded();
                 loading->hide();
             }
         }
 
-        //La query iniziale
-        if( url.contains("vlkb_search") && !url.contains("surveyname") )
-        {
-            elementsOnDb= parser->parseXmlAndGetList(xml);
+        // La query iniziale
+        if (url.contains("vlkb_search") && !url.contains("surveyname")) {
+            elementsOnDb = parser->parseXmlAndGetList(xml);
             QString best_url = "";
-            int best_code=4;
-            QList< QMap<QString,QString> >::iterator j;
-            qDebug()<<"CERCO: "<<species<<" "<<" "<<surveyname<<" "<< transition;
-            for (j = elementsOnDb.begin(); j != elementsOnDb.end(); ++j)
-            {
-                 qDebug()<<"ANALIZZO: "<<(*j).value("Species")<<" "<<(*j).value("Survey")<<" "<< (*j).value("Transition")<<" "<<(*j).value("code")<<(*j).value("VelocityUnit")<<" ";
-                if( (*j).value("Species").compare(species)==0 && (*j).value("Survey").contains(surveyname)  && (*j).value("Transition").compare(transition) ==0  && (*j).value("code").toInt()<best_code  )
-                {
-                    best_url=(*j).value("URL");
-                    best_code=(*j).value("code").toInt();
+            int best_code = 4;
+            QList<QMap<QString, QString>>::iterator j;
+            qDebug() << "CERCO: " << species << " "
+                     << " " << surveyname << " " << transition;
+            for (j = elementsOnDb.begin(); j != elementsOnDb.end(); ++j) {
+                qDebug() << "ANALIZZO: " << (*j).value("Species") << " " << (*j).value("Survey")
+                         << " " << (*j).value("Transition") << " " << (*j).value("code")
+                         << (*j).value("VelocityUnit") << " ";
+                if ((*j).value("Species").compare(species) == 0
+                    && (*j).value("Survey").contains(surveyname)
+                    && (*j).value("Transition").compare(transition) == 0
+                    && (*j).value("code").toInt() < best_code) {
+                    best_url = (*j).value("URL");
+                    best_code = (*j).value("code").toInt();
                 }
             }
 
-            if (best_url == "")
-            {
+            if (best_url == "") {
                 // best_url not found => do not continue
                 loading->loadingEnded();
                 loading->hide();
-                QMessageBox::information(NULL, QObject::tr("No results"), QObject::tr("The query did not produce any results,\ntry again with different parameters."));
+                QMessageBox::information(NULL, QObject::tr("No results"),
+                                         QObject::tr("The query did not produce any results,\ntry "
+                                                     "again with different parameters."));
             } else {
-                QUrl url (best_url);
+                QUrl url(best_url);
                 QList<QPair<QString, QString>> urlQuery = QUrlQuery(url).queryItems();
                 QList<QPair<QString, QString>>::iterator i;
-                for (i = urlQuery.begin(); i != urlQuery.end(); ++i)
-                {
-                    (*i).second=QUrl::toPercentEncoding((*i).second);
+                for (i = urlQuery.begin(); i != urlQuery.end(); ++i) {
+                    (*i).second = QUrl::toPercentEncoding((*i).second);
                 }
 
                 QUrlQuery q;
@@ -429,9 +445,8 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 url.setQuery(q);
 
                 QNetworkRequest req(url);
-                if (settings.value("vlkbtype", "") == "neanias")
-                {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                if (settings.value("vlkbtype", "") == "neanias") {
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 
@@ -440,43 +455,44 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
             }
         }
 
-        if( url.contains("vlkb_search") && url.contains("surveyname") )
-        {
-            QList< QMap<QString,QString> > elementsOnDb_tmp= parser->parseXmlAndGetList(xml);
+        if (url.contains("vlkb_search") && url.contains("surveyname")) {
+            QList<QMap<QString, QString>> elementsOnDb_tmp = parser->parseXmlAndGetList(xml);
 
             QString best_url = "";
-            int best_code=4;
+            int best_code = 4;
 
-            qDebug()<<"CERCO: "<<species<<" "<<" "<<surveyname<<" "<< transition;
-            qDebug()<<"aaa "<<elementsOnDb_tmp.size();
-            QList< QMap<QString,QString>>::iterator j;
-            for (j = elementsOnDb_tmp.begin(); j != elementsOnDb_tmp.end(); ++j)
-            {
-                qDebug()<<"ANALIZZO: "<<(*j).value("Species")<<" "<<(*j).value("Survey")<<" "<< (*j).value("Transition")<<" "<<(*j).value("code");
+            qDebug() << "CERCO: " << species << " "
+                     << " " << surveyname << " " << transition;
+            qDebug() << "aaa " << elementsOnDb_tmp.size();
+            QList<QMap<QString, QString>>::iterator j;
+            for (j = elementsOnDb_tmp.begin(); j != elementsOnDb_tmp.end(); ++j) {
+                qDebug() << "ANALIZZO: " << (*j).value("Species") << " " << (*j).value("Survey")
+                         << " " << (*j).value("Transition") << " " << (*j).value("code");
 
-                if( (*j).value("Species").compare(species)==0 && (*j).value("Survey").contains(surveyname) && (*j).value("Transition").compare(transition) ==0  && (*j).value("code").toInt()<best_code  )
-                {
-                    best_url=(*j).value("URL");
-                    best_code=(*j).value("code").toInt();
+                if ((*j).value("Species").compare(species) == 0
+                    && (*j).value("Survey").contains(surveyname)
+                    && (*j).value("Transition").compare(transition) == 0
+                    && (*j).value("code").toInt() < best_code) {
+                    best_url = (*j).value("URL");
+                    best_code = (*j).value("code").toInt();
                 }
             }
 
-            qDebug()<<"parrrrarararar B:    "<<best_url;
+            qDebug() << "parrrrarararar B:    " << best_url;
 
-
-            if (best_url == "")
-            {
+            if (best_url == "") {
                 // best_url not found => do not continue
                 loading->loadingEnded();
                 loading->hide();
-                QMessageBox::information(NULL, QObject::tr("No results"), QObject::tr("The query did not produce any results,\ntry again with different parameters."));
+                QMessageBox::information(NULL, QObject::tr("No results"),
+                                         QObject::tr("The query did not produce any results,\ntry "
+                                                     "again with different parameters."));
             } else {
-                QUrl url (best_url);
-                QList<QPair<QString, QString> > urlQuery = QUrlQuery(url).queryItems();
-                QList<QPair<QString, QString> > ::iterator i;
-                for (i = urlQuery.begin(); i != urlQuery.end(); ++i)
-                {
-                    (*i).second=QUrl::toPercentEncoding((*i).second);
+                QUrl url(best_url);
+                QList<QPair<QString, QString>> urlQuery = QUrlQuery(url).queryItems();
+                QList<QPair<QString, QString>>::iterator i;
+                for (i = urlQuery.begin(); i != urlQuery.end(); ++i) {
+                    (*i).second = QUrl::toPercentEncoding((*i).second);
                 }
 
                 QUrlQuery q;
@@ -484,9 +500,8 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
                 url.setQuery(q);
 
                 QNetworkRequest req(url);
-                if (settings.value("vlkbtype", "") == "neanias")
-                {
-                    AuthWrapper *auth = &Singleton<AuthWrapper>::Instance();
+                if (settings.value("vlkbtype", "") == "neanias") {
+                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
                     auth->putAccessToken(req);
                 }
 
@@ -496,12 +511,12 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
         }
     }
 
-    else
-    {
+    else {
         // NetworkReplyError
         loading->loadingEnded();
         loading->hide();
-        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr(qPrintable(reply->errorString())));
+        QMessageBox::critical(NULL, QObject::tr("Error"),
+                              QObject::tr(qPrintable(reply->errorString())));
     }
     reply->deleteLater();
 }
@@ -509,19 +524,19 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply* reply)
 void VialacteaInitialQuery::on_download_completed()
 {
     int test_flag_nanten = -1;
-    if(pubdid.compare("") != 0)
+    if (pubdid.compare("") != 0)
         test_flag_nanten = pubdid.split("_", QString::SkipEmptyParts).last().toInt();
 
     QString currentPath = downloadedFile;
 
     this->close();
 
-    if ((velfrom.compare("0.0") == 0 && velto.compare("0.0") == 0) || species.compare("dust") == 0 || species.compare("Continuum") == 0 ||
-            (surveyname.compare("NANTEN") == 0 && test_flag_nanten == 2) ||
-            QString::compare("cornish", surveyname, Qt::CaseInsensitive) == 0 ||
-            QString::compare("cornish2d", surveyname, Qt::CaseInsensitive) == 0 ||
-            QString::compare("magpis", surveyname, Qt::CaseInsensitive) == 0)
-    {
+    if ((velfrom.compare("0.0") == 0 && velto.compare("0.0") == 0) || species.compare("dust") == 0
+        || species.compare("Continuum") == 0
+        || (surveyname.compare("NANTEN") == 0 && test_flag_nanten == 2)
+        || QString::compare("cornish", surveyname, Qt::CaseInsensitive) == 0
+        || QString::compare("cornish2d", surveyname, Qt::CaseInsensitive) == 0
+        || QString::compare("magpis", surveyname, Qt::CaseInsensitive) == 0) {
         bool l = myCallingVtkWindow != 0;
 
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
@@ -546,15 +561,12 @@ void VialacteaInitialQuery::on_download_completed()
             auto vl = &Singleton<ViaLactea>::Instance();
             vl->setMasterWin(win);
         }
-    }
-    else
-    {
+    } else {
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(currentPath.toStdString());
         fits->is3D = true;
 
         myCallingVtkWindow->setSelectedCubeVelocityUnit(velocityUnit);
         new vtkwindow_new(myCallingVtkWindow, fits, 1, myCallingVtkWindow);
-
     }
 }

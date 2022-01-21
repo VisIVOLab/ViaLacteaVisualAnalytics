@@ -27,11 +27,12 @@
         @author Ugo Becciani <ugo.becciani@oact.inaf.it>
 */
 
-#include "vtkPolyDataMapper.h"
-#include <vector>
-#include <map>
 #include "vstabledesktop.h"
+#include "vtkPolyDataMapper.h"
 #include "vtkScalarBarActor.h"
+
+#include <map>
+#include <vector>
 
 class vtkRenderer;
 class vtkRenderWindow;
@@ -49,45 +50,42 @@ class Pipe
 public:
     Pipe(VSTableDesktop *table);
     VSTableDesktop *getTable();
-    void saveImageAsPng(int num );
-    virtual  int createPipe();
-    virtual  void destroyAll(){};
-    virtual  bool readData(QStringList list);
+    void saveImageAsPng(int num);
+    virtual int createPipe();
+    virtual void destroyAll() {};
+    virtual bool readData(QStringList list);
     bool readDataFor3D(QStringList list);
 
-    virtual  int getCamera();
-    vtkLODActor* outlineActor;
-    vtkCubeAxesActor2D* axesActor;
+    virtual int getCamera();
+    vtkLODActor *outlineActor;
+    vtkCubeAxesActor2D *axesActor;
     std::string colorScalar;
     vtkScalarBarActor *scalarBar;
 
-    vtkLookupTable* getLookupTable(){return m_lut;}
-    int getRows(){return m_nRows;}
-
+    vtkLookupTable *getLookupTable() { return m_lut; }
+    int getRows() { return m_nRows; }
 
 protected:
-
     void setCamera();
     void constructVTK(vtkwindow_new *v);
     void destroyVTK();
-    void setBoundingBox ( vtkDataObject *data );
-    void colorBar (bool showColorBar);
-    virtual  void setAxes(vtkDataSet *data,double *bounds);
+    void setBoundingBox(vtkDataObject *data);
+    void colorBar(bool showColorBar);
+    virtual void setAxes(vtkDataSet *data, double *bounds);
     int m_nRows;
     int m_nCols;
     std::map<std::string, int> m_colNames;
-    vtkCamera           *m_camera;
-    vtkRenderer         *m_pRenderer;
-    vtkRenderWindow     *m_pRenderWindow;
-    vtkLookupTable      *m_lut;
-    vtkwindow_new       *vtkwin;
+    vtkCamera *m_camera;
+    vtkRenderer *m_pRenderer;
+    vtkRenderWindow *m_pRenderWindow;
+    vtkLookupTable *m_lut;
+    vtkwindow_new *vtkwin;
     double scalingFactors;
 
-    //new stuff here...
+    // new stuff here...
     float **m_tableData;
     std::vector<std::string> m_fieldNames;
     std::string m_path;
 };
 
 #endif
-

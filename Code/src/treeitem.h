@@ -39,29 +39,28 @@
  **
  ****************************************************************************/
 
-
 #ifndef TREEITEM_H
 #define TREEITEM_H
+
+#include "vstabledesktop.h"
+#include "vtkfitsreader.h"
+#include "vtkImageActor.h"
+#include "vtkImageViewer2.h"
+#include "vtkLODActor.h"
+#include "vtkSmartPointer.h"
+#include "vtkVolume.h"
 
 #include <QList>
 #include <QVariant>
 #include <QVector>
 
-#include "vtkLODActor.h"
-#include "vtkVolume.h"
-#include "vstabledesktop.h"
-#include "vtkImageActor.h"
-#include "vtkImageViewer2.h"
-#include <vtkSmartPointer.h>
-#include "vtkfitsreader.h"
-
 class VisPoint;
 
 class TreeItem
 {
-public
-    :TreeItem(const QVector<QVariant> &data, TreeItem *parent = 0);
-    enum TreeItemType {Null,PointTable,VolumeTable,VTI,VTP,VisualObject,FITSIMAGE};
+public:
+    TreeItem(const QVector<QVariant> &data, TreeItem *parent = 0);
+    enum TreeItemType { Null, PointTable, VolumeTable, VTI, VTP, VisualObject, FITSIMAGE };
 
     ~TreeItem();
 
@@ -80,34 +79,33 @@ public
     /*VisIVOItem specific method */
     bool setTable(VSTableDesktop *table);
     bool setVTP(vtkLODActor *pActor);
- //   bool setFITSIMG(vtkImageActor *pActor);
+    //   bool setFITSIMG(vtkImageActor *pActor);
     bool setFITSIMG(vtkSmartPointer<vtkFitsReader> pActor);
     bool setVTI(vtkVolume *volume);
-    bool setVisualObject(VisPoint* vis);
-    VSTableDesktop     *getTable();
+    bool setVisualObject(VisPoint *vis);
+    VSTableDesktop *getTable();
     vtkLODActor *getVTP();
-    vtkVolume   *getVTI();
-    //vtkImageActor *getFITSIMG();
+    vtkVolume *getVTI();
+    // vtkImageActor *getFITSIMG();
     vtkSmartPointer<vtkFitsReader> getFITSIMG();
-    VisPoint    *getVisualObject();
+    VisPoint *getVisualObject();
     /*end VisIVOItem specific method */
 
-
 private:
-    QList<TreeItem*> childItems;
+    QList<TreeItem *> childItems;
     QVector<QVariant> itemData;
     /*VisIVOItem specific*/
     enum TreeItemType m_Type;
-    TreeItem    *m_parentItem;
-    VSTableDesktop     *m_table;
+    TreeItem *m_parentItem;
+    VSTableDesktop *m_table;
     vtkLODActor *m_pActor;
-   // vtkImageActor *m_imgActor;
+    // vtkImageActor *m_imgActor;
     vtkSmartPointer<vtkFitsReader> m_fitsImg;
-    vtkVolume   *m_volume;
-    VisPoint    *m_visualObject;
+    vtkVolume *m_volume;
+    VisPoint *m_visualObject;
     /*end VisIVOItem specific*/
 public:
-    enum TreeItemType  getType();
+    enum TreeItemType getType();
 };
 
 #endif

@@ -18,11 +18,8 @@ class Survey : public QObject
 {
     Q_OBJECT
 public:
-    explicit Survey(const QString &name,
-                    const QString &desc,
-                    const QString &species,
-                    const QString &transition,
-                    QObject *parent = nullptr);
+    explicit Survey(const QString &name, const QString &desc, const QString &species,
+                    const QString &transition, QObject *parent = nullptr);
 
     const QString &getName() const;
     const QString &getDescription() const;
@@ -46,16 +43,15 @@ class Source : public QObject
     Q_OBJECT
 
 public:
-    explicit Source(const QString &designation, double glon, double glat, QObject *parent = nullptr);
+    explicit Source(const QString &designation, double glon, double glat,
+                    QObject *parent = nullptr);
     void parseSearchResults(const QList<QMap<QString, QString>> &results);
 
     const QString &getDesignation() const;
     double getGlon() const;
     double getGlat() const;
 
-    bool getBestCutout(const QString &survey,
-                       const QString &species,
-                       const QString &transition,
+    bool getBestCutout(const QString &survey, const QString &species, const QString &transition,
                        QString &url) const;
 
     const QList<QMap<QString, QString>> &getImages() const;
@@ -82,8 +78,7 @@ class UserTableWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit UserTableWindow(const QString &filepath,
-                             const QString &settingsFile,
+    explicit UserTableWindow(const QString &filepath, const QString &settingsFile,
                              QWidget *parent = nullptr);
     ~UserTableWindow();
 
@@ -110,8 +105,7 @@ private:
     void getSurveysData();
     void buildUI(const QStringList &surveysData);
     void buildUI(const QMap<QString, Survey *> &surveys,
-                 QMultiMap<QString, QPair<QString, QString>> &selectedSurveys,
-                 QTableWidget *table,
+                 QMultiMap<QString, QPair<QString, QString>> &selectedSurveys, QTableWidget *table,
                  QWidget *scrollArea);
     void readFile();
     void loadSourceTable(const QStringList &columns);

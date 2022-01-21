@@ -2,8 +2,9 @@
 #include "ui_usertablewindow.h"
 
 #include "authwrapper.h"
-#include "singleton.h"
 #include "vialacteainitialquery.h"
+
+#include <QCheckBox>
 #include <QDebug>
 #include <QFile>
 #include <QFileDialog>
@@ -13,13 +14,12 @@
 #include <QTextStream>
 #include <QUrlQuery>
 
-UserTableWindow::UserTableWindow(const QString &filepath,
-                                 const QString &settingsFile,
+UserTableWindow::UserTableWindow(const QString &filepath, const QString &settingsFile,
                                  QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::UserTableWindow)
-    , filepath(filepath)
-    , settings(settingsFile, QSettings::NativeFormat)
+    : QMainWindow(parent),
+      ui(new Ui::UserTableWindow),
+      filepath(filepath),
+      settings(settingsFile, QSettings::NativeFormat)
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
@@ -65,13 +65,11 @@ void UserTableWindow::getSurveysData()
     QString tapUrl = settings.value("vlkbtableurl").toString();
     QNetworkRequest req(tapUrl + "/sync");
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    Singleton<AuthWrapper>::Instance().putAccessToken(req);
+    NeaniasVlkbAuth::Instance().putAccessToken(req);
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
 
-    connect(nam,
-            &QNetworkAccessManager::authenticationRequired,
-            this,
+    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
             [this](QNetworkReply *reply, QAuthenticator *authenticator) {
                 Q_UNUSED(reply);
                 authenticator->setUser(settings.value("vlkbuser", "").toString());
@@ -136,8 +134,7 @@ void UserTableWindow::buildUI(const QStringList &surveysData)
 
 void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
                               QMultiMap<QString, QPair<QString, QString>> &selectedSurveys,
-                              QTableWidget *table,
-                              QWidget *scrollArea)
+                              QTableWidget *table, QWidget *scrollArea)
 {
     foreach (const auto &survey, surveys) {
         auto name = survey->getName();
@@ -272,9 +269,7 @@ void UserTableWindow::query(int index)
     Source *source = selectedSources.at(index);
 
     auto vlkb = new VialacteaInitialQuery();
-    connect(vlkb,
-            &VialacteaInitialQuery::searchDone,
-            this,
+    connect(vlkb, &VialacteaInitialQuery::searchDone, this,
             [this, vlkb, source, index](QList<QMap<QString, QString>> results) {
                 source->parseSearchResults(results);
 
@@ -290,13 +285,10 @@ void UserTableWindow::query(int index)
             });
 
     if (ui->selectionComboBox->currentText() == "Point") {
-        vlkb->searchRequest(source->getGlon(),
-                            source->getGlat(),
+        vlkb->searchRequest(source->getGlon(), source->getGlat(),
                             ui->radiusLineEdit->text().toDouble());
     } else {
-        vlkb->searchRequest(source->getGlon(),
-                            source->getGlat(),
-                            ui->dlLineEdit->text().toDouble(),
+        vlkb->searchRequest(source->getGlon(), source->getGlat(), ui->dlLineEdit->text().toDouble(),
                             ui->dbLineEdit->text().toDouble());
     }
 }
@@ -312,9 +304,9 @@ void UserTableWindow::updateTables()
         QString tooltip;
         Qt::CheckState state = source->surveyInfo(tooltip, survey, is3D);
 
-        Qt::GlobalColor color = (state == Qt::Checked
-                                     ? Qt::green
-                                     : (state == Qt::Unchecked ? Qt::red : Qt::yellow));
+        Qt::GlobalColor color =
+                (state == Qt::Checked ? Qt::green
+                                      : (state == Qt::Unchecked ? Qt::red : Qt::yellow));
 
         auto tmp = new QTableWidgetItem();
         tmp->setToolTip(tooltip);
@@ -335,8 +327,7 @@ void UserTableWindow::updateTables()
         ui->imagesTable->setItem(rowI, 1, new QTableWidgetItem(source->getDesignation()));
         ui->imagesTable->setItem(rowI, 2, new QTableWidgetItem(QString::number(source->getGlon())));
         ui->imagesTable->setItem(rowI, 3, new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->imagesTable->setItem(rowI,
-                                 4,
+        ui->imagesTable->setItem(rowI, 4,
                                  new QTableWidgetItem(QString::number(source->getImagesCount())));
 
         for (int i = 5; i < ui->imagesTable->columnCount(); ++i) {
@@ -356,8 +347,7 @@ void UserTableWindow::updateTables()
         ui->cubesTable->setItem(rowC, 1, new QTableWidgetItem(source->getDesignation()));
         ui->cubesTable->setItem(rowC, 2, new QTableWidgetItem(QString::number(source->getGlon())));
         ui->cubesTable->setItem(rowC, 3, new QTableWidgetItem(QString::number(source->getGlat())));
-        ui->cubesTable->setItem(rowC,
-                                4,
+        ui->cubesTable->setItem(rowC, 4,
                                 new QTableWidgetItem(QString::number(source->getCubesCount())));
 
         for (int i = 5; i < ui->cubesTable->columnCount(); ++i) {
@@ -402,9 +392,7 @@ void UserTableWindow::downloadCutouts(int t)
         return;
     }
 
-    QString tmp = QFileDialog::getExistingDirectory(this,
-                                                    "Select a folder",
-                                                    QDir::homePath(),
+    QString tmp = QFileDialog::getExistingDirectory(this, "Select a folder", QDir::homePath(),
                                                     QFileDialog::ShowDirsOnly);
 
     if (!tmp.isEmpty()) {
@@ -437,11 +425,9 @@ void UserTableWindow::on_selectionComboBox_activated(const QString &arg1)
 
 // ----------------------------------------------------------------------------------
 Source::Source(const QString &designation, double glon, double glat, QObject *parent)
-    : QObject(parent)
-    , designation(designation)
-    , glon(glon)
-    , glat(glat)
-{}
+    : QObject(parent), designation(designation), glon(glon), glat(glat)
+{
+}
 
 const QString &Source::getDesignation() const
 {
@@ -458,9 +444,7 @@ double Source::getGlat() const
     return glat;
 }
 
-bool Source::getBestCutout(const QString &survey,
-                           const QString &species,
-                           const QString &transition,
+bool Source::getBestCutout(const QString &survey, const QString &species, const QString &transition,
                            QString &url) const
 {
     QString current;
@@ -499,7 +483,7 @@ void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
             images.append(item);
 
             if (!transitions.contains(survey)) {
-                transitions.insert(survey, new QSet<QString>({transition}));
+                transitions.insert(survey, new QSet<QString>({ transition }));
             } else {
                 transitions.value(survey)->insert(transition);
             }
@@ -508,7 +492,7 @@ void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
             cubes.append(item);
 
             if (!this->species.contains(survey)) {
-                this->species.insert(survey, new QSet<QString>({species}));
+                this->species.insert(survey, new QSet<QString>({ species }));
             } else {
                 this->species.value(survey)->insert(species);
             }
@@ -542,7 +526,8 @@ Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bo
     QSet<QString> *actual;
 
     if (is3D) {
-        expected = QSet<QString>(survey->getSpecies().constBegin(), survey->getSpecies().constEnd());
+        expected =
+                QSet<QString>(survey->getSpecies().constBegin(), survey->getSpecies().constEnd());
         actual = species.value(survey->getName());
     } else {
         expected = QSet<QString>(survey->getTransitions().constBegin(),
@@ -568,17 +553,11 @@ Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bo
 }
 
 // --------------------------------------
-Survey::Survey(const QString &name,
-               const QString &desc,
-               const QString &species,
-               const QString &transition,
-               QObject *parent)
-    : QObject(parent)
-    , name(name)
-    , description(desc)
-    , species(species)
-    , transitions(transition)
-{}
+Survey::Survey(const QString &name, const QString &desc, const QString &species,
+               const QString &transition, QObject *parent)
+    : QObject(parent), name(name), description(desc), species(species), transitions(transition)
+{
+}
 
 const QString &Survey::getName() const
 {

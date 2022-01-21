@@ -1,44 +1,45 @@
 #ifndef VTKFITSTOOLWIDGETOBJECT_H
 #define VTKFITSTOOLWIDGETOBJECT_H
 
+#include "vtkfitsreader.h"
+#include "vtkLODActor.h"
+#include "vtkSmartPointer.h"
+
 #include <QString>
 #include <QTreeWidgetItem>
-#include "vtkSmartPointer.h"
-#include "vtkLODActor.h"
-#include "vtkfitsreader.h"
 
 class vtkfitstoolwidgetobject
 {
 public:
     vtkfitstoolwidgetobject(int t);
-    int getType() {return type;}
-    vtkfitstoolwidgetobject* getParent() {return parent;}
-    void setTreeWidgetItem( QTreeWidgetItem *i);
-    QTreeWidgetItem* getTreeWidgetItem( ){return item;}
-    void setParentItem( vtkfitstoolwidgetobject *p);
-    void setName( QString n);
-    QString getName() {return name;}
+    int getType() { return type; }
+    vtkfitstoolwidgetobject *getParent() { return parent; }
+    void setTreeWidgetItem(QTreeWidgetItem *i);
+    QTreeWidgetItem *getTreeWidgetItem() { return item; }
+    void setParentItem(vtkfitstoolwidgetobject *p);
+    void setName(QString n);
+    QString getName() { return name; }
     void setWavelength(QString w);
-    QString getWavelength(){return wavelength;}
+    QString getWavelength() { return wavelength; }
     void setActor(vtkSmartPointer<vtkLODActor> a);
-    void setFitsReader(vtkSmartPointer<vtkFitsReader> f){fits=f;}
-    vtkSmartPointer<vtkLODActor> getActor(){return actor;}
-    vtkSmartPointer<vtkFitsReader> getFits(){return fits;}
-    QString getLutScale() {return lutScale;}
-    QString getLutType() {return lutType;}
-    int getLayerNumber(){return layerNumber;}
-    void setLutScale( QString l) {lutScale=l;}
-    void setLutType( QString l) {lutType=l;}
-    void setLayerNumber( int l) {layerNumber=l;}
-    void setSpecies( QString l) {species=l;}
-    void setTransition( QString l) {transition=l;}
-    void setSurvey(QString l) {survey=l;}
-    void setPath(QString p) {path=p;}
+    void setFitsReader(vtkSmartPointer<vtkFitsReader> f) { fits = f; }
+    vtkSmartPointer<vtkLODActor> getActor() { return actor; }
+    vtkSmartPointer<vtkFitsReader> getFits() { return fits; }
+    QString getLutScale() { return lutScale; }
+    QString getLutType() { return lutType; }
+    int getLayerNumber() { return layerNumber; }
+    void setLutScale(QString l) { lutScale = l; }
+    void setLutType(QString l) { lutType = l; }
+    void setLayerNumber(int l) { layerNumber = l; }
+    void setSpecies(QString l) { species = l; }
+    void setTransition(QString l) { transition = l; }
+    void setSurvey(QString l) { survey = l; }
+    void setPath(QString p) { path = p; }
 
-    QString getPath() {return path;}
-    QString getSpecies( ) {return species;}
-    QString getTransition( ) {return transition;}
-    QString getSurvey() {return survey;}
+    QString getPath() { return path; }
+    QString getSpecies() { return species; }
+    QString getTransition() { return transition; }
+    QString getSurvey() { return survey; }
 
 private:
     int type;
@@ -55,7 +56,6 @@ private:
     vtkSmartPointer<vtkFitsReader> fits;
     QString lutType;
     QString lutScale;
-
 };
 
 #endif // VTKFITSTOOLWIDGETOBJECT_H

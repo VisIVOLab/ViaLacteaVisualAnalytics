@@ -19,9 +19,9 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+#include "vsobjectdesktop.h"
 #include <cstdlib>
 #include <cstring>
-#include "vsobjectdesktop.h"
 
 #include <iostream>
 
@@ -31,21 +31,17 @@ VSObjectDesktop::VSObjectDesktop()
     m_name = "";
 }
 
-
 VSObjectDesktop::VSObjectDesktop(std::string name, std::string description /*= ""*/)
 {
     m_description = description;
     m_name = name;
 }
 
-
-VSObjectDesktop::~VSObjectDesktop()
-{
-}
+VSObjectDesktop::~VSObjectDesktop() { }
 
 void VSObjectDesktop::printSelf()
 {
-    std::clog << "Name: "        << m_name        << std::endl;
+    std::clog << "Name: " << m_name << std::endl;
     std::clog << "Description: " << m_description << std::endl;
 
     return;

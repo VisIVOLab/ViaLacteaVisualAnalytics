@@ -1,5 +1,5 @@
 #include "observedobject.h"
-#include"treeitem.h"
+#include "treeitem.h"
 
 ObservedObject::ObservedObject()
 {
@@ -7,24 +7,24 @@ ObservedObject::ObservedObject()
     setShowAxes(true);
     setShowBox(true);
     setName("Visual Object");
-    m_isSetOrigin=false;
+    m_isSetOrigin = false;
     m_OriginType = TreeItem::TreeItemType(NULL);
 }
 void ObservedObject::setShowAxes(bool value)
 {
-    m_ShowAxes=value;
+    m_ShowAxes = value;
 }
 void ObservedObject::setShowBox(bool value)
 {
-    m_ShowBox=value;
+    m_ShowBox = value;
 }
 void ObservedObject::setName(QString name)
 {
-    m_Name=name;
+    m_Name = name;
 }
 bool ObservedObject::isOriginSpecified()
 {
-    return  m_isSetOrigin;
+    return m_isSetOrigin;
 }
 bool ObservedObject::isVisible()
 {

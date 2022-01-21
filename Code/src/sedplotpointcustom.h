@@ -2,39 +2,40 @@
 #define SEDPLOTPOINTCUSTOM_H
 
 #include "qcustomplot.h"
-#include <QTimer>
-#include <QApplication>
-#include <QMouseEvent>
-#include "vtkwindow_new.h"
-#include "vtkellipse.h"
 #include "sednode.h"
 #include "vialacteastringdictwidget.h"
+#include "vtkellipse.h"
+#include "vtkwindow_new.h"
+
+#include <QApplication>
+#include <QMouseEvent>
+#include <QTimer>
 
 class SEDPlotPointCustom : public QCPItemEllipse
 {
     Q_OBJECT
 public:
-    explicit SEDPlotPointCustom(QCustomPlot *parentPlot, double halfSize = 5, vtkwindow_new *v=NULL);
+    explicit SEDPlotPointCustom(QCustomPlot *parentPlot, double halfSize = 5,
+                                vtkwindow_new *v = NULL);
 
     QPointF pos() const;
     const QColor &color() const;
     void setColor(const QColor &color);
     void startMoving(const QPointF &mousePos, bool shiftIsPressed);
-    void setDesignation(QString d){designation=d;}
-    void setLon(double lon){glon=lon;}
-    void setLat(double lat){glat=lat;}
-    void setX(double x){image_x=x;}
-    void setY(double y){image_y=y;}
-    void setErrorFlux(double ef){error_flux=ef;}
-    void setNode(SEDNode *n){sedNode=n;}
+    void setDesignation(QString d) { designation = d; }
+    void setLon(double lon) { glon = lon; }
+    void setLat(double lat) { glat = lat; }
+    void setX(double x) { image_x = x; }
+    void setY(double y) { image_y = y; }
+    void setErrorFlux(double ef) { error_flux = ef; }
+    void setNode(SEDNode *n) { sedNode = n; }
 
-    double getSemiMajorAxisLength(){return semiMajorAxisLength;}
-    double getSemiMinorAxisLength(){return semiMinorAxisLength;}
-    double getAngle(){return angle;}
-    SEDNode * getNode(){return sedNode;}
+    double getSemiMajorAxisLength() { return semiMajorAxisLength; }
+    double getSemiMinorAxisLength() { return semiMinorAxisLength; }
+    double getAngle() { return angle; }
+    SEDNode *getNode() { return sedNode; }
 
-    void setEllipse( double smin, double smax,double a, double ar);
-
+    void setEllipse(double smin, double smax, double a, double ar);
 
 public slots:
     void setVisible(bool on);
@@ -51,7 +52,6 @@ public slots:
     void movePx(double x, double y);
     void setActive(bool isActive);
     void setPos(double x, double y);
-
 
 private slots:
     void onMouseMove(QMouseEvent *event);

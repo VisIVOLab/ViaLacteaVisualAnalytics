@@ -30,5 +30,5 @@ Prerequisites:
 # Building ViaLacteaVisualAnalytics
 1. `$ git clone https://github.com/NEANIAS-Space/ViaLacteaVisualAnalytics.git`
 1. `$ cd ViaLacteaVisualAnalytics/Code`
-1. `$ qmake VisIVODesktop-vtk6_qt5.pro`
+1. `$ qmake ViaLacteaVisualAnalytics.pro`
 1. `$ make`
