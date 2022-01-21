@@ -17,8 +17,13 @@ class ViaLactea;
 class WebProcess : public QObject
 {
     Q_OBJECT
+
+public:
+    explicit WebProcess(QObject *parent = nullptr);
+
 public slots:
     void jsCall(const QString &point, const QString &radius);
+
 signals:
     void processJavascript(const QString &point, const QString &radius);
 };
@@ -35,9 +40,6 @@ public:
     void resetMasterWin();
     void setMasterWin(vtkwindow_new *win);
 
-    // for javascript communication procedures
-    WebProcess *webobj;
-
     // VLKB URLs
     static const QString ONLINE_TILE_PATH;
     static const QString VLKB_URL_PUBLIC;
@@ -49,12 +51,11 @@ public:
 
 private slots:
     void quitApp(); // Added page delete befor main app quits
-    void textSelected(); // test for selection changed
     void on_queryPushButton_clicked();
     void on_noneRadioButton_clicked(bool checked);
     void on_saveToDiskCheckBox_clicked(bool checked);
     void on_selectFsPushButton_clicked();
-    void on_webViewStatusBarMessage(const QString &point, const QString &radius);
+    void on_webViewRegionSelected(const QString &point, const QString &area);
     void on_glonLineEdit_textChanged(const QString &arg1);
     void on_glatLineEdit_textChanged(const QString &arg1);
     void on_radiumLineEdit_textChanged(const QString &arg1);
@@ -77,6 +78,9 @@ private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
+
+    // for javascript communication procedures
+    WebProcess *webobj;
 
     QString selectedBand;
     QString m_sSettingsFile;

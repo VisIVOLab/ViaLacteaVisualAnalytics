@@ -1,8 +1,6 @@
 #include "vialactea.h"
 #include "ui_vialactea.h"
 
-//#include <QWebFrame>
-//#include <QWebElement>
 #include "aboutform.h"
 #include "astroutils.h"
 #include "authwrapper.h"
@@ -14,10 +12,13 @@
 #include "vialacteainitialquery.h"
 #include "vialacteastringdictwidget.h"
 #include "vlkbsimplequerycomposer.h"
+
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
 #include <QWebChannel>
+
+WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
 void WebProcess::jsCall(const QString &point, const QString &radius)
 {
@@ -100,17 +101,15 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
     }
     ui->webView->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    connect(ui->webView, SIGNAL(selectionChanged()), this, SLOT(textSelected()));
-
     // create an object for javascript communication
-    webobj = new WebProcess();
+    webobj = new WebProcess(this);
+    connect(webobj, &WebProcess::processJavascript, this, &ViaLactea::on_webViewRegionSelected);
+
     QWebChannel *channel = new QWebChannel(this);
     channel->registerObject("webobj", webobj);
     ui->webView->page()->setWebChannel(channel);
-    connect(webobj, SIGNAL(processJavascript(QString, QString)), this,
-            SLOT(on_webViewStatusBarMessage(QString, QString)));
 
-    QObject::connect(this, SIGNAL(destroyed()), qApp, SLOT(quit()));
+    // QObject::connect(this, SIGNAL(destroyed()), qApp, SLOT(quit()));
 
     // VialacteaStringDictWidget *stringDictWidget =
     // &Singleton<VialacteaStringDictWidget>::Instance(); stringDictWidget->buildDict();
@@ -138,9 +137,7 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
 
 ViaLactea::~ViaLactea()
 {
-
     delete ui;
-    delete webobj;
 }
 
 void ViaLactea::quitApp()
@@ -152,15 +149,8 @@ void ViaLactea::quitApp()
     std::cout << "Deleted" << std::endl;
 }
 
-void ViaLactea::textSelected()
-{
-
-    std::cout << "TextSelected" << std::endl;
-}
-
 void ViaLactea::updateVLKBSetting()
 {
-
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     QString vlkbtype = settings.value("vlkbtype", "public").toString();
 
@@ -256,24 +246,12 @@ void ViaLactea::on_selectFsPushButton_clicked()
     ui->fileNameLineEdit->setText(fn);
 }
 
-void ViaLactea::on_webViewStatusBarMessage(const QString &point, const QString &radius)
+void ViaLactea::on_webViewRegionSelected(const QString &point, const QString &area)
 {
-
-    //    QObject e = ui->webView->page()-> ( ->findChild("div#selected_point");
-    // QString result;
-    /*ui->webView->page()->runJavaScript("function myFunction() {"
-                                         "var el = document.getElementById('div#selected_point');"
-                                         "return el;} myFunction();",
-                                         [] (const QVariant &result) {
-                    return result.toString();
-       });*/
-
-    const QString e = point;
-
-    if (e != "") {
-        QStringList pieces = e.split(",");
-        ui->glatLineEdit->setText(QString::number(pieces[1].toDouble(), 'f', 4));
+    if (!point.isEmpty()) {
+        QStringList pieces = point.split(",");
         ui->glonLineEdit->setText(QString::number(pieces[0].toDouble(), 'f', 4));
+        ui->glatLineEdit->setText(QString::number(pieces[1].toDouble(), 'f', 4));
         if (ui->radiumLineEdit->text() == "")
             ui->radiumLineEdit->setText("0.1");
         ui->dlLineEdit->setText("");
@@ -282,22 +260,9 @@ void ViaLactea::on_webViewStatusBarMessage(const QString &point, const QString &
         ui->noneRadioButton->setChecked(true);
         on_noneRadioButton_clicked(true);
     }
-    /*     qDebug()<<"e: "<<e;
-       ui->webView->page()->runJavaScript("function myFunction() {"
-                                            "var el =
-       document.getElementById('div#selected_radius');" "return el;} myFunction();",
-                                            [] (const QVariant &result) {
-                       return result.toString();
-          });*/
-    QString e_radius = radius;
 
-    //    QWebElement e_radius =
-    //    ui->webView->page()->mainFrame()->findFirstElement("div#selected_radius");
-
-    // qDebug()<<"e_radius: "<<e_radius.toPlainText();
-    if (e_radius != "") {
-        QStringList pieces = e_radius.split(",");
-        // qDebug()<<pieces;
+    if (!area.isEmpty()) {
+        QStringList pieces = area.split(",");
         QString dl = QString::number(pieces[0].toDouble(), 'f', 4);
         if (dl.toDouble() > 4.0)
             dl = QString::number(4.0, 'f', 4);
@@ -306,25 +271,25 @@ void ViaLactea::on_webViewStatusBarMessage(const QString &point, const QString &
             db = QString::number(4.0, 'f', 4);
         ui->dlLineEdit->setText(dl);
         ui->dbLineEdit->setText(db);
-        //  if(ui->radiumLineEdit->text()=="")
         ui->radiumLineEdit->setText("");
-        //  ui->noneRadioButton->setChecked(true);
-        //  on_noneRadioButton_clicked(true);
     }
 }
 
 void ViaLactea::on_glonLineEdit_textChanged(const QString &arg1)
 {
+    Q_UNUSED(arg1);
     queryButtonStatusOnOff();
 }
 
 void ViaLactea::on_glatLineEdit_textChanged(const QString &arg1)
 {
+    Q_UNUSED(arg1);
     queryButtonStatusOnOff();
 }
 
 void ViaLactea::on_radiumLineEdit_textChanged(const QString &arg1)
 {
+    Q_UNUSED(arg1);
     queryButtonStatusOnOff();
 }
 
@@ -495,6 +460,7 @@ void ViaLactea::closeEvent(QCloseEvent *event)
         }
     }
 
+    ui->webView->page()->deleteLater();
     QApplication::quit();
 }
 
@@ -576,11 +542,13 @@ void ViaLactea::on_rectRadioButton_clicked(bool checked)
 
 void ViaLactea::on_dlLineEdit_textChanged(const QString &arg1)
 {
+    Q_UNUSED(arg1);
     queryButtonStatusOnOff();
 }
 
 void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 {
+    Q_UNUSED(arg1);
     queryButtonStatusOnOff();
 }
 
