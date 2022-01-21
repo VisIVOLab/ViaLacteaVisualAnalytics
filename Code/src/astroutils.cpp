@@ -1,44 +1,41 @@
 #include "astroutils.h"
 
+#include "libwcs/fitsfile.h"
+#include "libwcs/lwcs.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <unistd.h>
-#include <math.h>
-#include "libwcs/wcs.h"
-#include "libwcs/fitsfile.h"
-#include "libwcs/wcscat.h"
-#include "libwcs/lwcs.h"
 
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 using namespace boost::algorithm;
-
 
 extern void setsys();
 
-AstroUtils::AstroUtils()
-{
-}
+AstroUtils::AstroUtils() { }
 
 void AstroUtils::GetCenterCoords(std::string file, double *coords)
 {
-    WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
-    AstroUtils().xy2sky(file, wc->nxpix/2.0, wc->nypix/2.0, coords, WCS_GALACTIC);
+    WorldCoor *wc = AstroUtils().GetWCSFITS((char *)file.c_str(), 1);
+    AstroUtils().xy2sky(file, wc->nxpix / 2.0, wc->nypix / 2.0, coords, WCS_GALACTIC);
     wcsfree(wc);
 }
 
 /// values = [dl, db]
 void AstroUtils::GetRectSize(std::string file, double *values)
 {
-    WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
+    WorldCoor *wc = AstroUtils().GetWCSFITS((char *)file.c_str(), 1);
     double sky_coords[2], delta[2];
     AstroUtils().xy2sky(file, 0, 0, sky_coords, WCS_GALACTIC);
 
@@ -61,10 +58,11 @@ double AstroUtils::GetRadiusSize(std::string file)
     return radius;
 }
 
-void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double *right, double *left)
+void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double *right,
+                           double *left)
 {
     double tl[2], br[2];
-    WorldCoor *wc = AstroUtils().GetWCSFITS((char*) file.c_str(), 1);
+    WorldCoor *wc = AstroUtils().GetWCSFITS((char *)file.c_str(), 1);
     AstroUtils().xy2sky(file, 0, wc->nypix, tl, WCS_GALACTIC);
     AstroUtils().xy2sky(file, wc->nxpix, 0, br, WCS_GALACTIC);
     *top = tl[1];
@@ -122,7 +120,7 @@ double AstroUtils::arcsecPixel(std::string file)
     return secpix;
 }
 
-void AstroUtils::xy2sky(std::string map, float x, float y, double* coord, int wcs_type)
+void AstroUtils::xy2sky(std::string map, float x, float y, double *coord, int wcs_type)
 {
     struct WorldCoor *wcs;
     char *fn = new char[map.length() + 1];
@@ -135,15 +133,13 @@ void AstroUtils::xy2sky(std::string map, float x, float y, double* coord, int wc
     wcs = GetWCSFITS(fn, 0);
     wcs->sysout = wcs_type;
     // force the set of wcs in degree
-    setwcsdeg(wcs,1);
+    setwcsdeg(wcs, 1);
 
-    if (wcs_type == WCS_GALACTIC)
-    {
+    if (wcs_type == WCS_GALACTIC) {
         wcs->eqout = 2000.0;
     }
 
-    if (pix2wcst(wcs, x, y, wcstring, lstr))
-    {
+    if (pix2wcst(wcs, x, y, wcstring, lstr)) {
         std::string str(wcstring);
         std::vector<std::string> tokens;
         trim(str);
@@ -152,7 +148,7 @@ void AstroUtils::xy2sky(std::string map, float x, float y, double* coord, int wc
         coord[1] = atof(tokens[1].c_str());
     }
 
-    delete [] fn;
+    delete[] fn;
     wcsfree(wcs);
 }
 
@@ -172,7 +168,7 @@ int AstroUtils::getSysOut(std::string file)
     wcs = GetFITSWCS(fn, header, 1, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
     wcsfree(wcs);
 
-    delete [] fn;
+    delete[] fn;
 
     return sysout;
 }
@@ -191,7 +187,7 @@ void AstroUtils::getRotationAngle(std::string file)
 
     header = GetFITShead(fn, 0);
     wcs = GetFITSWCS(fn, header, 1, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
-    wcsoutinit(wcs, (char*) "GALACTIC");
+    wcsoutinit(wcs, (char *)"GALACTIC");
 
     int off;
     double xc, xn, xe, yc, yn, ye;
@@ -208,25 +204,24 @@ void AstroUtils::getRotationAngle(std::string file)
     if (wcs->syswcs == WCS_LINEAR)
         return;
 
-    wcs->xinc = fabs (wcs->xinc);
-    wcs->yinc = fabs (wcs->yinc);
+    wcs->xinc = fabs(wcs->xinc);
+    wcs->yinc = fabs(wcs->yinc);
 
     /* Compute position angles of North and East in image */
     xc = wcs->xrefpix;
     yc = wcs->yrefpix;
-    pix2wcs (wcs, xc, yc, &cra, &cdec);
+    pix2wcs(wcs, xc, yc, &cra, &cdec);
     if (wcs->coorflip) {
-        wcs2pix (wcs, cra+wcs->yinc, cdec, &xe, &ye, &off);
-        wcs2pix (wcs, cra, cdec+wcs->xinc, &xn, &yn, &off);
+        wcs2pix(wcs, cra + wcs->yinc, cdec, &xe, &ye, &off);
+        wcs2pix(wcs, cra, cdec + wcs->xinc, &xn, &yn, &off);
+    } else {
+        wcs2pix(wcs, cra + wcs->xinc, cdec, &xe, &ye, &off);
+        wcs2pix(wcs, cra, cdec + wcs->yinc, &xn, &yn, &off);
     }
-    else {
-        wcs2pix (wcs, cra+wcs->xinc, cdec, &xe, &ye, &off);
-        wcs2pix (wcs, cra, cdec+wcs->yinc, &xn, &yn, &off);
-    }
-    wcs->pa_north = raddeg (atan2 (yn-yc, xn-xc));
+    wcs->pa_north = raddeg(atan2(yn - yc, xn - xc));
     if (wcs->pa_north < -90.0)
         wcs->pa_north = wcs->pa_north + 360.0;
-    wcs->pa_east = raddeg (atan2 (ye-yc, xe-xc));
+    wcs->pa_east = raddeg(atan2(ye - yc, xe - xc));
     if (wcs->pa_east < -90.0)
         wcs->pa_east = wcs->pa_east + 360.0;
 
@@ -241,8 +236,7 @@ void AstroUtils::getRotationAngle(std::string file)
         wcs->rot = wcs->imrot + 90.0;
         if (wcs->rot < 0.0)
             wcs->rot = wcs->rot + 360.0;
-    }
-    else
+    } else
         wcs->rot = wcs->imrot;
     if (wcs->rot < 0.0)
         wcs->rot = wcs->rot + 360.0;
@@ -251,29 +245,25 @@ void AstroUtils::getRotationAngle(std::string file)
 
     /* Set image mirror flag based on axis orientation */
     wcs->imflip = 0;
-    if (wcs->pa_east - wcs->pa_north < -80.0 &&
-            wcs->pa_east - wcs->pa_north > -100.0)
+    if (wcs->pa_east - wcs->pa_north < -80.0 && wcs->pa_east - wcs->pa_north > -100.0)
         wcs->imflip = 1;
-    if (wcs->pa_east - wcs->pa_north < 280.0 &&
-            wcs->pa_east - wcs->pa_north > 260.0)
+    if (wcs->pa_east - wcs->pa_north < 280.0 && wcs->pa_east - wcs->pa_north > 260.0)
         wcs->imflip = 1;
-    if (wcs->pa_north - wcs->pa_east > 80.0 &&
-            wcs->pa_north - wcs->pa_east < 100.0)
+    if (wcs->pa_north - wcs->pa_east > 80.0 && wcs->pa_north - wcs->pa_east < 100.0)
         wcs->imflip = 1;
     if (wcs->coorflip) {
         if (wcs->imflip)
             wcs->yinc = -wcs->yinc;
-    }
-    else {
+    } else {
         if (!wcs->imflip)
             wcs->xinc = -wcs->xinc;
     }
 
-    delete [] fn;
+    delete[] fn;
     wcsfree(wcs);
 }
 
-bool AstroUtils::sky2xy(std::string map, double ra, double dec, double* coord)
+bool AstroUtils::sky2xy(std::string map, double ra, double dec, double *coord)
 {
     char *fn = new char[map.length() + 1];
     strcpy(fn, map.c_str());
@@ -294,49 +284,51 @@ bool AstroUtils::sky2xy(std::string map, double ra, double dec, double* coord)
     wcs = GetFITSWCS(fn, header, 0, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
 
     if (wcs->prjcode < 0)
-        strcpy (csys, "PIXEL");
+        strcpy(csys, "PIXEL");
     else if (wcs->prjcode < 2)
-        strcpy (csys, "LINEAR");
+        strcpy(csys, "LINEAR");
     else
-        strcpy (csys, wcs->radecsys);
+        strcpy(csys, wcs->radecsys);
 
-    sysin = wcscsys (csys);
-    eqin = wcsceq (csys);
+    sysin = wcscsys(csys);
+    eqin = wcsceq(csys);
 
     if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10)
-        wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
+        wcscon(sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
 
-    wcsc2pix (wcs, ra, dec, csys, &x, &y, &offscale);
+    wcsc2pix(wcs, ra, dec, csys, &x, &y, &offscale);
 
     coord[0] = x;
     coord[1] = y;
     coord[2] = secpix;
 
-    delete [] fn;
-    delete [] header;
+    delete[] fn;
+    delete[] header;
     wcsfree(wcs);
 
     return true;
 }
 
-static double secpix0 = PSCALE;		/* Set image scale--override header */
-static int usecdelt = 0;		    /* Use CDELT if 1, else CD matrix */
-static int hp0 = 0;			        /* Initial height of image */
-static int wp0 = 0;			        /* Initial width of image */
-static double ra0 = -99.0;		    /* Initial center RA in degrees */
-static double dec0 = -99.0;		    /* Initial center Dec in degrees */
-static int comsys = WCS_J2000;		/* Command line center coordinte system */
-static int ptype0 = -1;			    /* Projection type to fit */
-static int  nctype = 28;		    /* Number of possible projections */
-static char ctypes[32][4];		    /* 3-letter codes for projections */
-static double xref0 = -99999.0;		/* Reference pixel X coordinate */
-static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
-static double secpix2 = PSCALE;		/* Set image scale 2--override header */
-static double *cd0 = NULL;		    /* Set CD matrix--override header */
-static double rot0 = 361.0;		    /* Initial image rotation */
-static char *dateobs0 = NULL;		/* Initial DATE-OBS value in FITS date format */
+static double secpix0 = PSCALE; /* Set image scale--override header */
+static int usecdelt = 0; /* Use CDELT if 1, else CD matrix */
+static int hp0 = 0; /* Initial height of image */
+static int wp0 = 0; /* Initial width of image */
+static double ra0 = -99.0; /* Initial center RA in degrees */
+static double dec0 = -99.0; /* Initial center Dec in degrees */
+static int comsys = WCS_J2000; /* Command line center coordinte system */
+static int ptype0 = -1; /* Projection type to fit */
+static int nctype = 28; /* Number of possible projections */
+static char ctypes[32][4]; /* 3-letter codes for projections */
+static double xref0 = -99999.0; /* Reference pixel X coordinate */
+static double yref0 = -99999.0; /* Reference pixel Y coordinate */
+static double secpix2 = PSCALE; /* Set image scale 2--override header */
+static double *cd0 = NULL; /* Set CD matrix--override header */
+static double rot0 = 361.0; /* Initial image rotation */
+static char *dateobs0 = NULL; /* Initial DATE-OBS value in FITS date format */
 
-WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, double *cra, double *cdec,double	*dra, double *ddec, double *secpix, int *wp,int	*hp,int	*sysout ,double	*eqout)
+WorldCoor *AstroUtils::GetFITSWCS(char *filename, char *header, int verbose, double *cra,
+                                  double *cdec, double *dra, double *ddec, double *secpix, int *wp,
+                                  int *hp, int *sysout, double *eqout)
 {
     int naxes;
     double eq1, x, y;
@@ -347,19 +339,19 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     char rstr[64], dstr[64], cstr[16];
 
     /* Initialize WCS structure from possibly revised FITS header */
-    wcs = ChangeFITSWCS (filename, header, verbose);
+    wcs = ChangeFITSWCS(filename, header, verbose);
     if (wcs == NULL) {
         return (NULL);
     }
-    *hp = (int) wcs->nypix;
-    *wp = (int) wcs->nxpix;
+    *hp = (int)wcs->nypix;
+    *wp = (int)wcs->nxpix;
 
     /* If incomplete WCS in header, drop out */
-    if (nowcs (wcs)) {
-        setwcsfile (filename);
+    if (nowcs(wcs)) {
+        setwcsfile(filename);
         /* wcserr(); */
         if (verbose)
-            fprintf (stderr,"Insufficient information for initial WCS\n");
+            fprintf(stderr, "Insufficient information for initial WCS\n");
         return (NULL);
     }
 
@@ -376,8 +368,7 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     if (wcs->coorflip) {
         ra1 = wcs->crval[1];
         dec1 = wcs->crval[0];
-    }
-    else {
+    } else {
         ra1 = wcs->crval[0];
         dec1 = wcs->crval[1];
     }
@@ -385,16 +376,15 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     /* Print reference pixel position and value */
     if (verbose && (eq1 != *eqout || wcs->syswcs != *sysout)) {
         if (wcs->degout) {
-            deg2str (rstr, 32, ra1, 6);
-            deg2str (dstr, 32, dec1, 6);
+            deg2str(rstr, 32, ra1, 6);
+            deg2str(dstr, 32, dec1, 6);
+        } else {
+            ra2str(rstr, 32, ra1, 3);
+            dec2str(dstr, 32, dec1, 2);
         }
-        else {
-            ra2str (rstr, 32, ra1, 3);
-            dec2str (dstr, 32, dec1, 2);
-        }
-        wcscstr (cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
-        fprintf (stderr,"Reference pixel (%.2f,%.2f) %s %s %s\n",
-                 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
+        wcscstr(cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
+        fprintf(stderr, "Reference pixel (%.2f,%.2f) %s %s %s\n", wcs->xrefpix, wcs->yrefpix, rstr,
+                dstr, cstr);
     }
 
     /* Get coordinates of corners for size for catalog searching */
@@ -404,37 +394,37 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     ymin = 0.5;
     xmax = 0.5 + dx;
     ymax = 0.5 + dy;
-    pix2wcs (wcs, xmin, ymin, &ra1, &dec1);
-    pix2wcs (wcs, xmin, ymax, &ra2, &dec2);
-    pix2wcs (wcs, xmax, ymin, &ra3, &dec3);
-    pix2wcs (wcs, xmax, ymax, &ra4, &dec4);
+    pix2wcs(wcs, xmin, ymin, &ra1, &dec1);
+    pix2wcs(wcs, xmin, ymax, &ra2, &dec2);
+    pix2wcs(wcs, xmax, ymin, &ra3, &dec3);
+    pix2wcs(wcs, xmax, ymax, &ra4, &dec4);
 
     /* Convert search corners to output coordinate system and equinox */
     if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10) {
-        wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra1,&dec1,wcs->epoch);
-        wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra2,&dec2,wcs->epoch);
-        wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra3,&dec3,wcs->epoch);
-        wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra4,&dec4,wcs->epoch);
+        wcscon(wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra1, &dec1, wcs->epoch);
+        wcscon(wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra2, &dec2, wcs->epoch);
+        wcscon(wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra3, &dec3, wcs->epoch);
+        wcscon(wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra4, &dec4, wcs->epoch);
     }
 
     /* Find center and convert to output coordinate system and equinox */
     x = 0.5 + (dx * 0.5);
     y = 0.5 + (dy * 0.5);
-    pix2wcs (wcs, x, y, cra, cdec);
+    pix2wcs(wcs, x, y, cra, cdec);
     if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10)
-        wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,cra,cdec,wcs->epoch);
+        wcscon(wcs->syswcs, *sysout, wcs->equinox, *eqout, cra, cdec, wcs->epoch);
 
     /* Find maximum half-width in declination */
-    *ddec = fabs (dec1 - *cdec);
-    if (fabs (dec2 - *cdec) > *ddec)
-        *ddec = fabs (dec2 - *cdec);
-    if (fabs (dec3 - *cdec) > *ddec)
-        *ddec = fabs (dec3 - *cdec);
-    if (fabs (dec4 - *cdec) > *ddec)
-        *ddec = fabs (dec4 - *cdec);
+    *ddec = fabs(dec1 - *cdec);
+    if (fabs(dec2 - *cdec) > *ddec)
+        *ddec = fabs(dec2 - *cdec);
+    if (fabs(dec3 - *cdec) > *ddec)
+        *ddec = fabs(dec3 - *cdec);
+    if (fabs(dec4 - *cdec) > *ddec)
+        *ddec = fabs(dec4 - *cdec);
 
     /* Find maximum half-width in right ascension */
-    dra0 = (dx / dy) * (*ddec / cos (*cdec));
+    dra0 = (dx / dy) * (*ddec / cos(*cdec));
     dra1 = ra1 - *cra;
     dra2 = ra2 - *cra;
     if (*cra < 0 && *cra + dra0 > 0.0) {
@@ -492,23 +482,22 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
         ra1 = *cra;
         dec1 = *cdec;
         if (wcs->xrefpix == 0.0 && wcs->yrefpix == 0.0) {
-            wcs->xrefpix = 0.5 + (double) wcs->nxpix * 0.5;
-            wcs->yrefpix = 0.5 + (double) wcs->nypix * 0.5;
+            wcs->xrefpix = 0.5 + (double)wcs->nxpix * 0.5;
+            wcs->yrefpix = 0.5 + (double)wcs->nypix * 0.5;
         }
-        wcs->xinc = *dra * 2.0 / (double) wcs->nxpix;
-        wcs->yinc = *ddec * 2.0 / (double) wcs->nypix;
+        wcs->xinc = *dra * 2.0 / (double)wcs->nxpix;
+        wcs->yinc = *ddec * 2.0 / (double)wcs->nypix;
         /* hchange (header,"PLTRAH","PLT0RAH");
     wcs->plate_fit = 0; */
     }
 
     /* Convert center to desired coordinate system */
     else if (wcs->syswcs != *sysout && wcs->equinox != *eqout) {
-        wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra1, &dec1, wcs->epoch);
+        wcscon(wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra1, &dec1, wcs->epoch);
         if (wcs->coorflip) {
             wcs->yref = ra1;
             wcs->xref = dec1;
-        }
-        else {
+        } else {
             wcs->xref = ra1;
             wcs->yref = dec1;
         }
@@ -516,9 +505,9 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
 
     /* Compute plate scale to return if it was not set on the command line */
     if (secpix0 <= 0.0) {
-        pix2wcs (wcs, wcs->xrefpix-0.5, wcs->yrefpix, &ra1, &dec1);
-        pix2wcs (wcs, wcs->xrefpix+0.5, wcs->yrefpix, &ra2, &dec2);
-        *secpix = 3600.0 * wcsdist (ra1, dec1, ra2, dec2);
+        pix2wcs(wcs, wcs->xrefpix - 0.5, wcs->yrefpix, &ra1, &dec1);
+        pix2wcs(wcs, wcs->xrefpix + 0.5, wcs->yrefpix, &ra2, &dec2);
+        *secpix = 3600.0 * wcsdist(ra1, dec1, ra2, dec2);
     }
 
     wcs->crval[0] = wcs->xref;
@@ -526,8 +515,7 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     if (wcs->coorflip) {
         wcs->cel.ref[0] = wcs->crval[1];
         wcs->cel.ref[1] = wcs->crval[0];
-    }
-    else {
+    } else {
         wcs->cel.ref[0] = wcs->crval[0];
         wcs->cel.ref[1] = wcs->crval[1];
     }
@@ -535,8 +523,7 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10) {
         wcs->cel.flag = 0;
         wcs->wcsl.flag = 0;
-    }
-    else {
+    } else {
         wcs->lin.flag = LINSET;
         wcs->wcsl.flag = WCSSET;
     }
@@ -547,12 +534,12 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     wcs->eqout = *eqout;
     wcs->sysin = *sysout;
     wcs->eqin = *eqout;
-    wcscstr (cstr,*sysout,*eqout,wcs->epoch);
-    strcpy (wcs->radecsys, cstr);
-    strcpy (wcs->radecout, cstr);
-    strcpy (wcs->radecin, cstr);
-    wcsininit (wcs, wcs->radecsys);
-    wcsoutinit (wcs, wcs->radecsys);
+    wcscstr(cstr, *sysout, *eqout, wcs->epoch);
+    strcpy(wcs->radecsys, cstr);
+    strcpy(wcs->radecout, cstr);
+    strcpy(wcs->radecin, cstr);
+    wcsininit(wcs, wcs->radecsys);
+    wcsoutinit(wcs, wcs->radecsys);
 
     naxes = wcs->naxis;
     if (naxes < 1 || naxes > 9) {
@@ -561,69 +548,64 @@ WorldCoor* AstroUtils::GetFITSWCS(char *filename, char	*header, int verbose, dou
     }
 
     if (usecdelt) {
-        hputnr8 (header, "CDELT1", 9, wcs->xinc);
+        hputnr8(header, "CDELT1", 9, wcs->xinc);
         if (naxes > 1) {
-            hputnr8 (header, "CDELT2", 9, wcs->yinc);
-            hputnr8 (header, "CROTA2", 9, wcs->rot);
+            hputnr8(header, "CDELT2", 9, wcs->yinc);
+            hputnr8(header, "CROTA2", 9, wcs->rot);
         }
-        hdel (header, "CD1_1");
-        hdel (header, "CD1_2");
-        hdel (header, "CD2_1");
-        hdel (header, "CD2_2");
-    }
-    else {
-        hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
+        hdel(header, "CD1_1");
+        hdel(header, "CD1_2");
+        hdel(header, "CD2_1");
+        hdel(header, "CD2_2");
+    } else {
+        hputnr8(header, "CD1_1", 9, wcs->cd[0]);
         if (naxes > 1) {
-            hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
-            hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
-            hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
+            hputnr8(header, "CD1_2", 9, wcs->cd[1]);
+            hputnr8(header, "CD2_1", 9, wcs->cd[2]);
+            hputnr8(header, "CD2_2", 9, wcs->cd[3]);
         }
     }
 
     /* Print reference pixel position and value */
     if (verbose) {
         if (wcs->degout) {
-            deg2str (rstr, 32, ra1, 6);
-            deg2str (dstr, 32, dec1, 6);
+            deg2str(rstr, 32, ra1, 6);
+            deg2str(dstr, 32, dec1, 6);
+        } else {
+            ra2str(rstr, 32, ra1, 3);
+            dec2str(dstr, 32, dec1, 2);
         }
-        else {
-            ra2str (rstr, 32, ra1, 3);
-            dec2str (dstr, 32, dec1, 2);
-        }
-        wcscstr (cstr,*sysout,*eqout,wcs->epoch);
-        fprintf (stderr,"Reference pixel (%.2f,%.2f) %s %s %s\n",
-                 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
+        wcscstr(cstr, *sysout, *eqout, wcs->epoch);
+        fprintf(stderr, "Reference pixel (%.2f,%.2f) %s %s %s\n", wcs->xrefpix, wcs->yrefpix, rstr,
+                dstr, cstr);
     }
 
     /* Image size for catalog search */
     if (verbose) {
         if (wcs->degout) {
-            deg2str (rstr, 32, *cra, 6);
-            deg2str (dstr, 32, *cdec, 6);
+            deg2str(rstr, 32, *cra, 6);
+            deg2str(dstr, 32, *cdec, 6);
+        } else {
+            ra2str(rstr, 32, *cra, 3);
+            dec2str(dstr, 32, *cdec, 2);
         }
-        else {
-            ra2str (rstr, 32, *cra, 3);
-            dec2str (dstr, 32, *cdec, 2);
-        }
-        wcscstr (cstr, *sysout, *eqout, wcs->epoch);
-        fprintf (stderr,"Search at %s %s %s", rstr, dstr, cstr);
+        wcscstr(cstr, *sysout, *eqout, wcs->epoch);
+        fprintf(stderr, "Search at %s %s %s", rstr, dstr, cstr);
         if (wcs->degout) {
-            deg2str (rstr, 32, *dra, 6);
-            deg2str (dstr, 32, *ddec, 6);
+            deg2str(rstr, 32, *dra, 6);
+            deg2str(dstr, 32, *ddec, 6);
+        } else {
+            ra2str(rstr, 32, *dra, 3);
+            dec2str(dstr, 32, *ddec, 2);
         }
-        else {
-            ra2str (rstr, 32, *dra, 3);
-            dec2str (dstr, 32, *ddec, 2);
-        }
-        fprintf (stderr," +- %s %s\n", rstr, dstr);
-        fprintf (stderr,"Image width=%d height=%d, %g arcsec/pixel\n",
-                 *wp, *hp, *secpix);
+        fprintf(stderr, " +- %s %s\n", rstr, dstr);
+        fprintf(stderr, "Image width=%d height=%d, %g arcsec/pixel\n", *wp, *hp, *secpix);
     }
 
     return (wcs);
 }
 
-WorldCoor* AstroUtils::ChangeFITSWCS(char *filename, char* header, int verbose)
+WorldCoor *AstroUtils::ChangeFITSWCS(char *filename, char *header, int verbose)
 {
     int nax, i, hp, wp;
     double xref, yref, degpix, secpix;
@@ -632,22 +614,21 @@ WorldCoor* AstroUtils::ChangeFITSWCS(char *filename, char* header, int verbose)
     char *cwcs;
 
     /* Set the world coordinate system from the image header */
-    if (strlen (filename) > 0)
-    {
-        cwcs = strchr (filename, '%');
+    if (strlen(filename) > 0) {
+        cwcs = strchr(filename, '%');
         if (cwcs != NULL)
             cwcs++;
     }
 
-    if (!strncmp (header, "END", 3)) {
+    if (!strncmp(header, "END", 3)) {
         cwcs = NULL;
         for (i = 0; i < 2880; i++)
-            header[i] = (char) 32;
-        hputl (header, "SIMPLE", 1);
-        hputi4 (header, "BITPIX", 0);
-        hputi4 (header, "NAXIS", 2);
-        hputi4 (header, "NAXIS1", 1);
-        hputi4 (header, "NAXIS2", 1);
+            header[i] = (char)32;
+        hputl(header, "SIMPLE", 1);
+        hputi4(header, "BITPIX", 0);
+        hputi4(header, "NAXIS", 2);
+        hputi4(header, "NAXIS1", 1);
+        hputi4(header, "NAXIS2", 1);
     }
 
     /* Set image dimensions */
@@ -659,233 +640,224 @@ WorldCoor* AstroUtils::ChangeFITSWCS(char *filename, char* header, int verbose)
             nax = 2;
         else
             nax = 1;
-        hputi4 (header, "NAXIS", nax);
-        hputi4 (header, "NAXIS1", wp);
-        hputi4 (header, "NAXIS2", hp);
-    }
-    else if (hgeti4 (header,"NAXIS",&nax) < 1 || nax < 1) {
-        if (hgeti4 (header, "WCSAXES", &nax) < 1)
+        hputi4(header, "NAXIS", nax);
+        hputi4(header, "NAXIS1", wp);
+        hputi4(header, "NAXIS2", hp);
+    } else if (hgeti4(header, "NAXIS", &nax) < 1 || nax < 1) {
+        if (hgeti4(header, "WCSAXES", &nax) < 1)
             return (NULL);
         else {
-            if (hgeti4 (header, "IMAGEW", &wp) < 1)
+            if (hgeti4(header, "IMAGEW", &wp) < 1)
                 return (NULL);
-            if (hgeti4 (header, "IMAGEH", &wp) < 1)
+            if (hgeti4(header, "IMAGEH", &wp) < 1)
                 return (NULL);
         }
-    }
-    else {
-        if (hgeti4 (header,"NAXIS1",&wp) < 1)
+    } else {
+        if (hgeti4(header, "NAXIS1", &wp) < 1)
             return (NULL);
-        if (hgeti4 (header,"NAXIS2",&hp) < 1)
+        if (hgeti4(header, "NAXIS2", &hp) < 1)
             return (NULL);
     }
 
     /* Set plate center from command line, if it is there */
     if (ra0 > -99.0 && dec0 > -99.0) {
-        hputnr8 (header, "CRVAL1" ,8,ra0);
-        hputnr8 (header, "CRVAL2" ,8,dec0);
-        hputra (header, "RA", ra0);
-        hputdec (header, "DEC", dec0);
+        hputnr8(header, "CRVAL1", 8, ra0);
+        hputnr8(header, "CRVAL2", 8, dec0);
+        hputra(header, "RA", ra0);
+        hputdec(header, "DEC", dec0);
         if (comsys == WCS_B1950) {
-            hputi4 (header, "EPOCH", 1950);
-            hputi4 (header, "EQUINOX", 1950);
-            hputs (header, "RADECSYS", "FK4");
-        }
-        else {
-            hputi4 (header, "EPOCH", 2000);
-            hputi4 (header, "EQUINOX", 2000);
+            hputi4(header, "EPOCH", 1950);
+            hputi4(header, "EQUINOX", 1950);
+            hputs(header, "RADECSYS", "FK4");
+        } else {
+            hputi4(header, "EPOCH", 2000);
+            hputi4(header, "EQUINOX", 2000);
             if (comsys == WCS_GALACTIC)
-                hputs (header, "RADECSYS", "GALACTIC");
+                hputs(header, "RADECSYS", "GALACTIC");
             else if (comsys == WCS_ECLIPTIC)
-                hputs (header, "RADECSYS", "ECLIPTIC");
+                hputs(header, "RADECSYS", "ECLIPTIC");
             else if (comsys == WCS_ICRS)
-                hputs (header, "RADECSYS", "ICRS");
+                hputs(header, "RADECSYS", "ICRS");
             else
-                hputs (header, "RADECSYS", "FK5");
+                hputs(header, "RADECSYS", "FK5");
         }
-        if (hgetr8 (header, "SECPIX", &secpix)) {
+        if (hgetr8(header, "SECPIX", &secpix)) {
             degpix = secpix / 3600.0;
-            hputnr8 (header, "CDELT1", 8, -degpix);
-            hputnr8 (header, "CDELT2", 8, degpix);
-            hdel (header, "CD1_1");
-            hdel (header, "CD1_2");
-            hdel (header, "CD2_1");
-            hdel (header, "CD2_2");
+            hputnr8(header, "CDELT1", 8, -degpix);
+            hputnr8(header, "CDELT2", 8, degpix);
+            hdel(header, "CD1_1");
+            hdel(header, "CD1_2");
+            hdel(header, "CD2_1");
+            hdel(header, "CD2_2");
         }
     }
     if (ptype0 > -1 && ptype0 < nctype) {
-        strcpy (temp,"RA---");
-        strcat (temp, ctypes[ptype0]);
-        hputs (header, "CTYPE1", temp);
-        strcpy (temp,"DEC--");
-        strcat (temp, ctypes[ptype0]);
-        hputs (header, "CTYPE2", temp);
+        strcpy(temp, "RA---");
+        strcat(temp, ctypes[ptype0]);
+        hputs(header, "CTYPE1", temp);
+        strcpy(temp, "DEC--");
+        strcat(temp, ctypes[ptype0]);
+        hputs(header, "CTYPE2", temp);
     }
 
     /* Set reference pixel from command line, if it is there */
     if (xref0 > -99999.0 && yref0 > -99999.0) {
-        hputr8 (header, "CRPIX1", xref0);
-        hputr8 (header, "CRPIX2", yref0);
-    }
-    else if (hgetr8 (header, "CRPIX1", &xref) < 1) {
-        xref = 0.5 + (double) wp / 2.0;
-        yref = 0.5 + (double) hp / 2.0;
-        hputnr8 (header, "CRPIX1", 3, xref);
-        hputnr8 (header, "CRPIX2", 3, yref);
+        hputr8(header, "CRPIX1", xref0);
+        hputr8(header, "CRPIX2", yref0);
+    } else if (hgetr8(header, "CRPIX1", &xref) < 1) {
+        xref = 0.5 + (double)wp / 2.0;
+        yref = 0.5 + (double)hp / 2.0;
+        hputnr8(header, "CRPIX1", 3, xref);
+        hputnr8(header, "CRPIX2", 3, yref);
     }
 
     /* Set plate scale from command line, if it is there */
     if (secpix0 != 0.0 || cd0 != NULL) {
         if (secpix2 != 0.0) {
             secpix = 0.5 * (secpix0 + secpix2);
-            hputnr8 (header, "SECPIX1", 5, secpix0);
-            hputnr8 (header, "SECPIX2", 5, secpix2);
+            hputnr8(header, "SECPIX1", 5, secpix0);
+            hputnr8(header, "SECPIX2", 5, secpix2);
             degpix = -secpix0 / 3600.0;
-            hputnr8 (header, "CDELT1", 8, degpix);
+            hputnr8(header, "CDELT1", 8, degpix);
             degpix = secpix2 / 3600.0;
-            hputnr8 (header, "CDELT2", 8, degpix);
-            hdel (header, "CD1_1");
-            hdel (header, "CD1_2");
-            hdel (header, "CD2_1");
-            hdel (header, "CD2_2");
-        }
-        else if (secpix0 != 0.0) {
+            hputnr8(header, "CDELT2", 8, degpix);
+            hdel(header, "CD1_1");
+            hdel(header, "CD1_2");
+            hdel(header, "CD2_1");
+            hdel(header, "CD2_2");
+        } else if (secpix0 != 0.0) {
             secpix = secpix0;
-            hputnr8 (header, "SECPIX", 5, secpix);
+            hputnr8(header, "SECPIX", 5, secpix);
             degpix = secpix / 3600.0;
-            hputnr8 (header, "CDELT1", 8, -degpix);
-            hputnr8 (header, "CDELT2", 8, degpix);
-            hdel (header, "CD1_1");
-            hdel (header, "CD1_2");
-            hdel (header, "CD2_1");
-            hdel (header, "CD2_2");
+            hputnr8(header, "CDELT1", 8, -degpix);
+            hputnr8(header, "CDELT2", 8, degpix);
+            hdel(header, "CD1_1");
+            hdel(header, "CD1_2");
+            hdel(header, "CD2_1");
+            hdel(header, "CD2_2");
+        } else {
+            hputr8(header, "CD1_1", cd0[0]);
+            hputr8(header, "CD1_2", cd0[1]);
+            hputr8(header, "CD2_1", cd0[2]);
+            hputr8(header, "CD2_2", cd0[3]);
+            hdel(header, "CDELT1");
+            hdel(header, "CDELT2");
+            hdel(header, "CROTA1");
+            hdel(header, "CROTA2");
         }
-        else {
-            hputr8 (header, "CD1_1", cd0[0]);
-            hputr8 (header, "CD1_2", cd0[1]);
-            hputr8 (header, "CD2_1", cd0[2]);
-            hputr8 (header, "CD2_2", cd0[3]);
-            hdel (header, "CDELT1");
-            hdel (header, "CDELT2");
-            hdel (header, "CROTA1");
-            hdel (header, "CROTA2");
+        if (!ksearch(header, "CRVAL1")) {
+            hgetra(header, "RA", &ra0);
+            hgetdec(header, "DEC", &dec0);
+            hputnr8(header, "CRVAL1", 8, ra0);
+            hputnr8(header, "CRVAL2", 8, dec0);
         }
-        if (!ksearch (header,"CRVAL1")) {
-            hgetra (header, "RA", &ra0);
-            hgetdec (header, "DEC", &dec0);
-            hputnr8 (header, "CRVAL1", 8, ra0);
-            hputnr8 (header, "CRVAL2", 8, dec0);
+        if (!ksearch(header, "CRPIX1")) {
+            xref = (double)wp / 2.0;
+            yref = (double)hp / 2.0;
+            hputnr8(header, "CRPIX1", 3, xref);
+            hputnr8(header, "CRPIX2", 3, yref);
         }
-        if (!ksearch (header,"CRPIX1")) {
-            xref = (double) wp / 2.0;
-            yref = (double) hp / 2.0;
-            hputnr8 (header, "CRPIX1", 3, xref);
-            hputnr8 (header, "CRPIX2", 3, yref);
-        }
-        if (!ksearch (header,"CTYPE1")) {
+        if (!ksearch(header, "CTYPE1")) {
             if (comsys == WCS_GALACTIC) {
-                hputs (header, "CTYPE1", "GLON-TAN");
-                hputs (header, "CTYPE2", "GLAT-TAN");
-            }
-            else {
-                hputs (header, "CTYPE1", "RA---TAN");
-                hputs (header, "CTYPE2", "DEC--TAN");
+                hputs(header, "CTYPE1", "GLON-TAN");
+                hputs(header, "CTYPE2", "GLAT-TAN");
+            } else {
+                hputs(header, "CTYPE1", "RA---TAN");
+                hputs(header, "CTYPE2", "DEC--TAN");
             }
         }
     }
 
     /* Set rotation angle from command line, if it is there */
     if (rot0 < 361.0) {
-        hputnr8 (header, "CROTA1", 5, rot0);
-        hputnr8 (header, "CROTA2", 5, rot0);
+        hputnr8(header, "CROTA1", 5, rot0);
+        hputnr8(header, "CROTA2", 5, rot0);
     }
 
     /* Set observation date for epoch, if it is there */
     if (dateobs0 != NULL)
-        hputs (header, "DATE-OBS", dateobs0);
+        hputs(header, "DATE-OBS", dateobs0);
 
     /* Initialize WCS structure from FITS header */
-    wcs = wcsinitn (header, cwcs);
+    wcs = wcsinitn(header, cwcs);
 
     /* If incomplete WCS in header, drop out */
-    if (nowcs (wcs)) {
-        setwcsfile (filename);
+    if (nowcs(wcs)) {
+        setwcsfile(filename);
         /* wcserr(); */
         if (verbose)
-            fprintf (stderr,"Insufficient information for initial WCS\n");
+            fprintf(stderr, "Insufficient information for initial WCS\n");
         return (NULL);
     }
     return (wcs);
 }
 
-WorldCoor * AstroUtils::GetWCSFITS(char *filename, int verbose)
+WorldCoor *AstroUtils::GetWCSFITS(char *filename, int verbose)
 {
-    char *header;		    /* FITS header */
-    struct WorldCoor *wcs;	/* World coordinate system structure */
-    char *cwcs;			    /* Multiple wcs string (name or character) */
+    char *header; /* FITS header */
+    struct WorldCoor *wcs; /* World coordinate system structure */
+    char *cwcs; /* Multiple wcs string (name or character) */
 
     /* Read the FITS or IRAF image file header */
-    header = GetFITShead (filename, verbose);
+    header = GetFITShead(filename, verbose);
     if (header == NULL)
         return (NULL);
 
-    verbose=true;
+    verbose = true;
 
     /* Set the world coordinate system from the image header */
-    cwcs = strchr (filename, '%');
+    cwcs = strchr(filename, '%');
     if (cwcs != NULL)
         cwcs++;
-    wcs = wcsinitn (header, cwcs);
+    wcs = wcsinitn(header, cwcs);
     if (wcs == NULL) {
-        setwcsfile (filename);
+        setwcsfile(filename);
         if (verbose)
-            wcserr ();
+            wcserr();
     }
-    free (header);
+    free(header);
 
     return (wcs);
 }
 
-char * AstroUtils::GetFITShead(char * filename, int verbose)
+char *AstroUtils::GetFITShead(char *filename, int verbose)
 {
-    char *header;		/* FITS header */
-    int lhead;			/* Maximum number of bytes in FITS header */
-    char *irafheader;   /* IRAF image header */
+    char *header; /* FITS header */
+    int lhead; /* Maximum number of bytes in FITS header */
+    char *irafheader; /* IRAF image header */
     int nbiraf, nbfits;
 
     /* Open IRAF image if .imh extension is present */
-    if (isiraf (filename)) {
-        if ((irafheader = irafrhead (filename, &nbiraf)) != NULL) {
-            if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
+    if (isiraf(filename)) {
+        if ((irafheader = irafrhead(filename, &nbiraf)) != NULL) {
+            if ((header = iraf2fits(filename, irafheader, nbiraf, &lhead)) == NULL) {
                 if (verbose)
-                    fprintf (stderr, "Cannot translate IRAF header %s\n",filename);
-                free (irafheader);
+                    fprintf(stderr, "Cannot translate IRAF header %s\n", filename);
+                free(irafheader);
                 irafheader = NULL;
                 return (NULL);
             }
-            free (irafheader);
+            free(irafheader);
             irafheader = NULL;
-        }
-        else {
+        } else {
             if (verbose)
-                fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
+                fprintf(stderr, "Cannot read IRAF header file %s\n", filename);
             return (NULL);
         }
-    }
-    else if (istiff (filename) || isgif (filename) || isjpeg (filename)) {
-        if ((header = fitsrtail (filename, &lhead, &nbfits)) == NULL) {
+    } else if (istiff(filename) || isgif(filename) || isjpeg(filename)) {
+        if ((header = fitsrtail(filename, &lhead, &nbfits)) == NULL) {
             if (verbose)
-                fprintf (stderr, "TIFF file %s has no appended header\n", filename);
+                fprintf(stderr, "TIFF file %s has no appended header\n", filename);
             return (NULL);
         }
     }
 
     /* Open FITS file if .imh extension is not present */
     else {
-        if ((header = fitsrhead (filename, &lhead, &nbfits)) == NULL) {
+        if ((header = fitsrhead(filename, &lhead, &nbfits)) == NULL) {
             if (verbose)
                 /* fprintf (stderr, "Cannot read FITS file %s\n", filename); */
-                fitserr ();
+                fitserr();
             return (NULL);
         }
     }

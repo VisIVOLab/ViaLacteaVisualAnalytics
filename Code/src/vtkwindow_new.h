@@ -1,60 +1,52 @@
 #ifndef vtkwindow_new_H
 #define vtkwindow_new_H
 
-#include <QMainWindow>
-#include "pointspipe.h"
-#include "ui_vtkwindow_new.h"
-#include "vtkRenderWindow.h"
-#include "vtkRenderer.h"
-#include "vtkCommand.h"
-#include "vtkEventQtSlotConnect.h"
-#include "vtkConeSource.h"
-#include "vtkSphereSource.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkActor.h"
-#include "vtkSphereSource.h"
-#include "vtkConeSource.h"
-#include "vtkCylinderSource.h"
-#include "vtkCubeSource.h"
-#include "vtkMarchingCubes.h"
-
-#include "vtkCamera.h"
-#include "vtkPointData.h"
-#include "vtkCellData.h"
-#include "vtkLookupTable.h"
 #include "contour.h"
-#include "vtkLineSource.h"
-
-#include "vtkFloatArray.h"
-#include "vtkCellArray.h"
-#include"vtkGlyph3D.h"
-#include "vtkScalarBarActor.h"
-#include "vtkOutlineCornerFilter.h"
-#include "vtkProperty.h"
-
-#include "vtkGenericRenderWindowInteractor.h"
-#include "vtkRenderWindow.h"
-#include "vtkRenderer.h"
-#include "vtkActor.h"
-#include "vtkAxesActor.h"
-#include "vtkLODActor.h"
-#include <map>
-#include "vtkImageActor.h"
-#include "vtkImageViewer2.h"
-#include <vtkSmartPointer.h>
-#include "vtkfitsreader.h"
-#include "vtkellipse.h"
-#include "vtkOrientationMarkerWidget.h"
-#include "vtkAxes.h"
-#include "vtkEventQtSlotConnect.h"
-#include <QGestureEvent>
-#include "vtkResliceImageViewer.h"
-#include "vtkfitstoolwidget_new.h"
 #include "loadingwidget.h"
-#include <QNetworkReply>
-#include "vtkImageStack.h"
-
+#include "pointspipe.h"
 #include "vialacteastringdictwidget.h"
+#include "vtkActor.h"
+#include "vtkAxes.h"
+#include "vtkAxesActor.h"
+#include "vtkCamera.h"
+#include "vtkCellArray.h"
+#include "vtkCellData.h"
+#include "vtkCommand.h"
+#include "vtkConeSource.h"
+#include "vtkCubeSource.h"
+#include "vtkCylinderSource.h"
+#include "vtkellipse.h"
+#include "vtkEventQtSlotConnect.h"
+#include "vtkfitsreader.h"
+#include "vtkfitstoolwidget_new.h"
+#include "vtkFloatArray.h"
+#include "vtkGenericRenderWindowInteractor.h"
+#include "vtkGlyph3D.h"
+#include "vtkImageActor.h"
+#include "vtkImageStack.h"
+#include "vtkImageViewer2.h"
+#include "vtkLineSource.h"
+#include "vtkLODActor.h"
+#include "vtkLookupTable.h"
+#include "vtkMarchingCubes.h"
+#include "vtkOrientationMarkerWidget.h"
+#include "vtkOutlineCornerFilter.h"
+#include "vtkPointData.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkProperty.h"
+#include "vtkRenderer.h"
+#include "vtkRenderWindow.h"
+#include "vtkResliceImageViewer.h"
+#include "vtkScalarBarActor.h"
+#include "vtkSmartPointer.h"
+#include "vtkSphereSource.h"
+
+#include <QGestureEvent>
+#include <QListWidgetItem>
+#include <QMainWindow>
+#include <QNetworkReply>
+
+#include <map>
 
 class vtkRenderer;
 class vtkEventQtSlotConnect;
@@ -76,28 +68,30 @@ class vtkwindow_new : public QMainWindow
 {
     Q_OBJECT
     vtkLODActor *m_pActor;
-    vtkVolumeProperty  *m_volumeProperty;
-    //vtkPiecewiseFunction *m_opacityTransferFunction;
+    vtkVolumeProperty *m_volumeProperty;
+    // vtkPiecewiseFunction *m_opacityTransferFunction;
     vtkColorTransferFunction *m_colorTransferFunction;
 
 public:
-    explicit vtkwindow_new(QWidget *parent = 0, VisPoint *vis=0);
-    explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis=0, int b=0, vtkwindow_new *p=0);
-    //explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
+    explicit vtkwindow_new(QWidget *parent = 0, VisPoint *vis = 0);
+    explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis = 0, int b = 0,
+                           vtkwindow_new *p = 0);
+    // explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
 
-    void loadSession(const QString &sessionFile, const QDir &filesDir);
+    void loadSession(const QString &sessionFile, const QDir &sessionRootFolder);
     bool isSessionSaved() const;
 
-    /// Returns true if the application can be closed, false if the user does not want to close it anymore
+    /// Returns true if the application can be closed, false if the user does not want to close it
+    /// anymore
     bool confirmSaveAndExit();
 
-    vtkRenderer* m_Ren1;
-    vtkRenderWindow* renwin;
+    vtkRenderer *m_Ren1;
+    vtkRenderWindow *renwin;
 
-    vtkRenderer* m_Ren2;
-    vtkRenderer* m_Ren3;
-    vtkRenderWindow* renwin2;
+    vtkRenderer *m_Ren2;
+    vtkRenderer *m_Ren3;
+    vtkRenderWindow *renwin2;
     vtkwindow_new *vtkcontourwindow;
     vtkwindow_new *myParentVtkWindow;
     contour *contourWin;
@@ -106,24 +100,26 @@ public:
     vtkMarchingCubes *shellE;
     vtkActor *sliceA;
 
-    VSTableDesktop * table;
-    VisPoint * vispoint;
+    VSTableDesktop *table;
+    VisPoint *vispoint;
     void changePalette(std::string palette);
     void changeFitsPalette(std::string palette);
     void changeFitsScale(std::string palette, std::string scale);
     void changeScalar(std::string scalar);
-    PointsPipe * pp;
+    PointsPipe *pp;
     void resetCamera();
-    void drawEllipse(QHash<QString, vtkEllipse *> ellipse , QString sourceFilename, QString sourcePath = "");
+    void drawEllipse(QHash<QString, vtkEllipse *> ellipse, QString sourceFilename,
+                     QString sourcePath = "");
     void drawGlyphs(int index);
     Ui::vtkwindow_new *ui;
-    static void SelectionChangedCallbackFunction (vtkObject* caller, long unsigned int eventId, void* clientData, void* callData );
+    static void SelectionChangedCallbackFunction(vtkObject *caller, long unsigned int eventId,
+                                                 void *clientData, void *callData);
     QString getWindowName();
     //  QString getFilenameWithPath();
     void setWindowName(QString name);
     //  void isVisible();
-    QHash<QString,  vtkSmartPointer<vtkLODActor> > getEllipseActorList();
-    QHash<QString,  vtkSmartPointer<vtkLODActor> > getVisualizedActorList();
+    QHash<QString, vtkSmartPointer<vtkLODActor>> getEllipseActorList();
+    QHash<QString, vtkSmartPointer<vtkLODActor>> getVisualizedActorList();
 
     double r;
     double g;
@@ -136,43 +132,40 @@ public:
     double min;
     long naxis3;
     double *z_range;
-    vtkSmartPointer<vtkImageStack> imageStack ;
+    vtkSmartPointer<vtkImageStack> imageStack;
 
     vtkSmartPointer<vtkResliceImageViewer> viewer;
 
     vtkSmartPointer<vtkImageViewer2> imageViewer;
-    void addSources(VSTableDesktop* m_VisIVOTable);
+    void addSources(VSTableDesktop *m_VisIVOTable);
     void addSourcesFromJson();
-    void addFilaments(VSTableDesktop* m_VisIVOTable);
-    void addSourcesFromBM(VSTableDesktop* m_VisIVOTable);
-    void addBubble(VSTableDesktop* m_VisIVOTable);
+    void addFilaments(VSTableDesktop *m_VisIVOTable);
+    void addSourcesFromBM(VSTableDesktop *m_VisIVOTable);
+    void addBubble(VSTableDesktop *m_VisIVOTable);
 
-
-    //void drawSingleEllipse(QList<vtkEllipse *> ellipse, QString sourceFilename );
-    //void drawSingleEllipse(vtkEllipse * ellipse );
+    // void drawSingleEllipse(QList<vtkEllipse *> ellipse, QString sourceFilename );
+    // void drawSingleEllipse(vtkEllipse * ellipse );
     void drawSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor);
     void removeSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor);
-    void setContourVisualized(bool s) {contourVisualized=s;}
-    bool getContourVisualized() {return contourVisualized;}
-    QList<vtkfitstoolwidgetobject*> getLayerListImages(){return imgLayerList;}
-    QList<vtkfitstoolwidgetobject*> getLayerListElements(){return elementLayerList;}
+    void setContourVisualized(bool s) { contourVisualized = s; }
+    bool getContourVisualized() { return contourVisualized; }
+    QList<vtkfitstoolwidgetobject *> getLayerListImages() { return imgLayerList; }
+    QList<vtkfitstoolwidgetobject *> getLayerListElements() { return elementLayerList; }
 
-    void addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString survey="", QString species="", QString transition="");
+    void addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString survey = "",
+                       QString species = "", QString transition = "");
 
-    QString getSelectedScale(){return selected_scale;}
+    QString getSelectedScale() { return selected_scale; }
 
     // QList<vtkEllipse*> ellipse_list;
-    QHash<QString, vtkEllipse* > getEllipseList(){return ellipse_list;}
-    QHash<QString, vtkEllipse* > getFtEllipseList(){return ft_ellipse_list;}
-    QHash<QString,  QString > getDesignation2fileMap() {return designation2fileMap;}
+    QHash<QString, vtkEllipse *> getEllipseList() { return ellipse_list; }
+    QHash<QString, vtkEllipse *> getFtEllipseList() { return ft_ellipse_list; }
+    QHash<QString, QString> getDesignation2fileMap() { return designation2fileMap; }
 
     void printSelf();
 
     void changeWCS(bool galaptic);
     std::string filenameWithPath;
-
-
-
 
     QHash<QString, int> file_wavelength;
     QHash<QString, QStringList> filamentsList;
@@ -180,46 +173,43 @@ public:
     void addActor(vtkProp *actor);
     void removeActor(vtkProp *actor);
 
-    void setCallingL(QString v){called_l=v;};
-    void setCallingB(QString v){called_b=v;};
-    void setCallingR(QString v){called_r=v;};
-    void setCallingDl(QString v){called_dl=v;};
-    void setCallingDb(QString v){called_db=v;};
+    void setCallingL(QString v) { called_l = v; };
+    void setCallingB(QString v) { called_b = v; };
+    void setCallingR(QString v) { called_r = v; };
+    void setCallingDl(QString v) { called_dl = v; };
+    void setCallingDb(QString v) { called_db = v; };
 
-    vtkSmartPointer<vtkFitsReader> getFitsImage(){return myfits;};
-    vtkSmartPointer<vtkActor> getGlyphActor(){return glyph_actor;};
+    vtkSmartPointer<vtkFitsReader> getFitsImage() { return myfits; };
+    vtkSmartPointer<vtkActor> getGlyphActor() { return glyph_actor; };
 
-
-    QHash<vtkImageProperty*,  double> image_init_color_level;
-    QHash<vtkImageProperty*,  double> image_init_window_level;
-
+    QHash<vtkImageProperty *, double> image_init_color_level;
+    QHash<vtkImageProperty *, double> image_init_window_level;
 
 signals:
-   void speciesChanged();
-   void surveyChanged();
+    void speciesChanged();
+    void surveyChanged();
     void transitionChanged();
 
-
 private:
-    QHash<QString, QPair<double,double> > addedFilter;
+    QHash<QString, QPair<double, double>> addedFilter;
 
     QString selected_scale;
     double cam_init_pos[3];
     double cam_init_foc[3];
     bool scaleActivate;
     bool fitsViewer;
-    vtkSmartPointer<vtkRenderer> back_ren=0;
-    //contour *contourWin; //=0;
+    vtkSmartPointer<vtkRenderer> back_ren = 0;
+    // contour *contourWin; //=0;
     vtkSmartPointer<vtkFitsReader> myfits;
     LoadingWidget *loading;
-    bool contourVisualized=false;
-    bool coloBarVisualized=false;
-    bool contourWinActivated=false;
-    vtkActor *outline_actor=0;
-    vtkActor *contour_actor=0;
-    vtkActor *data_geometry_actor=0;
-    vtkSmartPointer<vtkActor> glyph_actor=0;
-    QList<QMap<QString, QString> > classElementsOnDb;
+    bool contourVisualized = false;
+    bool coloBarVisualized = false;
+    bool contourWinActivated = false;
+    vtkActor *outline_actor = 0;
+    vtkActor *contour_actor = 0;
+    vtkActor *data_geometry_actor = 0;
+    vtkSmartPointer<vtkActor> glyph_actor = 0;
+    QList<QMap<QString, QString>> classElementsOnDb;
     QString called_l;
     QString called_b;
     QString called_r;
@@ -233,51 +223,53 @@ private:
     vtkfitstoolwidget_new *vtkfitstoolwindow;
 
     QString windowName;
-    //QString filenameWithPath;
-    QHash<QString,  vtkSmartPointer<vtkLODActor> > ellipse_actor_list;
-    QHash<QString,  vtkSmartPointer<vtkLODActor> > visualized_actor_list;
+    // QString filenameWithPath;
+    QHash<QString, vtkSmartPointer<vtkLODActor>> ellipse_actor_list;
+    QHash<QString, vtkSmartPointer<vtkLODActor>> visualized_actor_list;
 
-    QHash<QString,  QString > designation2fileMap;
-    QHash<QString,   vtkSmartPointer<vtkLODActor> > VisualizedEllipseSourcesList;
+    QHash<QString, QString> designation2fileMap;
+    QHash<QString, vtkSmartPointer<vtkLODActor>> VisualizedEllipseSourcesList;
     vtkfitstoolswidget *vtkfitstoolsw;
-    QHash<QString, vtkEllipse* > ellipse_list;
-    QHash<QString, vtkEllipse* > ft_ellipse_list;
+    QHash<QString, vtkEllipse *> ellipse_list;
+    QHash<QString, vtkEllipse *> ft_ellipse_list;
     vtkSmartPointer<vtkOrientationMarkerWidget> vtkAxesWidget;
     vtkSmartPointer<vtkAxesActor> vtkAxes;
     FitsImageStatisiticInfo *info;
     vtkSmartPointer<vtkEventQtSlotConnect> Connections;
     vtkfitstoolwidgetobject *imageObject;
-    QList<vtkfitstoolwidgetobject*> imgLayerList;
-    QList<vtkfitstoolwidgetobject*> elementLayerList;
-    vtkSmartPointer<vtkLODActor> rectangleActor=0;
+    QList<vtkfitstoolwidgetobject *> imgLayerList;
+    QList<vtkfitstoolwidgetobject *> elementLayerList;
+    vtkSmartPointer<vtkLODActor> rectangleActor = 0;
     vtkSmartPointer<vtkActor> currentContourActor;
     vtkSmartPointer<vtkActor> currentContourActorForMainWindow;
     QString vlkbUrl;
     QString selectedCubeVelocityUnit;
     void drawRectangleFootprint(double points[8]);
     VialacteaStringDictWidget *stringDictWidget;
-    void addCombinedLayer(QString name,  vtkSmartPointer<vtkLODActor>actor, int objtype, bool active);
+    void addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> actor, int objtype,
+                          bool active);
 
     QStringList getSourcesLoadedFromFile(const QString &sourcePath);
     bool getTableItemInfo(const QString &text, int &row, bool &enabled, double *color);
     void setTableItemInfo(const QString &text, const bool &enabled, const double *color);
 
     void sessionModified();
-    void setImageLayers(const QJsonArray &layers, const QDir &filesDir);
-    void setSources(const QJsonArray &sources, const QDir &filesDir);
-    void setFilaments(const QJsonArray &filaments, const QDir &filesDir);
+    void setImageLayers(const QJsonArray &layers, const QDir &sessionRootFolder);
+    void setSources(const QJsonArray &sources, const QDir &sessionRootFolder);
+    void setFilaments(const QJsonArray &filaments, const QDir &sessionRootFolder);
 
-    void loadDatacubes(const QJsonArray &datacubes, const QDir &filesDir);
+    void loadDatacubes(const QJsonArray &datacubes, const QDir &sessionRootFolder);
     int getThresholdValue();
     void setThresholdValue(int sliderValue);
     int getCuttingPlaneValue();
     void setCuttingPlaneValue(int arg1);
     bool getContoursInfo(int &level, double &lowerBound, double &upperBound);
-    void setContoursInfo(const int &level, const double &lowerBound, const double &upperBound, const bool &enabled);
+    void setContoursInfo(const int &level, const double &lowerBound, const double &upperBound,
+                         const bool &enabled);
 
 public slots:
-    //void updateCoords(vtkObject*);
-    //void popup(vtkObject * obj, unsigned long, void * client_data, void *, vtkCommand * command);
+    // void updateCoords(vtkObject*);
+    // void popup(vtkObject * obj, unsigned long, void * client_data, void *, vtkCommand * command);
     void loadObservedObject(VisPoint *vis);
     void updateScene();
     void showBox(bool checked);
@@ -287,11 +279,11 @@ public slots:
     void setCameraAzimuth(double az);
     void scale(bool checked);
     void showGrid(bool checked);
-    FitsImageStatisiticInfo* getInfoWindow();
+    FitsImageStatisiticInfo *getInfoWindow();
     void createInfoWindow();
     void setSelectionFitsViewerInteractorStyle();
     void setSkyRegionSelectorInteractorStyle();
-    void slot_clicked(vtkObject*, unsigned long, void*, void*);
+    void slot_clicked(vtkObject *, unsigned long, void *, void *);
     void setVtkInteractorStyleImage();
     void setVtkInteractorStyleImageContour();
 
@@ -312,29 +304,25 @@ public slots:
     void setSpecies(QString q);
     void setTransition(QString q);
 
-    void setDbElements(QList<QMap<QString, QString> > elementsOnDb);
-    void setSelectedCubeVelocityUnit (QString v){selectedCubeVelocityUnit=v;}
-    //void setCuttingPlane(int value);
-    void downloadStartingLayers(QList<QPair<QString, QString> > selectedSurvey);
-
-
-
+    void setDbElements(QList<QMap<QString, QString>> elementsOnDb);
+    void setSelectedCubeVelocityUnit(QString v) { selectedCubeVelocityUnit = v; }
+    // void setCuttingPlane(int value);
+    void downloadStartingLayers(QList<QPair<QString, QString>> selectedSurvey);
 
 protected:
-    //vtkEventQtSlotConnect* Connections;
+    // vtkEventQtSlotConnect* Connections;
     vtkVolume *m_volume;
     void closeEvent(QCloseEvent *event);
 
 private slots:
     void addLayer(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addTreeChild(QTreeWidgetItem *parent, QString name, QBrush brush);
-    QTreeWidgetItem* addTreeRoot(QString name);
+    QTreeWidgetItem *addTreeRoot(QString name);
 
     void on_actionTools_triggered();
     void on_actionInfo_triggered();
     void addLocalSources();
-    void cutoutDatacube(QString c );
-
+    void cutoutDatacube(QString c);
 
     void on_cameraLeft_clicked();
     void on_bottomCamera_clicked();
@@ -350,30 +338,28 @@ private slots:
     void on_spinBox_cuttingPlane_valueChanged(int arg1);
     void handleButton(int i);
 
-    //void on_cuttingPlane_Slider_sliderMoved(int position);
-    // void on_horizontalSlider_threshold_sliderMoved(int position);
-
+    // void on_cuttingPlane_Slider_sliderMoved(int position);
+    //  void on_horizontalSlider_threshold_sliderMoved(int position);
 
     void on_spinBox_contour_valueChanged(int arg1);
     void on_contour_pushButton_clicked();
     void on_cuttingPlane_Slider_sliderMoved(int position);
-    //void on_horizontalSlider_threshold_actionTriggered(int action);
+    // void on_horizontalSlider_threshold_actionTriggered(int action);
     void on_PVPlotPushButton_clicked();
-    //void on_generatePushButton_clicked();
+    // void on_generatePushButton_clicked();
     void on_PVPlot_radioButton_clicked(bool checked);
     void on_horizontalSlider_threshold_valueChanged(int value);
     void on_horizontalSlider_threshold_sliderReleased();
     void on_rectangularSelectionCS_clicked();
     void on_colorPushButton_clicked();
-    void addToList(vtkfitstoolwidgetobject *o, bool enabled=true);
-    void addImageToList( vtkfitstoolwidgetobject *o);
+    void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
+    void addImageToList(vtkfitstoolwidgetobject *o);
 
     void checkboxImageClicked(int cb, bool status = false);
-    void checkboxClicked(int cb, bool status =false);
+    void checkboxClicked(int cb, bool status = false);
 
     void on_tableWidget_doubleClicked(const QModelIndex &index);
     void on_fil_rectPushButton_clicked();
-
 
     void on_lutComboBox_activated(const QString &arg1);
     void on_logRadioButton_toggled(bool checked);
@@ -401,7 +387,8 @@ private slots:
     bool eventFilter(QObject *object, QEvent *event);
     void on_listWidget_clicked(const QModelIndex &index);
     void on_listWidget_itemChanged(QListWidgetItem *item);
-    void movedLayersRow( const QModelIndex & sourceParent, int sourceStart, int sourceEnd, const QModelIndex & destinationParent, int destinationRow );
+    void movedLayersRow(const QModelIndex &sourceParent, int sourceStart, int sourceEnd,
+                        const QModelIndex &destinationParent, int destinationRow);
     void on_listWidget_itemDoubleClicked(QListWidgetItem *item);
     void on_listWidget_customContextMenuRequested(const QPoint &pos);
     void sendImageTo(QString id);
@@ -416,6 +403,7 @@ private slots:
     void on_actionRight_triggered();
     void on_actionBottom_triggered();
     void on_actionLeft_triggered();
+    void on_actionCAESAR_triggered();
     void on_actionSave_session_triggered();
 };
 

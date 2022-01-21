@@ -21,43 +21,40 @@
 #ifndef LUTEDITOR_H
 #define LUTEDITOR_H
 
-
 class vtkLookupTable;
 class QString;
 class Color;
 
-void SelectLookTable(  QString palette,vtkLookupTable *lut=NULL);
+void SelectLookTable(QString palette, vtkLookupTable *lut = nullptr);
 
-void lutVolRenGreen( vtkLookupTable *lut);
-void lutVolRenGlow( vtkLookupTable *lut);
-void lutTenStep( vtkLookupTable *lut);
-void lutTemperature( vtkLookupTable *lut);
-void lutSar( vtkLookupTable *lut);
-void lutPhysicsContour( vtkLookupTable *lut);
-void lutGlow( vtkLookupTable *lut);
-void lutEField( vtkLookupTable *lut);
-void lutDefault( vtkLookupTable *lut);
-void lutDefaultStep( vtkLookupTable *lut);
-void lutGray( vtkLookupTable *lut);
-void lutRun1( vtkLookupTable *lut);
-void lutRun2( vtkLookupTable *lut);
-void lutPureRed( vtkLookupTable *lut);
-void lutPureGreen( vtkLookupTable *lut);
-void lutPureBlue( vtkLookupTable *lut);
+void lutVolRenGreen(vtkLookupTable *lut);
+void lutVolRenGlow(vtkLookupTable *lut);
+void lutTenStep(vtkLookupTable *lut);
+void lutTemperature(vtkLookupTable *lut);
+void lutSar(vtkLookupTable *lut);
+void lutPhysicsContour(vtkLookupTable *lut);
+void lutGlow(vtkLookupTable *lut);
+void lutEField(vtkLookupTable *lut);
+void lutDefault(vtkLookupTable *lut);
+void lutDefaultStep(vtkLookupTable *lut);
+void lutGray(vtkLookupTable *lut);
+void lutRun1(vtkLookupTable *lut);
+void lutRun2(vtkLookupTable *lut);
+void lutPureRed(vtkLookupTable *lut);
+void lutPureGreen(vtkLookupTable *lut);
+void lutPureBlue(vtkLookupTable *lut);
 
-void lutAllYellow( vtkLookupTable *lut);
-void lutAllCyane( vtkLookupTable *lut);
-void lutAllViolet( vtkLookupTable *lut);
-void lutAllWhite( vtkLookupTable *lut);
-void lutAllBlack( vtkLookupTable *lut);
-void lutAllRed( vtkLookupTable *lut);
-void lutAllGreen( vtkLookupTable *lut);
-void lutAllBlu( vtkLookupTable *lut);
+void lutAllYellow(vtkLookupTable *lut);
+void lutAllCyane(vtkLookupTable *lut);
+void lutAllViolet(vtkLookupTable *lut);
+void lutAllWhite(vtkLookupTable *lut);
+void lutAllBlack(vtkLookupTable *lut);
+void lutAllRed(vtkLookupTable *lut);
+void lutAllGreen(vtkLookupTable *lut);
+void lutAllBlu(vtkLookupTable *lut);
 
-void lutMinMax( vtkLookupTable *lut);
-void lutVolRenRGB( vtkLookupTable *lut);
-void lutVolRenTwoLev( vtkLookupTable *lut);
+void lutMinMax(vtkLookupTable *lut);
+void lutVolRenRGB(vtkLookupTable *lut);
+void lutVolRenTwoLev(vtkLookupTable *lut);
 
 #endif
-
-

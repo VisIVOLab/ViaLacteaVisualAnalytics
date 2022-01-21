@@ -1,8 +1,9 @@
 #ifndef VTKFITSTOOLWIDGET_NEW_H
 #define VTKFITSTOOLWIDGET_NEW_H
 
-#include <QMainWindow>
 #include "vtkfitstoolwidgetobject.h"
+
+#include <QMainWindow>
 #include <QTreeWidgetItem>
 
 namespace Ui {
@@ -17,9 +18,8 @@ public:
     explicit vtkfitstoolwidget_new(QWidget *parent = 0);
     ~vtkfitstoolwidget_new();
     void addLayer(vtkfitstoolwidgetobject *o);
-//    void setName(QString n);
+    //    void setName(QString n);
     void setWavelength(QString w);
-
 
 private slots:
     void on_layerTreeWidget_itemSelectionChanged();
@@ -28,14 +28,12 @@ private slots:
 
 private:
     Ui::vtkfitstoolwidget_new *ui;
-    QList<vtkfitstoolwidgetobject*> layerList;
+    QList<vtkfitstoolwidgetobject *> layerList;
     QString wavelength;
-    //void addTreeRoot(QString name );
-    QTreeWidgetItem* addTreeRoot(QString name );
+    // void addTreeRoot(QString name );
+    QTreeWidgetItem *addTreeRoot(QString name);
 
     void addTreeChild(QTreeWidgetItem *parent, QString name, QBrush brush);
-
-
 };
 
 #endif // VTKFITSTOOLWIDGET_NEW_H

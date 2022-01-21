@@ -1,12 +1,13 @@
 #include "sedfitgrid_thick.h"
 #include "ui_sedfitgrid_thick.h"
 
-SedFitgrid_thick::SedFitgrid_thick(SEDVisualizerPlot *s, QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::SedFitgrid_thick)
+#include "sedvisualizerplot.h"
+
+SedFitgrid_thick::SedFitgrid_thick(SEDVisualizerPlot *s, QWidget *parent)
+    : QWidget(parent), ui(new Ui::SedFitgrid_thick)
 {
     ui->setupUi(this);
-     sedwin=s;
+    sedwin = s;
 }
 
 SedFitgrid_thick::~SedFitgrid_thick()

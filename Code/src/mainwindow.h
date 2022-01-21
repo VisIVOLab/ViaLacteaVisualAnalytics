@@ -24,24 +24,24 @@
         @author Alessandro Costa <alessandro.costa@oact.inaf.it>
 */
 
+#include "operationqueue.h"
+#include "treeitem.h"
+#include "treemodel.h"
+#include "vispoint.h"
+#include "vstabledesktop.h"
+
+#include <QDir>
+#include <QFile>
 #include <QMainWindow>
 #include <QProcess>
-#include "ui_mainwindow.h"
-#include <QFile>
 #include <QString>
-#include <QDir>
+
 #include <map>
-#include "vstabledesktop.h"
-#include "treemodel.h"
-#include "treeitem.h"
-#include "vispoint.h"
-#include "operationqueue.h"
 
 class vtkwindow_new;
 
-namespace Ui
-{
-    class MainWindow;
+namespace Ui {
+class MainWindow;
 }
 
 class MainWindow : public QMainWindow
@@ -55,14 +55,15 @@ public:
     QString importer;
     QString filter;
     QString util;
-    void setCallingVtkWindow(vtkwindow_new *v){myCallingVtkWindow=v;}
+    void setCallingVtkWindow(vtkwindow_new *v) { myCallingVtkWindow = v; }
     Ui::MainWindow *ui;
     QString selectedFile;
     TreeModel *m_VisIVOTreeModel;
 
 public slots:
     void importAscii();
-    void importAscii(QString fileName, QString wavelen="", bool higal=false, bool bm=false, vtkwindow_new *v=NULL);
+    void importAscii(QString fileName, QString wavelen = "", bool higal = false, bool bm = false,
+                     vtkwindow_new *v = NULL);
     void importAsciiFilaments(QString fileName, vtkwindow_new *v);
     void importAsciiBubbles(QString fileName, vtkwindow_new *v);
     void importAscii3dSelection(QString fileName, vtkwindow_new *v);
@@ -70,26 +71,30 @@ public slots:
     void importCSV(QString fileName);
     void importVOTable(QString fileName);
     void importBinaryTable(QString fileName);
-    void setSelectedSurveyMap(QList < QPair<QString, QString> > s){selectedSurvey=s;}
-
+    void setSelectedSurveyMap(QList<QPair<QString, QString>> s) { selectedSurvey = s; }
 
     void importBinary();
     void importVoTable();
     void importVTP();
     void importVTI();
     void viewSetting();
-    void switchTab(int index );
+    void switchTab(int index);
     void viewSettingOk();
-    void itemSelected(QList<QMap<QString, QString> > elementsOnDb=QList<QMap<QString, QString> >(), bool layer=false);
-    void importFitsImage(QString filename, QList<QMap<QString, QString> > elementsOnDb=QList<QMap<QString, QString> >(), QString l="", QString b="", QString r="", QString db="", QString dl="", bool layer=false);
-    TreeModel* getTreeModel();
-    vtkwindow_new* getLastVtkWin(){return m_OldRenderingWindow;}
+    void itemSelected(QList<QMap<QString, QString>> elementsOnDb = QList<QMap<QString, QString>>(),
+                      bool layer = false);
+    void
+    importFitsImage(QString filename,
+                    QList<QMap<QString, QString>> elementsOnDb = QList<QMap<QString, QString>>(),
+                    QString l = "", QString b = "", QString r = "", QString db = "",
+                    QString dl = "", bool layer = false);
+    TreeModel *getTreeModel();
+    vtkwindow_new *getLastVtkWin() { return m_OldRenderingWindow; }
     void on_actionTEST_DC3D_triggered();
     void importFitsDC(QString fileName);
 
-    void setSurvey(QString s){survey=s;}
-    void setSpecies(QString s){species=s;}
-    void setTransition(QString t){transition=t;}
+    void setSurvey(QString s) { survey = s; }
+    void setSpecies(QString s) { species = s; }
+    void setTransition(QString t) { transition = t; }
 
 private slots:
     void on_actionOperation_queue_triggered();
@@ -110,14 +115,14 @@ private slots:
     void on_runFilterPushButton_clicked();
 
 private:
-    vtkwindow_new * m_OldRenderingWindow;
+    vtkwindow_new *m_OldRenderingWindow;
     void createModel();
     void resetInterface();
     void hideAllFilterParameter();
 
-    //QList <VisPoint> m_VisPointsObjectList;
+    // QList <VisPoint> m_VisPointsObjectList;
     VisPoint *m_VisPointsObject;
-    VSTableDesktop * m_Table;
+    VSTableDesktop *m_Table;
     QStandardItem *m_ParentItem;
     OperationQueue *queue;
     bool higal;
@@ -128,15 +133,12 @@ private:
     QString class_db;
     vtkwindow_new *myCallingVtkWindow;
     QString fileName;
-    QString survey,species,transition;
+    QString survey, species, transition;
     int type;
-    QList < QPair<QString, QString> > selectedSurvey;
-
+    QList<QPair<QString, QString>> selectedSurvey;
 
 protected:
-    void  closeEvent(QCloseEvent*);
-
-
+    void closeEvent(QCloseEvent *);
 };
 
 #endif // MAINWINDOW_H

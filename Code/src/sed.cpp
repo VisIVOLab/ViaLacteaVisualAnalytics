@@ -1,22 +1,21 @@
 #include "sed.h"
 #include <QDebug>
 
-SED::SED(QObject *parent) :
-    QObject(parent)
+SED::SED(QObject *parent) : QObject(parent)
 {
-    rootSetted=false;
+    rootSetted = false;
 }
 
 void SED::setRootNode(SEDNode *node)
 {
-    rootNode=node;
-    rootSetted=true;
+    rootNode = node;
+    rootSetted = true;
 }
 
 void SED::updateMaxFlux(double f)
 {
-    if (f>maxFlux)
-        maxFlux=f;
+    if (f > maxFlux)
+        maxFlux = f;
 }
 
 void SED::scaleFlux()
@@ -31,8 +30,9 @@ void SED::scaleFlux()
      *
      * - Alle tre lunghezze d’onda si calcola il size deconvoluto della sorgente:
      *  fwhm_decon(lambda) = SQRT(fwhm_circ(lambda)^2-beam(lambda)^2).
-     *  Occhio, noi questo passaggio lo facciamo in genere solo quando fwhm_circ(lambda) > SQRT(2.)*beam(lambda)
-     *   altrimenti diciamo che la sorgente non è completamente risolta (e non facciamo lo scaling).
+     *  Occhio, noi questo passaggio lo facciamo in genere solo quando fwhm_circ(lambda) >
+     * SQRT(2.)*beam(lambda) altrimenti diciamo che la sorgente non è completamente risolta (e non
+     * facciamo lo scaling).
      *   - Infine, alle ultime due lunghezze d’onda (350, 500) operiamo lo scaling,
      *   a partire dal flusso originale dei cataloghi a singola banda:
      *    F_scal(lambda)= fwhm_decon(250)/fwhm_decon(lambda)*F_orig(lambda).
@@ -42,10 +42,7 @@ void SED::scaleFlux()
      *   per cui quando il rapporto è > 1 lasciamo il flusso invariato e amen.
      */
 
-    if(setted250)
-    {
-
-    }
+    if (setted250) { }
 }
 
 /*
@@ -62,20 +59,19 @@ void SED::scaleFlux()
 }
 */
 
-void SED::printAll(SEDNode* node){
+void SED::printAll(SEDNode *node)
+{
     QList<SEDNode *> stack;
     stack.push_back(node);
-    while(!stack.isEmpty()){
-        SEDNode * curr=stack.at(0);
+    while (!stack.isEmpty()) {
+        SEDNode *curr = stack.at(0);
         stack.removeFirst();
-        qDebug()<<curr->getDesignation();
-        for(int i=0;i<curr->getChild().count();i++)
-        {
+        qDebug() << curr->getDesignation();
+        for (int i = 0; i < curr->getChild().count(); i++) {
             stack.push_back(curr->getChild().values()[i]);
         }
     }
 }
-
 
 void SED::printSelf()
 {
@@ -94,7 +90,7 @@ void SED::printSelf()
     }*/
 }
 
-QDataStream &operator<<(QDataStream &out, SED* sed)
+QDataStream &operator<<(QDataStream &out, SED *sed)
 {
     qDebug() << "printing SED";
     /*
@@ -108,41 +104,39 @@ QDataStream &operator<<(QDataStream &out, SED* sed)
 
         out<<sed->getRootNode()->getChild().values()[i]->getChild().count();
 
-        qDebug()<<"Child "<<QString::number(i)<<" of RootNode has childs: "<<QString::number(sed->getRootNode()->getChild().values()[i]->getChild().count());
-        for(int j=0;j<sed->getRootNode()->getChild().values()[i]->getChild().count();j++ )
+        qDebug()<<"Child "<<QString::number(i)<<" of RootNode has childs:
+    "<<QString::number(sed->getRootNode()->getChild().values()[i]->getChild().count()); for(int
+    j=0;j<sed->getRootNode()->getChild().values()[i]->getChild().count();j++ )
         {
             out<<sed->getRootNode()->getChild().values()[i]->getChild().values()[j];
         }
     }
     */
 
-
     QList<SEDNode *> stack;
     stack.push_back(sed->getRootNode());
-    out<<sed->getRootNode();
+    out << sed->getRootNode();
 
-    while(!stack.isEmpty()){
-        SEDNode * curr=stack.at(0);
-        qDebug()<<curr->getDesignation();
-        out<<curr->getChild().count();
-        qDebug()<<"child: "<<curr->getChild().count();
+    while (!stack.isEmpty()) {
+        SEDNode *curr = stack.at(0);
+        qDebug() << curr->getDesignation();
+        out << curr->getChild().count();
+        qDebug() << "child: " << curr->getChild().count();
         stack.removeFirst();
 
-        for(int i=0;i<curr->getChild().count();i++)
-        {
-            out<<curr->getChild().values()[i];
+        for (int i = 0; i < curr->getChild().count(); i++) {
+            out << curr->getChild().values()[i];
             stack.push_back(curr->getChild().values()[i]);
         }
     }
     return out;
 }
 
-
-QDataStream &operator>>(QDataStream &in, SED* sed)
+QDataStream &operator>>(QDataStream &in, SED *sed)
 {
-    qDebug()<<"reading SED";
-    SEDNode *rootNode=new SEDNode();
-    //sed=new SED();
+    qDebug() << "reading SED";
+    SEDNode *rootNode = new SEDNode();
+    // sed=new SED();
     in >> rootNode;
     sed->setRootNode(rootNode);
     int count, count2;
@@ -157,8 +151,8 @@ QDataStream &operator>>(QDataStream &in, SED* sed)
         in>>childNode;
         sed->getRootNode()->setChild(childNode);
         in >> count2;
-        qDebug()<<"Child "<<QString::number(i)<<" of RootNode has childs: "<<QString::number(count2);
-        for(int j=0;j<count2;j++ )
+        qDebug()<<"Child "<<QString::number(i)<<" of RootNode has childs:
+    "<<QString::number(count2); for(int j=0;j<count2;j++ )
         {
             SEDNode *childNode=new SEDNode();
             in>>childNode;
@@ -169,13 +163,12 @@ QDataStream &operator>>(QDataStream &in, SED* sed)
 
     QList<SEDNode *> stack;
     stack.push_back(sed->getRootNode());
-    while(!stack.isEmpty()){
-        SEDNode * curr=stack.at(0);
-        in>>count;
+    while (!stack.isEmpty()) {
+        SEDNode *curr = stack.at(0);
+        in >> count;
         stack.removeFirst();
-        for(int i=0;i<count;i++)
-        {
-            SEDNode* temp=new SEDNode();
+        for (int i = 0; i < count; i++) {
+            SEDNode *temp = new SEDNode();
             in >> temp;
             curr->setChild(temp);
             stack.push_back(temp);
@@ -183,4 +176,3 @@ QDataStream &operator>>(QDataStream &in, SED* sed)
     }
     return in;
 }
-

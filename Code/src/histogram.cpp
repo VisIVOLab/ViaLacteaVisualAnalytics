@@ -1,29 +1,27 @@
 #include "histogram.h"
 
-#include <QPainter>
 #include <cmath>
+#include <QPainter>
 
-Histogram::Histogram(QWidget* parent, Qt::WindowFlags f) : QWidget(parent, f),
-_bins(NULL),
-_heightMax(1)
-{
-};
+Histogram::Histogram(QWidget *parent, Qt::WindowFlags f)
+    : QWidget(parent, f), _bins(NULL), _heightMax(1) {};
 
-void Histogram::setBins(QVector<int>& bins)
+void Histogram::setBins(QVector<int> &bins)
 {
-    if( !_toggled ) return;
+    if (!_toggled)
+        return;
     _bins = bins;
     update();
 }
 
-void Histogram::setBins(int* bins, int nbBins)
+void Histogram::setBins(int *bins, int nbBins)
 {
-    if( !_toggled ) return;
+    if (!_toggled)
+        return;
     _bins.resize(nbBins);
-    memcpy(_bins.data(), bins, nbBins*sizeof(int));
+    memcpy(_bins.data(), bins, nbBins * sizeof(int));
     update();
 }
-
 
 void Histogram::clear()
 {
@@ -31,13 +29,14 @@ void Histogram::clear()
     update();
 }
 
-void Histogram::mousePressEvent(QMouseEvent*)
+void Histogram::mousePressEvent(QMouseEvent *)
 {
-    _toggled = ! _toggled;
-    if( !_toggled ) clear();
+    _toggled = !_toggled;
+    if (!_toggled)
+        clear();
 }
 
-void Histogram::paintEvent(QPaintEvent*)
+void Histogram::paintEvent(QPaintEvent *)
 {
     QRect viewPort = rect();
     int xLeft = viewPort.left();
@@ -66,39 +65,37 @@ void Histogram::paintEvent(QPaintEvent*)
     pen.setStyle(Qt::DashDotLine);
     painter.setPen(pen);
 
-    int stepsV = 1<< int(log(width/40.0f)/log(2.0f));
-    for(int i=1; i<stepsV; ++i)
-    {
-        painter.drawLine(width*float(i)/stepsV, yTop+1,
-                         width*float(i)/stepsV, yBottom-1);
+    int stepsV = 1 << int(log(width / 40.0f) / log(2.0f));
+    for (int i = 1; i < stepsV; ++i) {
+        painter.drawLine(width * float(i) / stepsV, yTop + 1, width * float(i) / stepsV,
+                         yBottom - 1);
     }
 
     // ---- Draw horizontal lines -----------------------------------------------
-    int stepsH = 1<< int(log(height/40.0f)/log(2.0f));
-    for(int i=1; i<stepsH; ++i)
-    {
-        painter.drawLine(xLeft+1, height*float(i)/stepsH,
-                         xRight-1,height*float(i)/stepsH);
+    int stepsH = 1 << int(log(height / 40.0f) / log(2.0f));
+    for (int i = 1; i < stepsH; ++i) {
+        painter.drawLine(xLeft + 1, height * float(i) / stepsH, xRight - 1,
+                         height * float(i) / stepsH);
     }
 
     // ---- Histogram itself ----------------------------------------------------
     int nbBins = _bins.size();
 
-    if( !nbBins )
-    {
+    if (!nbBins) {
         pen.setColor("#016790");
         painter.setPen(pen);
-        painter.drawText(xLeft+2, yBottom-2, tr("Histogram off"));
+        painter.drawText(xLeft + 2, yBottom - 2, tr("Histogram off"));
         return;
     }
 
     // Find maximum height in bins unit
-    int heightMax=1;
-    for( int i=0; i<nbBins; ++i )
-        if( _bins[i]>heightMax ) heightMax = _bins[i];
+    int heightMax = 1;
+    for (int i = 0; i < nbBins; ++i)
+        if (_bins[i] > heightMax)
+            heightMax = _bins[i];
 
     // Avoid giggling graph: do not update heightmax if variation <5%
-    if( abs(_heightMax-heightMax)/float(_heightMax) > 0.05f )
+    if (abs(_heightMax - heightMax) / float(_heightMax) > 0.05f)
         _heightMax = heightMax;
 
     // Scale histogram from bins unit to pixels unit
@@ -107,24 +104,26 @@ void Histogram::paintEvent(QPaintEvent*)
     QLinearGradient linearGradient(0, 0, 0, height);
     pen.setStyle(Qt::SolidLine);
 
-    if( nbBins < width )
-    {
-        float wScale = width/float(nbBins);
-        float hScale = height/float(_heightMax);
-        float hScaleLog = height/log(float(_heightMax));
+    if (nbBins < width) {
+        float wScale = width / float(nbBins);
+        float hScale = height / float(_heightMax);
+        float hScaleLog = height / log(float(_heightMax));
 
         // log(bins)
-        pen.setColor("#00aaee");   painter.setPen(pen);
+        pen.setColor("#00aaee");
+        painter.setPen(pen);
         linearGradient.setColorAt(0.2, Qt::white);
         linearGradient.setColorAt(1.0, "#00aaee");
         painter.setBrush(linearGradient);
 
-        //brush.setColor("#00aaee"); painter.setBrush(brush);
+        // brush.setColor("#00aaee"); painter.setBrush(brush);
 
         myPolygon.clear();
         myPolygon << QPoint(xRight, yBottom) << QPoint(xLeft, yBottom);
-        for( int i=0; i<nbBins; ++i )
-            myPolygon << QPoint(xLeft+wScale*i, yTop+hScaleLog*( _bins[i] ? log(_heightMax/float(_bins[i])) : _heightMax));
+        for (int i = 0; i < nbBins; ++i)
+            myPolygon << QPoint(
+                    xLeft + wScale * i,
+                    yTop + hScaleLog * (_bins[i] ? log(_heightMax / float(_bins[i])) : _heightMax));
         painter.drawPolygon(myPolygon);
 
         // bins
@@ -136,26 +135,30 @@ void Histogram::paintEvent(QPaintEvent*)
 
         myPolygon.clear();
         myPolygon << QPoint(xRight, yBottom) << QPoint(xLeft, yBottom);
-        for( int i=0; i<nbBins; ++i )
-            myPolygon << QPoint(xLeft+wScale*i, yTop+hScale*(_heightMax-_bins[i]));
+        for (int i = 0; i < nbBins; ++i)
+            myPolygon << QPoint(xLeft + wScale * i, yTop + hScale * (_heightMax - _bins[i]));
         painter.drawPolygon(myPolygon);
-    }
-    else
-    {
-        float wScale = float(nbBins-1)/(width-1);
-        float hScale = height/float(_heightMax);
-        float hScaleLog = height/log(float(_heightMax));
+    } else {
+        float wScale = float(nbBins - 1) / (width - 1);
+        float hScale = height / float(_heightMax);
+        float hScaleLog = height / log(float(_heightMax));
 
         // log(bins)
-        pen.setColor("#00aaee");   painter.setPen(pen);
+        pen.setColor("#00aaee");
+        painter.setPen(pen);
         linearGradient.setColorAt(0.2, Qt::white);
         linearGradient.setColorAt(1.0, "#00aaee");
         painter.setBrush(linearGradient);
 
         myPolygon.clear();
         myPolygon << QPoint(xRight, yBottom) << QPoint(xLeft, yBottom);
-        for( int i=0; i<width; ++i )
-            myPolygon << QPoint(xLeft+i, yTop+hScaleLog*( _bins[wScale*i] ? log(_heightMax/float(_bins[wScale*i])) : _heightMax));
+        for (int i = 0; i < width; ++i)
+            myPolygon << QPoint(xLeft + i,
+                                yTop
+                                        + hScaleLog
+                                                * (_bins[wScale * i] ? log(
+                                                           _heightMax / float(_bins[wScale * i]))
+                                                                     : _heightMax));
         painter.drawPolygon(myPolygon);
 
         // bins
@@ -167,8 +170,8 @@ void Histogram::paintEvent(QPaintEvent*)
 
         myPolygon.clear();
         myPolygon << QPoint(xRight, yBottom) << QPoint(xLeft, yBottom);
-        for( int i=0; i<width; ++i )
-            myPolygon << QPoint(xLeft+i, yTop+hScale*(_heightMax-_bins[wScale*i]));
+        for (int i = 0; i < width; ++i)
+            myPolygon << QPoint(xLeft + i, yTop + hScale * (_heightMax - _bins[wScale * i]));
         painter.drawPolygon(myPolygon);
     }
 }

@@ -1,24 +1,24 @@
 #ifndef DOWNLOADMANAGER_H
 #define DOWNLOADMANAGER_H
 
+#include "loadingwidget.h"
+
 #include <QFile>
 #include <QFileInfo>
 #include <QList>
 #include <QNetworkAccessManager>
-#include <QNetworkRequest>
 #include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QSslError>
 #include <QStringList>
 #include <QTimer>
 #include <QUrl>
-#include "loadingwidget.h"
 
 #include <stdio.h>
 
-
 class QSslError;
 
-class DownloadManager: public QObject
+class DownloadManager : public QObject
 {
     Q_OBJECT
     QNetworkAccessManager *man;
@@ -26,8 +26,8 @@ class DownloadManager: public QObject
 
 public:
     DownloadManager();
-    QString doDownload(const QUrl &url, QString fn="");
-    QString saveFileName(const QUrl &url, QString outputFile="");
+    QString doDownload(const QUrl &url, QString fn = "");
+    QString saveFileName(const QUrl &url, QString outputFile = "");
     bool saveToDisk(const QString &filename, QIODevice *data);
     QString filenamePath;
 
@@ -43,6 +43,5 @@ public slots:
 signals:
     void downloadCompleted();
 };
-
 
 #endif // DOWNLOADMANAGER_H

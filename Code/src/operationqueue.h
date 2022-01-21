@@ -17,10 +17,8 @@ public:
     int addOperation(QString name);
     void editOperation(int id, QString status);
 
-
 private:
     Ui::OperationQueue *ui;
-
 };
 
 #endif // OPERATIONQUEUE_H

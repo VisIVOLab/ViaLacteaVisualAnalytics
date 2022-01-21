@@ -1,19 +1,19 @@
 #include "sedplotpointcustom.h"
+#include "singleton.h"
+#include "vialacteastringdictwidget.h"
+#include "vtkCleanPolyData.h"
+#include "vtkellipse.h"
 #include <QMouseEvent>
 #include <QToolTip>
-#include "vtkellipse.h"
-#include "vtkCleanPolyData.h"
-#include "vialacteastringdictwidget.h"
-#include "singleton.h"
 
 SEDPlotPointCustom::SEDPlotPointCustom(QCustomPlot *parentPlot, double halfSize, vtkwindow_new *v)
-    : QCPItemEllipse(parentPlot)
-    , mCenterTracer(new QCPItemTracer(parentPlot))
-    , mGripDelta()
-    , mInitialPos()
-    , mLastWantedPos()
-    , mMoveTimer(new QTimer(this))
-    , mCurWantedPosPx()
+    : QCPItemEllipse(parentPlot),
+      mCenterTracer(new QCPItemTracer(parentPlot)),
+      mGripDelta(),
+      mInitialPos(),
+      mLastWantedPos(),
+      mMoveTimer(new QTimer(this)),
+      mCurWantedPosPx()
 {
     mCenterTracer->setStyle(QCPItemTracer::tsNone);
 
@@ -34,56 +34,69 @@ SEDPlotPointCustom::SEDPlotPointCustom(QCustomPlot *parentPlot, double halfSize,
 
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
 
-    connect(this,SIGNAL(selectionChanged(bool)),this, SLOT(selected(bool)));
-
+    connect(this, SIGNAL(selectionChanged(bool)), this, SLOT(selected(bool)));
 }
 
 void SEDPlotPointCustom::selected(bool s)
 {
     vtkEllipse *el;
-    if(s)
-    {
+    if (s) {
 
-        qDebug()<<"semiMajorAxisLength: "<<semiMajorAxisLength;
-        qDebug()<<"semiMinorAxisLength: "<<semiMinorAxisLength;
-        qDebug()<<"angle: "<<angle;
-        qDebug()<<"image_x: "<<image_x;
-        qDebug()<<"image_y: "<<image_y;
-        qDebug()<<"arcpix: "<<arcpix;
-        qDebug()<<"designation: "<<designation;
-        qDebug()<<"error: "<<designation;
+        qDebug() << "semiMajorAxisLength: " << semiMajorAxisLength;
+        qDebug() << "semiMinorAxisLength: " << semiMinorAxisLength;
+        qDebug() << "angle: " << angle;
+        qDebug() << "image_x: " << image_x;
+        qDebug() << "image_y: " << image_y;
+        qDebug() << "arcpix: " << arcpix;
+        qDebug() << "designation: " << designation;
+        qDebug() << "error: " << designation;
 
-        if(image_x!=0 && image_y!=0 && designation.compare("")!=0)
-        {
-            QString wav=QString::number(pos().x());
-            qDebug()<<"vlkb_compactsources.sed_view_final.designation."<<wav <<" "<<stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wav);
+        if (image_x != 0 && image_y != 0 && designation.compare("") != 0) {
+            QString wav = QString::number(pos().x());
+            qDebug() << "vlkb_compactsources.sed_view_final.designation." << wav << " "
+                     << stringDictWidget->getColUtypeStringDict().value(
+                                "vlkb_compactsources.sed_view_final.designation" + wav);
 
-            //QToolTip::showText(QCursor::pos(), QString("designation: %1\nwavelength: %2\nfint: %3\nerr_fint: %8\nglon: %4\nglat: %5\nx: %6\ny:%7").arg(designation).arg(pos().x()).arg(pos().y()).arg(glon).arg(glat).arg(image_x).arg(image_y).arg(error_flux));
-            QToolTip::showText(QCursor::pos(), QString(stringDictWidget->getColUtypeStringDict().value("vlkb_compactsources.sed_view_final.designation"+wav)+
-                                                       ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %8\nglon: %4\nglat: %5\nx: %6\ny:%7").arg(designation).arg(pos().x()).arg(pos().y()).arg(glon).arg(glat).arg(image_x).arg(image_y).arg(error_flux));
-            el= new vtkEllipse(semiMajorAxisLength/2,semiMinorAxisLength/2,angle, image_x, image_y, arcpix, 0,0, designation, NULL);
+            // QToolTip::showText(QCursor::pos(), QString("designation: %1\nwavelength: %2\nfint:
+            // %3\nerr_fint: %8\nglon: %4\nglat: %5\nx:
+            // %6\ny:%7").arg(designation).arg(pos().x()).arg(pos().y()).arg(glon).arg(glat).arg(image_x).arg(image_y).arg(error_flux));
+            QToolTip::showText(
+                    QCursor::pos(),
+                    QString(stringDictWidget->getColUtypeStringDict().value(
+                                    "vlkb_compactsources.sed_view_final.designation" + wav)
+                            + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %8\nglon: %4\nglat: "
+                              "%5\nx: %6\ny:%7")
+                            .arg(designation)
+                            .arg(pos().x())
+                            .arg(pos().y())
+                            .arg(glon)
+                            .arg(glat)
+                            .arg(image_x)
+                            .arg(image_y)
+                            .arg(error_flux));
+            el = new vtkEllipse(semiMajorAxisLength / 2, semiMinorAxisLength / 2, angle, image_x,
+                                image_y, arcpix, 0, 0, designation, NULL);
             drawSingleEllipse(el);
+        } else {
+            QToolTip::showText(QCursor::pos(),
+                               QString("wavelength: %1\nfint: %2\nerr_fin: %3")
+                                       .arg(pos().x())
+                                       .arg(pos().y())
+                                       .arg(error_flux));
         }
-        else
-        {
-            QToolTip::showText(QCursor::pos(), QString("wavelength: %1\nfint: %2\nerr_fin: %3").arg(pos().x()).arg(pos().y()).arg(error_flux));
+    } else {
+        if (vtkwin != 0) {
+            vtkwin->removeSingleEllipse(ellipseActor);
         }
     }
-    else
-    {
-        if(vtkwin!=0){
-        vtkwin->removeSingleEllipse(ellipseActor);
-        }
-    }
-    isSelected=s;
+    isSelected = s;
 }
 
-void SEDPlotPointCustom::drawSingleEllipse(vtkEllipse * ellipse )
+void SEDPlotPointCustom::drawSingleEllipse(vtkEllipse *ellipse)
 {
 
     vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     cleanFilter->SetInputData(ellipse->getPolyData());
-
 
     cleanFilter->Update();
 
@@ -95,11 +108,9 @@ void SEDPlotPointCustom::drawSingleEllipse(vtkEllipse * ellipse )
 
     ellipseActor->GetProperty()->SetColor(0, 0, 0);
 
-    if(vtkwin!=0){
-    vtkwin->drawSingleEllipse(ellipseActor);
+    if (vtkwin != 0) {
+        vtkwin->drawSingleEllipse(ellipseActor);
     }
-
-
 }
 
 QPointF SEDPlotPointCustom::pos() const
@@ -112,7 +123,7 @@ const QColor &SEDPlotPointCustom::color() const
     return brush().color();
 }
 
-void SEDPlotPointCustom::setColor(const QColor& color)
+void SEDPlotPointCustom::setColor(const QColor &color)
 {
     setBrush(color);
     setSelectedBrush(color);
@@ -122,8 +133,10 @@ void SEDPlotPointCustom::startMoving(const QPointF &mousePos, bool shiftIsPresse
 {
     /*
     qDebug()<<"startMoving";
-    mGripDelta.setX(parentPlot()->xAxis->coordToPixel(mCenterTracer->position->key()) - mousePos.x());
-    mGripDelta.setY(parentPlot()->yAxis->coordToPixel(mCenterTracer->position->value()) - mousePos.y());
+    mGripDelta.setX(parentPlot()->xAxis->coordToPixel(mCenterTracer->position->key()) -
+    mousePos.x());
+    mGripDelta.setY(parentPlot()->yAxis->coordToPixel(mCenterTracer->position->value()) -
+    mousePos.y());
 
     mInitialPos = pos();
     mLastWantedPos = mInitialPos;
@@ -171,7 +184,7 @@ void SEDPlotPointCustom::startMoving(const QPointF &mousePos, bool shiftIsPresse
 
 void SEDPlotPointCustom::setVisible(bool on)
 {
-    setSelectable(on);  // we are movable only when visible
+    setSelectable(on); // we are movable only when visible
     QCPItemEllipse::setVisible(on);
 }
 
@@ -240,8 +253,7 @@ void SEDPlotPointCustom::move(double x, double y, bool signalNeeded)
 
 void SEDPlotPointCustom::movePx(double x, double y)
 {
-    move(parentPlot()->xAxis->pixelToCoord(x),
-         parentPlot()->yAxis->pixelToCoord(y));
+    move(parentPlot()->xAxis->pixelToCoord(x), parentPlot()->yAxis->pixelToCoord(y));
 }
 
 void SEDPlotPointCustom::setActive(bool isActive)
@@ -254,14 +266,16 @@ void SEDPlotPointCustom::setActive(bool isActive)
 */
 }
 
-bool SEDPlotPointCustom::selected(){
+bool SEDPlotPointCustom::selected()
+{
     return isSelected;
 }
 
-void SEDPlotPointCustom::onMousePress(QMouseEvent *event){
+void SEDPlotPointCustom::onMousePress(QMouseEvent *event)
+{
     selected(true);
-    bool b=this->selected();
-    qDebug()<<"Click on SEDPlotPointCustom "<<b;
+    bool b = this->selected();
+    qDebug() << "Click on SEDPlotPointCustom " << b;
 }
 
 void SEDPlotPointCustom::onMouseMove(QMouseEvent *event)
@@ -296,11 +310,10 @@ void SEDPlotPointCustom::onShiftStateChanged(bool shiftPressed)
     }
 }
 
-
-void  SEDPlotPointCustom::setEllipse(double smin, double smax, double a, double ar)
+void SEDPlotPointCustom::setEllipse(double smin, double smax, double a, double ar)
 {
-    semiMajorAxisLength= smin;
-    semiMinorAxisLength=smax;
-    angle=a;
-    arcpix=ar;
+    semiMajorAxisLength = smin;
+    semiMinorAxisLength = smax;
+    angle = a;
+    arcpix = ar;
 }

@@ -28,9 +28,6 @@
 */
 
 #include "pipe.h"
-//#include "vtkwindow.h"
-
-//#include "optionssetter.h"
 #include "vtkSmartPointer.h"
 
 class vtkLODActor;
@@ -44,10 +41,8 @@ class vtkUnstructuredGrid;
 class ExtendedGlyph3D;
 class vtkwindow_new;
 
-
-
 // Define a new frame type: this is going to be our main frame
-class PointsPipe: public Pipe
+class PointsPipe : public Pipe
 {
 public:
     PointsPipe(VSTableDesktop *table);
@@ -60,64 +55,65 @@ public:
     ~PointsPipe();
     int createPipe();
     int createPipeFor3dSelection();
-    void setGlyphs (int nGlyphs);
+    void setGlyphs(int nGlyphs);
 
     void setVtkWindow(vtkwindow_new *v);
     std::string color;
     std::string palette;
     std::string scale;
     bool showColorBar;
-    void setLookupTable( );
-    void setLookupTable (float from, float to );
+    void setLookupTable();
+    void setLookupTable(float from, float to);
     void setLookupTableScale();
     void setActiveScalar();
     void initLut();
     void addScalar(std::string myScalar, bool color);
-    void activateScale (bool active);
-    void activateGrid (bool active);
+    void activateScale(bool active);
+    void activateGrid(bool active);
     double actualFrom;
     double actualTo;
 
-  /*
-    vtkFloatArray *xAxis;
-    vtkFloatArray *yAxis;
-    vtkFloatArray *zAxis;
-*/
-//  bool SetXYZ(vtkFloatArray *xField, vtkFloatArray *yField, vtkFloatArray *zField, bool scale=false  );
-    bool SetXYZ(vtkFloatArray *xField, vtkFloatArray *yField, vtkFloatArray *zField  );
+    /*
+      vtkFloatArray *xAxis;
+      vtkFloatArray *yAxis;
+      vtkFloatArray *zAxis;
+  */
+    //  bool SetXYZ(vtkFloatArray *xField, vtkFloatArray *yField, vtkFloatArray *zField, bool
+    //  scale=false  );
+    bool SetXYZ(vtkFloatArray *xField, vtkFloatArray *yField, vtkFloatArray *zField);
     void setScaling();
+
 protected:
     void destroyAll();
 
 private:
-    void setRadius ();
-    void setResolution ();
-   // void setScaling ();
-
+    void setRadius();
+    void setResolution();
+    // void setScaling ();
 
     VSTableDesktop *m_VSTable;
-    vtkPolyDataMapper   *m_pMapper;
-    vtkLODActor         *m_pActor;
-    vtkPolyData         *m_polyData;
-    vtkGlyph3D          *m_glyph ;
-    vtkSmartPointer <vtkSphereSource> m_sphere;
-    vtkConeSource       *m_cone;
-    vtkCylinderSource   *m_cylinder;
-    vtkCubeSource       *m_cube;
-    vtkPoints           *m_points;
-    vtkPoints           *m_scaled_points;
-    vtkUnstructuredGrid * m_pUnstructuredGrid;
-    ExtendedGlyph3D     *m_glyphFilter;
+    vtkPolyDataMapper *m_pMapper;
+    vtkLODActor *m_pActor;
+    vtkPolyData *m_polyData;
+    vtkGlyph3D *m_glyph;
+    vtkSmartPointer<vtkSphereSource> m_sphere;
+    vtkConeSource *m_cone;
+    vtkCylinderSource *m_cylinder;
+    vtkCubeSource *m_cube;
+    vtkPoints *m_points;
+    vtkPoints *m_scaled_points;
+    vtkUnstructuredGrid *m_pUnstructuredGrid;
+    ExtendedGlyph3D *m_glyphFilter;
     vtkwindow_new *vtkwin;
 
     bool isScaleActive;
-    double m_xRange[2] ,m_yRange[2] , m_zRange[2];
+    double m_xRange[2], m_yRange[2], m_zRange[2];
     double scalingFactorsInv[3];
     int nGlyphs;
     //! value of radius and hieght for glyphs. the usere can use this with scaling or not. default is 1 for both
-    double radius,height ;
+    double radius, height;
     //! name of field the isd used for scale the glyphs by radius and/or heigth
-    std::string radiusscalar,heightscalar;
+    std::string radiusscalar, heightscalar;
     //! if is yes the user can select the scaling for radius and/or glyphs
     std::string scaleGlyphs;
 };

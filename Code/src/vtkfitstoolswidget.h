@@ -1,9 +1,10 @@
 #ifndef VTKFITSTOOLSWIDGET_H
 #define VTKFITSTOOLSWIDGET_H
 
-#include <QWidget>
 #include "vtkwindow_new.h"
+
 #include <QTableWidgetItem>
+#include <QWidget>
 
 namespace Ui {
 class vtkfitstoolswidget;
@@ -14,15 +15,14 @@ class vtkfitstoolswidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit vtkfitstoolswidget(vtkwindow_new* v=0,QWidget *parent = 0 );
+    explicit vtkfitstoolswidget(vtkwindow_new *v = 0, QWidget *parent = 0);
     ~vtkfitstoolswidget();
     void updateList();
-    QVector<QSlider*> sliders;
+    QVector<QSlider *> sliders;
     void changeLut(std::string palette);
     void changeLutScale(std::string palette, std::string scale);
     void addToList(QString name, vtkSmartPointer<vtkLODActor> actor);
     int getNumOfElements();
-
 
 private slots:
     void on_selectButton_clicked();
@@ -45,7 +45,6 @@ public slots:
 private:
     Ui::vtkfitstoolswidget *ui;
     vtkwindow_new *vtkwin;
-
 };
 
 #endif // VTKFITSTOOLSWIDGET_H

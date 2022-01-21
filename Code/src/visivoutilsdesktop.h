@@ -27,10 +27,9 @@
         @author Ugo Becciani <ugo.becciani@oact.inaf.it>
 */
 
-#include <string>
 #include <QString>
+#include <string>
 #include <vector>
-
 
 double masToRadDesktop(double mas);
 void masToRadDesktop(double *mas, int n);
@@ -48,20 +47,18 @@ std::string getDirDesktop(std::string path);
 std::string getExtDesktop(std::string path);
 std::string getNameDesktop(std::string path);
 
-std::string trimRightDesktop(const std::string & source, const std::string & t = " ");
-std::string trimLeftDesktop(const std::string & source, const std::string & t = " ");
-std::string trimDesktop(const std::string & source, const std::string & t = " ");
+std::string trimRightDesktop(const std::string &source, const std::string &t = " ");
+std::string trimLeftDesktop(const std::string &source, const std::string &t = " ");
+std::string trimDesktop(const std::string &source, const std::string &t = " ");
 
 void findAndReplaceDesktop(std::string &str, char find, char replace);
 
-
-//int VisIVORemoteLoadToFile(std::string path, std::string tempFileName);
- double doubleSwapDesktop(char *value);
- long double longdoubleSwapDesktop(char *value);
- float floatSwapDesktop(char *value);
- int intSwapDesktop(char *value);
- long int longintSwapDesktop(char *value);
- long long int longlongintSwapDesktop(char *value);
- void sortarrayDesktop(int *vect, int elements);
+// int VisIVORemoteLoadToFile(std::string path, std::string tempFileName);
+double doubleSwapDesktop(char *value);
+long double longdoubleSwapDesktop(char *value);
+float floatSwapDesktop(char *value);
+int intSwapDesktop(char *value);
+long int longintSwapDesktop(char *value);
+long long int longlongintSwapDesktop(char *value);
+void sortarrayDesktop(int *vect, int elements);
 #endif
-
