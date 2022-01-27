@@ -11,6 +11,9 @@ Prerequisites:
 1. `$ make`
 1. `$ sudo make install`
 
+#### NOTE: if you're on an Apple Silicon Mac use the following configure command instead:
+`$ ./configure --prefix=/usr/local CC=clang CFLAGS="-arch x86_64"`
+
 ## VTK 9.0.3
 1. `$ wget https://www.vtk.org/files/release/9.0/VTK-9.0.3.tar.gz`
 1. `$ tar xzf VTK-9.0.3.tar.gz`
