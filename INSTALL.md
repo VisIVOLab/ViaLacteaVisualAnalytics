@@ -11,6 +11,9 @@ Prerequisites:
 1. `$ make`
 1. `$ sudo make install`
 
+#### NOTE: if you're on an Apple Silicon Mac use the following configure command instead:
+`$ ./configure --prefix=/usr/local CC=clang CFLAGS="-arch x86_64"`
+
 ## VTK 9.0.3
 1. `$ wget https://www.vtk.org/files/release/9.0/VTK-9.0.3.tar.gz`
 1. `$ tar xzf VTK-9.0.3.tar.gz`
@@ -20,6 +23,10 @@ Prerequisites:
      `$ cmake -DVTK_QT_VERSION:STRING=5 -DVTK_Group_Qt:BOOL=ON -DVTK_GROUP_ENABLE_Qt:STRING=YES -DQT_QMAKE_EXECUTABLE:PATH=<path-to-qt-root>/bin/qmake -DCMAKE_PREFIX_PATH:PATH=<path-to-qt-root>/lib/cmake -DBUILD_SHARED_LIBS:BOOL=ON ..`
 1. `$ make`
 1. `$ sudo make install`
+
+#### NOTE: if you're on an Apple Silicon Mac add the following argument to cmake:
+`-DCMAKE_OSX_ARCHITECTURES=x86_64`
+
 
 ## Boost 1.75.0 (Headers only)
 1. `$ wget https://boostorg.jfrog.io/ui/native/main/release/1.75.0/source/boost_1_75_0.tar.gz`
