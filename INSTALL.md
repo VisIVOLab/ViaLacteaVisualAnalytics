@@ -21,6 +21,10 @@ Prerequisites:
 1. `$ make`
 1. `$ sudo make install`
 
+#### NOTE: if you're on an Apple Silicon Mac add the following argument to cmake:
+`-DCMAKE_OSX_ARCHITECTURES=x86_64`
+
+
 ## Boost 1.75.0 (Headers only)
 1. `$ wget https://boostorg.jfrog.io/ui/native/main/release/1.75.0/source/boost_1_75_0.tar.gz`
 1. `$ tar xzf boost_1_75_0.tar.gz`
