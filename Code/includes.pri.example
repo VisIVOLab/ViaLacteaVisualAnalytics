@@ -1,0 +1,4 @@
+#Add the path of cfitsio, vtk and boost includes
+INCLUDEPATH+=
+#Add the path of cfitsio and vtk libs
+LIBS+=
