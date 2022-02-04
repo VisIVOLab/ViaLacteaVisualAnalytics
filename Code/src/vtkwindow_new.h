@@ -59,6 +59,7 @@ class VisPoint;
 class vtkfitstoolswidget;
 class FitsImageStatisiticInfo;
 class contour;
+class DS9Region;
 
 namespace Ui {
 class vtkwindow_new;
@@ -249,6 +250,13 @@ private:
     void addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> actor, int objtype,
                           bool active);
 
+    void addDS9Regions(const QString &filepath);
+    int getDS9RegionCoordSystem(const DS9Region *region);
+    void drawPolygonRegions(const std::vector<DS9Region *> &polygons);
+    void drawCircleRegions(const std::vector<DS9Region *> &circles);
+    void drawBoxRegions(const std::vector<DS9Region *> &boxes);
+    void drawEllipseRegions(const std::vector<DS9Region *> &ellipses);
+
     QStringList getSourcesLoadedFromFile(const QString &sourcePath);
     bool getTableItemInfo(const QString &text, int &row, bool &enabled, double *color);
     void setTableItemInfo(const QString &text, const bool &enabled, const double *color);
@@ -322,6 +330,7 @@ private slots:
     void on_actionTools_triggered();
     void on_actionInfo_triggered();
     void addLocalSources();
+    void loadDS9RegionFile();
     void cutoutDatacube(QString c);
 
     void on_cameraLeft_clicked();

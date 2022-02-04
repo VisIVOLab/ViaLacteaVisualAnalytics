@@ -9,11 +9,13 @@ class AstroUtils
 {
 public:
     AstroUtils();
+    static void sky2xy_t(std::string map, double xpos, double ypos, int wcs_type, double *xpix,
+                         double *ypix);
     static bool sky2xy(std::string map, double ra, double dec, double *coord);
     static void xy2sky(std::string map, float x, float y, double *coord,
                        int wcs_type = WCS_ECLIPTIC);
     static double arcsecPixel(std::string file);
-    static void getRotationAngle(std::string file);
+    static void getRotationAngle(std::string file, double *rot, int wcs_type = WCS_GALACTIC);
     static int getSysOut(std::string file);
     static void GetCenterCoords(std::string file, double *coords);
     static void GetRectSize(std::string file, double *values);
