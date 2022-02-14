@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>vtkWindowImage</class>
+ <widget class="QMainWindow" name="vtkWindowImage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1366</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Image visualization</string>
+  </property>
+  <widget class="QWidget" name="widget">
+   <layout class="QHBoxLayout" name="_2">
+    <item>
+     <widget class="QSplitter" name="splitter_2">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QWidget" name="layoutWidget">
+       <layout class="QVBoxLayout" name="_3">
+        <item>
+         <layout class="QHBoxLayout" name="_4">
+          <item>
+           <widget class="QGroupBox" name="compactSourcesGroupBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>150</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="title">
+             <string>Compact sources</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <widget class="QPushButton" name="sourcesBtn">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="icon">
+                <iconset resource="../visivo.qrc">
+                 <normaloff>:/icons/rect-select.png</normaloff>:/icons/rect-select.png</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>50</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="filamentsGroupBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>150</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="title">
+             <string>Filaments</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <item>
+              <widget class="QPushButton" name="filamentsBtn">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="icon">
+                <iconset resource="../visivo.qrc">
+                 <normaloff>:/icons/rect-select.png</normaloff>:/icons/rect-select.png</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>50</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="tdGroupBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>150</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="title">
+             <string>3D</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_3">
+             <item>
+              <widget class="QPushButton" name="tdSourcesBtn">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="icon">
+                <iconset resource="../visivo.qrc">
+                 <normaloff>:/icons/rect-select.png</normaloff>:/icons/rect-select.png</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>50</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="layerSettingsGroupBox">
+            <property name="title">
+             <string>Layer settings</string>
+            </property>
+            <layout class="QVBoxLayout" name="_8">
+             <item>
+              <layout class="QHBoxLayout" name="LutLayout">
+               <item>
+                <widget class="QComboBox" name="lutComboBox">
+                 <item>
+                  <property name="text">
+                   <string>Gray</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Default</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Default Step</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>EField</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Glow</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>MinMax</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>PhysicsContour</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>PureRed</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>PureGreen</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>PureBlue</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Run1</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Run2</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Sar</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Temperature</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>TenStep</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>VolRenGlow</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>VolRenGreen</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>VolRenRGB</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>VolRenTwoLev</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllYellow</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllCyan</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllViolet</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllWhite</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllBlack</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllRed</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllGreen</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>AllBlu</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="linearRadioBtn">
+                 <property name="text">
+                  <string>Linear</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="logRadioBtn">
+                 <property name="text">
+                  <string>Log</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="_9">
+               <item>
+                <widget class="QSlider" name="opacitySlider">
+                 <property name="value">
+                  <number>99</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="_10">
+          <item>
+           <widget class="QVTKOpenGLNativeWidget" name="qVtk" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <widget class="QTableWidget" name="vlkbInventoryTable">
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+       <property name="columnCount">
+        <number>2</number>
+       </property>
+       <attribute name="horizontalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="verticalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>Survey</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Species</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QTableWidget" name="sourcesTable">
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SingleSelection</enum>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+       <attribute name="horizontalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>Selected</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QListWidget" name="layersList">
+       <property name="dragDropMode">
+        <enum>QAbstractItemView::InternalMove</enum>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1366</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuAdd_compact_sources">
+     <property name="title">
+      <string>Add compact sources</string>
+     </property>
+     <addaction name="actionLocal"/>
+     <addaction name="actionRemote"/>
+     <addaction name="action3D"/>
+    </widget>
+    <addaction name="menuAdd_compact_sources"/>
+    <addaction name="actionSave_session"/>
+   </widget>
+   <widget class="QMenu" name="menuWindow">
+    <property name="title">
+     <string>Window</string>
+    </property>
+    <widget class="QMenu" name="menuMode">
+     <property name="title">
+      <string>Mode</string>
+     </property>
+     <addaction name="actionNormal"/>
+     <addaction name="actionSelect"/>
+    </widget>
+    <addaction name="actionInfo"/>
+    <addaction name="menuMode"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionCAESAR"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuWindow"/>
+   <addaction name="menuTools"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionSave_session">
+   <property name="text">
+    <string>Save session</string>
+   </property>
+  </action>
+  <action name="actionInfo">
+   <property name="text">
+    <string>Info</string>
+   </property>
+  </action>
+  <action name="actionCAESAR">
+   <property name="text">
+    <string>CAESAR</string>
+   </property>
+  </action>
+  <action name="actionLocal">
+   <property name="text">
+    <string>Local</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionRemote">
+   <property name="text">
+    <string>Remote</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="action3D">
+   <property name="text">
+    <string>3D</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+3</string>
+   </property>
+  </action>
+  <action name="actionSelect">
+   <property name="text">
+    <string>Select</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionNormal">
+   <property name="text">
+    <string>Normal</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QVTKOpenGLNativeWidget</class>
+   <extends>QWidget</extends>
+   <header>QVTKOpenGLNativeWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../visivo.qrc"/>
+ </resources>
+ <connections/>
+</ui>
