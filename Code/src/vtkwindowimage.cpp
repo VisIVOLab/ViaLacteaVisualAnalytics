@@ -96,7 +96,12 @@ vtkSmartPointer<vtkFitsReader> vtkWindowImage::getFitsReader() const
     return fitsReader;
 }
 
-void vtkWindowImage::showStatusBarMessage(std::string msg)
+void vtkWindowImage::render()
+{
+    ui->qVtk->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkWindowImage::showStatusBarMessage(const std::string &msg)
 {
     ui->statusBar->showMessage(QString::fromStdString(msg));
 }
@@ -115,16 +120,46 @@ void vtkWindowImage::addLayerToList(vtkfitstoolwidgetobject *layer, bool enabled
     /// Fetch survey, species and transition from selected item in vlkb inventory table
 
     layer->setLayerNumber(imageStack->GetImages()->GetNumberOfItems() - 1);
+    imageLayersList.append(layer);
 
     auto item = new QListWidgetItem(layer->getName(), ui->layersList);
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
     item->setCheckState(enabled ? Qt::Checked : Qt::Unchecked);
-    ui->qVtk->renderWindow()->GetInteractor()->Render();
+
+    render();
 }
 
-int vtkWindowImage::selectedLayerIndex() const { }
+void vtkWindowImage::changeFitsLut(const QString &palette, const QString &scale)
+{
+    int index = selectedLayerIndex();
+    auto imageObject = imageLayersList.at(index);
+    auto fitsReader = imageObject->getFits();
 
-void vtkWindowImage::on_opacitySlider_valueChanged(int value)
+    QString lutScale = scale.isEmpty() ? imageObject->getLutScale() : scale;
+    auto lut = vtkSmartPointer<vtkLookupTable>::New();
+    lut->SetTableRange(fmax(0, fitsReader->GetMin()), fitsReader->GetMax());
+    SelectLookTable(palette, lut);
+    if (lutScale == "Log") {
+        lut->SetScaleToLog10();
+    } else {
+        lut->SetScaleToLinear();
+    }
+
+    // Update info on the image object
+    imageObject->setLutType(palette);
+    imageObject->setLutScale(lutScale);
+
+    auto colors = vtkSmartPointer<vtkImageMapToColors>::New();
+    colors->SetInputData(fitsReader->GetOutput());
+    colors->SetLookupTable(lut);
+    colors->Update();
+
+    auto mapper = vtkSmartPointer<vtkImageSliceMapper>::New();
+    mapper->SetInputData(colors->GetOutput());
+    vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(index))->SetMapper(mapper);
+}
+
+int vtkWindowImage::selectedLayerIndex() const
 {
     int index = 0;
 
@@ -132,8 +167,29 @@ void vtkWindowImage::on_opacitySlider_valueChanged(int value)
     if (selectedRows.count() > 0)
         index = selectedRows.at(0).row();
 
+    return index;
+}
+
+void vtkWindowImage::on_opacitySlider_valueChanged(int value)
+{
+    int index = selectedLayerIndex();
+
     vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(index))
             ->GetProperty()
             ->SetOpacity(value / 100.0);
-    ui->qVtk->renderWindow()->GetInteractor()->Render();
+
+    render();
+}
+
+void vtkWindowImage::on_lutComboBox_textActivated(const QString &lut)
+{
+    changeFitsLut(lut);
+    render();
+}
+
+void vtkWindowImage::on_logRadioBtn_toggled(bool checked)
+{
+    QString scale = checked ? "Log" : "Linear";
+    changeFitsLut(ui->lutComboBox->currentText(), scale);
+    render();
 }
