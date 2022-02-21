@@ -3372,10 +3372,14 @@ void vtkwindow_new::addToList(vtkfitstoolwidgetobject *o, bool enabled)
 
 void vtkwindow_new::checkboxImageClicked(int cb, bool status)
 {
+    auto image = vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb));
+    if (!image)
+        return;
+
     if (status)
-        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOn();
+        image->VisibilityOn();
     else
-        vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(cb))->VisibilityOff();
+        image->VisibilityOff();
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
