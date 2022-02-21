@@ -24,7 +24,7 @@ vtkInteractorStyleImageCustom::vtkInteractorStyleImageCustom()
 void vtkInteractorStyleImageCustom::PrintSelf(std::ostream &os, vtkIndent indent)
 {
     Superclass::PrintSelf(os, indent);
-    os << indent << "FitsReader: " << (FitsReader ? FitsReader->GetFileName() : "null") << endl;
+    os << indent << "Current FitsReader: " << CurrentLayerFitsReader()->GetFileName() << endl;
 }
 
 //----------------------------------------------------------------------------
@@ -57,6 +57,7 @@ void vtkInteractorStyleImageCustom::OnMouseMove()
     /// \todo slice mode
 
     // Pixel value and coords
+    auto FitsReader = CurrentLayerFitsReader();
     float *pixel = static_cast<float *>(
             FitsReader->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], 0));
     oss << "<value> ";
@@ -112,14 +113,15 @@ void vtkInteractorStyleImageCustom::OnChar()
 }
 
 //----------------------------------------------------------------------------
-void vtkInteractorStyleImageCustom::SetFitsReader(const vtkSmartPointer<vtkFitsReader> &FitsReader)
-{
-    this->FitsReader = FitsReader;
-}
-
-//----------------------------------------------------------------------------
 void vtkInteractorStyleImageCustom::SetCoordsCallback(
         const std::function<void(std::string)> &callback)
 {
     this->CoordsCallback = callback;
+}
+
+//----------------------------------------------------------------------------
+void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc(
+        const std::function<vtkSmartPointer<vtkFitsReader>()> &callback)
+{
+    this->CurrentLayerFitsReader = callback;
 }

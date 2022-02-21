@@ -19,8 +19,8 @@ public:
     void OnMouseMove() override;
     void OnChar() override;
 
-    void SetFitsReader(const vtkSmartPointer<vtkFitsReader> &FitsReader);
     void SetCoordsCallback(const std::function<void(std::string)> &callback);
+    void SetLayerFitsReaderFunc(const std::function<vtkSmartPointer<vtkFitsReader>()> &callback);
 
 protected:
     vtkInteractorStyleImageCustom();
@@ -33,8 +33,8 @@ private:
     std::map<vtkImageProperty *, double> ColorWindow;
 
     vtkSmartPointer<vtkCoordinate> Coordinate;
-    vtkSmartPointer<vtkFitsReader> FitsReader;
     std::function<void(std::string)> CoordsCallback;
+    std::function<vtkSmartPointer<vtkFitsReader>()> CurrentLayerFitsReader;
 };
 
 #endif // VTKINTERACTORSTYLEIMAGECUSTOM_H
