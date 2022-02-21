@@ -7,6 +7,7 @@
 #include <vtkInteractorStyleImage.h>
 #include <vtkSmartPointer.h>
 
+#include <functional>
 #include <map>
 
 class vtkInteractorStyleImageCustom : public vtkInteractorStyleImage

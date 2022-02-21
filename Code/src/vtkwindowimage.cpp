@@ -228,13 +228,13 @@ void vtkWindowImage::changeFitsLut(const QString &palette, const QString &scale)
 
     QString lutScale = scale.isEmpty() ? imageObject->getLutScale() : scale;
     auto lut = vtkSmartPointer<vtkLookupTable>::New();
-    lut->SetTableRange(fmax(0, fitsReader->GetMin()), fitsReader->GetMax());
-    SelectLookTable(palette, lut);
     if (lutScale == "Log") {
         lut->SetScaleToLog10();
     } else {
         lut->SetScaleToLinear();
     }
+    lut->SetTableRange(fmax(0, fitsReader->GetMin()), fitsReader->GetMax());
+    SelectLookTable(palette, lut);
 
     // Update info on the image object
     imageObject->setLutType(palette);
@@ -263,9 +263,10 @@ int vtkWindowImage::selectedLayerIndex() const
 {
     int index = 0;
 
-    auto selectedRows = ui->layersList->selectionModel()->selectedRows();
-    if (selectedRows.count() > 0)
-        index = selectedRows.at(0).row();
+    auto list = ui->layersList->selectedItems();
+    if (!list.empty()) {
+        index = ui->layersList->row(list.first());
+    }
 
     return index;
 }
@@ -296,6 +297,7 @@ void vtkWindowImage::on_logRadioBtn_toggled(bool checked)
 
 void vtkWindowImage::on_layersList_itemClicked(QListWidgetItem *item)
 {
+    item->setSelected(true);
     int index = item->listWidget()->row(item);
     auto imageObject = imageLayersList.at(index);
     auto image = vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(index));
