@@ -82,7 +82,7 @@ LIBS += \
     -lvtklz4-9.0 \
     -lvtklzma-9.0 \
     -lvtksys-9.0 \
-    -lvtkzlib-9.0 \
+    -lvtkzlib-9.0
 
 
 SOURCES += \
@@ -173,6 +173,7 @@ SOURCES += \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
     src/xmlparser.cpp \
+    src/vtkwindowcube.cpp \
     src/vtkwindowimage.cpp
 
 
@@ -245,6 +246,7 @@ HEADERS  += \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
     src/xmlparser.h \
+    src/vtkwindowcube.h \
     src/vtkwindowimage.h
 
 
@@ -279,6 +281,7 @@ FORMS += \
     ui/vtkfitstoolwidget_new.ui \
     ui/vtktoolswidget.ui \
     ui/vtkwindow_new.ui \
+    ui/vtkwindowcube.ui \
     ui/vtkwindowimage.ui
 
 
