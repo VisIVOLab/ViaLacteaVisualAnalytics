@@ -9,6 +9,7 @@
 #include "vtkfitstoolwidgetobject.h"
 #include "vtklegendscaleactor.h"
 
+#include <vtkCellArray.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageMapToColors.h>
 #include <vtkImageProperty.h>
@@ -17,17 +18,25 @@
 #include <vtkImageSliceCollection.h>
 #include <vtkImageSliceMapper.h>
 #include <vtkImageStack.h>
+#include <vtkLODActor.h>
 #include <vtkLookupTable.h>
+#include <vtkPoints.h>
+#include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkProperty.h>
 #include <vtkRenderer.h>
+#include <vtkRendererCollection.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkTransform.h>
 
 #include <QListWidgetItem>
+#include <QTableWidgetItem>
 
 vtkWindowImage::vtkWindowImage(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader)
     : QMainWindow(parent), ui(new Ui::vtkWindowImage), fitsReader(fitsReader)
 {
     ui->setupUi(this);
+    ui->vlkbInventoryTable->installEventFilter(this);
     connect(ui->layersList->model(), &QAbstractItemModel::rowsMoved, this,
             &vtkWindowImage::layerList_rowsMoved);
     setAttribute(Qt::WA_DeleteOnClose);
@@ -104,6 +113,11 @@ vtkSmartPointer<vtkFitsReader> vtkWindowImage::getFitsReader() const
 void vtkWindowImage::render()
 {
     ui->qVtk->renderWindow()->GetInteractor()->Render();
+}
+
+vtkRenderer *vtkWindowImage::renderer()
+{
+    return ui->qVtk->renderWindow()->GetRenderers()->GetFirstRenderer();
 }
 
 void vtkWindowImage::showStatusBarMessage(const std::string &msg)
@@ -186,6 +200,65 @@ void vtkWindowImage::addLayerImage(vtkSmartPointer<vtkFitsReader> fitsReader, co
     addLayerToList(imageObject);
 }
 
+void vtkWindowImage::setVLKBInventoryTable(const QList<QMap<QString, QString>> &table)
+{
+    vlkbInventory = table;
+    ui->vlkbInventoryTable->setRowCount(0);
+
+    foreach (const auto &element, table) {
+        int lastRow = ui->vlkbInventoryTable->rowCount();
+        ui->vlkbInventoryTable->insertRow(lastRow);
+
+        auto col0 = new QTableWidgetItem();
+        col0->setFlags(col0->flags() ^ Qt::ItemIsEditable);
+        col0->setText(element["Survey"] + "\n" + element["Species"]);
+        col0->setToolTip(element["Description"]);
+
+        auto col1 = new QTableWidgetItem();
+        col1->setFlags(col1->flags() ^ Qt::ItemIsEditable);
+        QString col2Text = element["Transition"] + "\n";
+        switch (element["code"].toInt()) {
+        case 2:
+            col2Text += "The Region is completely inside the input";
+            break;
+        case 3:
+            col2Text += "Full Overlap";
+            break;
+        case 4:
+            col2Text += "Partial Overlap";
+            break;
+        case 5:
+            col2Text += "The Regions are identical ";
+            break;
+        default:
+            col2Text += "Merge";
+            break;
+        }
+        col1->setText(col2Text);
+        col1->setToolTip(element["Description"]);
+
+        if (element["code"].toInt() == 3) {
+            col0->setBackground(Qt::green);
+            col1->setBackground(Qt::green);
+        }
+
+        ui->vlkbInventoryTable->setItem(lastRow, 0, col0);
+        ui->vlkbInventoryTable->setItem(lastRow, 1, col1);
+    }
+
+    ui->vlkbInventoryTable->resizeColumnsToContents();
+    ui->vlkbInventoryTable->resizeRowsToContents();
+}
+
+bool vtkWindowImage::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::FocusOut && footprintActor) {
+        renderer()->RemoveActor(footprintActor);
+        render();
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
 void vtkWindowImage::setInteractorStyleImage()
 {
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
@@ -257,6 +330,41 @@ void vtkWindowImage::changeLayerVisibility(int index, bool visibility)
         image->SetVisibility(visibility);
         render();
     }
+}
+
+void vtkWindowImage::drawFootprint(const double *points)
+{
+    auto pts = vtkSmartPointer<vtkPoints>::New();
+    vtkIdType pt0 = pts->InsertNextPoint(points[0], points[1], 0);
+    vtkIdType pt1 = pts->InsertNextPoint(points[2], points[3], 0);
+    vtkIdType pt2 = pts->InsertNextPoint(points[4], points[5], 0);
+    vtkIdType pt3 = pts->InsertNextPoint(points[6], points[7], 0);
+
+    auto cell = vtkSmartPointer<vtkCellArray>::New();
+    cell->InsertNextCell(5);
+    cell->InsertCellPoint(pt0);
+    cell->InsertCellPoint(pt1);
+    cell->InsertCellPoint(pt2);
+    cell->InsertCellPoint(pt3);
+    cell->InsertCellPoint(pt0);
+
+    auto polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->SetPoints(pts);
+    polydata->SetLines(cell);
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputData(polydata);
+
+    if (footprintActor) {
+        renderer()->RemoveActor(footprintActor);
+    }
+
+    footprintActor = vtkSmartPointer<vtkLODActor>::New();
+    footprintActor->SetMapper(mapper);
+    footprintActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+
+    renderer()->AddActor(footprintActor);
+    render();
 }
 
 int vtkWindowImage::selectedLayerIndex() const
@@ -349,4 +457,30 @@ void vtkWindowImage::layerList_rowsMoved(const QModelIndex &parent, int start, i
     }
 
     render();
+}
+
+void vtkWindowImage::on_vlkbInventoryTable_itemClicked(QTableWidgetItem *item)
+{
+    int row = ui->vlkbInventoryTable->row(item);
+    auto element = vlkbInventory[row];
+
+    double points[8];
+    points[0] = element["longitudeP1"].toDouble();
+    points[1] = element["latitudeP1"].toDouble();
+    points[2] = element["longitudeP2"].toDouble();
+    points[3] = element["latitudeP2"].toDouble();
+    points[4] = element["longitudeP3"].toDouble();
+    points[5] = element["latitudeP3"].toDouble();
+    points[6] = element["longitudeP4"].toDouble();
+    points[7] = element["latitudeP4"].toDouble();
+
+    double xypoints[8];
+    double coords[3];
+    for (int i = 0; i < 8; i += 2) {
+        AstroUtils::sky2xy(fitsReader->GetFileName(), points[i], points[i + 1], coords);
+        xypoints[i] = coords[0];
+        xypoints[i + 1] = coords[1];
+    }
+
+    drawFootprint(xypoints);
 }
