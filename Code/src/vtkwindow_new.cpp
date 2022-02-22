@@ -4427,9 +4427,12 @@ void vtkwindow_new::drawRectangleFootprint(double points[8])
 
 bool vtkwindow_new::eventFilter(QObject *object, QEvent *event)
 {
+    Q_UNUSED(object);
+
     if (event->type() == QEvent::FocusOut) {
         if (rectangleActor != 0) {
             m_Ren1->RemoveActor(rectangleActor);
+            ui->qVTK1->renderWindow()->GetInteractor()->Render();
         }
     }
     return false;
