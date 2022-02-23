@@ -466,31 +466,55 @@
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionFront">
+   <property name="icon">
+    <iconset resource="../visivo.qrc">
+     <normaloff>:/icons/PIC_FRONT.bmp</normaloff>:/icons/PIC_FRONT.bmp</iconset>
+   </property>
    <property name="text">
     <string>Front</string>
    </property>
   </action>
   <action name="actionBack">
+   <property name="icon">
+    <iconset resource="../visivo.qrc">
+     <normaloff>:/icons/PIC_BACK.bmp</normaloff>:/icons/PIC_BACK.bmp</iconset>
+   </property>
    <property name="text">
     <string>Back</string>
    </property>
   </action>
   <action name="actionTop">
+   <property name="icon">
+    <iconset resource="../visivo.qrc">
+     <normaloff>:/icons/PIC_TOP.bmp</normaloff>:/icons/PIC_TOP.bmp</iconset>
+   </property>
    <property name="text">
     <string>Top</string>
    </property>
   </action>
   <action name="actionRight">
+   <property name="icon">
+    <iconset resource="../visivo.qrc">
+     <normaloff>:/icons/PIC_RIGHT.bmp</normaloff>:/icons/PIC_RIGHT.bmp</iconset>
+   </property>
    <property name="text">
     <string>Right</string>
    </property>
   </action>
   <action name="actionBottom">
+   <property name="icon">
+    <iconset resource="../visivo.qrc">
+     <normaloff>:/icons/PIC_BOTTOM.bmp</normaloff>:/icons/PIC_BOTTOM.bmp</iconset>
+   </property>
    <property name="text">
     <string>Bottom</string>
    </property>
   </action>
   <action name="actionLeft">
+   <property name="icon">
+    <iconset resource="../visivo.qrc">
+     <normaloff>:/icons/PIC_LEFT.bmp</normaloff>:/icons/PIC_LEFT.bmp</iconset>
+   </property>
    <property name="text">
     <string>Left</string>
    </property>
@@ -514,6 +538,8 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../visivo.qrc"/>
+ </resources>
  <connections/>
 </ui>
