@@ -38,6 +38,11 @@ private slots:
     void on_thresholdText_editingFinished();
     void on_thresholdSlider_sliderReleased();
 
+    void on_contourCheckBox_toggled(bool checked);
+    void on_levelText_editingFinished();
+    void on_lowerBoundText_editingFinished();
+    void on_upperBoundText_editingFinished();
+
 private:
     Ui::vtkWindowCube *ui;
     vtkSmartPointer<vtkFitsReader> fitsReader;
@@ -48,10 +53,14 @@ private:
     int currentSlice;
     QString velocityUnit;
 
+    double lowerBound;
+    double upperBound;
+
     vtkSmartPointer<vtkActor> planeActor;
     vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
+    vtkSmartPointer<vtkActor> contoursActor;
 
     void showStatusBarMessage(const std::string &msg);
 
@@ -59,6 +68,9 @@ private:
     void updateVelocityText();
 
     void setThreshold(double threshold);
+
+    void showContours();
+    void removeContours();
 
     void resetCamera();
     void setCameraAzimuth(double az);

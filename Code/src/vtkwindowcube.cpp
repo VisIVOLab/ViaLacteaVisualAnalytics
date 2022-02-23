@@ -11,6 +11,8 @@
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
 #include <vtkCaptionActor2D.h>
+#include <vtkContourFilter.h>
+#include <vtkCutter.h>
 #include <vtkFlyingEdges3D.h>
 #include <vtkFrustumSource.h>
 #include <vtkGenericOpenGLRenderWindow.h>
@@ -20,6 +22,7 @@
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineFilter.h>
+#include <vtkPlane.h>
 #include <vtkPlanes.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
@@ -45,6 +48,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     fitsReader->is3D = true;
     fitsReader->CalculateRMS();
 
+    lowerBound = 3 * fitsReader->GetRMS();
+    upperBound = fitsReader->GetMax();
+
     // Start datacube pipeline
     auto renWinCube = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkCube->setDefaultCursor(Qt::ArrowCursor);
@@ -55,11 +61,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     rendererCube->GlobalWarningDisplayOff();
     renWinCube->AddRenderer(rendererCube);
 
-    double threshold = 3 * fitsReader->GetRMS();
-
-    ui->thresholdText->setText(QString::number(threshold, 'f', 4));
-    ui->lowerBoundText->setText(QString::number(threshold, 'f', 4));
-    ui->upperBoundText->setText(QString::number(fitsReader->GetMax(), 'f', 4));
+    ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
+    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
     ui->minCubeText->setText(QString::number(fitsReader->GetMin(), 'f', 4));
     ui->maxCubeText->setText(QString::number(fitsReader->GetMax(), 'f', 4));
     ui->rmsCubeText->setText(QString::number(fitsReader->GetRMS(), 'f', 4));
@@ -77,7 +81,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     isosurface = vtkSmartPointer<vtkFlyingEdges3D>::New();
     isosurface->SetInputData(fitsReader->GetOutput());
     isosurface->ComputeNormalsOn();
-    isosurface->SetValue(0, threshold);
+    isosurface->SetValue(0, lowerBound);
     auto isosurfaceMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     isosurfaceMapper->SetInputConnection(isosurface->GetOutputPort());
     isosurfaceMapper->ScalarVisibilityOff();
@@ -157,6 +161,10 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     ui->sliceSlider->setRange(1, fitsReader->GetNaxes(2));
     ui->sliceSpinBox->setRange(1, fitsReader->GetNaxes(2));
 
+    // Added to renderer when the contour checkbox is checked
+    contoursActor = vtkSmartPointer<vtkLODActor>::New();
+    contoursActor->GetProperty()->SetLineWidth(1);
+
     auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorSlice->LegendVisibilityOff();
     legendActorSlice->setFitsFile(fitsReader);
@@ -184,6 +192,9 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
     currentSlice = value - 1;
     updateVelocityText();
     updateSliceDatacube();
+    if (ui->contourCheckBox->isChecked()) {
+        showContours();
+    }
 }
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
@@ -230,6 +241,43 @@ void vtkWindowCube::setThreshold(double threshold)
 {
     isosurface->SetValue(0, threshold);
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkWindowCube::showContours()
+{
+    auto plane = vtkSmartPointer<vtkPlane>::New();
+    plane->SetOrigin(0, 0, sliceViewer->GetSlice());
+    plane->SetNormal(0, 0, 1);
+
+    auto cutter = vtkSmartPointer<vtkCutter>::New();
+    cutter->SetCutFunction(plane);
+    cutter->SetInputData(fitsReader->GetOutput());
+    cutter->Update();
+
+    int level = ui->levelText->text().toInt();
+    double min = ui->lowerBoundText->text().toDouble();
+    double max = ui->upperBoundText->text().toDouble();
+
+    auto contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
+    contoursFilter->GenerateValues(level, min, max);
+    contoursFilter->SetInputConnection(cutter->GetOutputPort());
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(contoursFilter->GetOutputPort());
+    mapper->SetScalarRange(min, max);
+    mapper->ScalarVisibilityOn();
+    mapper->SetScalarModeToUsePointData();
+    mapper->SetColorModeToMapScalars();
+
+    contoursActor->SetMapper(mapper);
+    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
+    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkWindowCube::removeContours()
+{
+    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
+    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkWindowCube::resetCamera()
@@ -290,24 +338,50 @@ void vtkWindowCube::on_actionLeft_triggered()
 
 void vtkWindowCube::on_thresholdText_editingFinished()
 {
-    double min = 3 * fitsReader->GetRMS();
-    double max = fitsReader->GetMax();
     double threshold = ui->thresholdText->text().toDouble();
-
     // Clamp threshold
-    threshold = fmin(fmax(threshold, min), max);
+    threshold = fmin(fmax(threshold, lowerBound), upperBound);
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
 
-    int tickPosition = 100 * (threshold - min) / (max - min);
+    int tickPosition = 100 * (threshold - lowerBound) / (upperBound - lowerBound);
     ui->thresholdSlider->setValue(tickPosition);
     setThreshold(threshold);
 }
 
 void vtkWindowCube::on_thresholdSlider_sliderReleased()
 {
-    double min = 3 * fitsReader->GetRMS();
-    double max = fitsReader->GetMax();
-    double threshold = (ui->thresholdSlider->value() * (max - min) / 100) + min;
+    double threshold =
+            (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
     setThreshold(threshold);
+}
+
+void vtkWindowCube::on_contourCheckBox_toggled(bool checked)
+{
+    if (checked) {
+        showContours();
+    } else {
+        removeContours();
+    }
+}
+
+void vtkWindowCube::on_levelText_editingFinished()
+{
+    if (ui->contourCheckBox->isChecked()) {
+        showContours();
+    }
+}
+
+void vtkWindowCube::on_lowerBoundText_editingFinished()
+{
+    if (ui->contourCheckBox->isChecked()) {
+        showContours();
+    }
+}
+
+void vtkWindowCube::on_upperBoundText_editingFinished()
+{
+    if (ui->contourCheckBox->isChecked()) {
+        showContours();
+    }
 }
