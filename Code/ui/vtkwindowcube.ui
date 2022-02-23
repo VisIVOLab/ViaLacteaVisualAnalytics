@@ -93,8 +93,8 @@
            </item>
            <item>
             <widget class="QLineEdit" name="velocityText">
-             <property name="enabled">
-              <bool>false</bool>
+             <property name="readOnly">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -255,14 +255,14 @@
               </item>
               <item>
                <widget class="QLineEdit" name="minCubeText">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="maximumSize">
                  <size>
                   <width>80</width>
                   <height>16777215</height>
                  </size>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -285,14 +285,14 @@
               </item>
               <item>
                <widget class="QLineEdit" name="maxCubeText">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="maximumSize">
                  <size>
                   <width>80</width>
                   <height>16777215</height>
                  </size>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -315,14 +315,14 @@
               </item>
               <item>
                <widget class="QLineEdit" name="rmsCubeText">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="maximumSize">
                  <size>
                   <width>80</width>
                   <height>16777215</height>
                  </size>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -354,14 +354,14 @@
               </item>
               <item>
                <widget class="QLineEdit" name="minSliceText">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="maximumSize">
                  <size>
                   <width>80</width>
                   <height>16777215</height>
                  </size>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -384,14 +384,14 @@
               </item>
               <item>
                <widget class="QLineEdit" name="maxSliceText">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="maximumSize">
                  <size>
                   <width>80</width>
                   <height>16777215</height>
                  </size>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -437,7 +437,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>24</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>
