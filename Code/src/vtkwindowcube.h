@@ -7,6 +7,7 @@
 
 class vtkActor;
 class vtkFitsReader;
+class vtkFlyingEdges3D;
 class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
 
@@ -34,6 +35,9 @@ private slots:
     void on_actionBottom_triggered();
     void on_actionLeft_triggered();
 
+    void on_thresholdText_editingFinished();
+    void on_thresholdSlider_sliderReleased();
+
 private:
     Ui::vtkWindowCube *ui;
     vtkSmartPointer<vtkFitsReader> fitsReader;
@@ -45,6 +49,7 @@ private:
     QString velocityUnit;
 
     vtkSmartPointer<vtkActor> planeActor;
+    vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
 
@@ -52,6 +57,8 @@ private:
 
     void updateSliceDatacube();
     void updateVelocityText();
+
+    void setThreshold(double threshold);
 
     void resetCamera();
     void setCameraAzimuth(double az);

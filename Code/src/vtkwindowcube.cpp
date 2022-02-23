@@ -28,6 +28,8 @@
 #include <vtkResliceImageViewer.h>
 #include <vtkTextActor.h>
 
+#include <cmath>
+
 vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                              QString velocityUnit)
     : QMainWindow(parent),
@@ -72,7 +74,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     outlineActor->SetMapper(outlineMapper);
 
     // Isosurface
-    auto isosurface = vtkSmartPointer<vtkFlyingEdges3D>::New();
+    isosurface = vtkSmartPointer<vtkFlyingEdges3D>::New();
     isosurface->SetInputData(fitsReader->GetOutput());
     isosurface->ComputeNormalsOn();
     isosurface->SetValue(0, threshold);
@@ -224,6 +226,12 @@ void vtkWindowCube::updateVelocityText()
     ui->velocityText->setText(QString::number(velocity).append(" Km/s"));
 }
 
+void vtkWindowCube::setThreshold(double threshold)
+{
+    isosurface->SetValue(0, threshold);
+    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+}
+
 void vtkWindowCube::resetCamera()
 {
     auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
@@ -278,4 +286,28 @@ void vtkWindowCube::on_actionBottom_triggered()
 void vtkWindowCube::on_actionLeft_triggered()
 {
     setCameraAzimuth(-90);
+}
+
+void vtkWindowCube::on_thresholdText_editingFinished()
+{
+    double min = 3 * fitsReader->GetRMS();
+    double max = fitsReader->GetMax();
+    double threshold = ui->thresholdText->text().toDouble();
+
+    // Clamp threshold
+    threshold = fmin(fmax(threshold, min), max);
+    ui->thresholdText->setText(QString::number(threshold, 'f', 4));
+
+    int tickPosition = 100 * (threshold - min) / (max - min);
+    ui->thresholdSlider->setValue(tickPosition);
+    setThreshold(threshold);
+}
+
+void vtkWindowCube::on_thresholdSlider_sliderReleased()
+{
+    double min = 3 * fitsReader->GetRMS();
+    double max = fitsReader->GetMax();
+    double threshold = (ui->thresholdSlider->value() * (max - min) / 100) + min;
+    ui->thresholdText->setText(QString::number(threshold, 'f', 4));
+    setThreshold(threshold);
 }
