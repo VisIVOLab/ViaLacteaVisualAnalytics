@@ -1,6 +1,8 @@
 #include "vtkwindowcube.h"
 #include "ui_vtkwindowcube.h"
 
+#include "interactors/vtkinteractorstyleimagecustom.h"
+
 #include "luteditor.h"
 #include "vtkfitsreader.h"
 #include "vtklegendscaleactor.h"
@@ -138,8 +140,6 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     lutSlice->SetTableRange(fitsReader->GetRangeSlice(0)[0], fitsReader->GetRangeSlice(0)[1]);
     SelectLookTable("Gray", lutSlice);
 
-    /// \todo Interactor Image Contour
-
     sliceViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     sliceViewer->SetInputData(fitsReader->GetOutput());
     sliceViewer->GetWindowLevel()->SetOutputFormatToRGB();
@@ -155,6 +155,13 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     legendActorSlice->LegendVisibilityOff();
     legendActorSlice->setFitsFile(fitsReader);
     rendererSlice->AddActor(legendActorSlice);
+
+    auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
+    interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
+    interactorStyle->SetLayerFitsReaderFunc(
+            [this]() -> vtkSmartPointer<vtkFitsReader> { return this->fitsReader; });
+    interactorStyle->SetPixelZCompFunc([this]() -> int { return this->sliceViewer->GetSlice(); });
+    ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
 
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
@@ -176,6 +183,11 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
     ui->sliceSlider->setValue(value);
+}
+
+void vtkWindowCube::showStatusBarMessage(const std::string &msg)
+{
+    ui->statusBar->showMessage(QString::fromStdString(msg));
 }
 
 void vtkWindowCube::updateSliceDatacube()

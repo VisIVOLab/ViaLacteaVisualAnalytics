@@ -18,6 +18,8 @@ vtkInteractorStyleImageCustom::vtkInteractorStyleImageCustom()
 {
     this->Coordinate = vtkSmartPointer<vtkCoordinate>::New();
     this->Coordinate->SetCoordinateSystemToDisplay();
+
+    this->zComp = []() -> int { return 0; };
 }
 
 //----------------------------------------------------------------------------
@@ -54,12 +56,10 @@ void vtkInteractorStyleImageCustom::OnMouseMove()
 
     std::ostringstream oss;
 
-    /// \todo slice mode
-
     // Pixel value and coords
     auto FitsReader = CurrentLayerFitsReader();
     float *pixel = static_cast<float *>(
-            FitsReader->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], 0));
+            FitsReader->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], zComp()));
     oss << "<value> ";
     if (pixel != NULL)
         oss << pixel[0];
@@ -124,4 +124,10 @@ void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc(
         const std::function<vtkSmartPointer<vtkFitsReader>()> &callback)
 {
     this->CurrentLayerFitsReader = callback;
+}
+
+//----------------------------------------------------------------------------
+void vtkInteractorStyleImageCustom::SetPixelZCompFunc(const std::function<int()> &callback)
+{
+    this->zComp = callback;
 }

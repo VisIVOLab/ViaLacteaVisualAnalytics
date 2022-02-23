@@ -22,6 +22,7 @@ public:
 
     void SetCoordsCallback(const std::function<void(std::string)> &callback);
     void SetLayerFitsReaderFunc(const std::function<vtkSmartPointer<vtkFitsReader>()> &callback);
+    void SetPixelZCompFunc(const std::function<int()> &callback);
 
 protected:
     vtkInteractorStyleImageCustom();
@@ -36,6 +37,7 @@ private:
     vtkSmartPointer<vtkCoordinate> Coordinate;
     std::function<void(std::string)> CoordsCallback;
     std::function<vtkSmartPointer<vtkFitsReader>()> CurrentLayerFitsReader;
+    std::function<int()> zComp;
 };
 
 #endif // VTKINTERACTORSTYLEIMAGECUSTOM_H

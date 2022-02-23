@@ -29,8 +29,6 @@ public:
 
     vtkSmartPointer<vtkFitsReader> getFitsReader() const;
 
-    void showStatusBarMessage(const std::string &msg);
-
     void addLayerImage(vtkSmartPointer<vtkFitsReader> fitsReader, const QString &survey = QString(),
                        const QString &species = QString(), const QString &transition = QString());
 
@@ -63,6 +61,7 @@ private:
     inline void render();
     inline vtkRenderer *renderer();
     void setInteractorStyleImage();
+    void showStatusBarMessage(const std::string &msg);
 
     int selectedLayerIndex() const;
     void addLayerToList(vtkfitstoolwidgetobject *layer, bool enabled = true);

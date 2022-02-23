@@ -37,6 +37,8 @@ private:
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
 
+    void showStatusBarMessage(const std::string &msg);
+
     void updateSliceDatacube();
     void updateVelocityText();
 };
