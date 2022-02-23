@@ -283,6 +283,10 @@ void vtkWindowImage::addLayerToList(vtkfitstoolwidgetobject *layer, bool enabled
         text = layer->getName();
     }
 
+    if (layer->getFits()->isMoment3D) {
+        text += "_mom" + QString::number(layer->getFits()->getMomentOrder());
+    }
+
     layer->setLayerNumber(imageStack->GetImages()->GetNumberOfItems() - 1);
     imageLayersList.append(layer);
 

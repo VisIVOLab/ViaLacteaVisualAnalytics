@@ -38,6 +38,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     : QMainWindow(parent),
       ui(new Ui::vtkWindowCube),
       fitsReader(fitsReader),
+      parentWindow(qobject_cast<vtkWindowImage *>(parent)),
       currentSlice(0),
       velocityUnit(velocityUnit)
 {
@@ -280,6 +281,18 @@ void vtkWindowCube::removeContours()
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }
 
+void vtkWindowCube::calculateAndShowMomentMap(int order)
+{
+    if (parentWindow) {
+        auto moment = vtkSmartPointer<vtkFitsReader>::New();
+        moment->SetFileName(fitsReader->GetFileName());
+        moment->isMoment3D = true;
+        moment->setMomentOrder(order);
+        parentWindow->addLayerImage(moment);
+        parentWindow->raise();
+    }
+}
+
 void vtkWindowCube::resetCamera()
 {
     auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
@@ -384,4 +397,14 @@ void vtkWindowCube::on_upperBoundText_editingFinished()
     if (ui->contourCheckBox->isChecked()) {
         showContours();
     }
+}
+
+void vtkWindowCube::on_actionCalculate_order_0_triggered()
+{
+    calculateAndShowMomentMap(0);
+}
+
+void vtkWindowCube::on_actionCalculate_order_1_triggered()
+{
+    calculateAndShowMomentMap(1);
 }

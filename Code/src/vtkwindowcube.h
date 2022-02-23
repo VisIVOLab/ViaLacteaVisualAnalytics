@@ -1,7 +1,10 @@
 #ifndef VTKWINDOWCUBE_H
 #define VTKWINDOWCUBE_H
 
+#include "vtkwindowimage.h"
+
 #include <QMainWindow>
+#include <QPointer>
 
 #include <vtkSmartPointer.h>
 
@@ -43,9 +46,13 @@ private slots:
     void on_lowerBoundText_editingFinished();
     void on_upperBoundText_editingFinished();
 
+    void on_actionCalculate_order_0_triggered();
+    void on_actionCalculate_order_1_triggered();
+
 private:
     Ui::vtkWindowCube *ui;
     vtkSmartPointer<vtkFitsReader> fitsReader;
+    QPointer<vtkWindowImage> parentWindow;
 
     double initialCameraFocalPoint[3];
     double initialCameraPosition[3];
@@ -71,6 +78,8 @@ private:
 
     void showContours();
     void removeContours();
+
+    void calculateAndShowMomentMap(int order);
 
     void resetCamera();
     void setCameraAzimuth(double az);
