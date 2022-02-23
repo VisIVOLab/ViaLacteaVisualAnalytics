@@ -24,6 +24,7 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
+#include <vtkRendererCollection.h>
 #include <vtkResliceImageViewer.h>
 #include <vtkTextActor.h>
 
@@ -116,6 +117,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorCube->LegendVisibilityOff();
     legendActorCube->setFitsFile(fitsReader);
+
+    rendererCube->GetActiveCamera()->GetPosition(initialCameraPosition);
+    rendererCube->GetActiveCamera()->GetFocalPoint(initialCameraFocalPoint);
 
     rendererCube->AddActor(outlineActor);
     rendererCube->AddActor(isosurfaceActor);
@@ -218,4 +222,60 @@ void vtkWindowCube::updateVelocityText()
         velocity /= 1000;
     }
     ui->velocityText->setText(QString::number(velocity).append(" Km/s"));
+}
+
+void vtkWindowCube::resetCamera()
+{
+    auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    auto camera = renderer->GetActiveCamera();
+    camera->SetViewUp(0, 1, 0);
+    camera->SetPosition(initialCameraPosition);
+    camera->SetFocalPoint(initialCameraFocalPoint);
+    renderer->ResetCamera();
+}
+
+void vtkWindowCube::setCameraAzimuth(double az)
+{
+    resetCamera();
+    auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    renderer->GetActiveCamera()->Azimuth(az);
+    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkWindowCube::setCameraElevation(double el)
+{
+    resetCamera();
+    auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    renderer->GetActiveCamera()->Elevation(el);
+    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkWindowCube::on_actionFront_triggered()
+{
+    setCameraAzimuth(0);
+}
+
+void vtkWindowCube::on_actionBack_triggered()
+{
+    setCameraAzimuth(-180);
+}
+
+void vtkWindowCube::on_actionTop_triggered()
+{
+    setCameraElevation(90);
+}
+
+void vtkWindowCube::on_actionRight_triggered()
+{
+    setCameraAzimuth(90);
+}
+
+void vtkWindowCube::on_actionBottom_triggered()
+{
+    setCameraElevation(-90);
+}
+
+void vtkWindowCube::on_actionLeft_triggered()
+{
+    setCameraAzimuth(-90);
 }

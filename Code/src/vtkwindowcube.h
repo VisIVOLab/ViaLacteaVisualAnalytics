@@ -27,9 +27,20 @@ private slots:
     void on_sliceSlider_valueChanged(int value);
     void on_sliceSpinBox_valueChanged(int value);
 
+    void on_actionFront_triggered();
+    void on_actionBack_triggered();
+    void on_actionTop_triggered();
+    void on_actionRight_triggered();
+    void on_actionBottom_triggered();
+    void on_actionLeft_triggered();
+
 private:
     Ui::vtkWindowCube *ui;
     vtkSmartPointer<vtkFitsReader> fitsReader;
+
+    double initialCameraFocalPoint[3];
+    double initialCameraPosition[3];
+
     int currentSlice;
     QString velocityUnit;
 
@@ -41,6 +52,10 @@ private:
 
     void updateSliceDatacube();
     void updateVelocityText();
+
+    void resetCamera();
+    void setCameraAzimuth(double az);
+    void setCameraElevation(double el);
 };
 
 #endif // VTKWINDOWCUBE_H
