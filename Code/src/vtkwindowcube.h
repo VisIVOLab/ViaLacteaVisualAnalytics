@@ -29,6 +29,7 @@ public:
 
 private slots:
     void on_sliceSlider_valueChanged(int value);
+    void on_sliceSlider_sliderReleased();
     void on_sliceSpinBox_valueChanged(int value);
 
     void on_actionFront_triggered();

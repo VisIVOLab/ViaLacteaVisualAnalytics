@@ -187,22 +187,6 @@ vtkWindowCube::~vtkWindowCube()
     delete ui;
 }
 
-void vtkWindowCube::on_sliceSlider_valueChanged(int value)
-{
-    ui->sliceSpinBox->setValue(value);
-    currentSlice = value - 1;
-    updateVelocityText();
-    updateSliceDatacube();
-    if (ui->contourCheckBox->isChecked()) {
-        showContours();
-    }
-}
-
-void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
-{
-    ui->sliceSlider->setValue(value);
-}
-
 void vtkWindowCube::showStatusBarMessage(const std::string &msg)
 {
     ui->statusBar->showMessage(QString::fromStdString(msg));
@@ -317,6 +301,30 @@ void vtkWindowCube::setCameraElevation(double el)
     auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
     renderer->GetActiveCamera()->Elevation(el);
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkWindowCube::on_sliceSlider_valueChanged(int value)
+{
+    if (ui->contourCheckBox->isChecked()) {
+        removeContours();
+    }
+
+    currentSlice = value - 1;
+    updateVelocityText();
+    updateSliceDatacube();
+}
+
+void vtkWindowCube::on_sliceSlider_sliderReleased()
+{
+    ui->sliceSpinBox->setValue(ui->sliceSlider->value());
+}
+
+void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
+{
+    ui->sliceSlider->setValue(value);
+    if (ui->contourCheckBox->isChecked()) {
+        showContours();
+    }
 }
 
 void vtkWindowCube::on_actionFront_triggered()
