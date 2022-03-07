@@ -69,6 +69,7 @@ private:
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
     vtkSmartPointer<vtkActor> contoursActor;
+    vtkSmartPointer<vtkActor> contoursActorForParent;
 
     void showStatusBarMessage(const std::string &msg);
 

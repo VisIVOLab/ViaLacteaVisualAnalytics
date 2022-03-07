@@ -250,6 +250,18 @@ void vtkWindowImage::setVLKBInventoryTable(const QList<QMap<QString, QString>> &
     ui->vlkbInventoryTable->resizeRowsToContents();
 }
 
+void vtkWindowImage::addActorToRenderer(vtkSmartPointer<vtkActor> actor)
+{
+    renderer()->AddActor(actor);
+    render();
+}
+
+void vtkWindowImage::removeActorFromRenderer(vtkSmartPointer<vtkActor> actor)
+{
+    renderer()->RemoveActor(actor);
+    render();
+}
+
 bool vtkWindowImage::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::FocusOut && footprintActor) {

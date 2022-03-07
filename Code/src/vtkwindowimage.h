@@ -11,6 +11,7 @@
 
 class vtkFitsReader;
 class vtkfitstoolwidgetobject;
+class vtkActor;
 class vtkLODActor;
 class vtkImageStack;
 class vtkRenderer;
@@ -33,6 +34,9 @@ public:
                        const QString &species = QString(), const QString &transition = QString());
 
     void setVLKBInventoryTable(const QList<QMap<QString, QString>> &table);
+
+    void addActorToRenderer(vtkSmartPointer<vtkActor> actor);
+    void removeActorFromRenderer(vtkSmartPointer<vtkActor> actor);
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

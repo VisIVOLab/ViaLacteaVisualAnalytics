@@ -3,6 +3,7 @@
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
 
+#include "astroutils.h"
 #include "luteditor.h"
 #include "vtkfitsreader.h"
 #include "vtklegendscaleactor.h"
@@ -30,6 +31,7 @@
 #include <vtkRendererCollection.h>
 #include <vtkResliceImageViewer.h>
 #include <vtkTextActor.h>
+#include <vtkTransform.h>
 
 #include <cmath>
 
@@ -162,9 +164,11 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     ui->sliceSlider->setRange(1, fitsReader->GetNaxes(2));
     ui->sliceSpinBox->setRange(1, fitsReader->GetNaxes(2));
 
-    // Added to renderer when the contour checkbox is checked
+    // Added to renderers when the contour checkbox is checked
     contoursActor = vtkSmartPointer<vtkLODActor>::New();
     contoursActor->GetProperty()->SetLineWidth(1);
+    contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
+    contoursActorForParent->GetProperty()->SetLineWidth(1);
 
     auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorSlice->LegendVisibilityOff();
@@ -184,6 +188,10 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
 
 vtkWindowCube::~vtkWindowCube()
 {
+    if (parentWindow) {
+        parentWindow->removeActorFromRenderer(contoursActorForParent);
+    }
+
     delete ui;
 }
 
@@ -257,12 +265,60 @@ void vtkWindowCube::showContours()
     contoursActor->SetMapper(mapper);
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+
+    if (parentWindow) {
+        double sky_coord_gal[2];
+        AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 0, sky_coord_gal, WCS_GALACTIC);
+
+        double coord[3];
+        AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
+                           sky_coord_gal[1], coord);
+
+        double angle = 0;
+        double x1 = coord[0];
+        double y1 = coord[1];
+
+        AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 100, sky_coord_gal, WCS_GALACTIC);
+        AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
+                           sky_coord_gal[1], coord);
+
+        if (x1 != coord[0]) {
+            double m = fabs((coord[1] - y1) / (coord[0] - x1));
+            angle = 90 - atan(m) * 180 / M_PI;
+        }
+
+        double bounds[6];
+        fitsReader->GetOutput()->GetBounds(bounds);
+
+        double scaledPixel = AstroUtils::arcsecPixel(fitsReader->GetFileName())
+                / AstroUtils::arcsecPixel(parentWindow->getFitsReader()->GetFileName());
+
+        auto transform = vtkSmartPointer<vtkTransform>::New();
+        transform->Translate(0, 0, -1 * sliceViewer->GetSlice());
+        transform->Translate(bounds[0], bounds[2], 0);
+        transform->RotateWXYZ(angle, 0, 0, 1);
+        transform->Translate(-bounds[0], -bounds[2], 0);
+
+        auto mapperForParent = vtkSmartPointer<vtkPolyDataMapper>::New();
+        mapperForParent->ShallowCopy(mapper);
+
+        contoursActorForParent->ShallowCopy(contoursActor);
+        contoursActorForParent->SetMapper(mapperForParent);
+        contoursActorForParent->SetScale(scaledPixel, scaledPixel, 1);
+        contoursActorForParent->SetPosition(x1, y1, 1);
+        contoursActorForParent->SetUserTransform(transform);
+        parentWindow->addActorToRenderer(contoursActorForParent);
+    }
 }
 
 void vtkWindowCube::removeContours()
 {
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+
+    if (parentWindow) {
+        parentWindow->removeActorFromRenderer(contoursActorForParent);
+    }
 }
 
 void vtkWindowCube::calculateAndShowMomentMap(int order)
