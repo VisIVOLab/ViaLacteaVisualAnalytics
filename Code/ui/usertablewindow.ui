@@ -199,7 +199,7 @@
               <x>0</x>
               <y>0</y>
               <width>198</width>
-              <height>646</height>
+              <height>620</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -240,13 +240,6 @@
           </widget>
          </widget>
         </item>
-        <item alignment="Qt::AlignRight">
-         <widget class="QPushButton" name="downloadImagesButton">
-          <property name="text">
-           <string>Download</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="cubesTab">
@@ -278,7 +271,7 @@
               <x>0</x>
               <y>0</y>
               <width>178</width>
-              <height>646</height>
+              <height>620</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -319,15 +312,28 @@
           </widget>
          </widget>
         </item>
-        <item alignment="Qt::AlignRight">
-         <widget class="QPushButton" name="downloadCubesButton">
-          <property name="text">
-           <string>Download</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </widget>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="ctnDownload" native="true">
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Select sources and surveys for the multi-cutout request, then click on the 'Send request' button.</string>
+         </property>
+        </widget>
+       </item>
+       <item alignment="Qt::AlignRight">
+        <widget class="QPushButton" name="btnSendRequest">
+         <property name="text">
+          <string>Send request</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
    </layout>

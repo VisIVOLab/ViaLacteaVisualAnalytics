@@ -85,8 +85,8 @@ public:
 private slots:
     void on_queryButton_clicked();
     void on_selectionComboBox_activated(const QString &arg1);
-    void on_downloadImagesButton_clicked();
-    void on_downloadCubesButton_clicked();
+    void on_tabWidget_currentChanged(int index);
+    void on_btnSendRequest_clicked();
 
 private:
     Ui::UserTableWindow *ui;
@@ -112,7 +112,8 @@ private:
     void changeSelectionMode(const QString &selectionMode);
     void query(int index = 0);
     void updateTables();
-    void downloadCutouts(int t);
+    QStringList getCutoutsList(int t);
+    void initMCutoutRequest();
 };
 
 #endif // USERTABLEWINDOW_H

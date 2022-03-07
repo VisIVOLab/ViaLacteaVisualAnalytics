@@ -4,6 +4,8 @@
 #include "authwrapper.h"
 #include "vialacteainitialquery.h"
 
+#include "mcutoutsummary.h"
+
 #include <QCheckBox>
 #include <QDebug>
 #include <QFile>
@@ -22,6 +24,7 @@ UserTableWindow::UserTableWindow(const QString &filepath, const QString &setting
       settings(settingsFile, QSettings::NativeFormat)
 {
     ui->setupUi(this);
+    ui->ctnDownload->hide();
     setAttribute(Qt::WA_DeleteOnClose);
 
     ui->tabWidget->setTabEnabled(1, false);
@@ -357,18 +360,17 @@ void UserTableWindow::updateTables()
     }
 }
 
-void UserTableWindow::downloadCutouts(int t)
+QStringList UserTableWindow::getCutoutsList(int t)
 {
     // t = 0 -> images; t = 1 -> cubes
     const QTableWidget *table = (t == 0) ? ui->imagesTable : ui->cubesTable;
     const auto &surveys = (t == 0) ? selectedSurveys2d : selectedSurveys3d;
 
-    QMap<QString, QStringList> cutouts;
+    QStringList cutouts;
 
     for (int row = 0; row < table->rowCount(); ++row) {
         if (table->item(row, 0)->checkState() == Qt::Checked) {
             const Source *source = selectedSources.at(row);
-            QStringList downloadLinks;
 
             for (auto it = surveys.constBegin(); it != surveys.constEnd(); ++it) {
                 auto survey = it.key();
@@ -377,50 +379,44 @@ void UserTableWindow::downloadCutouts(int t)
 
                 QString url;
                 if (source->getBestCutout(survey, species, transition, url)) {
-                    downloadLinks << url;
+                    cutouts << url;
                 }
-            }
-
-            if (!downloadLinks.isEmpty()) {
-                cutouts.insert(source->getDesignation(), downloadLinks);
             }
         }
     }
+
+    return cutouts;
+}
+
+void UserTableWindow::initMCutoutRequest()
+{
+    QStringList cutouts;
+    cutouts << getCutoutsList(0) << getCutoutsList(1);
 
     if (cutouts.isEmpty()) {
         // Nothing to do
         return;
     }
 
-    QString tmp = QFileDialog::getExistingDirectory(this, "Select a folder", QDir::homePath(),
-                                                    QFileDialog::ShowDirsOnly);
-
-    if (!tmp.isEmpty()) {
-        auto vlkb = new VialacteaInitialQuery("", this);
-        QDir dir(tmp);
-
-        for (auto i = cutouts.constBegin(); i != cutouts.constEnd(); ++i) {
-            dir.mkdir(i.key());
-            foreach (const auto &link, i.value()) {
-                vlkb->cutoutRequest(link, QDir(dir.absoluteFilePath(i.key())));
-            }
-        }
-    }
-}
-
-void UserTableWindow::on_downloadImagesButton_clicked()
-{
-    downloadCutouts(0);
-}
-
-void UserTableWindow::on_downloadCubesButton_clicked()
-{
-    downloadCutouts(1);
+    auto mcutoutWin = new MCutoutSummary(this, cutouts);
+    mcutoutWin->show();
+    mcutoutWin->activateWindow();
+    mcutoutWin->raise();
 }
 
 void UserTableWindow::on_selectionComboBox_activated(const QString &arg1)
 {
     changeSelectionMode(arg1);
+}
+
+void UserTableWindow::on_tabWidget_currentChanged(int index)
+{
+    ui->ctnDownload->setVisible(index != 0);
+}
+
+void UserTableWindow::on_btnSendRequest_clicked()
+{
+    initMCutoutRequest();
 }
 
 // ----------------------------------------------------------------------------------
@@ -478,6 +474,12 @@ void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
         auto survey = item.value("Survey");
         auto species = item.value("Species");
         auto transition = item.value("Transition");
+
+        auto code = item.value("code").toInt();
+        if (code == 0) {
+            // Skip merge entries
+            continue;
+        }
 
         if (species.contains("Continuum")) {
             images.append(item);

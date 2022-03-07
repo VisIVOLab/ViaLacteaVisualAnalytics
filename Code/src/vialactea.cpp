@@ -628,4 +628,6 @@ void ViaLactea::on_loadTableButton_clicked()
 
     auto win = new UserTableWindow(fn, m_sSettingsFile, this);
     win->showMaximized();
+    win->activateWindow();
+    win->raise();
 }

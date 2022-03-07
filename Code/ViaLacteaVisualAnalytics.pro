@@ -82,7 +82,7 @@ LIBS += \
     -lvtklz4-9.0 \
     -lvtklzma-9.0 \
     -lvtksys-9.0 \
-    -lvtkzlib-9.0 \
+    -lvtkzlib-9.0
 
 
 SOURCES += \
@@ -129,6 +129,7 @@ SOURCES += \
     src/lutselector.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
+    src/mcutoutsummary.cpp \
     src/observedobject.cpp \
     src/operationqueue.cpp \
     src/pipe.cpp \
@@ -198,6 +199,7 @@ HEADERS  += \
     src/luteditor.h \
     src/lutselector.h \
     src/mainwindow.h \
+    src/mcutoutsummary.h \
     src/observedobject.h \
     src/operationqueue.h \
     src/osxhelper.h \
@@ -257,6 +259,7 @@ FORMS += \
     ui/loadingwidget.ui \
     ui/lutcustomize.ui \
     ui/mainwindow.ui \
+    ui/mcutoutsummary.ui \
     ui/operationqueue.ui \
     ui/plotwindow.ui \
     ui/sedfitgrid_thick.ui \
