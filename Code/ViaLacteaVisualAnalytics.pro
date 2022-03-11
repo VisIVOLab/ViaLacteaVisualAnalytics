@@ -172,9 +172,10 @@ SOURCES += \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
-    src/xmlparser.cpp \
     src/vtkwindowcube.cpp \
-    src/vtkwindowimage.cpp
+    src/vtkwindowimage.cpp \
+    src/vtkwindowsources.cpp \
+    src/xmlparser.cpp
 
 
 HEADERS  += \
@@ -245,9 +246,10 @@ HEADERS  += \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
-    src/xmlparser.h \
     src/vtkwindowcube.h \
-    src/vtkwindowimage.h
+    src/vtkwindowimage.h \
+    src/vtkwindowsources.h \
+    src/xmlparser.h
 
 
 FORMS += \
@@ -282,7 +284,8 @@ FORMS += \
     ui/vtktoolswidget.ui \
     ui/vtkwindow_new.ui \
     ui/vtkwindowcube.ui \
-    ui/vtkwindowimage.ui
+    ui/vtkwindowimage.ui \
+    ui/vtkwindowsources.ui
 
 
 RESOURCES += \
