@@ -2783,16 +2783,17 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
         }
         // drawEllipse(ellipse_list,  QString::fromStdString(m_VisIVOTable->getName()) );
 
-        qDebug() << "\t draw " << wavelen[i] << " - "
-                 << stringDictWidget->getColUtypeStringDict().value(
-                            "vlkb_compactsources.sed_view_final.designation" + wavelen[i]);
+        QString utype = stringDictWidget->getColUtypeStringDict().value(
+                "compactsources.sed_view_final.designation" + wavelen[i]);
+        if (utype.isEmpty()) {
+            utype = wavelen[i];
+        }
+
+        qDebug() << "\t draw " << wavelen[i] << " - " << utype;
 
         auto ellipse_list = wavelen[i].compare("ft") == 0 ? ft_ellipse_list : ellipse_list_local;
         auto sourcePath = QString::fromStdString(m_VisIVOTable->getName());
-        drawEllipse(ellipse_list,
-                    stringDictWidget->getColUtypeStringDict().value(
-                            "vlkb_compactsources.sed_view_final.designation" + wavelen[i]),
-                    sourcePath);
+        drawEllipse(ellipse_list, utype, sourcePath);
 
         /*
         if(wavelen[i].compare("ft")==0)
