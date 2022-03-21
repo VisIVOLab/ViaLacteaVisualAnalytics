@@ -5,6 +5,8 @@
 
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHttpMultiPart>
+#include <QHttpPart>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -12,6 +14,7 @@
 #include <QMessageBox>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
 #include <QXmlStreamReader>
@@ -19,12 +22,16 @@
 MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
     : QWidget(parent, Qt::Window),
       ui(new Ui::MCutoutSummary),
-      mcutoutEndpoint("http://vlkb.neanias.eu:8080/vlkb-datasetstestmcutout/vlkb_mcutout")
+      mcutoutEndpoint(
+              "http://vlkb.neanias.eu:8080/vlkb-datasetstestmcutoutuws/uws_mcutout/mcutout"),
+      pollTimeout(2000)
 {
     ui->setupUi(this);
     ui->textWait->hide();
     ui->progressBar->hide();
     setAttribute(Qt::WA_DeleteOnClose);
+    connect(this, &MCutoutSummary::jobSubmitted, this, &MCutoutSummary::pollJob);
+    connect(this, &MCutoutSummary::jobCompleted, this, &MCutoutSummary::getJobReport);
 
     nam = new QNetworkAccessManager(this);
 
@@ -37,6 +44,86 @@ MCutoutSummary::~MCutoutSummary()
     delete ui;
 }
 
+void MCutoutSummary::startJob(const QString &jobId)
+{
+    QString url = QString("%1/%2/phase").arg(mcutoutEndpoint, jobId);
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("PHASE", "RUN");
+    QByteArray body = urlQuery.toString(QUrl::FullyEncoded).toUtf8();
+
+    QNetworkRequest req(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    auto reply = nam->post(req, body);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, jobId]() {
+        auto statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        if (statusCode == 303) {
+            pollJob(jobId);
+        } else {
+            QMessageBox::critical(this, tr("Error"), reply->errorString());
+        }
+
+        reply->deleteLater();
+    });
+}
+
+void MCutoutSummary::pollJob(const QString &jobId)
+{
+    qDebug() << Q_FUNC_INFO << "Started job" << jobId;
+    auto timer = new QTimer(this);
+    timer->setInterval(pollTimeout);
+    connect(timer, &QTimer::timeout, this, [this, timer, jobId]() {
+        QString url = QString("%1/%2/phase").arg(mcutoutEndpoint, jobId);
+        QNetworkRequest req(url);
+        auto reply = nam->get(req);
+
+        connect(reply, &QNetworkReply::finished, this, [this, timer, jobId, reply]() {
+            if (reply->error() == QNetworkReply::NoError) {
+                QString phase = QString(reply->readAll()).trimmed();
+
+                if (phase == "COMPLETED") {
+                    timer->deleteLater();
+                    emit jobCompleted(jobId);
+                } else if (phase == "HELD") {
+                    timer->deleteLater();
+                    // Need to restart the job manually
+                    startJob(jobId);
+                } else if (phase == "ABORTED") {
+                    timer->deleteLater();
+                    /// \todo
+                } else if (phase == "ERROR") {
+                    timer->deleteLater();
+                    /// \todo
+                }
+            } else {
+                QMessageBox::critical(this, tr("Error"), reply->errorString());
+                timer->stop();
+                timer->deleteLater();
+            }
+
+            reply->deleteLater();
+        });
+    });
+    timer->start();
+}
+
+void MCutoutSummary::getJobReport(const QString &jobId)
+{
+    QString url = QString("%1/%2/results/Report").arg(mcutoutEndpoint, jobId);
+    QNetworkRequest req(url);
+    auto reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            parseXmlResponse(reply);
+        } else {
+            QMessageBox::critical(this, tr("Error"), reply->errorString());
+        }
+
+        reply->deleteLater();
+    });
+}
+
 void MCutoutSummary::createRequestBody(const QStringList &cutouts)
 {
     auto listToMap = [](const QList<QPair<QString, QString>> &list) -> QMap<QString, QString> {
@@ -47,8 +134,6 @@ void MCutoutSummary::createRequestBody(const QStringList &cutouts)
         return map;
     };
 
-    QJsonArray body;
-
     foreach (auto &&cutout, cutouts) {
         QUrl url(cutout);
         auto queryItems = QUrlQuery(url).queryItems();
@@ -58,35 +143,30 @@ void MCutoutSummary::createRequestBody(const QStringList &cutouts)
         obj["pubdid"] = params["pubdid"];
 
         QJsonObject coord;
-        coord["lon_deg"] = params["l"].toDouble();
-        coord["lat_deg"] = params["b"].toDouble();
+        coord["l"] = params["l"].toDouble();
+        coord["b"] = params["b"].toDouble();
         if (params.contains("vl"))
-            coord["vl_kmps"] = params["vl"].toDouble();
+            coord["vl"] = params["vl"].toDouble();
         if (params.contains("vu"))
-            coord["vu_kmps"] = params["vu"].toDouble();
+            coord["vu"] = params["vu"].toDouble();
         if (params.contains("r")) {
-            coord["dlon_deg"] = params["r"].toDouble();
-            coord["dlat_deg"] = params["r"].toDouble();
+            coord["r"] = params["r"].toDouble();
         } else {
-            coord["dlon_deg"] = params["dl"].toDouble();
-            coord["dlat_deg"] = params["db"].toDouble();
+            coord["dl"] = params["dl"].toDouble();
+            coord["db"] = params["db"].toDouble();
         }
         obj["coord"] = coord;
 
-        QJsonObject subsurvey;
-        subsurvey["survey_name"] = params["surveyname"];
-        subsurvey["species"] = params["species"];
-        subsurvey["transition"] = params["transition"];
-        // obj["subsrv"] = subsurvey;
-
-        body.append(obj);
+        requestBody.append(obj);
     }
-
-    requestBody = body;
 }
 
 void MCutoutSummary::initSummaryTable()
 {
+    QString title = QString("%1 (%2 cutouts)")
+                            .arg(ui->tableGroupBox->title(), QString::number(requestBody.count()));
+    ui->tableGroupBox->setTitle(title);
+
     ui->tableSummary->setRowCount(0);
     foreach (auto &&el, requestBody) {
         auto obj = el.toObject();
@@ -98,27 +178,40 @@ void MCutoutSummary::initSummaryTable()
     ui->tableSummary->resizeColumnsToContents();
 }
 
-void MCutoutSummary::sendRequest()
+void MCutoutSummary::submitJob()
 {
-    QNetworkRequest req(mcutoutEndpoint);
-    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
     QJsonDocument body(requestBody);
-    auto res = nam->post(req, body.toJson());
-    connect(res, &QNetworkReply::finished, this, [this, res]() -> void {
-        if (res->error() == QNetworkReply::NoError) {
-            parseXmlResponse(res);
+    QHttpPart mcutout;
+    mcutout.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/json"));
+    mcutout.setHeader(QNetworkRequest::ContentDispositionHeader,
+                      QVariant("form-data; name=\"mcutout\"; filename=\"mcutout\""));
+    mcutout.setBody(body.toJson());
+
+    auto multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    multipart->append(mcutout);
+
+    QUrl url(mcutoutEndpoint);
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("PHASE", "RUN");
+    url.setQuery(urlQuery);
+
+    QNetworkRequest req(url);
+    auto reply = nam->post(req, multipart);
+    multipart->setParent(reply);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        if (statusCode == 303) {
+            QString location = reply->header(QNetworkRequest::LocationHeader).toString();
+            QString jobId = location.split('/').last();
+            emit jobSubmitted(jobId);
         } else {
-            QMessageBox::critical(this, tr("Error"), res->errorString());
+            QMessageBox::critical(this, tr("Error"), reply->errorString());
         }
 
-        ui->textWait->hide();
-        ui->progressBar->hide();
-        res->deleteLater();
+        reply->deleteLater();
     });
-
-    ui->textWait->show();
-    ui->progressBar->show();
 }
 
 void MCutoutSummary::downloadArchive(const QString &absolutePath)
@@ -152,11 +245,10 @@ void MCutoutSummary::downloadArchive(const QString &absolutePath)
 
 void MCutoutSummary::parseXmlResponse(QNetworkReply *body)
 {
-    /// \todo Cleanup
+    // Start sub-parsers
     auto parseURL = [this](QXmlStreamReader &xml) {
         xml.readNext();
         downloadUrl = QUrl(xml.text().trimmed().toString());
-        qDebug() << "URL" << downloadUrl;
     };
 
     auto parseItem = [this](QXmlStreamReader &xml) {
@@ -167,19 +259,8 @@ void MCutoutSummary::parseXmlResponse(QNetworkReply *body)
                 continue;
             }
 
-            if (xml.name() == "INDEX") {
-                xml.readNext();
-                qDebug() << "INDEX" << xml.text().trimmed();
-            }
-
-            if (xml.name() == "CONTENT_CODE") {
-                xml.readNext();
-                qDebug() << "CONTENT_CODE" << xml.text().trimmed();
-            }
-
             if (xml.name() == "CONTENT") {
                 xml.readNext();
-                qDebug() << "CONTENT" << xml.text().trimmed();
                 responseContents << xml.text().trimmed().toString();
             }
         }
@@ -198,6 +279,7 @@ void MCutoutSummary::parseXmlResponse(QNetworkReply *body)
             }
         }
     };
+    // End sub-parsers
 
     responseContents.clear();
     QXmlStreamReader xml(body);
@@ -208,27 +290,30 @@ void MCutoutSummary::parseXmlResponse(QNetworkReply *body)
             continue;
         }
 
-        if (xml.isStartElement() && xml.name() == "URL") {
+        if (xml.name() == "URL") {
             parseURL(xml);
         }
 
-        if (xml.isStartElement() && xml.name() == "URL_CONTENT") {
+        if (xml.name() == "URL_CONTENT") {
             parseURLContent(xml);
         }
     }
 
     if (xml.hasError()) {
-        qDebug() << xml.errorString();
+        qDebug() << Q_FUNC_INFO << xml.errorString();
+        QMessageBox::critical(this, tr("Error"), xml.errorString());
     }
 
     for (int i = 0; i < responseContents.size(); ++i) {
         QString text =
-                responseContents.at(i).contains("vlkb_cutout") ? "SUCCESS" : responseContents.at(i);
+                responseContents.at(i).contains("vlkb_cutout") ? "Success" : responseContents.at(i);
         ui->tableSummary->item(i, 1)->setText(text);
     }
 
-    ui->textWait->show();
-    ui->textWait->setText("The archive is ready, click confirm to download it.");
+    ui->progressBar->hide();
+    ui->textWait->setText("You can now download the archive.");
+    ui->btnSendRequest->setText("Download");
+    ui->btnSendRequest->setEnabled(true);
 }
 
 void MCutoutSummary::on_tableSummary_itemClicked(QTableWidgetItem *item)
@@ -236,28 +321,28 @@ void MCutoutSummary::on_tableSummary_itemClicked(QTableWidgetItem *item)
     int row = ui->tableSummary->row(item);
     auto obj = requestBody.at(row).toObject();
     auto coord = obj["coord"].toObject();
-    auto subsrv = obj["subsrv"].toObject();
 
     ui->textPubDID->setText(obj["pubdid"].toString());
-    ui->textSurvey->setText(subsrv["survey_name"].toString());
-    ui->textSpecies->setText(subsrv["species"].toString());
-    ui->textTransition->setText(subsrv["transition"].toString());
-    ui->textLon->setText(QString::number(coord["lon_deg"].toDouble(), 'f', 4));
-    ui->textLat->setText(QString::number(coord["lat_deg"].toDouble(), 'f', 4));
-    ui->textDLon->setText(QString::number(coord["dlon_deg"].toDouble(), 'f', 4));
-    ui->textDLat->setText(QString::number(coord["dlat_deg"].toDouble(), 'f', 4));
+    ui->textLon->setText(QString::number(coord["l"].toDouble(), 'f', 4));
+    ui->textLat->setText(QString::number(coord["b"].toDouble(), 'f', 4));
+    ui->textRadius->setText(QString::number(coord["r"].toDouble(), 'f', 4));
+    ui->textDLon->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
+    ui->textDLat->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
     ui->textStatus->setText(ui->tableSummary->item(row, 1)->text());
 }
 
 void MCutoutSummary::on_btnSendRequest_clicked()
 {
     if (downloadUrl.isEmpty()) {
-        sendRequest();
+        submitJob();
+        ui->btnSendRequest->setEnabled(false);
+        ui->textWait->show();
+        ui->progressBar->show();
     } else {
         QFileInfo info(downloadUrl.toString());
-        qDebug() << info.fileName();
         QString path = QFileDialog::getSaveFileName(this, "Save archive",
-                                                    QDir::home().absoluteFilePath(info.fileName()));
+                                                    QDir::home().absoluteFilePath(info.fileName()),
+                                                    "Archive (*.tar.gz)");
         if (path.isEmpty()) {
             return;
         }

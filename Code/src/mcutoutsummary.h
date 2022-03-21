@@ -18,7 +18,15 @@ public:
     explicit MCutoutSummary(QWidget *parent, const QStringList &cutouts);
     ~MCutoutSummary();
 
+signals:
+    void jobSubmitted(const QString &jobId);
+    void jobCompleted(const QString &jobId);
+
 private slots:
+    void startJob(const QString &jobId);
+    void pollJob(const QString &jobId);
+    void getJobReport(const QString &jobId);
+
     void on_tableSummary_itemClicked(QTableWidgetItem *item);
     void on_btnSendRequest_clicked();
 
@@ -27,13 +35,14 @@ private:
     QNetworkAccessManager *nam;
 
     QString mcutoutEndpoint;
+    int pollTimeout;
     QJsonArray requestBody;
     QStringList responseContents;
     QUrl downloadUrl;
 
     void createRequestBody(const QStringList &cutouts);
     void initSummaryTable();
-    void sendRequest();
+    void submitJob();
     void downloadArchive(const QString &absolutePath);
     void parseXmlResponse(QNetworkReply *body);
 };
