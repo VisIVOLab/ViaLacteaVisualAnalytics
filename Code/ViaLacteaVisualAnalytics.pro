@@ -144,6 +144,7 @@ SOURCES += \
     src/sedvisualizerplot.cpp \
     src/selectedsourcefieldsselect.cpp \
     src/selectedsourcesform.cpp \
+    src/sessionloader.cpp \
     src/settingform.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
@@ -215,6 +216,7 @@ HEADERS  += \
     src/sedvisualizerplot.h \
     src/selectedsourcefieldsselect.h \
     src/selectedsourcesform.h \
+    src/sessionloader.h \
     src/settingform.h \
     src/singleton.h \
     src/treeitem.h \
@@ -267,6 +269,7 @@ FORMS += \
     ui/sedvisualizerplot.ui \
     ui/selectedsourcefieldsselect.ui \
     ui/selectedsourcesform.ui \
+    ui/sessionloader.ui \
     ui/settingform.ui \
     ui/usertablewindow.ui \
     ui/vialactea.ui \

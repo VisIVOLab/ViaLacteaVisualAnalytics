@@ -91,6 +91,7 @@ private:
     vtkwindow_new *masterWin = nullptr;
 
     bool canImportToMasterWin(std::string importFn);
+    void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
 
 protected:
     void closeEvent(QCloseEvent *);

@@ -4764,14 +4764,17 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &session
 
     foreach (const auto &it, layers) {
         auto layer = it.toObject();
-        QString filepath;
+        if (!layer["enabled"].toBool()) {
+            continue;
+        }
+
+        QString filepath = sessionRootFolder.absoluteFilePath(layer["fits"].toString());
 
         vtkSmartPointer<vtkFitsReader> fitsReader;
         // If this layer is origin, then we already have the fitsReader
         if (layer["origin"].toBool()) {
             fitsReader = myfits;
         } else {
-            filepath = sessionRootFolder.absoluteFilePath(layer["fits"].toString());
             fitsReader = vtkSmartPointer<vtkFitsReader>::New();
             fitsReader->SetFileName(filepath.toStdString());
             if (layer["type"].toString() == "Moment") {
@@ -4787,12 +4790,12 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &session
         auto listItem = ui->listWidget->currentItem();
         listItem->setText(layer["text"].toString(filename));
         changeFitsScale(layer["lutType"].toString("Gray").toStdString(),
-                        layer["lutScale"].toString("Log").toStdString());
+            layer["lutScale"].toString("Log").toStdString());
         vtkImageSlice::SafeDownCast(
-                imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
-                ->GetProperty()
-                ->SetOpacity(layer["opacity"].toInt(100) / 100.0);
-        listItem->setCheckState(layer["enabled"].toBool(false) ? Qt::Checked : Qt::Unchecked);
+            imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
+            ->GetProperty()
+            ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
+        listItem->setCheckState(layer["show"].toBool(false) ? Qt::Checked : Qt::Unchecked);
     }
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
     ui->listWidget->setCurrentRow(0);
@@ -4900,16 +4903,24 @@ void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &sessio
 void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &sessionRootFolder)
 {
     foreach (const auto &dc, datacubes) {
+        auto enabled = dc["enabled"].toBool();
+        if (!enabled) {
+            continue;
+        }
+
         auto fitsPath = sessionRootFolder.absoluteFilePath(dc["fits"].toString());
-        auto threshold = dc["threshold"].toInt(0);
         auto slice = dc["slice"].toInt(1);
 
         auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
         fitsReader->SetFileName(fitsPath.toStdString());
         fitsReader->is3D = true;
+
         auto win = new vtkwindow_new(this, fitsReader, 1, this);
-        win->setThresholdValue(threshold);
         win->setCuttingPlaneValue(slice);
+
+        if (dc.toObject().contains("threshold")) {
+            win->setThresholdValue(dc["threshold"].toInt());
+        }
 
         auto contours = dc["contours"].toObject();
         if (!contours.isEmpty()) {
@@ -4991,7 +5002,8 @@ void vtkwindow_new::on_actionSave_session_triggered()
                         ->GetProperty()
                         ->GetOpacity()
                 * 100;
-        layer["enabled"] = listItem->checkState() == Qt::Checked;
+        layer["show"] = listItem->checkState() == Qt::Checked;
+        layer["enabled"] = true;
         layers.append(layer);
     }
     image["layers"] = layers;
@@ -5078,7 +5090,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
     // Datacubes
     QJsonArray datacubes;
     foreach (const auto &win, this->findChildren<vtkwindow_new *>()) {
-        if (!win->isDatacube || !win->isVisible())
+        if (!win->isDatacube)
             continue;
 
         auto fits = QFileInfo(QString::fromStdString(win->getFitsImage()->GetFileName()));
@@ -5088,6 +5100,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
         dc["fits"] = sessionFolder.relativeFilePath(dst);
         dc["threshold"] = win->getThresholdValue();
         dc["slice"] = win->getCuttingPlaneValue();
+        dc["enabled"] = win->isVisible();
 
         QJsonObject contours;
         int level;

@@ -7,6 +7,7 @@
 #include "mainwindow.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
+#include "sessionloader.h"
 #include "settingform.h"
 #include "singleton.h"
 #include "usertablewindow.h"
@@ -392,6 +393,19 @@ bool ViaLactea::canImportToMasterWin(std::string importFn)
     return false;
 }
 
+void ViaLactea::sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results)
+{
+    QDir dir(currentDir);
+
+    foreach (auto &&file, dir.entryInfoList({ "*.fit", "*.fits" }, QDir::Files)) {
+        results << rootDir.relativeFilePath(file.absoluteFilePath());
+    }
+
+    foreach (auto &&subDir, dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        sessionScan(subDir.absoluteFilePath(), rootDir, results);
+    }
+}
+
 void ViaLactea::on_localDCPushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
@@ -561,63 +575,74 @@ void ViaLactea::on_actionLoad_session_triggered()
         return;
     }
 
-    QString fn =
-            QFileDialog::getOpenFileName(this, "Load a session", QDir::homePath(), "JSON (*.json)");
-    if (fn.isEmpty())
-        return;
-
-    QFile sessionFile(fn);
-    sessionFile.open(QFile::ReadOnly);
-    QJsonObject root = QJsonDocument::fromJson(sessionFile.readAll()).object();
-    sessionFile.close();
-
-    if (root.isEmpty()) {
-        QMessageBox::critical(this, tr("Load a session"),
-                              tr("Failed to parse the session configuration. Loading aborted."));
+    QString rootPath = QFileDialog::getExistingDirectory(this, "Load a session", QDir::homePath());
+    if (rootPath.isEmpty()) {
         return;
     }
 
-    // Check for the origin layer and start a new window
-    auto layers = root["image"].toObject()["layers"].toArray();
-    QJsonObject originLayer;
-    bool found = false;
-    foreach (const auto &it, layers) {
-        auto layer = it.toObject();
-        if (layer["origin"].toBool()) {
-            originLayer = layer;
-            found = true;
-            break;
+    QString fn = QDir(rootPath).absoluteFilePath("session.json");
+    if (!QFile::exists(fn)) {
+        // Scan the folder for fits files and create the session file on-the-fly
+
+        QStringList fits;
+        QDir rootDir(rootPath);
+        sessionScan(rootPath, rootDir, fits);
+
+        QJsonArray layers;
+        QJsonArray datacubes;
+        foreach (auto &&file, fits) {
+            std::string fn = rootDir.absoluteFilePath(file).toStdString();
+            int status = 0;
+            fitsfile *fptr;
+
+            if (fits_open_data(&fptr, fn.c_str(), READONLY, &status)) {
+                fits_report_error(stderr, status);
+                continue;
+            }
+
+            int naxis;
+            if (fits_get_img_dim(fptr, &naxis, &status)) {
+                fits_report_error(stderr, status);
+                continue;
+            }
+
+            if (naxis == 3) {
+                QJsonObject dc;
+                dc["fits"] = file;
+                dc["enabled"] = false;
+                datacubes.append(dc);
+            } else {
+                QJsonObject layer;
+                layer["fits"] = file;
+                layer["type"] = "Continuum";
+                layer["enabled"] = false;
+                layers.append(layer);
+            }
+
+            fits_close_file(fptr, &status);
         }
+
+        QJsonObject image;
+        image["layers"] = layers;
+
+        QJsonObject root;
+        root["datacubes"] = datacubes;
+        root["image"] = image;
+
+        QJsonDocument doc(root);
+        QFile tmp(fn);
+        if (!tmp.open(QFile::WriteOnly)) {
+            QMessageBox::critical(this, tr("Error"), tmp.errorString());
+            return;
+        }
+        tmp.write(doc.toJson());
+        tmp.close();
     }
 
-    if (!found) {
-        QMessageBox::critical(this, tr("Load a session"),
-                              tr("Cannot load the session: there is no origin layer."));
-        return;
-    }
-
-    QDir sessionRootFolder = QFileInfo(fn).dir();
-    QString fits = sessionRootFolder.absoluteFilePath(originLayer["fits"].toString());
-    auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
-    fitsReader->SetFileName(fits.toStdString());
-    if (originLayer["type"].toString() == "Moment") {
-        fitsReader->isMoment3D = true;
-        fitsReader->setMomentOrder(originLayer["moment_order"].toInt());
-    }
-
-    double coords[2], rectSize[2];
-    AstroUtils().GetCenterCoords(fits.toStdString(), coords);
-    AstroUtils().GetRectSize(fits.toStdString(), rectSize);
-    auto vq = new VialacteaInitialQuery;
-    connect(vq, &VialacteaInitialQuery::searchDone, this,
-            [this, vq, fitsReader, fn, sessionRootFolder](QList<QMap<QString, QString>> results) {
-                auto win = new vtkwindow_new(this, fitsReader);
-                win->setDbElements(results);
-                win->loadSession(fn, sessionRootFolder);
-                setMasterWin(win);
-                vq->deleteLater();
-            });
-    vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    auto sessionLoader = new SessionLoader(this, fn);
+    sessionLoader->show();
+    sessionLoader->activateWindow();
+    sessionLoader->raise();
 }
 
 void ViaLactea::on_loadTableButton_clicked()
