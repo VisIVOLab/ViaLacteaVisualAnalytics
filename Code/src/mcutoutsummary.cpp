@@ -1,6 +1,7 @@
 #include "mcutoutsummary.h"
 #include "ui_mcutoutsummary.h"
 
+#include "authwrapper.h"
 #include "loadingwidget.h"
 
 #include <QFileDialog>
@@ -23,7 +24,7 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
     : QWidget(parent, Qt::Window),
       ui(new Ui::MCutoutSummary),
       mcutoutEndpoint(
-              "http://vlkb.neanias.eu:8080/vlkb-datasetstestmcutoutuws/uws_mcutout/mcutout"),
+              "http://vlkb.neanias.eu:8080/vlkb-datasetstestmcutoutuwsauth/uws_mcutout/mcutout"),
       pollTimeout(2000)
 {
     ui->setupUi(this);
@@ -76,6 +77,7 @@ void MCutoutSummary::pollJob(const QString &jobId)
     connect(timer, &QTimer::timeout, this, [this, timer, jobId]() {
         QString url = QString("%1/%2/phase").arg(mcutoutEndpoint, jobId);
         QNetworkRequest req(url);
+        NeaniasVlkbAuth::Instance().putAccessToken(req);
         auto reply = nam->get(req);
 
         connect(reply, &QNetworkReply::finished, this, [this, timer, jobId, reply]() {
@@ -97,9 +99,12 @@ void MCutoutSummary::pollJob(const QString &jobId)
                     /// \todo
                 }
             } else {
-                QMessageBox::critical(this, tr("Error"), reply->errorString());
                 timer->stop();
                 timer->deleteLater();
+                QMessageBox::critical(this, tr("Error"), reply->errorString());
+                ui->btnSendRequest->setEnabled(true);
+                ui->textWait->hide();
+                ui->progressBar->hide();
             }
 
             reply->deleteLater();
@@ -112,12 +117,16 @@ void MCutoutSummary::getJobReport(const QString &jobId)
 {
     QString url = QString("%1/%2/results/Report").arg(mcutoutEndpoint, jobId);
     QNetworkRequest req(url);
+    NeaniasVlkbAuth::Instance().putAccessToken(req);
     auto reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             parseXmlResponse(reply);
         } else {
             QMessageBox::critical(this, tr("Error"), reply->errorString());
+            ui->btnSendRequest->setEnabled(true);
+            ui->textWait->hide();
+            ui->progressBar->hide();
         }
 
         reply->deleteLater();
@@ -196,6 +205,7 @@ void MCutoutSummary::submitJob()
     url.setQuery(urlQuery);
 
     QNetworkRequest req(url);
+    NeaniasVlkbAuth::Instance().putAccessToken(req);
     auto reply = nam->post(req, multipart);
     multipart->setParent(reply);
 
@@ -208,6 +218,9 @@ void MCutoutSummary::submitJob()
             emit jobSubmitted(jobId);
         } else {
             QMessageBox::critical(this, tr("Error"), reply->errorString());
+            ui->btnSendRequest->setEnabled(true);
+            ui->textWait->hide();
+            ui->progressBar->hide();
         }
 
         reply->deleteLater();
@@ -221,6 +234,7 @@ void MCutoutSummary::downloadArchive(const QString &absolutePath)
     loading->show();
 
     QNetworkRequest req(downloadUrl);
+    NeaniasVlkbAuth::Instance().putAccessToken(req);
     auto reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, absolutePath, reply, loading]() {
         if (reply->error() == QNetworkReply::NoError) {
