@@ -1176,7 +1176,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         compact->addAction(local);
 
         QAction *localJson = new QAction("From JSON catalogue");
-        connect(localJson, &QAction::triggered, this, &vtkwindow_new::addSourcesFromJson);
+        connect(localJson, &QAction::triggered, this, [this]() {
+            QString fn = QFileDialog::getOpenFileName(this, "Open JSON Catalogue", QDir::homePath(),
+                                                      "JSON Catalogue (*.json)");
+            if (!fn.isEmpty()) {
+                addSourcesFromJson(fn);
+            }
+        });
         compact->addAction(localJson);
 
         QAction *ds9 = new QAction("From DS9 Region");
@@ -2281,6 +2287,9 @@ void vtkwindow_new::addDS9Regions(const QString &filepath)
 
     if (!ellipses.empty())
         drawEllipseRegions(ellipses);
+
+    ds9RegionFiles << filepath;
+    sessionModified();
 }
 
 int vtkwindow_new::getDS9RegionCoordSystem(const DS9Region *region)
@@ -2534,14 +2543,8 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
     addCombinedLayer("DS9 Region - Ellipses", actor, 2, true);
 }
 
-void vtkwindow_new::addSourcesFromJson()
+void vtkwindow_new::addSourcesFromJson(const QString &fn)
 {
-    QString fn = QFileDialog::getOpenFileName(this, "Open JSON Catalogue", QDir::homePath(),
-                                              "JSON Catalogue (*.json)");
-    if (fn.isEmpty()) {
-        return;
-    }
-
     QFile jsonFile(fn);
     jsonFile.open(QFile::ReadOnly);
     QJsonObject root = QJsonDocument::fromJson(jsonFile.readAll()).object();
@@ -2576,15 +2579,16 @@ void vtkwindow_new::addSourcesFromJson()
             int i = 0;
             foreach (auto arr_v, vertices) {
                 QJsonArray vertex = arr_v.toArray();
-                points->InsertNextPoint(vertex.at(0).toDouble(), vertex.at(1).toDouble(), arcsec);
+                points->InsertNextPoint(vertex.at(0).toDouble() + 1, vertex.at(1).toDouble() + 1,
+                                        arcsec);
                 polyLine->GetPointIds()->SetId(i, i);
                 ++i;
             }
 
             // Connect the last and the first vertices
             QJsonArray firstVertex = vertices.at(0).toArray();
-            points->InsertNextPoint(firstVertex.at(0).toDouble(), firstVertex.at(1).toDouble(),
-                                    arcsec);
+            points->InsertNextPoint(firstVertex.at(0).toDouble() + 1,
+                                    firstVertex.at(1).toDouble() + 1, arcsec);
             polyLine->GetPointIds()->SetId(i, i);
 
             auto cells = vtkSmartPointer<vtkCellArray>::New();
@@ -2612,6 +2616,8 @@ void vtkwindow_new::addSourcesFromJson()
     actor->GetProperty()->SetColor(1, 0, 0);
 
     addCombinedLayer(QFileInfo(fn).baseName(), actor, 2, true);
+    jsonRegionFiles << fn;
+    sessionModified();
 }
 
 void vtkwindow_new::closeEvent(QCloseEvent *event)
@@ -5146,6 +5152,10 @@ bool vtkwindow_new::confirmSaveAndExit()
 
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &sessionRootFolder)
 {
+    if (layers.count() == 1) {
+        return;
+    }
+
     // Clear current layers
     ui->listWidget->clear();
     imgLayerList.clear();
@@ -5231,28 +5241,37 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &sessionRoo
         auto compactSource = it.toObject();
         QString filepath = sessionRootFolder.absoluteFilePath(compactSource["file"].toString());
         QString filename = QFileInfo(filepath).baseName();
-        fileLoad->init(filepath);
 
-        if (compactSource["bandmerged"].toBool()) {
-            fileLoad->setWavelength("all");
-            fileLoad->on_okPushButton_clicked();
-            foreach (const auto &item, compactSource["tableItems"].toArray()) {
-                auto text = item["text"].toString();
-                auto enabled = item["enabled"].toBool(false);
-                auto color = item["color"].toArray();
+        QString format = compactSource["format"].toString("tsv");
+
+        if (format == "tsv") {
+            fileLoad->init(filepath);
+
+            if (compactSource["bandmerged"].toBool()) {
+                fileLoad->setWavelength("all");
+                fileLoad->on_okPushButton_clicked();
+                foreach (const auto &item, compactSource["tableItems"].toArray()) {
+                    auto text = item["text"].toString();
+                    auto enabled = item["enabled"].toBool(false);
+                    auto color = item["color"].toArray();
+                    double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
+                                      color.at(2).toDouble() };
+                    setTableItemInfo(text, enabled, rgb);
+                }
+            } else {
+                fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
+                fileLoad->on_okPushButton_clicked();
+                auto text = compactSource["text"].toString(filename);
+                auto enabled = compactSource["enabled"].toBool(false);
+                auto color = compactSource["color"].toArray();
                 double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
                                   color.at(2).toDouble() };
                 setTableItemInfo(text, enabled, rgb);
             }
-        } else {
-            fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
-            fileLoad->on_okPushButton_clicked();
-            auto text = compactSource["text"].toString(filename);
-            auto enabled = compactSource["enabled"].toBool(false);
-            auto color = compactSource["color"].toArray();
-            double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
-                              color.at(2).toDouble() };
-            setTableItemInfo(text, enabled, rgb);
+        } else if (format == "ds9") {
+            addDS9Regions(filepath);
+        } else if (format == "json") {
+            addSourcesFromJson(filepath);
         }
     }
 
@@ -5397,6 +5416,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
         QJsonObject compactSource;
         compactSource["file"] = sessionFolder.relativeFilePath(dst);
         compactSource["bandmerged"] = bandmerged;
+        compactSource["format"] = "tsv";
 
         if (bandmerged) {
             QJsonArray tableItems;
@@ -5431,6 +5451,28 @@ void vtkwindow_new::on_actionSave_session_triggered()
             compactSource["color"] = rgb;
         }
 
+        sources.append(compactSource);
+    }
+    foreach (auto &&file, ds9RegionFiles) {
+        auto srcInfo = QFileInfo(file);
+
+        QString src = srcInfo.absoluteFilePath();
+        QString dst = fileInSession(srcInfo, "ds9_regions");
+
+        QJsonObject compactSource;
+        compactSource["file"] = sessionFolder.relativeFilePath(dst);
+        compactSource["format"] = "ds9";
+        sources.append(compactSource);
+    }
+    foreach (auto &&file, jsonRegionFiles) {
+        auto srcInfo = QFileInfo(file);
+
+        QString src = srcInfo.absoluteFilePath();
+        QString dst = fileInSession(srcInfo, "json_catalogues");
+
+        QJsonObject compactSource;
+        compactSource["file"] = sessionFolder.relativeFilePath(dst);
+        compactSource["format"] = "json";
         sources.append(compactSource);
     }
     image["compact_sources"] = sources;

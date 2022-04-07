@@ -139,7 +139,7 @@ public:
 
     vtkSmartPointer<vtkImageViewer2> imageViewer;
     void addSources(VSTableDesktop *m_VisIVOTable);
-    void addSourcesFromJson();
+    void addSourcesFromJson(const QString &fn);
     void addFilaments(VSTableDesktop *m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop *m_VisIVOTable);
     void addBubble(VSTableDesktop *m_VisIVOTable);
@@ -227,6 +227,9 @@ private:
     // QString filenameWithPath;
     QHash<QString, vtkSmartPointer<vtkLODActor>> ellipse_actor_list;
     QHash<QString, vtkSmartPointer<vtkLODActor>> visualized_actor_list;
+
+    QStringList ds9RegionFiles;
+    QStringList jsonRegionFiles;
 
     QHash<QString, QString> designation2fileMap;
     QHash<QString, vtkSmartPointer<vtkLODActor>> VisualizedEllipseSourcesList;
