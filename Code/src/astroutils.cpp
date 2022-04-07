@@ -65,10 +65,19 @@ void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double
     WorldCoor *wc = AstroUtils().GetWCSFITS((char *)file.c_str(), 1);
     AstroUtils().xy2sky(file, 0, wc->nypix, tl, WCS_GALACTIC);
     AstroUtils().xy2sky(file, wc->nxpix, 0, br, WCS_GALACTIC);
+
+    /*
     *top = tl[1];
     *left = tl[0];
     *bottom = br[1];
     *right = br[0];
+    */
+
+    *top = fmax(tl[1], br[1]);
+    *bottom = fmin(tl[1], br[1]);
+    *left = fmax(tl[0], br[0]);
+    *right = fmin(tl[0], br[0]);
+
     wcsfree(wc);
 }
 
@@ -85,7 +94,7 @@ bool AstroUtils::CheckOverlap(std::string f1, std::string f2, bool full)
         double T2, B2, R2, L2;
         AstroUtils().GetBounds(f2, &T2, &B2, &R2, &L2);
 
-        return L1 > R2 && R1 < L2 && T1 > B2 && B1 < T2;
+        return L1 >= R2 && R1 <= L2 && T1 >= B2 && B1 <= T2;
     }
 }
 

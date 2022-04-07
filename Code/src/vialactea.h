@@ -74,6 +74,8 @@ private slots:
     void updateVLKBSetting();
     void on_actionLoad_session_triggered();
 
+    void on_loadTableButton_clicked();
+
 private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
@@ -89,6 +91,7 @@ private:
     vtkwindow_new *masterWin = nullptr;
 
     bool canImportToMasterWin(std::string importFn);
+    void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
 
 protected:
     void closeEvent(QCloseEvent *);

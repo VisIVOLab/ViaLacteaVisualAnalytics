@@ -131,6 +131,7 @@ SOURCES += \
     src/lutselector.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
+    src/mcutoutsummary.cpp \
     src/observedobject.cpp \
     src/operationqueue.cpp \
     src/pipe.cpp \
@@ -145,9 +146,11 @@ SOURCES += \
     src/sedvisualizerplot.cpp \
     src/selectedsourcefieldsselect.cpp \
     src/selectedsourcesform.cpp \
+    src/sessionloader.cpp \
     src/settingform.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
+    src/usertablewindow.cpp \
     src/vialactea.cpp \
     src/vialactea_fileload.cpp \
     src/vialacteainitialquery.cpp \
@@ -203,6 +206,7 @@ HEADERS  += \
     src/luteditor.h \
     src/lutselector.h \
     src/mainwindow.h \
+    src/mcutoutsummary.h \
     src/observedobject.h \
     src/operationqueue.h \
     src/osxhelper.h \
@@ -218,10 +222,12 @@ HEADERS  += \
     src/sedvisualizerplot.h \
     src/selectedsourcefieldsselect.h \
     src/selectedsourcesform.h \
+    src/sessionloader.h \
     src/settingform.h \
     src/singleton.h \
     src/treeitem.h \
     src/treemodel.h \
+    src/usertablewindow.h \
     src/vialactea.h \
     src/vialactea_fileload.h \
     src/vialacteainitialquery.h \
@@ -261,6 +267,7 @@ FORMS += \
     ui/loadingwidget.ui \
     ui/lutcustomize.ui \
     ui/mainwindow.ui \
+    ui/mcutoutsummary.ui \
     ui/operationqueue.ui \
     ui/plotwindow.ui \
     ui/sedfitgrid_thick.ui \
@@ -268,7 +275,9 @@ FORMS += \
     ui/sedvisualizerplot.ui \
     ui/selectedsourcefieldsselect.ui \
     ui/selectedsourcesform.ui \
+    ui/sessionloader.ui \
     ui/settingform.ui \
+    ui/usertablewindow.ui \
     ui/vialactea.ui \
     ui/vialactea_fileload.ui \
     ui/vialacteainitialquery.ui \

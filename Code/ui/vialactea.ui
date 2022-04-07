@@ -558,6 +558,13 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="loadTableButton">
+          <property name="text">
+           <string>Load Table</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
