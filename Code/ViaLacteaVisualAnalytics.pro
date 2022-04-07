@@ -37,6 +37,7 @@ LIBS += \
     -lvtkCommonMisc-9.0 \
     -lvtkCommonSystem-9.0 \
     -lvtkCommonTransforms-9.0 \
+    -lvtkDICOMParser-9.0 \
     -lvtkFiltersCore-9.0 \
     -lvtkFiltersExtraction-9.0 \
     -lvtkFiltersGeneral-9.0 \
@@ -45,6 +46,7 @@ LIBS += \
     -lvtkFiltersModeling-9.0 \
     -lvtkFiltersSources-9.0 \
     -lvtkFiltersStatistics-9.0 \
+    -lvtkFiltersTexture-9.0 \
     -lvtkGUISupportQt-9.0 \
     -lvtkIOCore-9.0 \
     -lvtkIOImage-9.0 \
@@ -55,6 +57,7 @@ LIBS += \
     -lvtkImagingCore-9.0 \
     -lvtkImagingFourier-9.0 \
     -lvtkImagingGeneral-9.0 \
+    -lvtkImagingHybrid-9.0 \
     -lvtkImagingMath-9.0 \
     -lvtkImagingSources-9.0 \
     -lvtkImagingStencil-9.0 \
@@ -78,10 +81,15 @@ LIBS += \
     -lvtkexpat-9.0 \
     -lvtkfreetype-9.0 \
     -lvtkglew-9.0 \
+    -lvtkjpeg-9.0 \
     -lvtkloguru-9.0 \
     -lvtklz4-9.0 \
     -lvtklzma-9.0 \
+    -lvtkmetaio-9.0 \
+    -lvtkpng-9.0 \
+    -lvtkpugixml-9.0 \
     -lvtksys-9.0 \
+    -lvtktiff-9.0 \
     -lvtkzlib-9.0
 
 
