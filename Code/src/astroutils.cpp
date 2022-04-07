@@ -173,10 +173,23 @@ int AstroUtils::getSysOut(std::string file)
     return sysout;
 }
 
-void AstroUtils::getRotationAngle(std::string file)
+void AstroUtils::getRotationAngle(std::string file, double *rot, int wcs_type)
 {
     char *fn = new char[file.length() + 1];
     strcpy(fn, file.c_str());
+
+    char type[20];
+    switch (wcs_type) {
+    case WCS_GALACTIC:
+        strcpy(type, "galactic");
+        break;
+    case WCS_J2000:
+        strcpy(type, "fk5");
+        break;
+    case WCS_B1950:
+        strcpy(type, "fk4");
+        break;
+    }
 
     struct WorldCoor *wcs;
     char *header;
@@ -186,8 +199,9 @@ void AstroUtils::getRotationAngle(std::string file)
     double eqout = 0.0;
 
     header = GetFITShead(fn, 0);
-    wcs = GetFITSWCS(fn, header, 1, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
-    wcsoutinit(wcs, (char *)"GALACTIC");
+    wcs = GetFITSWCS(fn, header, 0, &cra, &cdec, &dra, &ddec, &secpix, &wp, &hp, &sysout, &eqout);
+    wcsininit(wcs, type);
+    wcsoutinit(wcs, type);
 
     int off;
     double xc, xn, xe, yc, yn, ye;
@@ -242,6 +256,7 @@ void AstroUtils::getRotationAngle(std::string file)
         wcs->rot = wcs->rot + 360.0;
     if (wcs->rot >= 360.0)
         wcs->rot = wcs->rot - 360.0;
+    *rot = wcs->rot;
 
     /* Set image mirror flag based on axis orientation */
     wcs->imflip = 0;
@@ -260,6 +275,34 @@ void AstroUtils::getRotationAngle(std::string file)
     }
 
     delete[] fn;
+    wcsfree(wcs);
+}
+
+void AstroUtils::sky2xy_t(std::string map, double xpos, double ypos, int wcs_type, double *xpix,
+                          double *ypix)
+{
+    char fn[map.size() + 1];
+    strncpy(fn, map.c_str(), map.size());
+    fn[map.size()] = 0;
+
+    char type[20];
+    switch (wcs_type) {
+    case WCS_GALACTIC:
+        strcpy(type, "galactic");
+        break;
+    case WCS_J2000:
+        strcpy(type, "fk5");
+        break;
+    case WCS_B1950:
+        strcpy(type, "fk4");
+        break;
+    }
+
+    auto wcs = GetWCSFITS(fn, 0);
+    wcsininit(wcs, type);
+    int offset;
+    wcsc2pix(wcs, xpos, ypos, type, xpix, ypix, &offset);
+
     wcsfree(wcs);
 }
 

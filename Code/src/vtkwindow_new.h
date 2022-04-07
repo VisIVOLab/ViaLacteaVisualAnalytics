@@ -59,6 +59,7 @@ class VisPoint;
 class vtkfitstoolswidget;
 class FitsImageStatisiticInfo;
 class contour;
+class DS9Region;
 
 namespace Ui {
 class vtkwindow_new;
@@ -138,6 +139,7 @@ public:
 
     vtkSmartPointer<vtkImageViewer2> imageViewer;
     void addSources(VSTableDesktop *m_VisIVOTable);
+    void addSourcesFromJson(const QString &fn);
     void addFilaments(VSTableDesktop *m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop *m_VisIVOTable);
     void addBubble(VSTableDesktop *m_VisIVOTable);
@@ -226,6 +228,9 @@ private:
     QHash<QString, vtkSmartPointer<vtkLODActor>> ellipse_actor_list;
     QHash<QString, vtkSmartPointer<vtkLODActor>> visualized_actor_list;
 
+    QStringList ds9RegionFiles;
+    QStringList jsonRegionFiles;
+
     QHash<QString, QString> designation2fileMap;
     QHash<QString, vtkSmartPointer<vtkLODActor>> VisualizedEllipseSourcesList;
     vtkfitstoolswidget *vtkfitstoolsw;
@@ -247,6 +252,13 @@ private:
     VialacteaStringDictWidget *stringDictWidget;
     void addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> actor, int objtype,
                           bool active);
+
+    void addDS9Regions(const QString &filepath);
+    int getDS9RegionCoordSystem(const DS9Region *region);
+    void drawPolygonRegions(const std::vector<DS9Region *> &polygons);
+    void drawCircleRegions(const std::vector<DS9Region *> &circles);
+    void drawBoxRegions(const std::vector<DS9Region *> &boxes);
+    void drawEllipseRegions(const std::vector<DS9Region *> &ellipses);
 
     QStringList getSourcesLoadedFromFile(const QString &sourcePath);
     bool getTableItemInfo(const QString &text, int &row, bool &enabled, double *color);
@@ -321,6 +333,7 @@ private slots:
     void on_actionTools_triggered();
     void on_actionInfo_triggered();
     void addLocalSources();
+    void loadDS9RegionFile();
     void cutoutDatacube(QString c);
 
     void on_cameraLeft_clicked();

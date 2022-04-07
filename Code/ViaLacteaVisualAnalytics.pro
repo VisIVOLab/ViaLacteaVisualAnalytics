@@ -82,7 +82,7 @@ LIBS += \
     -lvtklz4-9.0 \
     -lvtklzma-9.0 \
     -lvtksys-9.0 \
-    -lvtkzlib-9.0 \
+    -lvtkzlib-9.0
 
 
 SOURCES += \
@@ -95,6 +95,8 @@ SOURCES += \
     src/contour.cpp \
     src/dbquery.cpp \
     src/downloadmanager.cpp \
+    src/ds9region/DS9Region.cpp \
+    src/ds9region/DS9RegionParser.cpp \
     src/extendedglyph3d.cpp \
     src/filtercustomize.cpp \
     src/fitsimagestatisiticinfo.cpp \
@@ -185,6 +187,10 @@ HEADERS  += \
     src/contour.h \
     src/dbquery.h \
     src/downloadmanager.h \
+    src/ds9region/CodeUtils.h \
+    src/ds9region/Consts.h \
+    src/ds9region/DS9Region.h \
+    src/ds9region/DS9RegionParser.h \
     src/extendedglyph3d.h \
     src/filtercustomize.h \
     src/fitsimagestatisiticinfo.h \

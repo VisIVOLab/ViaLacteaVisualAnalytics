@@ -89,9 +89,13 @@
 #include "vtkUnstructuredGrid.h"
 #include "vtkVertexGlyphFilter.h"
 
+#include "ds9region/DS9Region.h"
+#include "ds9region/DS9RegionParser.h"
+
 #include <QDir>
 #include <QSettings>
 #include <QSignalMapper>
+#include <QtConcurrent>
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
@@ -1162,32 +1166,43 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         QAction *select = new QAction("Select", this);
         select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
-
         connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
         ui->menuWindow->addAction(select);
 
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
-
         QAction *local = new QAction("Local", this);
         local->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
         connect(local, SIGNAL(triggered()), this, SLOT(addLocalSources()));
+        compact->addAction(local);
+
+        QAction *localJson = new QAction("From JSON catalogue");
+        connect(localJson, &QAction::triggered, this, [this]() {
+            QString fn = QFileDialog::getOpenFileName(this, "Open JSON Catalogue", QDir::homePath(),
+                                                      "JSON Catalogue (*.json)");
+            if (!fn.isEmpty()) {
+                addSourcesFromJson(fn);
+            }
+        });
+        compact->addAction(localJson);
+
+        QAction *ds9 = new QAction("From DS9 Region");
+        connect(ds9, &QAction::triggered, this, &vtkwindow_new::loadDS9RegionFile);
+        compact->addAction(ds9);
 
         QAction *remote = new QAction("Remote", this);
         remote->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
         connect(remote, SIGNAL(triggered()), this, SLOT(setSkyRegionSelectorInteractorStyle()));
+        compact->addAction(remote);
 
         QAction *normal_selector = new QAction("Normal", this);
         normal_selector->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_N));
         connect(normal_selector, SIGNAL(triggered()), this, SLOT(setVtkInteractorStyleImage()));
+        compact->addAction(normal_selector);
 
         QAction *selector_3D = new QAction("3D", this);
         selector_3D->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_3));
         connect(selector_3D, SIGNAL(triggered()), this, SLOT(on_tdRectPushButton_clicked()));
-
-        compact->addAction(local);
-        compact->addAction(remote);
         compact->addAction(selector_3D);
-        compact->addAction(normal_selector);
 
         setVtkInteractorStyleImage();
 
@@ -2222,6 +2237,386 @@ void vtkwindow_new::addSources(VSTableDesktop *m_VisIVOTable)
                 QString::fromStdString(m_VisIVOTable->getName()));
 
     this->update();
+    sessionModified();
+}
+
+void vtkwindow_new::loadDS9RegionFile()
+{
+    QString fn = QFileDialog::getOpenFileName(this, "DS9 Region file", QDir::homePath(),
+                                              "DS9 Region file (*.reg)");
+    if (!fn.isEmpty())
+        addDS9Regions(fn);
+}
+
+void vtkwindow_new::addDS9Regions(const QString &filepath)
+{
+    std::vector<DS9Region *> regions;
+    std::string error;
+    int result = DS9RegionParser::Parse(regions, filepath.toStdString(), error);
+    if (result != 0) {
+        QMessageBox::critical(this, "Error", QString::fromStdString(error));
+        return;
+    }
+
+    std::vector<DS9Region *> polygons, circles, boxes, ellipses;
+    for (const auto &region : regions) {
+        switch (region->shapeType) {
+        case DS9Region::ePOLYGON_SHAPE:
+            polygons.push_back(region);
+            break;
+        case DS9Region::eCIRCLE_SHAPE:
+            circles.push_back(region);
+            break;
+        case DS9Region::eBOX_SHAPE:
+            boxes.push_back(region);
+            break;
+        case DS9Region::eELLIPSE_SHAPE:
+            ellipses.push_back(region);
+            break;
+        }
+    }
+
+    if (!polygons.empty())
+        drawPolygonRegions(polygons);
+
+    if (!circles.empty())
+        drawCircleRegions(circles);
+
+    if (!boxes.empty())
+        drawBoxRegions(boxes);
+
+    if (!ellipses.empty())
+        drawEllipseRegions(ellipses);
+
+    ds9RegionFiles << filepath;
+    sessionModified();
+}
+
+int vtkwindow_new::getDS9RegionCoordSystem(const DS9Region *region)
+{
+    switch (region->csType) {
+    case WCSType::eGALACTIC:
+        return WCS_GALACTIC;
+    case WCSType::eJ2000:
+        return WCS_J2000;
+    case WCSType::eB1950:
+        return WCS_B1950;
+    }
+
+    // Assume image
+    return WCS_XY;
+}
+
+void vtkwindow_new::drawPolygonRegions(const std::vector<DS9Region *> &polygons)
+{
+    double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
+    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+
+    std::for_each(polygons.begin(), polygons.end(),
+                  [this, arcsec, &appendFilter](DS9Region *region) {
+                      auto polygon = dynamic_cast<DS9PolygonRegion *>(region);
+                      int cs = getDS9RegionCoordSystem(region);
+
+                      auto points = vtkSmartPointer<vtkPoints>::New();
+                      auto cells = vtkSmartPointer<vtkCellArray>::New();
+                      cells->InsertNextCell(polygon->points.size() + 1);
+
+                      for (const auto &point : polygon->points) {
+                          double coords[3] = { point.first, point.second, arcsec };
+
+                          if (cs != WCS_XY) {
+                              AstroUtils::sky2xy_t(myfits->GetFileName(), point.first, point.second,
+                                                   cs, &coords[0], &coords[1]);
+                          }
+
+                          vtkIdType id = points->InsertNextPoint(coords);
+                          cells->InsertCellPoint(id);
+                      }
+                      cells->InsertCellPoint(0);
+
+                      auto polyData = vtkSmartPointer<vtkPolyData>::New();
+                      polyData->SetPoints(points);
+                      polyData->SetLines(cells);
+
+                      appendFilter->AddInputData(polyData);
+                  });
+
+    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
+    cleanFilter->Update();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(1, 0, 0);
+
+    addCombinedLayer("DS9 Region - Polygons", actor, 2, true);
+}
+
+void vtkwindow_new::drawCircleRegions(const std::vector<DS9Region *> &circles)
+{
+    double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
+    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+
+    std::for_each(circles.begin(), circles.end(), [this, arcsec, &appendFilter](DS9Region *region) {
+        auto circle = dynamic_cast<DS9CircleRegion *>(region);
+        int cs = getDS9RegionCoordSystem(region);
+
+        double center[3] = { circle->cx, circle->cy, arcsec };
+        double radius = circle->r;
+
+        if (cs != WCS_XY) {
+            AstroUtils::sky2xy_t(myfits->GetFileName(), circle->cx, circle->cy, cs, &center[0],
+                                 &center[1]);
+            radius = radius / arcsec;
+        }
+
+        auto circleSource = vtkSmartPointer<vtkRegularPolygonSource>::New();
+        circleSource->GeneratePolygonOff();
+        circleSource->SetNumberOfSides(50);
+        circleSource->SetRadius(radius);
+        circleSource->SetCenter(center);
+        circleSource->Update();
+
+        appendFilter->AddInputData(circleSource->GetOutput());
+    });
+
+    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
+    cleanFilter->Update();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(0, 1, 0);
+
+    addCombinedLayer("DS9 Region - Circles", actor, 2, true);
+}
+
+void vtkwindow_new::drawBoxRegions(const std::vector<DS9Region *> &boxes)
+{
+    double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
+    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+
+    std::for_each(boxes.begin(), boxes.end(), [this, arcsec, &appendFilter](DS9Region *region) {
+        auto box = dynamic_cast<DS9BoxRegion *>(region);
+        int cs = getDS9RegionCoordSystem(region);
+
+        double center[2] = { box->cx, box->cy };
+        double semiwidth = box->width * 0.5;
+        double semiheight = box->height * 0.5;
+        double angle = box->theta;
+
+        if (cs != WCS_XY) {
+            AstroUtils::sky2xy_t(myfits->GetFileName(), box->cx, box->cy, cs, &center[0],
+                                 &center[1]);
+            semiwidth = box->width / arcsec * 0.5;
+            semiheight = box->height / arcsec * 0.5;
+
+            double delta = 0;
+            AstroUtils::getRotationAngle(myfits->GetFileName(), &delta, cs);
+            angle += delta;
+        }
+
+        auto points = vtkSmartPointer<vtkPoints>::New();
+        auto cells = vtkSmartPointer<vtkCellArray>::New();
+        cells->InsertNextCell(5);
+
+        vtkIdType tl =
+                points->InsertNextPoint(center[0] - semiwidth, center[1] + semiheight, arcsec);
+        cells->InsertCellPoint(tl);
+        vtkIdType tr =
+                points->InsertNextPoint(center[0] + semiwidth, center[1] + semiheight, arcsec);
+        cells->InsertCellPoint(tr);
+        vtkIdType br =
+                points->InsertNextPoint(center[0] + semiwidth, center[1] - semiheight, arcsec);
+        cells->InsertCellPoint(br);
+        vtkIdType bl =
+                points->InsertNextPoint(center[0] - semiwidth, center[1] - semiheight, arcsec);
+        cells->InsertCellPoint(bl);
+        cells->InsertCellPoint(tl);
+
+        auto polyData = vtkSmartPointer<vtkPolyData>::New();
+        polyData->SetPoints(points);
+        polyData->SetLines(cells);
+
+        auto transform = vtkSmartPointer<vtkTransform>::New();
+        transform->PostMultiply();
+        transform->Translate(-center[0], -center[1], -arcsec);
+        transform->RotateZ(angle);
+        transform->Translate(center[0], center[1], arcsec);
+
+        auto transformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        transformFilter->SetInputData(polyData);
+        transformFilter->SetTransform(transform);
+        transformFilter->Update();
+
+        appendFilter->AddInputData(transformFilter->GetOutput());
+    });
+
+    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
+    cleanFilter->Update();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(0, 0, 1);
+
+    addCombinedLayer("DS9 Region - Boxes", actor, 2, true);
+}
+
+void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
+{
+    double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
+    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+
+    std::for_each(ellipses.begin(), ellipses.end(),
+                  [this, arcsec, &appendFilter](DS9Region *region) {
+                      auto ellipse = dynamic_cast<DS9EllipseRegion *>(region);
+                      int cs = getDS9RegionCoordSystem(region);
+
+                      double center[2] = { ellipse->cx, ellipse->cy };
+                      double semiMajorAxis = ellipse->a;
+                      double semiMinorAxis = ellipse->b;
+                      double angle = ellipse->theta;
+
+                      if (cs != WCS_XY) {
+                          AstroUtils::sky2xy_t(myfits->GetFileName(), ellipse->cx, ellipse->cy, cs,
+                                               &center[0], &center[1]);
+
+                          semiMajorAxis = semiMajorAxis / arcsec;
+                          semiMinorAxis = semiMinorAxis / arcsec;
+
+                          double delta = 0;
+                          AstroUtils::getRotationAngle(myfits->GetFileName(), &delta, cs);
+                          angle += delta;
+                      }
+
+                      auto points = vtkSmartPointer<vtkPoints>::New();
+                      auto cells = vtkSmartPointer<vtkCellArray>::New();
+                      cells->InsertNextCell(41);
+                      for (double i = 0; i < 2 * vtkMath::Pi(); i += vtkMath::Pi() / 20) {
+                          vtkIdType id = points->InsertNextPoint(semiMajorAxis * cos(i) + center[0],
+                                                                 semiMinorAxis * sin(i) + center[1],
+                                                                 arcsec);
+                          cells->InsertCellPoint(id);
+                      }
+                      cells->InsertCellPoint(0);
+                      cells->UpdateCellCount(points->GetNumberOfPoints() + 1);
+
+                      auto polyData = vtkSmartPointer<vtkPolyData>::New();
+                      polyData->SetPoints(points);
+                      polyData->SetLines(cells);
+
+                      auto transform = vtkSmartPointer<vtkTransform>::New();
+                      transform->PostMultiply();
+                      transform->Translate(-center[0], -center[1], -arcsec);
+                      transform->RotateZ(angle);
+                      transform->Translate(center[0], center[1], arcsec);
+
+                      auto transformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+                      transformFilter->SetInputData(polyData);
+                      transformFilter->SetTransform(transform);
+                      transformFilter->Update();
+
+                      appendFilter->AddInputData(transformFilter->GetOutput());
+                  });
+
+    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
+    cleanFilter->Update();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(1, 1, 0);
+
+    addCombinedLayer("DS9 Region - Ellipses", actor, 2, true);
+}
+
+void vtkwindow_new::addSourcesFromJson(const QString &fn)
+{
+    QFile jsonFile(fn);
+    jsonFile.open(QFile::ReadOnly);
+    QJsonObject root = QJsonDocument::fromJson(jsonFile.readAll()).object();
+    jsonFile.close();
+
+    QJsonArray sources = root["sources"].toArray();
+
+    if (sources.count() == 0) {
+        QMessageBox::information(this, "No sources", "The file does not contain any sources.");
+        return;
+    }
+
+    double arcsec = AstroUtils().arcsecPixel(myfits->GetFileName());
+    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+    QMutex mutex;
+
+    QtConcurrent::blockingMap(sources, [arcsec, &appendFilter, &mutex](QJsonValueRef obj_s) {
+        QJsonObject source = obj_s.toObject();
+        QJsonArray islands = source["islands"].toArray();
+
+        foreach (auto obj_i, islands) {
+            QJsonObject island = obj_i.toObject();
+            QJsonArray vertices = island["vertices"].toArray();
+
+            if (vertices.isEmpty())
+                continue;
+
+            auto points = vtkSmartPointer<vtkPoints>::New();
+            auto polyLine = vtkSmartPointer<vtkPolyLine>::New();
+            polyLine->GetPointIds()->SetNumberOfIds(vertices.count() + 1);
+
+            int i = 0;
+            foreach (auto arr_v, vertices) {
+                QJsonArray vertex = arr_v.toArray();
+                points->InsertNextPoint(vertex.at(0).toDouble() + 1, vertex.at(1).toDouble() + 1,
+                                        arcsec);
+                polyLine->GetPointIds()->SetId(i, i);
+                ++i;
+            }
+
+            // Connect the last and the first vertices
+            QJsonArray firstVertex = vertices.at(0).toArray();
+            points->InsertNextPoint(firstVertex.at(0).toDouble() + 1,
+                                    firstVertex.at(1).toDouble() + 1, arcsec);
+            polyLine->GetPointIds()->SetId(i, i);
+
+            auto cells = vtkSmartPointer<vtkCellArray>::New();
+            cells->InsertNextCell(polyLine);
+
+            auto polyData = vtkSmartPointer<vtkPolyData>::New();
+            polyData->SetPoints(points);
+            polyData->SetLines(cells);
+
+            mutex.lock();
+            appendFilter->AddInputData(polyData);
+            mutex.unlock();
+        }
+    });
+
+    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
+    cleanFilter->Update();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(1, 0, 0);
+
+    addCombinedLayer(QFileInfo(fn).baseName(), actor, 2, true);
+    jsonRegionFiles << fn;
     sessionModified();
 }
 
@@ -4765,6 +5160,10 @@ bool vtkwindow_new::confirmSaveAndExit()
 
 void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &sessionRootFolder)
 {
+    if (layers.count() == 1) {
+        return;
+    }
+
     // Clear current layers
     ui->listWidget->clear();
     imgLayerList.clear();
@@ -4850,28 +5249,37 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &sessionRoo
         auto compactSource = it.toObject();
         QString filepath = sessionRootFolder.absoluteFilePath(compactSource["file"].toString());
         QString filename = QFileInfo(filepath).baseName();
-        fileLoad->init(filepath);
 
-        if (compactSource["bandmerged"].toBool()) {
-            fileLoad->setWavelength("all");
-            fileLoad->on_okPushButton_clicked();
-            foreach (const auto &item, compactSource["tableItems"].toArray()) {
-                auto text = item["text"].toString();
-                auto enabled = item["enabled"].toBool(false);
-                auto color = item["color"].toArray();
+        QString format = compactSource["format"].toString("tsv");
+
+        if (format == "tsv") {
+            fileLoad->init(filepath);
+
+            if (compactSource["bandmerged"].toBool()) {
+                fileLoad->setWavelength("all");
+                fileLoad->on_okPushButton_clicked();
+                foreach (const auto &item, compactSource["tableItems"].toArray()) {
+                    auto text = item["text"].toString();
+                    auto enabled = item["enabled"].toBool(false);
+                    auto color = item["color"].toArray();
+                    double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
+                                      color.at(2).toDouble() };
+                    setTableItemInfo(text, enabled, rgb);
+                }
+            } else {
+                fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
+                fileLoad->on_okPushButton_clicked();
+                auto text = compactSource["text"].toString(filename);
+                auto enabled = compactSource["enabled"].toBool(false);
+                auto color = compactSource["color"].toArray();
                 double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
                                   color.at(2).toDouble() };
                 setTableItemInfo(text, enabled, rgb);
             }
-        } else {
-            fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
-            fileLoad->on_okPushButton_clicked();
-            auto text = compactSource["text"].toString(filename);
-            auto enabled = compactSource["enabled"].toBool(false);
-            auto color = compactSource["color"].toArray();
-            double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
-                              color.at(2).toDouble() };
-            setTableItemInfo(text, enabled, rgb);
+        } else if (format == "ds9") {
+            addDS9Regions(filepath);
+        } else if (format == "json") {
+            addSourcesFromJson(filepath);
         }
     }
 
@@ -5016,6 +5424,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
         QJsonObject compactSource;
         compactSource["file"] = sessionFolder.relativeFilePath(dst);
         compactSource["bandmerged"] = bandmerged;
+        compactSource["format"] = "tsv";
 
         if (bandmerged) {
             QJsonArray tableItems;
@@ -5050,6 +5459,28 @@ void vtkwindow_new::on_actionSave_session_triggered()
             compactSource["color"] = rgb;
         }
 
+        sources.append(compactSource);
+    }
+    foreach (auto &&file, ds9RegionFiles) {
+        auto srcInfo = QFileInfo(file);
+
+        QString src = srcInfo.absoluteFilePath();
+        QString dst = fileInSession(srcInfo, "ds9_regions");
+
+        QJsonObject compactSource;
+        compactSource["file"] = sessionFolder.relativeFilePath(dst);
+        compactSource["format"] = "ds9";
+        sources.append(compactSource);
+    }
+    foreach (auto &&file, jsonRegionFiles) {
+        auto srcInfo = QFileInfo(file);
+
+        QString src = srcInfo.absoluteFilePath();
+        QString dst = fileInSession(srcInfo, "json_catalogues");
+
+        QJsonObject compactSource;
+        compactSource["file"] = sessionFolder.relativeFilePath(dst);
+        compactSource["format"] = "json";
         sources.append(compactSource);
     }
     image["compact_sources"] = sources;
