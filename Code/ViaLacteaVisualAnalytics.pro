@@ -67,6 +67,7 @@ LIBS += \
     -lvtkParallelCore-9.1 \
     -lvtkParallelDIY-9.1 \
     -lvtkRenderingAnnotation-9.1 \
+    -lvtkRenderingContext2D-9.1 \
     -lvtkRenderingCore-9.1 \
     -lvtkRenderingFreeType-9.1 \
     -lvtkRenderingImage-9.1 \
@@ -79,9 +80,11 @@ LIBS += \
     -lvtkRenderingVolumeOpenGL2-9.1 \
     -lvtkdoubleconversion-9.1 \
     -lvtkexpat-9.1 \
+    -lvtkfmt-9.1 \
     -lvtkfreetype-9.1 \
     -lvtkglew-9.1 \
     -lvtkjpeg-9.1 \
+    -lvtkkissfft-9.1 \
     -lvtkloguru-9.1 \
     -lvtklz4-9.1 \
     -lvtklzma-9.1 \
