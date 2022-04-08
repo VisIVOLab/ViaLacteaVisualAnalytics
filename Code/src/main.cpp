@@ -1,10 +1,13 @@
+#include "mainwindow.h"
+#include "singleton.h"
+
 #include <QApplication>
+#include <QLocale>
 #include <QSurfaceFormat>
 #include <QVTKOpenGLNativeWidget.h>
 #include <QWebEngineUrlScheme>
 
-#include "mainwindow.h"
-#include "singleton.h"
+#include <clocale>
 
 int main(int argc, char *argv[])
 {
@@ -20,6 +23,9 @@ int main(int argc, char *argv[])
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion("1.4");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
+
+    setlocale(LC_NUMERIC, "C");
+    QLocale::setDefault(QLocale::c());
 
     Singleton<MainWindow>::Instance();
 
