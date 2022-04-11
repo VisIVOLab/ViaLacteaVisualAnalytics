@@ -1451,12 +1451,14 @@ void SEDVisualizerPlot::doThinLocalFit()
                                  .append("VisIVODesktopTemp/tmp_download/SED"
                                          + QString::number(nSED) + "_thinfile.csv");
 
-    QStringList args;
-    args << "sedfit_main.py"
-         << "thin" << sedFitInputW << sedFitInputF << mrange << trange << brange
-         << sd_thin->ui->distLineEdit->text() << srefRange << sedFitInputErrF
-         << sedFitInputUlimitString << outputFile;
+    QDir dir(QApplication::applicationDirPath());
 
+    QStringList args;
+    args << dir.absoluteFilePath("sedfit_main.py") << "thin" << sedFitInputW << sedFitInputF
+         << mrange << trange << brange << sd_thin->ui->distLineEdit->text() << srefRange
+         << sedFitInputErrF << sedFitInputUlimitString << outputFile;
+
+    process->setWorkingDirectory(dir.absolutePath());
     process->start("python3", args);
 }
 
@@ -1719,12 +1721,15 @@ void SEDVisualizerPlot::doThickLocalFit()
                                  .append("VisIVODesktopTemp/tmp_download/SED"
                                          + QString::number(nSED) + "_thickfile.csv");
 
-    QStringList args;
-    args << "sedfit_main.py"
-         << "thick" << sedFitInputW << sedFitInputF << sd_thick->ui->sizeLineEdit->text() << trange
-         << brange << l0range << sfactrange << sd_thick->ui->distLineEdit->text() << srefRange
-         << sedFitInputErrF << sedFitInputUlimitString << outputFile;
+    QDir dir(QApplication::applicationDirPath());
 
+    QStringList args;
+    args << dir.absoluteFilePath("sedfit_main.py") << "thick" << sedFitInputW << sedFitInputF
+         << sd_thick->ui->sizeLineEdit->text() << trange << brange << l0range << sfactrange
+         << sd_thick->ui->distLineEdit->text() << srefRange << sedFitInputErrF
+         << sedFitInputUlimitString << outputFile;
+
+    process->setWorkingDirectory(dir.absolutePath());
     process->start("python3", args);
 }
 
