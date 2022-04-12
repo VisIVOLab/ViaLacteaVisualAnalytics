@@ -102,6 +102,7 @@ SOURCES += \
     src/authwrapper.cpp \
     src/base64.cpp \
     src/caesarwindow.cpp \
+    src/catalogue.cpp \
     src/color.cpp \
     src/contour.cpp \
     src/dbquery.cpp \
@@ -159,6 +160,8 @@ SOURCES += \
     src/selectedsourcesform.cpp \
     src/sessionloader.cpp \
     src/settingform.cpp \
+    src/source.cpp \
+    src/sourcewidget.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
     src/usertablewindow.cpp \
@@ -197,6 +200,7 @@ HEADERS  += \
     src/authwrapper.h \
     src/base64.h \
     src/caesarwindow.h \
+    src/catalogue.h \
     src/color.h \
     src/contour.h \
     src/dbquery.h \
@@ -236,6 +240,8 @@ HEADERS  += \
     src/sessionloader.h \
     src/settingform.h \
     src/singleton.h \
+    src/source.h \
+    src/sourcewidget.h \
     src/treeitem.h \
     src/treemodel.h \
     src/usertablewindow.h \
@@ -288,6 +294,7 @@ FORMS += \
     ui/selectedsourcesform.ui \
     ui/sessionloader.ui \
     ui/settingform.ui \
+    ui/sourcewidget.ui \
     ui/usertablewindow.ui \
     ui/vialactea.ui \
     ui/vialactea_fileload.ui \

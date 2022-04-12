@@ -4,6 +4,7 @@
 #include "astroutils.h"
 #include "authwrapper.h"
 #include "caesarwindow.h"
+#include "catalogue.h"
 #include "dbquery.h"
 #include "extendedglyph3d.h"
 #include "filtercustomize.h"
@@ -15,6 +16,8 @@
 #include "selectedsourcefieldsselect.h"
 #include "selectedsourcesform.h"
 #include "singleton.h"
+#include "source.h"
+#include "sourcewidget.h"
 #include "ui_higalselectedsources.h"
 #include "vialactea.h"
 #include "vialactea_fileload.h"
@@ -2545,79 +2548,68 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
 
 void vtkwindow_new::addSourcesFromJson(const QString &fn)
 {
-    QFile jsonFile(fn);
-    jsonFile.open(QFile::ReadOnly);
-    QJsonObject root = QJsonDocument::fromJson(jsonFile.readAll()).object();
-    jsonFile.close();
+    Catalogue *catalogue = new Catalogue(this, fn);
+    auto sources = catalogue->getSources();
 
-    QJsonArray sources = root["sources"].toArray();
-
-    if (sources.count() == 0) {
-        QMessageBox::information(this, "No sources", "The file does not contain any sources.");
+    if (sources.isEmpty())
         return;
-    }
 
-    double arcsec = AstroUtils().arcsecPixel(myfits->GetFileName());
-    auto appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
+    double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
+    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+
     QMutex mutex;
 
-    QtConcurrent::blockingMap(sources, [arcsec, &appendFilter, &mutex](QJsonValueRef obj_s) {
-        QJsonObject source = obj_s.toObject();
-        QJsonArray islands = source["islands"].toArray();
+    QtConcurrent::blockingMap(sources, [arcsec, &renderer, &mutex](Source *s) {
+        auto islands = s->getIslands();
 
-        foreach (auto obj_i, islands) {
-            QJsonObject island = obj_i.toObject();
-            QJsonArray vertices = island["vertices"].toArray();
+        foreach (auto &&island, islands) {
+            auto vertices = island->getVertices();
 
             if (vertices.isEmpty())
                 continue;
 
             auto points = vtkSmartPointer<vtkPoints>::New();
-            auto polyLine = vtkSmartPointer<vtkPolyLine>::New();
-            polyLine->GetPointIds()->SetNumberOfIds(vertices.count() + 1);
-
-            int i = 0;
-            foreach (auto arr_v, vertices) {
-                QJsonArray vertex = arr_v.toArray();
-                points->InsertNextPoint(vertex.at(0).toDouble() + 1, vertex.at(1).toDouble() + 1,
-                                        arcsec);
-                polyLine->GetPointIds()->SetId(i, i);
-                ++i;
-            }
-
-            // Connect the last and the first vertices
-            QJsonArray firstVertex = vertices.at(0).toArray();
-            points->InsertNextPoint(firstVertex.at(0).toDouble() + 1,
-                                    firstVertex.at(1).toDouble() + 1, arcsec);
-            polyLine->GetPointIds()->SetId(i, i);
-
             auto cells = vtkSmartPointer<vtkCellArray>::New();
-            cells->InsertNextCell(polyLine);
+            cells->InsertNextCell(vertices.count() + 1);
+            foreach (auto &&point, vertices) {
+                auto id = points->InsertNextPoint(point.first + 1, point.second + 1, arcsec);
+                cells->InsertCellPoint(id);
+            }
+            cells->InsertCellPoint(0);
 
             auto polyData = vtkSmartPointer<vtkPolyData>::New();
             polyData->SetPoints(points);
             polyData->SetLines(cells);
 
+            auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+            mapper->SetInputData(polyData);
+
+            auto actor = vtkSmartPointer<vtkLODActor>::New();
+            actor->SetMapper(mapper);
+            actor->GetProperty()->SetColor(1, 0, 0);
+            island->setActor(actor);
+
             mutex.lock();
-            appendFilter->AddInputData(polyData);
+            renderer->AddActor(actor);
             mutex.unlock();
         }
     });
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
-    cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
-    cleanFilter->Update();
+    // Show first source info on floating window
+    if (dock == nullptr) {
+        dock = new QDockWidget;
+        dock->setAttribute(Qt::WA_DeleteOnClose);
+        dock->setFloating(true);
+        dock->setFeatures(dock->features() ^ QDockWidget::DockWidgetMovable);
 
-    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+        auto sourceWidget = new SourceWidget(dock);
+        sourceWidget->showSourceInfo(sources.at(0));
+        dock->setWidget(sourceWidget);
+        dock->show();
+    }
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
-    actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(1, 0, 0);
-
-    addCombinedLayer(QFileInfo(fn).baseName(), actor, 2, true);
-    jsonRegionFiles << fn;
-    sessionModified();
+    // TODO: session
 }
 
 void vtkwindow_new::closeEvent(QCloseEvent *event)

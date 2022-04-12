@@ -258,7 +258,7 @@ void UserTableWindow::on_queryButton_clicked()
             QString designation = ui->sourcesTable->item(i, designationCol)->text();
             double glon = ui->sourcesTable->item(i, glonCol)->text().toDouble();
             double glat = ui->sourcesTable->item(i, glatCol)->text().toDouble();
-            selectedSources.append(new Source(designation, glon, glat, this));
+            selectedSources.append(new SourceCutouts(designation, glon, glat, this));
         }
     }
 
@@ -269,7 +269,7 @@ void UserTableWindow::on_queryButton_clicked()
 
 void UserTableWindow::query(int index)
 {
-    Source *source = selectedSources.at(index);
+    SourceCutouts *source = selectedSources.at(index);
 
     auto vlkb = new VialacteaInitialQuery();
     connect(vlkb, &VialacteaInitialQuery::searchDone, this,
@@ -301,7 +301,8 @@ void UserTableWindow::updateTables()
     ui->imagesTable->setRowCount(0);
     ui->cubesTable->setRowCount(0);
 
-    const auto NewSurveyCell = [this](const QString &surveyName, const Source *source, bool is3D) {
+    const auto NewSurveyCell = [this](const QString &surveyName, const SourceCutouts *source,
+                                      bool is3D) {
         Survey *survey = (is3D ? surveys3d.value(surveyName) : surveys2d.value(surveyName));
 
         QString tooltip;
@@ -370,7 +371,7 @@ QStringList UserTableWindow::getCutoutsList(int t)
 
     for (int row = 0; row < table->rowCount(); ++row) {
         if (table->item(row, 0)->checkState() == Qt::Checked) {
-            const Source *source = selectedSources.at(row);
+            const SourceCutouts *source = selectedSources.at(row);
 
             for (auto it = surveys.constBegin(); it != surveys.constEnd(); ++it) {
                 auto survey = it.key();
@@ -420,28 +421,28 @@ void UserTableWindow::on_btnSendRequest_clicked()
 }
 
 // ----------------------------------------------------------------------------------
-Source::Source(const QString &designation, double glon, double glat, QObject *parent)
+SourceCutouts::SourceCutouts(const QString &designation, double glon, double glat, QObject *parent)
     : QObject(parent), designation(designation), glon(glon), glat(glat)
 {
 }
 
-const QString &Source::getDesignation() const
+const QString &SourceCutouts::getDesignation() const
 {
     return designation;
 }
 
-double Source::getGlon() const
+double SourceCutouts::getGlon() const
 {
     return glon;
 }
 
-double Source::getGlat() const
+double SourceCutouts::getGlat() const
 {
     return glat;
 }
 
-bool Source::getBestCutout(const QString &survey, const QString &species, const QString &transition,
-                           QString &url) const
+bool SourceCutouts::getBestCutout(const QString &survey, const QString &species,
+                                  const QString &transition, QString &url) const
 {
     QString current;
     const auto &container = species.contains("Continuum") ? images : cubes;
@@ -468,7 +469,7 @@ bool Source::getBestCutout(const QString &survey, const QString &species, const 
     return true;
 }
 
-void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
+void SourceCutouts::parseSearchResults(const QList<QMap<QString, QString>> &results)
 {
     foreach (const auto &item, results) {
         auto survey = item.value("Survey");
@@ -502,27 +503,28 @@ void Source::parseSearchResults(const QList<QMap<QString, QString>> &results)
     }
 }
 
-const QList<QMap<QString, QString>> &Source::getImages() const
+const QList<QMap<QString, QString>> &SourceCutouts::getImages() const
 {
     return images;
 }
 
-int Source::getImagesCount() const
+int SourceCutouts::getImagesCount() const
 {
     return images.count();
 }
 
-const QList<QMap<QString, QString>> &Source::getCubes() const
+const QList<QMap<QString, QString>> &SourceCutouts::getCubes() const
 {
     return cubes;
 }
 
-int Source::getCubesCount() const
+int SourceCutouts::getCubesCount() const
 {
     return cubes.count();
 }
 
-Qt::CheckState Source::surveyInfo(QString &tooltipText, const Survey *survey, bool is3D) const
+Qt::CheckState SourceCutouts::surveyInfo(QString &tooltipText, const Survey *survey,
+                                         bool is3D) const
 {
     QSet<QString> expected;
     QSet<QString> *actual;

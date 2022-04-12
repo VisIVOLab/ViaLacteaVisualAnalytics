@@ -4,7 +4,9 @@
 #include "contour.h"
 #include "loadingwidget.h"
 #include "pointspipe.h"
+#include "sourcewidget.h"
 #include "vialacteastringdictwidget.h"
+
 #include "vtkActor.h"
 #include "vtkAxes.h"
 #include "vtkAxesActor.h"
@@ -228,6 +230,7 @@ private:
     QHash<QString, vtkSmartPointer<vtkLODActor>> ellipse_actor_list;
     QHash<QString, vtkSmartPointer<vtkLODActor>> visualized_actor_list;
 
+    QPointer<QDockWidget> dock;
     QStringList ds9RegionFiles;
     QStringList jsonRegionFiles;
 
