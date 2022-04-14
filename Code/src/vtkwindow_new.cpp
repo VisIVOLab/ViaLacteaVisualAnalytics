@@ -68,6 +68,7 @@
 #include "vtkInteractorStyleImage.h"
 #include "vtkInteractorStyleRubberBand2D.h"
 #include "vtkInteractorStyleRubberBandPick.h"
+#include "vtkInteractorStyleTrackballActor.h"
 #include "vtklegendscaleactor.h"
 #include "vtkMath.h"
 #include "vtkNew.h"
@@ -982,6 +983,72 @@ public:
 };
 vtkStandardNewMacro(SkyRegionSelector);
 
+class InteractorStylePickSource : public vtkInteractorStyleTrackballActor
+{
+public:
+    static InteractorStylePickSource *New();
+    vtkTypeMacro(InteractorStylePickSource, vtkInteractorStyleTrackballActor);
+
+    std::function<void(int)> Callback;
+
+    void OnMouseMove() override { }
+    void OnLeftButtonDown() override
+    {
+        if (!this->Interactor) {
+            return;
+        }
+
+        int x = this->Interactor->GetEventPosition()[0];
+        int y = this->Interactor->GetEventPosition()[1];
+
+        this->FindPokedRenderer(x, y);
+        this->FindPickedActor(x, y);
+        if (!this->CurrentRenderer || !this->InteractionProp) {
+            return;
+        }
+
+        auto actor = vtkActor::SafeDownCast(this->InteractionProp);
+        if (!actor) {
+            return;
+        }
+
+        auto mapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
+        if (!mapper) {
+            return;
+        }
+
+        auto polydata = mapper->GetInput();
+        auto fieldData = polydata->GetFieldData();
+        if (!fieldData->HasArray("SOURCE_INDEX")) {
+            return;
+        }
+
+        auto array = vtkIntArray::SafeDownCast(fieldData->GetAbstractArray("SOURCE_INDEX"));
+        int index = array->GetValue(0);
+        if (Callback) {
+            Callback(index);
+        }
+    }
+    void OnLeftButtonUp() override { }
+    void OnMiddleButtonDown() override { }
+    void OnMiddleButtonUp() override { }
+    void OnRightButtonDown() override
+    {
+        if (Callback) {
+            Callback(-1);
+        }
+    }
+    void OnRightButtonUp() override { }
+
+protected:
+    InteractorStylePickSource() = default;
+
+private:
+    InteractorStylePickSource(const InteractorStylePickSource &) = delete;
+    void operator=(const InteractorStylePickSource &) = delete;
+};
+vtkStandardNewMacro(InteractorStylePickSource);
+
 vtkwindow_new::~vtkwindow_new()
 {
     delete ui;
@@ -1171,6 +1238,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
         connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
         ui->menuWindow->addAction(select);
+
+        QAction *pick = new QAction("Pick", this);
+        pick->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_P));
+        connect(pick, &QAction::triggered, this, &vtkwindow_new::setVtkInteractorPickSource);
+        ui->menuWindow->addAction(pick);
 
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
         QAction *local = new QAction("Local", this);
@@ -2548,7 +2620,7 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
 
 void vtkwindow_new::addSourcesFromJson(const QString &fn)
 {
-    Catalogue *catalogue = new Catalogue(this, fn);
+    catalogue = new Catalogue(this, fn);
     auto sources = catalogue->getSources();
 
     if (sources.isEmpty())
@@ -2577,9 +2649,14 @@ void vtkwindow_new::addSourcesFromJson(const QString &fn)
             }
             cells->InsertCellPoint(0);
 
+            auto array = vtkSmartPointer<vtkIntArray>::New();
+            array->SetName("SOURCE_INDEX");
+            array->InsertNextValue(s->getIndex());
+
             auto polyData = vtkSmartPointer<vtkPolyData>::New();
             polyData->SetPoints(points);
             polyData->SetLines(cells);
+            polyData->GetFieldData()->AddArray(array);
 
             auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
             mapper->SetInputData(polyData);
@@ -3526,6 +3603,24 @@ void vtkwindow_new::setVtkInteractorStyleFreehand()
     //  ui->qVTK1->setCursor(Qt::ArrowCursor);
 }
 
+void vtkwindow_new::setVtkInteractorPickSource()
+{
+    auto Callback = [this](int index) {
+        if (index >= 0) {
+            updateSourceInfoInDock(index);
+        }
+        setVtkInteractorStyleImage();
+    };
+
+    auto style = vtkSmartPointer<InteractorStylePickSource>::New();
+    style->Callback = Callback;
+
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle(style);
+    ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow(ui->qVTK1->renderWindow());
+    ui->qVTK1->setCursor(Qt::PointingHandCursor);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
 void vtkwindow_new::on_spinBox_contour_valueChanged(int arg1)
 {
 
@@ -3702,6 +3797,28 @@ void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
     item->setCheckState(Qt::Checked); // AND initialize check state
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkwindow_new::updateSourceInfoInDock(int index)
+{
+    if (!catalogue || index >= catalogue->getSources().count()) {
+        return;
+    }
+
+    if (!dock) {
+        dock = new QDockWidget;
+        dock->setAttribute(Qt::WA_DeleteOnClose);
+        dock->setFloating(true);
+        dock->setFeatures(dock->features() ^ QDockWidget::DockWidgetMovable);
+
+        auto sourceWidget = new SourceWidget(dock);
+        sourceWidget->showSourceInfo(catalogue->getSources().at(0));
+        dock->setWidget(sourceWidget);
+        dock->show();
+    }
+
+    auto sourceWidget = qobject_cast<SourceWidget *>(dock->widget());
+    sourceWidget->showSourceInfo(catalogue->getSources().at(index));
 }
 
 // QUI FV - Aggiunta livelli per sorgenti

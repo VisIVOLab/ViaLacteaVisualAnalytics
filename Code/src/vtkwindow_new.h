@@ -62,6 +62,7 @@ class vtkfitstoolswidget;
 class FitsImageStatisiticInfo;
 class contour;
 class DS9Region;
+class Catalogue;
 
 namespace Ui {
 class vtkwindow_new;
@@ -224,6 +225,7 @@ private:
     bool sessionSaved = false;
 
     vtkfitstoolwidget_new *vtkfitstoolwindow;
+    Catalogue *catalogue;
 
     QString windowName;
     // QString filenameWithPath;
@@ -369,6 +371,9 @@ private slots:
     void on_colorPushButton_clicked();
     void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addImageToList(vtkfitstoolwidgetobject *o);
+
+    void updateSourceInfoInDock(int index);
+    void setVtkInteractorPickSource();
 
     void checkboxImageClicked(int cb, bool status = false);
     void checkboxClicked(int cb, bool status = false);
