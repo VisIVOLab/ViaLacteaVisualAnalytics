@@ -2674,17 +2674,7 @@ void vtkwindow_new::addSourcesFromJson(const QString &fn)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     // Show first source info on floating window
-    if (dock == nullptr) {
-        dock = new QDockWidget;
-        dock->setAttribute(Qt::WA_DeleteOnClose);
-        dock->setFloating(true);
-        dock->setFeatures(dock->features() ^ QDockWidget::DockWidgetMovable);
-
-        auto sourceWidget = new SourceWidget(dock);
-        sourceWidget->showSourceInfo(sources.at(0));
-        dock->setWidget(sourceWidget);
-        dock->show();
-    }
+    updateSourceInfoInDock(0);
 
     // TODO: session
 }
@@ -3806,13 +3796,12 @@ void vtkwindow_new::updateSourceInfoInDock(int index)
     }
 
     if (!dock) {
-        dock = new QDockWidget;
+        dock = new QDockWidget(this);
+        dock->setAllowedAreas(Qt::LeftDockWidgetArea);
         dock->setAttribute(Qt::WA_DeleteOnClose);
         dock->setFloating(true);
-        dock->setFeatures(dock->features() ^ QDockWidget::DockWidgetMovable);
 
         auto sourceWidget = new SourceWidget(dock);
-        sourceWidget->showSourceInfo(catalogue->getSources().at(0));
         dock->setWidget(sourceWidget);
         dock->show();
     }
