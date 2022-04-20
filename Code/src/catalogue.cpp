@@ -23,11 +23,20 @@ Catalogue::Catalogue(QObject *parent, const QString &fn) : QObject(parent), file
 
     foreach (auto &&it, sources) {
         Source *s = Source::fromJson(it.toObject(), this);
-        this->sources << s;
+        this->sources.insert(s->getIau_name(), s);
     }
 }
 
-const QList<Source *> &Catalogue::getSources() const
+const QHash<QString, Source *> &Catalogue::getSources() const
 {
     return sources;
+}
+
+const Source *Catalogue::getSource(QString iau_name) const
+{
+    if (this->sources.contains(iau_name)) {
+        return this->sources.value(iau_name);
+    }
+
+    return nullptr;
 }

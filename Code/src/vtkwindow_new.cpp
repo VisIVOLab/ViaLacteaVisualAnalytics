@@ -84,6 +84,7 @@
 #include "vtkRegularPolygonSource.h"
 #include "vtkRendererCollection.h"
 #include "vtkSelection.h"
+#include "vtkStringArray.h"
 #include "vtkStripper.h"
 #include "vtkTable.h"
 #include "vtkTextActor.h"
@@ -989,7 +990,7 @@ public:
     static InteractorStylePickSource *New();
     vtkTypeMacro(InteractorStylePickSource, vtkInteractorStyleTrackballActor);
 
-    std::function<void(int)> Callback;
+    std::function<void(std::string)> Callback;
 
     void OnMouseMove() override { }
     void OnLeftButtonDown() override
@@ -1019,14 +1020,13 @@ public:
 
         auto polydata = mapper->GetInput();
         auto fieldData = polydata->GetFieldData();
-        if (!fieldData->HasArray("SOURCE_INDEX")) {
+        if (!fieldData->HasArray("SOURCE_IAU_NAME")) {
             return;
         }
 
-        auto array = vtkIntArray::SafeDownCast(fieldData->GetAbstractArray("SOURCE_INDEX"));
-        int index = array->GetValue(0);
+        auto array = vtkStringArray::SafeDownCast(fieldData->GetAbstractArray("SOURCE_IAU_NAME"));
         if (Callback) {
-            Callback(index);
+            Callback(array->GetValue(0));
         }
     }
     void OnLeftButtonUp() override { }
@@ -1035,7 +1035,7 @@ public:
     void OnRightButtonDown() override
     {
         if (Callback) {
-            Callback(-1);
+            Callback(std::string());
         }
     }
     void OnRightButtonUp() override { }
@@ -2649,9 +2649,9 @@ void vtkwindow_new::addSourcesFromJson(const QString &fn)
             }
             cells->InsertCellPoint(0);
 
-            auto array = vtkSmartPointer<vtkIntArray>::New();
-            array->SetName("SOURCE_INDEX");
-            array->InsertNextValue(s->getIndex());
+            auto array = vtkSmartPointer<vtkStringArray>::New();
+            array->SetName("SOURCE_IAU_NAME");
+            array->InsertNextValue(s->getIau_name().toStdString());
 
             auto polyData = vtkSmartPointer<vtkPolyData>::New();
             polyData->SetPoints(points);
@@ -3595,9 +3595,10 @@ void vtkwindow_new::setVtkInteractorStyleFreehand()
 
 void vtkwindow_new::setVtkInteractorPickSource()
 {
-    auto Callback = [this](int index) {
-        if (index >= 0) {
-            updateSourceInfoInDock(index);
+    auto Callback = [this](std::string iau_name) {
+        QString name = QString::fromStdString(iau_name);
+        if (!name.isEmpty()) {
+            updateSourceInfoInDock(name);
         }
         setVtkInteractorStyleImage();
     };
@@ -3789,9 +3790,9 @@ void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::updateSourceInfoInDock(int index)
+void vtkwindow_new::updateSourceInfoInDock(const QString &name)
 {
-    if (!catalogue || index >= catalogue->getSources().count()) {
+    if (!catalogue || name.isEmpty()) {
         return;
     }
 
@@ -3807,7 +3808,7 @@ void vtkwindow_new::updateSourceInfoInDock(int index)
     }
 
     auto sourceWidget = qobject_cast<SourceWidget *>(dock->widget());
-    sourceWidget->showSourceInfo(catalogue->getSources().at(index));
+    sourceWidget->showSourceInfo(catalogue->getSource(name));
 }
 
 // QUI FV - Aggiunta livelli per sorgenti

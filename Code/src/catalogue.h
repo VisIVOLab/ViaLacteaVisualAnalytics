@@ -12,12 +12,13 @@ class Catalogue : public QObject
 public:
     explicit Catalogue(QObject *parent, const QString &fn);
 
-    const QList<Source *> &getSources() const;
+    const QHash<QString, Source *> &getSources() const;
+    const Source *getSource(QString iau_name) const;
 
 private:
     QString filepath;
     QJsonDocument doc;
-    QList<Source *> sources;
+    QHash<QString, Source *> sources;
 };
 
 #endif // CATALOGUE_H

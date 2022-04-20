@@ -372,7 +372,7 @@ private slots:
     void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addImageToList(vtkfitstoolwidgetobject *o);
 
-    void updateSourceInfoInDock(int index);
+    void updateSourceInfoInDock(const QString &name);
     void setVtkInteractorPickSource();
 
     void checkboxImageClicked(int cb, bool status = false);
