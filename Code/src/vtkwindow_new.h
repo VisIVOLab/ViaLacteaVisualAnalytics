@@ -372,8 +372,9 @@ private slots:
     void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addImageToList(vtkfitstoolwidgetobject *o);
 
-    void updateSourceInfoInDock(const QString &name);
-    void setVtkInteractorPickSource();
+    void updateSourceInfoInDock(const QString &iau_name);
+    void extractSourcesInsideRect(int *rect);
+    void setVtkInteractorExtractSources();
 
     void checkboxImageClicked(int cb, bool status = false);
     void checkboxClicked(int cb, bool status = false);

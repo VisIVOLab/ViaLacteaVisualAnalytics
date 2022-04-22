@@ -44,6 +44,8 @@
 #include "vtkDoubleArray.h"
 #include "vtkExtractGeometry.h"
 #include "vtkextracthistogram.h"
+#include "vtkExtractPolyDataGeometry.h"
+#include "vtkExtractSelectedFrustum.h"
 #include "vtkExtractSelection.h"
 #include "vtkfitstoolswidget.h"
 #include "vtkfitstoolwidget_new.h"
@@ -82,6 +84,7 @@
 #include "vtkProperty.h"
 #include "vtkProperty2D.h"
 #include "vtkRegularPolygonSource.h"
+#include "vtkRemovePolyData.h"
 #include "vtkRendererCollection.h"
 #include "vtkSelection.h"
 #include "vtkStringArray.h"
@@ -984,70 +987,33 @@ public:
 };
 vtkStandardNewMacro(SkyRegionSelector);
 
-class InteractorStylePickSource : public vtkInteractorStyleTrackballActor
+class InteractorStyleExtractSources : public vtkInteractorStyleRubberBand2D
 {
 public:
-    static InteractorStylePickSource *New();
-    vtkTypeMacro(InteractorStylePickSource, vtkInteractorStyleTrackballActor);
+    static InteractorStyleExtractSources *New();
+    vtkTypeMacro(InteractorStyleExtractSources, vtkInteractorStyleRubberBand2D);
 
-    std::function<void(std::string)> Callback;
+    std::function<void(int rect[4])> Callback;
 
-    void OnMouseMove() override { }
-    void OnLeftButtonDown() override
+    void OnLeftButtonUp() override
     {
-        if (!this->Interactor) {
-            return;
-        }
+        this->Superclass::OnLeftButtonUp();
 
-        int x = this->Interactor->GetEventPosition()[0];
-        int y = this->Interactor->GetEventPosition()[1];
-
-        this->FindPokedRenderer(x, y);
-        this->FindPickedActor(x, y);
-        if (!this->CurrentRenderer || !this->InteractionProp) {
-            return;
-        }
-
-        auto actor = vtkActor::SafeDownCast(this->InteractionProp);
-        if (!actor) {
-            return;
-        }
-
-        auto mapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
-        if (!mapper) {
-            return;
-        }
-
-        auto polydata = mapper->GetInput();
-        auto fieldData = polydata->GetFieldData();
-        if (!fieldData->HasArray("SOURCE_IAU_NAME")) {
-            return;
-        }
-
-        auto array = vtkStringArray::SafeDownCast(fieldData->GetAbstractArray("SOURCE_IAU_NAME"));
-        if (Callback) {
-            Callback(array->GetValue(0));
+        if (this->Callback) {
+            int rect[4] = { this->StartPosition[0], this->StartPosition[1], this->EndPosition[0],
+                            this->EndPosition[1] };
+            Callback(rect);
         }
     }
-    void OnLeftButtonUp() override { }
-    void OnMiddleButtonDown() override { }
-    void OnMiddleButtonUp() override { }
-    void OnRightButtonDown() override
-    {
-        if (Callback) {
-            Callback(std::string());
-        }
-    }
-    void OnRightButtonUp() override { }
 
 protected:
-    InteractorStylePickSource() = default;
+    InteractorStyleExtractSources() = default;
 
 private:
-    InteractorStylePickSource(const InteractorStylePickSource &) = delete;
-    void operator=(const InteractorStylePickSource &) = delete;
+    InteractorStyleExtractSources(const InteractorStyleExtractSources &) = delete;
+    void operator=(const InteractorStyleExtractSources &) = delete;
 };
-vtkStandardNewMacro(InteractorStylePickSource);
+vtkStandardNewMacro(InteractorStyleExtractSources);
 
 vtkwindow_new::~vtkwindow_new()
 {
@@ -1239,10 +1205,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
         ui->menuWindow->addAction(select);
 
-        QAction *pick = new QAction("Pick", this);
-        pick->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_P));
-        connect(pick, &QAction::triggered, this, &vtkwindow_new::setVtkInteractorPickSource);
-        ui->menuWindow->addAction(pick);
+        QAction *extract = new QAction("Extract", this);
+        extract->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_E));
+        connect(extract, &QAction::triggered, this, &vtkwindow_new::setVtkInteractorExtractSources);
+        ui->menuWindow->addAction(extract);
 
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
         QAction *local = new QAction("Local", this);
@@ -2622,59 +2588,56 @@ void vtkwindow_new::addSourcesFromJson(const QString &fn)
 {
     catalogue = new Catalogue(this, fn);
     auto sources = catalogue->getSources();
-
-    if (sources.isEmpty())
+    if (sources.isEmpty()) {
         return;
+    }
 
     double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
-    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
-
     QMutex mutex;
+    auto appendPolyData = vtkSmartPointer<vtkAppendPolyData>::New();
 
-    QtConcurrent::blockingMap(sources, [arcsec, &renderer, &mutex](Source *s) {
-        auto islands = s->getIslands();
-
-        foreach (auto &&island, islands) {
+    QtConcurrent::blockingMap(sources, [arcsec, &appendPolyData, &mutex](Source *s) {
+        foreach (auto &&island, s->getIslands()) {
             auto vertices = island->getVertices();
-
-            if (vertices.isEmpty())
+            if (vertices.isEmpty()) {
                 continue;
+            }
 
             auto points = vtkSmartPointer<vtkPoints>::New();
             auto cells = vtkSmartPointer<vtkCellArray>::New();
             cells->InsertNextCell(vertices.count() + 1);
             foreach (auto &&point, vertices) {
-                auto id = points->InsertNextPoint(point.first + 1, point.second + 1, arcsec);
+                vtkIdType id = points->InsertNextPoint(point.first + 1, point.second + 1, arcsec);
                 cells->InsertCellPoint(id);
             }
             cells->InsertCellPoint(0);
 
-            auto array = vtkSmartPointer<vtkStringArray>::New();
-            array->SetName("SOURCE_IAU_NAME");
-            array->InsertNextValue(s->getIau_name().toStdString());
-
             auto polyData = vtkSmartPointer<vtkPolyData>::New();
             polyData->SetPoints(points);
             polyData->SetLines(cells);
-            polyData->GetFieldData()->AddArray(array);
-
-            auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-            mapper->SetInputData(polyData);
-
-            auto actor = vtkSmartPointer<vtkLODActor>::New();
-            actor->SetMapper(mapper);
-            actor->GetProperty()->SetColor(1, 0, 0);
-            island->setActor(actor);
 
             mutex.lock();
-            renderer->AddActor(actor);
+            appendPolyData->AddInputData(polyData);
             mutex.unlock();
         }
     });
-    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    // Show first source info on floating window
-    updateSourceInfoInDock(0);
+    auto cleanPolyData = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanPolyData->SetInputConnection(appendPolyData->GetOutputPort());
+    catalogue->SetPolyDataFilter(cleanPolyData);
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanPolyData->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(1, 0, 0);
+    catalogue->SetActor(actor);
+
+    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+    renderer->AddActor(actor);
+
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     // TODO: session
 }
@@ -3593,22 +3556,104 @@ void vtkwindow_new::setVtkInteractorStyleFreehand()
     //  ui->qVTK1->setCursor(Qt::ArrowCursor);
 }
 
-void vtkwindow_new::setVtkInteractorPickSource()
+void vtkwindow_new::extractSourcesInsideRect(int *rect)
 {
-    auto Callback = [this](std::string iau_name) {
-        QString name = QString::fromStdString(iau_name);
-        if (!name.isEmpty()) {
-            updateSourceInfoInDock(name);
-        }
-        setVtkInteractorStyleImage();
-    };
+    setVtkInteractorStyleImage();
 
-    auto style = vtkSmartPointer<InteractorStylePickSource>::New();
-    style->Callback = Callback;
+    if (!catalogue || catalogue->getSources().isEmpty()) {
+        return;
+    }
+
+    double X0 = (rect[0] < rect[2]) ? rect[0] : rect[2];
+    double Y0 = (rect[1] < rect[3]) ? rect[1] : rect[3];
+    double X1 = (rect[0] > rect[2]) ? rect[0] : rect[2];
+    double Y1 = (rect[1] > rect[3]) ? rect[1] : rect[3];
+
+    if (X0 == X1) {
+        X1 += 1.0;
+    }
+    if (Y0 == Y1) {
+        Y1 += 1.0;
+    }
+
+    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+    double verts[32];
+    renderer->SetDisplayPoint(X0, Y0, 0);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[0]);
+
+    renderer->SetDisplayPoint(X0, Y0, 1);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[4]);
+
+    renderer->SetDisplayPoint(X0, Y1, 0);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[8]);
+
+    renderer->SetDisplayPoint(X0, Y1, 1);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[12]);
+
+    renderer->SetDisplayPoint(X1, Y0, 0);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[16]);
+
+    renderer->SetDisplayPoint(X1, Y0, 1);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[20]);
+
+    renderer->SetDisplayPoint(X1, Y1, 0);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[24]);
+
+    renderer->SetDisplayPoint(X1, Y1, 1);
+    renderer->DisplayToWorld();
+    renderer->GetWorldPoint(&verts[28]);
+
+    auto frustumExtractor = vtkSmartPointer<vtkExtractSelectedFrustum>::New();
+    frustumExtractor->CreateFrustum(verts);
+
+    auto extractPolyData = vtkSmartPointer<vtkExtractPolyDataGeometry>::New();
+    extractPolyData->SetInputConnection(catalogue->GetPolyDataFilter()->GetOutputPort());
+    extractPolyData->SetImplicitFunction(frustumExtractor->GetFrustum());
+    extractPolyData->ExtractInsideOn();
+    extractPolyData->PassPointsOn();
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(extractPolyData->GetOutputPort());
+
+    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(1, 1, 0);
+
+    /**/
+    auto removePolyData = vtkSmartPointer<vtkRemovePolyData>::New();
+    removePolyData->AddInputConnection(catalogue->GetPolyDataFilter()->GetOutputPort());
+    removePolyData->AddInputConnection(extractPolyData->GetOutputPort());
+
+    auto masterMapper = mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    masterMapper->SetInputConnection(removePolyData->GetOutputPort());
+
+    auto masterActor = catalogue->GetActor();
+    masterActor->GetProperty()->SetColor(1, 0, 0);
+    masterActor->SetMapper(masterMapper);
+    /**/
+
+    catalogue->AddExtractedSource(extractPolyData, actor);
+    catalogue->SetPolyDataFilter(removePolyData);
+
+    renderer->AddActor(actor);
+    ui->qVTK1->renderWindow()->Render();
+}
+
+void vtkwindow_new::setVtkInteractorExtractSources()
+{
+    auto style = vtkSmartPointer<InteractorStyleExtractSources>::New();
+    style->Callback = [this](int *rect) -> void { extractSourcesInsideRect(rect); };
 
     ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle(style);
     ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow(ui->qVTK1->renderWindow());
-    ui->qVTK1->setCursor(Qt::PointingHandCursor);
+    ui->qVTK1->setCursor(Qt::CrossCursor);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
@@ -3790,9 +3835,9 @@ void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::updateSourceInfoInDock(const QString &name)
+void vtkwindow_new::updateSourceInfoInDock(const QString &iau_name)
 {
-    if (!catalogue || name.isEmpty()) {
+    if (!catalogue || iau_name.isEmpty()) {
         return;
     }
 
@@ -3808,7 +3853,7 @@ void vtkwindow_new::updateSourceInfoInDock(const QString &name)
     }
 
     auto sourceWidget = qobject_cast<SourceWidget *>(dock->widget());
-    sourceWidget->showSourceInfo(catalogue->getSource(name));
+    sourceWidget->showSourceInfo(catalogue->getSource(iau_name));
 }
 
 // QUI FV - Aggiunta livelli per sorgenti

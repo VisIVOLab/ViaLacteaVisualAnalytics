@@ -2,6 +2,9 @@
 
 #include "source.h"
 
+#include <vtkLODActor.h>
+#include <vtkPolyDataAlgorithm.h>
+
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -27,6 +30,13 @@ Catalogue::Catalogue(QObject *parent, const QString &fn) : QObject(parent), file
     }
 }
 
+void Catalogue::AddExtractedSource(vtkSmartPointer<vtkPolyDataAlgorithm> Filter,
+                                   vtkSmartPointer<vtkLODActor> Actor)
+{
+    QPair<vtkSmartPointer<vtkPolyDataAlgorithm>, vtkSmartPointer<vtkLODActor>> pair(Filter, Actor);
+    extracted.append(pair);
+}
+
 const QHash<QString, Source *> &Catalogue::getSources() const
 {
     return sources;
@@ -39,4 +49,24 @@ const Source *Catalogue::getSource(QString iau_name) const
     }
 
     return nullptr;
+}
+
+vtkSmartPointer<vtkLODActor> Catalogue::GetActor() const
+{
+    return Actor;
+}
+
+void Catalogue::SetActor(vtkSmartPointer<vtkLODActor> actor)
+{
+    this->Actor = actor;
+}
+
+vtkSmartPointer<vtkPolyDataAlgorithm> Catalogue::GetPolyDataFilter() const
+{
+    return PolyDataFilter;
+}
+
+void Catalogue::SetPolyDataFilter(vtkSmartPointer<vtkPolyDataAlgorithm> PolyDataFilter)
+{
+    this->PolyDataFilter = PolyDataFilter;
 }
