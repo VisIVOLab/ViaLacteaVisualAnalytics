@@ -225,7 +225,7 @@ private:
     bool sessionSaved = false;
 
     vtkfitstoolwidget_new *vtkfitstoolwindow;
-    Catalogue *catalogue;
+    QPointer<Catalogue> catalogue;
 
     QString windowName;
     // QString filenameWithPath;
@@ -372,7 +372,7 @@ private slots:
     void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addImageToList(vtkfitstoolwidgetobject *o);
 
-    void updateSourceInfoInDock(const QString &iau_name);
+    void showSourceDockWidget();
     void extractSourcesInsideRect(int *rect);
     void setVtkInteractorExtractSources();
 

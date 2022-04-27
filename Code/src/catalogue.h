@@ -9,6 +9,8 @@
 class Source;
 class vtkLODActor;
 class vtkPolyDataAlgorithm;
+class vtkPolyData;
+class vtkRenderWindow;
 
 class Catalogue : public QObject
 {
@@ -25,7 +27,14 @@ public:
     vtkSmartPointer<vtkPolyDataAlgorithm> GetPolyDataFilter() const;
     void SetPolyDataFilter(vtkSmartPointer<vtkPolyDataAlgorithm> PolyDataFilter);
 
-    void AddExtractedSource(vtkSmartPointer<vtkPolyDataAlgorithm>, vtkSmartPointer<vtkLODActor>);
+    // void AddExtractedSource(vtkSmartPointer<vtkPolyDataAlgorithm>, vtkSmartPointer<vtkLODActor>);
+    void ExtractSourceInsideRect(double rect[4], vtkRenderWindow *renWin, double arcsec);
+
+    const QMap<QString, QPair<vtkSmartPointer<vtkPolyData>, vtkSmartPointer<vtkLODActor>>> &
+    getExtractedNames() const;
+
+signals:
+    void SourceExtracted();
 
 private:
     QString filepath;
@@ -37,7 +46,9 @@ private:
     vtkSmartPointer<vtkLODActor> Actor;
 
     // Extracted dataset
-    QList<QPair<vtkSmartPointer<vtkPolyDataAlgorithm>, vtkSmartPointer<vtkLODActor>>> extracted;
+    QMap<QString, QPair<vtkSmartPointer<vtkPolyData>, vtkSmartPointer<vtkLODActor>>> extractedNames;
+
+    void drawExtractedSources(const QSet<QString> &names, vtkRenderWindow *renWin, double arcsec);
 };
 
 #endif // CATALOGUE_H

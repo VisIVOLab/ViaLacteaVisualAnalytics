@@ -6,48 +6,83 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>364</height>
+    <width>325</width>
+    <height>795</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <widget class="QGroupBox" name="boxInfo">
+   <item alignment="Qt::AlignTop">
+    <widget class="QGroupBox" name="boxExtracted">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>150</height>
+      </size>
+     </property>
      <property name="title">
-      <string>Information</string>
+      <string>Extracted sources</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QListWidget" name="listExtracted"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignTop">
+    <widget class="QGroupBox" name="boxSource">
+     <property name="title">
+      <string>Source</string>
      </property>
      <layout class="QFormLayout" name="formLayout">
       <property name="labelAlignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
+      <property name="formAlignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+      </property>
       <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>name</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>index</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>iau_name</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_4">
+      <item row="0" column="1">
+       <widget class="QLabel" name="labelSourceIau">
         <property name="text">
-         <string>classid</string>
+         <string>_iau_name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>nislands</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="labelNumIslands">
+        <property name="text">
+         <string>_nislands</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>pos</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>pos_wcs</string>
         </property>
        </widget>
       </item>
@@ -58,150 +93,291 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_6">
+      <item row="2" column="1">
+       <widget class="QLabel" name="labelSourcePos">
         <property name="text">
-         <string>nislands</string>
+         <string>_pos</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLabel" name="labelSourcePosWCS">
+        <property name="text">
+         <string>_poswcs</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLabel" name="labelSourceLabel">
+        <property name="text">
+         <string>_label</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>classid</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QLabel" name="labelSourceClassId">
+        <property name="text">
+         <string>_classid</string>
         </property>
        </widget>
       </item>
       <item row="6" column="0">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>x0</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>y0</string>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="0">
-       <widget class="QLabel" name="label_9">
-        <property name="text">
-         <string>ra</string>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="0">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>dec</string>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="0">
        <widget class="QLabel" name="label_11">
         <property name="text">
          <string>morph_label</string>
         </property>
        </widget>
       </item>
-      <item row="11" column="0">
+      <item row="6" column="1">
+       <widget class="QLabel" name="labelSourceMorphLabel">
+        <property name="text">
+         <string>_morph</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0">
        <widget class="QLabel" name="label_12">
         <property name="text">
          <string>sourceness_label</string>
         </property>
        </widget>
       </item>
-      <item row="12" column="0">
+      <item row="7" column="1">
+       <widget class="QLabel" name="labelSourceSourcenessLabel">
+        <property name="text">
+         <string>_sourcenesslabel</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0">
        <widget class="QLabel" name="label_13">
         <property name="text">
          <string>sourceness_score</string>
         </property>
        </widget>
       </item>
-      <item row="12" column="1">
-       <widget class="QLabel" name="labelSourceScore">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="11" column="1">
-       <widget class="QLabel" name="labelSourceLabel">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="1">
-       <widget class="QLabel" name="labelMorpthLabel">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="1">
-       <widget class="QLabel" name="labelDec">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
       <item row="8" column="1">
-       <widget class="QLabel" name="labelRa">
+       <widget class="QLabel" name="labelSourceSourcenessScore">
         <property name="text">
-         <string/>
+         <string>_sourceness_score</string>
         </property>
        </widget>
       </item>
-      <item row="7" column="1">
-       <widget class="QLabel" name="labelY">
+     </layout>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignTop">
+    <widget class="QGroupBox" name="boxIslands">
+     <property name="title">
+      <string>Island</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_2">
+      <property name="labelAlignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="formAlignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
         <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QLabel" name="labelX">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QLabel" name="labelNumIslands">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QLabel" name="labelLabel">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QLabel" name="labelClassId">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLabel" name="labelIauName">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLabel" name="labelIndex">
-        <property name="text">
-         <string/>
+         <string>iau_name</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLabel" name="labelName">
+       <widget class="QLabel" name="labelIslandIau">
         <property name="text">
-         <string/>
+         <string>_iau_name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>npix</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="labelIslandNpix">
+        <property name="text">
+         <string>_npix</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>pos</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLabel" name="labelIslandPos">
+        <property name="text">
+         <string>_pos _box</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>pos_wcs</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLabel" name="labelIslandPosWCS">
+        <property name="text">
+         <string>_pos_wcs _box_wcs</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_14">
+        <property name="text">
+         <string>flux</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLabel" name="labelIslandFlux">
+        <property name="text">
+         <string>_flux</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_15">
+        <property name="text">
+         <string>Smax, Stot</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QLabel" name="labelIslandS">
+        <property name="text">
+         <string>_S</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_16">
+        <property name="text">
+         <string>bkg, rms</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLabel" name="labelIslandBkgRms">
+        <property name="text">
+         <string>_bkg _rms</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0">
+       <widget class="QLabel" name="label_17">
+        <property name="text">
+         <string>fitinfo</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="1">
+       <widget class="QLabel" name="labelIslandFit">
+        <property name="text">
+         <string>_fitinfo</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0">
+       <widget class="QLabel" name="label_18">
+        <property name="text">
+         <string>minsize, maxsice</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="1">
+       <widget class="QLabel" name="labelIslandMinMax">
+        <property name="text">
+         <string>_min _max</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="0">
+       <widget class="QLabel" name="label_19">
+        <property name="text">
+         <string>beam_area_ratio_par</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="1">
+       <widget class="QLabel" name="labelIslandBeam">
+        <property name="text">
+         <string>_beam_area_ratio_par</string>
+        </property>
+       </widget>
+      </item>
+      <item row="10" column="0">
+       <widget class="QLabel" name="label_20">
+        <property name="text">
+         <string>resolved</string>
+        </property>
+       </widget>
+      </item>
+      <item row="10" column="1">
+       <widget class="QLabel" name="labelIslandResolved">
+        <property name="text">
+         <string>_resolved</string>
+        </property>
+       </widget>
+      </item>
+      <item row="11" column="0">
+       <widget class="QLabel" name="label_21">
+        <property name="text">
+         <string>border</string>
+        </property>
+       </widget>
+      </item>
+      <item row="11" column="1">
+       <widget class="QLabel" name="labelIslandBorder">
+        <property name="text">
+         <string>_border</string>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="0">
+       <widget class="QLabel" name="label_22">
+        <property name="text">
+         <string>sourceness_label</string>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="1">
+       <widget class="QLabel" name="labelIslandSourcenessLabel">
+        <property name="text">
+         <string>_sourceness_label</string>
+        </property>
+       </widget>
+      </item>
+      <item row="13" column="0">
+       <widget class="QLabel" name="label_23">
+        <property name="text">
+         <string>sourceness_score</string>
+        </property>
+       </widget>
+      </item>
+      <item row="13" column="1">
+       <widget class="QLabel" name="labelIslandSourcenessScore">
+        <property name="text">
+         <string>_sourceness_score</string>
         </property>
        </widget>
       </item>

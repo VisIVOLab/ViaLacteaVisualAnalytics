@@ -2586,9 +2586,10 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
 
 void vtkwindow_new::addSourcesFromJson(const QString &fn)
 {
-    catalogue = new Catalogue(this, fn);
+    this->catalogue = new Catalogue(this, fn);
     auto sources = catalogue->getSources();
     if (sources.isEmpty()) {
+        QMessageBox::information(this, "No sources", "The file does not contain any sources.");
         return;
     }
 
@@ -3619,30 +3620,32 @@ void vtkwindow_new::extractSourcesInsideRect(int *rect)
     extractPolyData->ExtractInsideOn();
     extractPolyData->PassPointsOn();
 
-    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(extractPolyData->GetOutputPort());
-
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
-    actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(1, 1, 0);
-
-    /**/
     auto removePolyData = vtkSmartPointer<vtkRemovePolyData>::New();
     removePolyData->AddInputConnection(catalogue->GetPolyDataFilter()->GetOutputPort());
     removePolyData->AddInputConnection(extractPolyData->GetOutputPort());
+    catalogue->SetPolyDataFilter(removePolyData);
 
-    auto masterMapper = mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    auto masterMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     masterMapper->SetInputConnection(removePolyData->GetOutputPort());
 
     auto masterActor = catalogue->GetActor();
     masterActor->GetProperty()->SetColor(1, 0, 0);
     masterActor->SetMapper(masterMapper);
-    /**/
 
-    catalogue->AddExtractedSource(extractPolyData, actor);
-    catalogue->SetPolyDataFilter(removePolyData);
+    auto coordinate = vtkSmartPointer<vtkCoordinate>::New();
+    coordinate->SetCoordinateSystemToDisplay();
+    coordinate->SetValue(X0, Y0);
+    double* p1 = coordinate->GetComputedWorldValue(renderer);
+    coordinate = vtkSmartPointer<vtkCoordinate>::New();
+    coordinate->SetCoordinateSystemToDisplay();
+    coordinate->SetValue(X1, Y1);
+    double* p2 = coordinate->GetComputedWorldValue(renderer);
+    double rectInWorldCoords[] = { p1[0], p1[1], p2[0], p2[1] };
+    catalogue->ExtractSourceInsideRect(rectInWorldCoords, ui->qVTK1->renderWindow(),
+                                       AstroUtils::arcsecPixel(myfits->GetFileName()));
 
-    renderer->AddActor(actor);
+    showSourceDockWidget();
+
     ui->qVTK1->renderWindow()->Render();
 }
 
@@ -3835,9 +3838,9 @@ void vtkwindow_new::addImageToList(vtkfitstoolwidgetobject *o)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::updateSourceInfoInDock(const QString &iau_name)
+void vtkwindow_new::showSourceDockWidget()
 {
-    if (!catalogue || iau_name.isEmpty()) {
+    if (!catalogue) {
         return;
     }
 
@@ -3847,13 +3850,10 @@ void vtkwindow_new::updateSourceInfoInDock(const QString &iau_name)
         dock->setAttribute(Qt::WA_DeleteOnClose);
         dock->setFloating(true);
 
-        auto sourceWidget = new SourceWidget(dock);
+        auto sourceWidget = new SourceWidget(dock, catalogue);
         dock->setWidget(sourceWidget);
         dock->show();
     }
-
-    auto sourceWidget = qobject_cast<SourceWidget *>(dock->widget());
-    sourceWidget->showSourceInfo(catalogue->getSource(iau_name));
 }
 
 // QUI FV - Aggiunta livelli per sorgenti
