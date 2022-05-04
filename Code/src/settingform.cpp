@@ -117,6 +117,8 @@ void SettingForm::vlkb_loggedin()
     ui->vlkbAuthStatusLabel->setText("Authenticated");
     ui->vlkbLoginButton->hide();
     ui->vlkbLogoutButton->show();
+    this->activateWindow();
+    this->raise();
 }
 
 void SettingForm::vlkb_loggedout()
@@ -131,6 +133,8 @@ void SettingForm::caesar_loggedin()
     ui->caesarAuthStatusLabel->setText("Authenticated");
     ui->caesarLoginButton->hide();
     ui->caesarLogoutButton->show();
+    this->activateWindow();
+    this->raise();
 }
 
 void SettingForm::caesar_loggedout()
