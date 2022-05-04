@@ -24,7 +24,7 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
     : QWidget(parent, Qt::Window),
       ui(new Ui::MCutoutSummary),
       mcutoutEndpoint(
-              "http://vlkb.neanias.eu:8080/vlkb-datasetstestmcutoutuwsauth/uws_mcutout/mcutout"),
+              "https://vlkb.neanias.eu/vlkb-datasetstestmcutoutuwsauth/uws_mcutout/mcutout"),
       pollTimeout(2000)
 {
     ui->setupUi(this);

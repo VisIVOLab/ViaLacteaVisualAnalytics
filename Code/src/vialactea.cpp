@@ -28,7 +28,7 @@ void WebProcess::jsCall(const QString &point, const QString &radius)
 }
 
 const QString ViaLactea::ONLINE_TILE_PATH =
-        "http://vlkb.neanias.eu:8080/PanoramicView-v1.1.0/openlayers.html";
+        "https://vlkb.neanias.eu/PanoramicView-v1.1.0/openlayers.html";
 
 const QString ViaLactea::VLKB_URL_PUBLIC = "http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/";
 const QString ViaLactea::TAP_URL_PUBLIC = "http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap";
@@ -37,8 +37,8 @@ const QString ViaLactea::VLKB_URL_PRIVATE =
         "http://ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/";
 const QString ViaLactea::TAP_URL_PRIVATE = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
 
-const QString ViaLactea::VLKB_URL_NEANIAS = "http://vlkb.neanias.eu:8080/vlkb-datasets-1.2/";
-const QString ViaLactea::TAP_URL_NEANIAS = "http://vlkb.neanias.eu:8080/vlkb/tap";
+const QString ViaLactea::VLKB_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb-datasets-1.2/";
+const QString ViaLactea::TAP_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb/tap";
 
 ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLactea)
 {
