@@ -48,6 +48,7 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
     ui->saveToDiskCheckBox->setVisible(false);
     ui->fileNameLineEdit->setVisible(false);
     ui->selectFsPushButton->setVisible(false);
+    ui->loadTableButton->hide();
 
     // Cleanup previous run tmp
     QDir dir_tmp(
