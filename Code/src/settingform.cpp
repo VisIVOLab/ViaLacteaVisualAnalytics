@@ -12,28 +12,30 @@
 
 SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
 {
+    setAttribute(Qt::WA_DeleteOnClose);
+
     ui->setupUi(this);
     ui->groupBox_4->hide();
     ui->vlkbLogoutButton->hide();
     ui->caesarLogoutButton->hide();
     ui->caesarEndpoint->setText(CaesarWindow::baseUrl);
 
-    setAttribute(Qt::WA_DeleteOnClose);
+    m_ia2VlkbAuth = &IA2VlkbAuth::Instance();
+    connect(m_ia2VlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
+    connect(m_ia2VlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
 
-    // this->setWindowFlags(Qt::WindowStaysOnTopHint);
-
-    m_vlkbAuth = &NeaniasVlkbAuth::Instance();
-    connect(m_vlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
-    connect(m_vlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
+    m_neaniasVlkbAuth = &NeaniasVlkbAuth::Instance();
+    connect(m_neaniasVlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
+    connect(m_neaniasVlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
 
     m_caesarAuth = &NeaniasCaesarAuth::Instance();
     connect(m_caesarAuth, &AuthWrapper::authenticated, this, &SettingForm::caesar_loggedin);
     connect(m_caesarAuth, &AuthWrapper::logged_out, this, &SettingForm::caesar_loggedout);
 
-    m_sSettingsFile = QDir::homePath()
-                              .append(QDir::separator())
-                              .append("VisIVODesktopTemp")
-                              .append("/setting.ini");
+    m_settingsFile = QDir::homePath()
+                             .append(QDir::separator())
+                             .append("VisIVODesktopTemp")
+                             .append("/setting.ini");
 
     readSettingsFromFile();
 }
@@ -45,7 +47,7 @@ SettingForm::~SettingForm()
 
 void SettingForm::readSettingsFromFile()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_settingsFile, QSettings::NativeFormat);
 
     m_termsAccepted = settings.value("termsaccepted", false).toBool();
 
@@ -55,47 +57,24 @@ void SettingForm::readSettingsFromFile()
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
 
-    QString vlkbtype = settings.value("vlkbtype", "public").toString();
-    if (vlkbtype == "public") {
-        ui->publicVLKB_radioButton->setChecked(true);
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PUBLIC);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PUBLIC);
-
-        ui->username_LineEdit->hide();
-        ui->password_LineEdit->hide();
-        ui->userLabel->hide();
-        ui->passLabel->hide();
-        ui->vlkbAuthLabel->hide();
-        ui->vlkbAuthStatusLabel->hide();
-        ui->vlkbLoginButton->hide();
-    } else if (vlkbtype == "private") {
-        ui->privateVLKB_radioButton->setChecked(true);
-        ui->vlkbAuthLabel->hide();
-        ui->vlkbAuthStatusLabel->hide();
-        ui->vlkbLoginButton->hide();
-        ui->username_LineEdit->show();
-        ui->password_LineEdit->show();
-        ui->userLabel->show();
-        ui->passLabel->show();
-
-        ui->username_LineEdit->setText(settings.value("vlkbuser", "").toString());
-        ui->password_LineEdit->setText(settings.value("vlkbpass", "").toString());
-    } else if (vlkbtype == "neanias") {
+    QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
+    AuthWrapper *vlkbAuth;
+    if (vlkbtype == "ia2") {
+        ui->ia2VLKB_radioButton->setChecked(true);
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_IA2);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_IA2);
+        vlkbAuth = m_ia2VlkbAuth;
+    } else /* (vlkbtype == "neanias") */ {
         ui->neaniasVLKB_radioButton->setChecked(true);
-        ui->username_LineEdit->hide();
-        ui->password_LineEdit->hide();
-        ui->userLabel->hide();
-        ui->passLabel->hide();
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_NEANIAS);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_NEANIAS);
+        vlkbAuth = m_neaniasVlkbAuth;
+    }
 
-        ui->vlkbAuthLabel->show();
-
-        if (m_vlkbAuth->isAuthenticated()) {
-            vlkb_loggedin();
-        } else {
-            vlkb_loggedout();
-        }
-
-        ui->vlkbAuthStatusLabel->show();
+    if (vlkbAuth->isAuthenticated()) {
+        vlkb_loggedin();
+    } else {
+        vlkb_loggedout();
     }
 
     if (settings.value("online", false) == true) {
@@ -155,22 +134,20 @@ void SettingForm::on_TilePushButton_clicked()
 
 void SettingForm::on_OkPushButton_clicked()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_settingsFile, QSettings::NativeFormat);
 
     settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
-    if (ui->privateVLKB_radioButton->isChecked())
-        settings.setValue("vlkbtype", "private");
-    else if (ui->publicVLKB_radioButton->isChecked())
-        settings.setValue("vlkbtype", "public");
+    if (ui->ia2VLKB_radioButton->isChecked())
+        settings.setValue("vlkbtype", "ia2");
     else
         settings.setValue("vlkbtype", "neanias");
 
-    settings.setValue("vlkbuser", ui->username_LineEdit->text());
-    settings.setValue("vlkbpass", ui->password_LineEdit->text());
     //  settings.setValue("workdir",  ui->lineEdit_2->text());
 
+    settings.setValue("vlkburl", ui->vlkbUrl_lineEdit->text());
+    settings.setValue("vlkbtableurl", ui->tapUrl_lineEdit->text());
     settings.setValue("online", ui->checkBox->isChecked());
     settings.setValue("onlinetilepath", ui->urlLineEdit->text());
 
@@ -191,20 +168,17 @@ void SettingForm::on_checkBox_clicked(bool checked)
     qDebug() << "checked: " << checked;
 }
 
-void SettingForm::on_privateVLKB_radioButton_toggled(bool checked)
+void SettingForm::on_ia2VLKB_radioButton_toggled(bool checked)
 {
     if (checked) {
-        ui->username_LineEdit->show();
-        ui->password_LineEdit->show();
-        ui->userLabel->show();
-        ui->passLabel->show();
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PRIVATE);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PRIVATE);
-    } else {
-        ui->username_LineEdit->hide();
-        ui->password_LineEdit->hide();
-        ui->userLabel->hide();
-        ui->passLabel->hide();
+        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_IA2);
+        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_IA2);
+
+        if (!m_ia2VlkbAuth->isAuthenticated()) {
+            vlkb_loggedout();
+        } else {
+            vlkb_loggedin();
+        }
     }
 }
 
@@ -224,35 +198,28 @@ void SettingForm::on_workdirButton_clicked()
 void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
 {
     if (checked) {
-        ui->vlkbAuthLabel->show();
-        ui->vlkbAuthStatusLabel->show();
         ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_NEANIAS);
         ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_NEANIAS);
 
-        if (!m_vlkbAuth->isAuthenticated()) {
+        if (!m_neaniasVlkbAuth->isAuthenticated()) {
             vlkb_loggedout();
         } else {
             vlkb_loggedin();
         }
-
-    } else {
-        ui->vlkbAuthLabel->hide();
-        ui->vlkbAuthStatusLabel->hide();
-        ui->vlkbLoginButton->hide();
-        ui->vlkbLogoutButton->hide();
     }
 }
 
 void SettingForm::on_vlkbLoginButton_clicked()
 {
-    if (m_vlkbAuth->isAuthenticated())
+    auto vlkbAuth = (ui->ia2VLKB_radioButton->isChecked() ? m_ia2VlkbAuth : m_neaniasVlkbAuth);
+
+    if (vlkbAuth->isAuthenticated())
         return;
 
-    if (!m_termsAccepted) {
+    if (vlkbAuth == m_neaniasVlkbAuth && !m_termsAccepted) {
         auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and "
                             "the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
-                            .arg(m_privacyPolicyUrl)
-                            .arg(m_termsOfUseUrl);
+                            .arg(m_privacyPolicyUrl, m_termsOfUseUrl);
 
         QMessageBox msgBox(this);
         msgBox.setIcon(QMessageBox::Question);
@@ -267,21 +234,14 @@ void SettingForm::on_vlkbLoginButton_clicked()
         }
     }
 
-    m_vlkbAuth->grant();
-}
-
-void SettingForm::on_publicVLKB_radioButton_toggled(bool checked)
-{
-    if (checked) {
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_PUBLIC);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_PUBLIC);
-    }
+    vlkbAuth->grant();
 }
 
 void SettingForm::on_vlkbLogoutButton_clicked()
 {
-    if (m_vlkbAuth->isAuthenticated())
-        m_vlkbAuth->logout();
+    auto vlkbAuth = (ui->ia2VLKB_radioButton->isChecked() ? m_ia2VlkbAuth : m_neaniasVlkbAuth);
+    if (vlkbAuth->isAuthenticated())
+        vlkbAuth->logout();
 }
 
 void SettingForm::on_caesarLoginButton_clicked()

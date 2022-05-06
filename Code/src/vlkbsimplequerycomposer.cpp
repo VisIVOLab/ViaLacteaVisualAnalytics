@@ -1,9 +1,11 @@
 #include "vlkbsimplequerycomposer.h"
 #include "ui_vlkbsimplequerycomposer.h"
 
+#include "authkeys.h"
 #include "authwrapper.h"
 #include "singleton.h"
 #include "vialactea_fileload.h"
+
 #include <QAuthenticator>
 #include <QDir>
 #include <QDomDocument>
@@ -35,7 +37,7 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
 
     url = settings.value("vlkbtableurl", "").toString();
 
-    vlkbtype = settings.value("vlkbtype", "public").toString();
+    vlkbtype = settings.value("vlkbtype", "ia2").toString();
     table_prefix = (vlkbtype == "neanias") ? "" : "vlkb_";
 
     ui->vlkbUrlLineEdit->setText(url);
@@ -100,7 +102,7 @@ void VLKBSimpleQueryComposer::setLatitude(float lat1, float lat2)
 
 void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 {
-
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     if (!isConnected) {
 
         loading = new LoadingWidget();
@@ -115,10 +117,9 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
                 SLOT(availReplyFinished(QNetworkReply *)));
         QNetworkRequest request(QUrl(url + "/availability"));
 
-        if (vlkbtype == "neanias") {
-            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-            auth->putAccessToken(request);
-        }
+        auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                               : &NeaniasVlkbAuth::Instance();
+        auth->putAccessToken(request);
 
         QNetworkReply *reply = manager->get(request);
         loading->setLoadingProcess(reply);
@@ -141,7 +142,7 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 
 void VLKBSimpleQueryComposer::availReplyFinished(QNetworkReply *reply)
 {
-
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     qDebug() << "availReplyFinished";
 
     if (reply->error()) {
@@ -179,10 +180,10 @@ void VLKBSimpleQueryComposer::availReplyFinished(QNetworkReply *reply)
                         SLOT(tableReplyFinished(QNetworkReply *)));
 
                 QNetworkRequest req(QUrl(url + "/tables"));
-                if (vlkbtype == "neanias") {
-                    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-                    auth->putAccessToken(req);
-                }
+                auto auth = settings.value("vlkbtype", "ia2") == "ia2"
+                        ? &IA2VlkbAuth::Instance()
+                        : &NeaniasVlkbAuth::Instance();
+                auth->putAccessToken(req);
 
                 QNetworkReply *r = manager->get(req);
                 loading->setLoadingProcess(r);
@@ -210,7 +211,6 @@ void VLKBSimpleQueryComposer::availReplyFinished(QNetworkReply *reply)
 
 void VLKBSimpleQueryComposer::tableReplyFinished(QNetworkReply *reply)
 {
-
     qDebug() << "tableReplyFinished";
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
@@ -303,6 +303,7 @@ void VLKBSimpleQueryComposer::on_queryPushButton_clicked()
 
 void VLKBSimpleQueryComposer::doQuery(QString band)
 {
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     loading->init();
     loading->setText("Retrieving dataset from VLKB");
 
@@ -415,10 +416,9 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
     QNetworkRequest req(url + "/sync");
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
-    if (vlkbtype == "neanias") {
-        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-        auth->putAccessToken(req);
-    }
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(req);
 
     QNetworkReply *r = manager->post(req, postData);
     loading->setLoadingProcess(r);
@@ -429,22 +429,19 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
 void VLKBSimpleQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply,
                                                           QAuthenticator *aAuthenticator)
 {
-    QString user = "";
-    QString pass = "";
+    Q_UNUSED(aReply);
+    qDebug() << "TAP auth";
+
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-
-    if (settings.value("vlkbtype", "public").toString() == "private") {
-        user = settings.value("vlkbuser", "").toString();
-        pass = settings.value("vlkbpass", "").toString();
+    if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
+        aAuthenticator->setUser(IA2_TAP_USER);
+        aAuthenticator->setPassword(IA2_TAP_PASS);
     }
-
-    aAuthenticator->setUser(user);
-    aAuthenticator->setPassword(pass);
 }
 
 void VLKBSimpleQueryComposer::queryReplyFinished(QNetworkReply *reply)
 {
-
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
         loading->loadingEnded();
@@ -460,7 +457,8 @@ void VLKBSimpleQueryComposer::queryReplyFinished(QNetworkReply *reply)
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
+            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                                   : &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         } else {

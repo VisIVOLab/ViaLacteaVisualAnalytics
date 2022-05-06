@@ -30,12 +30,8 @@ void WebProcess::jsCall(const QString &point, const QString &radius)
 const QString ViaLactea::ONLINE_TILE_PATH =
         "https://vlkb.neanias.eu/PanoramicView-v1.1.0/openlayers.html";
 
-const QString ViaLactea::VLKB_URL_PUBLIC = "http://ia2-vialactea.oats.inaf.it/libjnifitsdb-1.0.2p/";
-const QString ViaLactea::TAP_URL_PUBLIC = "http://ia2-vialactea.oats.inaf.it/vlkb/catalogues/tap";
-
-const QString ViaLactea::VLKB_URL_PRIVATE =
-        "http://ia2-vialactea.oats.inaf.it:8080/libjnifitsdb-1.0.2/";
-const QString ViaLactea::TAP_URL_PRIVATE = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
+const QString ViaLactea::VLKB_URL_IA2 = "https://vlkb.ia2.inaf.it:8443/vlkb/datasets";
+const QString ViaLactea::TAP_URL_IA2 = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
 
 const QString ViaLactea::VLKB_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb-datasets-1.2/";
 const QString ViaLactea::TAP_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb/tap";
@@ -48,7 +44,7 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
     ui->saveToDiskCheckBox->setVisible(false);
     ui->fileNameLineEdit->setVisible(false);
     ui->selectFsPushButton->setVisible(false);
-    ui->loadTableButton->hide();
+    // ui->loadTableButton->hide();
 
     // Cleanup previous run tmp
     QDir dir_tmp(
@@ -66,7 +62,8 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
-    if (settings.value("vlkbtype", "public").toString() == "neanias") {
+    /*
+    if (settings.value("vlkbtype", "ia2").toString() == "neanias") {
         // The user has to login through SSO to continue or change access method
         QMessageBox *msgBox = new QMessageBox(this);
         msgBox->setIcon(QMessageBox::Question);
@@ -93,6 +90,7 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
             msgBox->deleteLater();
         });
     }
+    */
 
     if (settings.value("online", true) == true) {
         tilePath = settings.value("onlinetilepath", ONLINE_TILE_PATH).toString();
@@ -155,18 +153,14 @@ void ViaLactea::quitApp()
 void ViaLactea::updateVLKBSetting()
 {
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    QString vlkbtype = settings.value("vlkbtype", "public").toString();
+    QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
 
-    if (vlkbtype == "public") {
-        qDebug() << "public access to vlkb";
-        settings.setValue("vlkburl", VLKB_URL_PUBLIC);
-        settings.setValue("vlkbtableurl", TAP_URL_PUBLIC);
-    } else if (vlkbtype == "private") {
-        qDebug() << "private access to vlkb";
-        settings.setValue("vlkburl", VLKB_URL_PRIVATE);
-        settings.setValue("vlkbtableurl", TAP_URL_PRIVATE);
-    } else if (vlkbtype == "neanias") {
-        qDebug() << "private access to vlkb through NEANIAS SSO";
+    if (vlkbtype == "ia2") {
+        qDebug() << "VLKB instance: IA2";
+        settings.setValue("vlkburl", VLKB_URL_IA2);
+        settings.setValue("vlkbtableurl", TAP_URL_IA2);
+    } else /*(vlkbtype == "neanias")*/ {
+        qDebug() << "VLKB instance: NEANIAS";
         settings.setValue("vlkburl", VLKB_URL_NEANIAS);
         settings.setValue("vlkbtableurl", TAP_URL_NEANIAS);
     }
@@ -648,6 +642,15 @@ void ViaLactea::on_actionLoad_session_triggered()
 
 void ViaLactea::on_loadTableButton_clicked()
 {
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
+
+    if (vlkbtype == "neanias") {
+        QMessageBox::information(this, "Info",
+                                 "This feature is only available using the IA2 instance.");
+        return;
+    }
+
     QString fn = QFileDialog::getOpenFileName(this, "Load user table", QDir::homePath());
     if (fn.isEmpty())
         return;

@@ -1,10 +1,10 @@
 #include "usertablewindow.h"
 #include "ui_usertablewindow.h"
 
+#include "authkeys.h"
 #include "authwrapper.h"
-#include "vialacteainitialquery.h"
-
 #include "mcutoutsummary.h"
+#include "vialacteainitialquery.h"
 
 #include <QCheckBox>
 #include <QDebug>
@@ -46,12 +46,10 @@ UserTableWindow::~UserTableWindow()
 
 void UserTableWindow::getSurveysData()
 {
-    QString vlkbType = settings.value("vlkbtype", "public").toString();
+    QString vlkbType = settings.value("vlkbtype", "ia2").toString();
 
     QString table;
-    if (vlkbType == "public") {
-        table = "vlkb_datasets_public.surveys";
-    } else if (vlkbType == "private") {
+    if (vlkbType == "ia2") {
         table = "vlkb_radiocubes.surveys";
     } else /* neanias */ {
         table = "datasets.surveys";
@@ -68,15 +66,17 @@ void UserTableWindow::getSurveysData()
     QString tapUrl = settings.value("vlkbtableurl").toString();
     QNetworkRequest req(tapUrl + "/sync");
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    NeaniasVlkbAuth::Instance().putAccessToken(req);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(req);
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
 
     connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            [this](QNetworkReply *reply, QAuthenticator *authenticator) {
+            [](QNetworkReply *reply, QAuthenticator *authenticator) {
                 Q_UNUSED(reply);
-                authenticator->setUser(settings.value("vlkbuser", "").toString());
-                authenticator->setPassword(settings.value("vlkbpass", "").toString());
+                authenticator->setUser(IA2_TAP_USER);
+                authenticator->setPassword(IA2_TAP_PASS);
             });
 
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {

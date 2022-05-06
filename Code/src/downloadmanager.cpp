@@ -1,12 +1,14 @@
-#include <QCoreApplication>
-#include <QDebug>
+#include "downloadmanager.h"
 
 #include "authwrapper.h"
-#include "downloadmanager.h"
 #include "loadingwidget.h"
 #include "singleton.h"
+
+#include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QMessageBox>
+#include <QSettings>
 
 // constructor
 DownloadManager::DownloadManager()
@@ -33,7 +35,11 @@ void DownloadManager::execute()
 // Constructs a QList of QNetworkReply
 QString DownloadManager::doDownload(const QUrl &url, QString fn)
 {
-
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
     qDebug() << " ********************************** FN: " << fn;
     loading->show();
     loading->activateWindow();
@@ -41,7 +47,8 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
 
     savedFilename = fn;
     QNetworkRequest request(url);
-    AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(request);
     QNetworkReply *reply = man->get(request);
     loading->setLoadingProcess(reply);
