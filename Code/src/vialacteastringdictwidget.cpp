@@ -9,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QSettings>
 
+#include "authkeys.h"
 #include "authwrapper.h"
 #include "singleton.h"
 
@@ -45,10 +46,9 @@ void VialacteaStringDictWidget::buildDict()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("text/html; charset=utf-8"));
 
-    if (settings.value("vlkbtype", "") == "neanias") {
-        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-        auth->putAccessToken(request);
-    }
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(request);
 
     manager->get(request);
 }
@@ -60,7 +60,7 @@ void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
         QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-        QString vlkbtype = settings.value("vlkbtype", "public").toString();
+        QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
         QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
 
         QDomDocument doc;
@@ -108,10 +108,9 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
 
-    if (settings.value("vlkbtype", "") == "neanias") {
-        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-        auth->putAccessToken(request);
-    }
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(request);
 
     manager->post(request, postData);
 }
@@ -148,16 +147,16 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
 
-    if (settings.value("vlkbtype", "") == "neanias") {
-        AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-        auth->putAccessToken(request);
-    }
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(request);
 
     manager->post(request, postData);
 }
 
 void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply *reply)
 {
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
@@ -171,7 +170,8 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
+            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                                   : &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         } else {
@@ -213,6 +213,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
 
 void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply *reply)
 {
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
@@ -226,7 +227,8 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
+            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                                   : &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
         } else {
@@ -283,18 +285,13 @@ QUrl VialacteaStringDictWidget::redirectUrl(const QUrl &possibleRedirectUrl,
 void VialacteaStringDictWidget::onAuthenticationRequestSlot(QNetworkReply *aReply,
                                                             QAuthenticator *aAuthenticator)
 {
-    qDebug() << "auth";
-    QString user = "";
-    QString pass = "";
-
+    Q_UNUSED(aReply);
+    qDebug() << "TAP auth";
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (settings.value("vlkbtype", "public").toString() == "private") {
-        user = settings.value("vlkbuser", "").toString();
-        pass = settings.value("vlkbpass", "").toString();
+    if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
+        aAuthenticator->setUser(IA2_TAP_USER);
+        aAuthenticator->setPassword(IA2_TAP_PASS);
     }
-
-    aAuthenticator->setUser(user);
-    aAuthenticator->setPassword(pass);
 }
 
 VialacteaStringDictWidget::~VialacteaStringDictWidget()

@@ -3,11 +3,12 @@
 
 #include "vlvaurlschemehandler.h"
 
-#include <QNetworkAccessManager>
-#include <QOAuth2AuthorizationCodeFlow>
 #include <QOAuthHttpServerReplyHandler>
 #include <QObject>
-#include <QWebEngineView>
+
+class QNetworkAccessManager;
+class QOAuth2AuthorizationCodeFlow;
+class QWebEngineView;
 
 class CustomOAuthReplyHandler : public QOAuthHttpServerReplyHandler
 {
@@ -15,7 +16,7 @@ class CustomOAuthReplyHandler : public QOAuthHttpServerReplyHandler
 public:
     CustomOAuthReplyHandler(QObject *parent = nullptr) : QOAuthHttpServerReplyHandler(parent) { }
 
-    QString callback() const { return QString("vlva://callback"); }
+    QString callback() const override { return QString("vlva://callback"); }
 };
 
 class AuthWrapper : public QObject
@@ -23,7 +24,7 @@ class AuthWrapper : public QObject
     Q_OBJECT
 public:
     void grant();
-    void logout();
+    virtual void logout();
     bool isAuthenticated() const;
     QString idToken() const;
     QString accessToken() const;
@@ -44,6 +45,7 @@ protected slots:
 
 protected:
     AuthWrapper(QObject *parent = nullptr);
+    enum Token { ID, ACCESS, REFRESH };
 
     QUrl authUrl;
     QUrl tokenUrl;
@@ -51,18 +53,32 @@ protected:
     QString clientId;
     QString clientSecret;
     QString scope;
-    bool _authenticated = false;
-    bool _init = false;
+    bool _authenticated;
+    bool _init;
 
     QWebEngineView *view;
     VLVAUrlSchemeHandler *handler;
     QNetworkAccessManager *mgr;
     QOAuth2AuthorizationCodeFlow *oauth2;
-    enum Token { ID, ACCESS, REFRESH };
     QString tokens[3];
 
     virtual void setup() = 0;
-    void extractTokensFromJson(QJsonObject &json);
+    void extractTokensFromJson(const QJsonObject &json);
+    void scheduleRefresh(int timeout);
+};
+
+class IA2VlkbAuth : public AuthWrapper
+{
+    Q_OBJECT
+public:
+    static AuthWrapper &Instance();
+    void logout() override;
+
+private:
+    IA2VlkbAuth(QObject *parent = nullptr);
+
+protected:
+    void setup() override;
 };
 
 class NeaniasVlkbAuth : public AuthWrapper

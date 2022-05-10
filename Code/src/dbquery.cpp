@@ -1,11 +1,15 @@
 #include "dbquery.h"
+#include "ui_dbquery.h"
+
+#include "authkeys.h"
+#include "authwrapper.h"
 #include "downloadmanager.h"
 #include "qdebug.h"
 #include "QDir"
 #include "QObject"
-#include "ui_dbquery.h"
 #include "vtkwindow_new.h"
 #include "xmlparser.h"
+
 #include <QCoreApplication>
 #include <QDomElement>
 #include <QMessageBox>
@@ -76,6 +80,13 @@ dbquery::~dbquery()
 
 void dbquery::finishedSlot(QNetworkReply *reply)
 {
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
+    vlkbUrl = settings.value("vlkburl", "").toString();
+
     QString string;
     QString file;
 
@@ -104,7 +115,14 @@ void dbquery::finishedSlot(QNetworkReply *reply)
                           + "&vl=" + ui->lineEdit_vl->text() + "&vu=" + ui->lineEdit_vu->text()
                           + "&nullvals");
 
-                nam->get(QNetworkRequest(url2));
+                QNetworkRequest request(url2);
+
+                auto auth = settings.value("vlkbtype", "ia2") == "ia2"
+                        ? &IA2VlkbAuth::Instance()
+                        : &NeaniasVlkbAuth::Instance();
+                auth->putAccessToken(request);
+
+                nam->get(request);
             } else {
                 loading->setText("Datacube inexistent");
                 loading->loadingEnded();
@@ -642,7 +660,11 @@ n_transitions=7; //+1*/
 
 void dbquery::on_queryPushButton_clicked()
 {
-
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
     ui->lineEdit_l->setReadOnly(true);
     ui->lineEdit_b->setReadOnly(true);
     ui->lineEdit_r->setReadOnly(true);
@@ -672,7 +694,11 @@ void dbquery::on_queryPushButton_clicked()
              + "&vu=" + ui->lineEdit_vu->text());
 
     // QNetworkReply* reply = nam->get(QNetworkRequest(url));
-    nam->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(request);
+    nam->get(request);
 
     ui->lineEdit_l->setReadOnly(false);
     ui->lineEdit_b->setReadOnly(false);
@@ -684,6 +710,11 @@ void dbquery::on_queryPushButton_clicked()
 // datacube list button
 void dbquery::on_pushButton_map_clicked()
 {
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
     loading = new LoadingWidget();
     loading->init();
     loading->setText("Getting datacube list...");
@@ -703,11 +734,20 @@ void dbquery::on_pushButton_map_clicked()
              + "&r=" + ui->lineEdit_r->text() + "&vl=" + ui->lineEdit_vl->text()
              + "&vu=" + ui->lineEdit_vu->text());
 
-    nam->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(request);
+    nam->get(request);
 }
 
 void dbquery::handleButton(int i)
 {
+    QSettings settings(QDir::homePath()
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
+                       QSettings::NativeFormat);
     loading = new LoadingWidget();
     loading->init();
     loading->setText("Downloading selected datacube...");
@@ -731,7 +771,11 @@ void dbquery::handleButton(int i)
  +ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+
  "&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
 */
-    nam->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(request);
+    nam->get(request);
 }
 
 void dbquery::addDatacubesToUI(QList<QMap<QString, QString>> &datacubes)

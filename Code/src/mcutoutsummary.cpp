@@ -23,8 +23,11 @@
 MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
     : QWidget(parent, Qt::Window),
       ui(new Ui::MCutoutSummary),
-      mcutoutEndpoint(
-              "http://vlkb.neanias.eu:8080/vlkb-datasetstestmcutoutuwsauth/uws_mcutout/mcutout"),
+      settings(QDir::homePath()
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
+               QSettings::NativeFormat),
       pollTimeout(2000)
 {
     ui->setupUi(this);
@@ -35,6 +38,8 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
     connect(this, &MCutoutSummary::jobCompleted, this, &MCutoutSummary::getJobReport);
 
     nam = new QNetworkAccessManager(this);
+    mcutoutEndpoint = settings.value("vlkburl", "").toString().append("/uws_mcutout/mcutout");
+    qDebug() << "MCutout endpoint" << mcutoutEndpoint;
 
     createRequestBody(cutouts);
     initSummaryTable();
@@ -54,6 +59,9 @@ void MCutoutSummary::startJob(const QString &jobId)
 
     QNetworkRequest req(url);
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(req);
 
     auto reply = nam->post(req, body);
     connect(reply, &QNetworkReply::finished, this, [this, reply, jobId]() {
@@ -77,7 +85,9 @@ void MCutoutSummary::pollJob(const QString &jobId)
     connect(timer, &QTimer::timeout, this, [this, timer, jobId]() {
         QString url = QString("%1/%2/phase").arg(mcutoutEndpoint, jobId);
         QNetworkRequest req(url);
-        NeaniasVlkbAuth::Instance().putAccessToken(req);
+        auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                               : &NeaniasVlkbAuth::Instance();
+        auth->putAccessToken(req);
         auto reply = nam->get(req);
 
         connect(reply, &QNetworkReply::finished, this, [this, timer, jobId, reply]() {
@@ -117,7 +127,9 @@ void MCutoutSummary::getJobReport(const QString &jobId)
 {
     QString url = QString("%1/%2/results/Report").arg(mcutoutEndpoint, jobId);
     QNetworkRequest req(url);
-    NeaniasVlkbAuth::Instance().putAccessToken(req);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(req);
     auto reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
@@ -205,7 +217,9 @@ void MCutoutSummary::submitJob()
     url.setQuery(urlQuery);
 
     QNetworkRequest req(url);
-    NeaniasVlkbAuth::Instance().putAccessToken(req);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(req);
     auto reply = nam->post(req, multipart);
     multipart->setParent(reply);
 
@@ -234,7 +248,9 @@ void MCutoutSummary::downloadArchive(const QString &absolutePath)
     loading->show();
 
     QNetworkRequest req(downloadUrl);
-    NeaniasVlkbAuth::Instance().putAccessToken(req);
+    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
+                                                           : &NeaniasVlkbAuth::Instance();
+    auth->putAccessToken(req);
     auto reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, absolutePath, reply, loading]() {
         if (reply->error() == QNetworkReply::NoError) {

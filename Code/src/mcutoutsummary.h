@@ -3,6 +3,7 @@
 
 #include <QJsonArray>
 #include <QNetworkAccessManager>
+#include <QSettings>
 #include <QTableWidgetItem>
 #include <QWidget>
 
@@ -34,6 +35,7 @@ private:
     Ui::MCutoutSummary *ui;
     QNetworkAccessManager *nam;
 
+    QSettings settings;
     QString mcutoutEndpoint;
     int pollTimeout;
     QJsonArray requestBody;
