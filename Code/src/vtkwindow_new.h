@@ -26,7 +26,6 @@
 #include "vtkImageStack.h"
 #include "vtkImageViewer2.h"
 #include "vtkLineSource.h"
-#include "vtkLODActor.h"
 #include "vtkLookupTable.h"
 #include "vtkMarchingCubes.h"
 #include "vtkOrientationMarkerWidget.h"
@@ -34,6 +33,7 @@
 #include "vtkPointData.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
+#include "vtkPVLODActor.h"
 #include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
 #include "vtkResliceImageViewer.h"
@@ -68,7 +68,7 @@ class vtkwindow_new;
 class vtkwindow_new : public QMainWindow
 {
     Q_OBJECT
-    vtkLODActor *m_pActor;
+    vtkPVLODActor *m_pActor;
     vtkVolumeProperty *m_volumeProperty;
     // vtkPiecewiseFunction *m_opacityTransferFunction;
     vtkColorTransferFunction *m_colorTransferFunction;
@@ -119,8 +119,8 @@ public:
     //  QString getFilenameWithPath();
     void setWindowName(QString name);
     //  void isVisible();
-    QHash<QString, vtkSmartPointer<vtkLODActor>> getEllipseActorList();
-    QHash<QString, vtkSmartPointer<vtkLODActor>> getVisualizedActorList();
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>> getEllipseActorList();
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>> getVisualizedActorList();
 
     double r;
     double g;
@@ -146,8 +146,8 @@ public:
 
     // void drawSingleEllipse(QList<vtkEllipse *> ellipse, QString sourceFilename );
     // void drawSingleEllipse(vtkEllipse * ellipse );
-    void drawSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor);
-    void removeSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor);
+    void drawSingleEllipse(vtkSmartPointer<vtkPVLODActor> ellipseActor);
+    void removeSingleEllipse(vtkSmartPointer<vtkPVLODActor> ellipseActor);
     void setContourVisualized(bool s) { contourVisualized = s; }
     bool getContourVisualized() { return contourVisualized; }
     QList<vtkfitstoolwidgetobject *> getLayerListImages() { return imgLayerList; }
@@ -225,14 +225,14 @@ private:
 
     QString windowName;
     // QString filenameWithPath;
-    QHash<QString, vtkSmartPointer<vtkLODActor>> ellipse_actor_list;
-    QHash<QString, vtkSmartPointer<vtkLODActor>> visualized_actor_list;
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>> ellipse_actor_list;
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>> visualized_actor_list;
 
     QStringList ds9RegionFiles;
     QStringList jsonRegionFiles;
 
     QHash<QString, QString> designation2fileMap;
-    QHash<QString, vtkSmartPointer<vtkLODActor>> VisualizedEllipseSourcesList;
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>> VisualizedEllipseSourcesList;
     vtkfitstoolswidget *vtkfitstoolsw;
     QHash<QString, vtkEllipse *> ellipse_list;
     QHash<QString, vtkEllipse *> ft_ellipse_list;
@@ -243,14 +243,14 @@ private:
     vtkfitstoolwidgetobject *imageObject;
     QList<vtkfitstoolwidgetobject *> imgLayerList;
     QList<vtkfitstoolwidgetobject *> elementLayerList;
-    vtkSmartPointer<vtkLODActor> rectangleActor = 0;
+    vtkSmartPointer<vtkPVLODActor> rectangleActor = 0;
     vtkSmartPointer<vtkActor> currentContourActor;
     vtkSmartPointer<vtkActor> currentContourActorForMainWindow;
     QString vlkbUrl;
     QString selectedCubeVelocityUnit;
     void drawRectangleFootprint(double points[8]);
     VialacteaStringDictWidget *stringDictWidget;
-    void addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> actor, int objtype,
+    void addCombinedLayer(QString name, vtkSmartPointer<vtkPVLODActor> actor, int objtype,
                           bool active);
 
     void addDS9Regions(const QString &filepath);

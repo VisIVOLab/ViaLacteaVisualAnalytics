@@ -46,7 +46,7 @@
 #include "vtkfitsreader.h"
 #include "vtkImageActor.h"
 #include "vtkImageViewer2.h"
-#include "vtkLODActor.h"
+#include "vtkPVLODActor.h"
 #include "vtkSmartPointer.h"
 #include "vtkVolume.h"
 
@@ -78,13 +78,13 @@ public:
 
     /*VisIVOItem specific method */
     bool setTable(VSTableDesktop *table);
-    bool setVTP(vtkLODActor *pActor);
+    bool setVTP(vtkPVLODActor *pActor);
     //   bool setFITSIMG(vtkImageActor *pActor);
     bool setFITSIMG(vtkSmartPointer<vtkFitsReader> pActor);
     bool setVTI(vtkVolume *volume);
     bool setVisualObject(VisPoint *vis);
     VSTableDesktop *getTable();
-    vtkLODActor *getVTP();
+    vtkPVLODActor *getVTP();
     vtkVolume *getVTI();
     // vtkImageActor *getFITSIMG();
     vtkSmartPointer<vtkFitsReader> getFITSIMG();
@@ -98,7 +98,7 @@ private:
     enum TreeItemType m_Type;
     TreeItem *m_parentItem;
     VSTableDesktop *m_table;
-    vtkLODActor *m_pActor;
+    vtkPVLODActor *m_pActor;
     // vtkImageActor *m_imgActor;
     vtkSmartPointer<vtkFitsReader> m_fitsImg;
     vtkVolume *m_volume;

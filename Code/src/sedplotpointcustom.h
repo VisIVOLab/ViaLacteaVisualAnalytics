@@ -74,7 +74,7 @@ private:
     vtkwindow_new *vtkwin;
     QString designation;
     void drawSingleEllipse(vtkEllipse *el);
-    vtkSmartPointer<vtkLODActor> ellipseActor;
+    vtkSmartPointer<vtkPVLODActor> ellipseActor;
 
     double image_x;
     double image_y;

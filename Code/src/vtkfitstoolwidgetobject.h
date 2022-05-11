@@ -2,7 +2,7 @@
 #define VTKFITSTOOLWIDGETOBJECT_H
 
 #include "vtkfitsreader.h"
-#include "vtkLODActor.h"
+#include "vtkPVLODActor.h"
 #include "vtkSmartPointer.h"
 
 #include <QString>
@@ -21,9 +21,9 @@ public:
     QString getName() { return name; }
     void setWavelength(QString w);
     QString getWavelength() { return wavelength; }
-    void setActor(vtkSmartPointer<vtkLODActor> a);
+    void setActor(vtkSmartPointer<vtkPVLODActor> a);
     void setFitsReader(vtkSmartPointer<vtkFitsReader> f) { fits = f; }
-    vtkSmartPointer<vtkLODActor> getActor() { return actor; }
+    vtkSmartPointer<vtkPVLODActor> getActor() { return actor; }
     vtkSmartPointer<vtkFitsReader> getFits() { return fits; }
     QString getLutScale() { return lutScale; }
     QString getLutType() { return lutType; }
@@ -52,7 +52,7 @@ private:
     QString wavelength;
     QTreeWidgetItem *item;
     vtkfitstoolwidgetobject *parent;
-    vtkSmartPointer<vtkLODActor> actor;
+    vtkSmartPointer<vtkPVLODActor> actor;
     vtkSmartPointer<vtkFitsReader> fits;
     QString lutType;
     QString lutScale;

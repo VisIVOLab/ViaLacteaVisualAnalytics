@@ -33,6 +33,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}"
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 
+include_directories(${BOOST_INC_PATH})
+
 find_package(Qt5 REQUIRED COMPONENTS                      Charts                    Help                      Purchasing                QuickTemplates2           UiPlugin
 3DAnimation               ClipboardSupport                       Qml                       QuickTest                 UiTools
 3DCore                    Concurrent                Location                  QmlDebug                  QuickWidgets              VirtualKeyboard
@@ -95,6 +97,7 @@ set(sources
     src/libwcs/wcstrig.c 
     src/libwcs/worldpos.c 
     src/loadingwidget.cpp 
+    src/qcustomplot.cpp 
     src/lutcustomize.cpp 
     src/luteditor.cpp 
     src/lutselector.cpp 
@@ -106,7 +109,6 @@ set(sources
     src/pipe.cpp 
     src/plotwindow.cpp 
     src/pointspipe.cpp 
-    src/qcustomplot.cpp 
     src/sed.cpp 
     src/sedfitgrid_thick.cpp 
     src/sedfitgrid_thin.cpp 
@@ -171,6 +173,7 @@ set (headers
     src/libwcs/fitsfile.h 
     src/libwcs/wcs.h 
     src/loadingwidget.h 
+    src/qcustomplot.h 
     src/lutcustomize.h 
     src/luteditor.h 
     src/lutselector.h 
@@ -182,7 +185,6 @@ set (headers
     src/pipe.h 
     src/plotwindow.h 
     src/pointspipe.h 
-    src/qcustomplot.h 
     src/sed.h 
     src/sedfitgrid_thick.h 
     src/sedfitgrid_thin.h 
@@ -233,7 +235,6 @@ set(ui_files
     ui/fitsimagestatisiticinfo.ui 
     ui/higalselectedsources.ui 
     ui/loadingwidget.ui 
-    ui/lutcustomize.ui 
     ui/mainwindow.ui 
     ui/mcutoutsummary.ui 
     ui/operationqueue.ui 
@@ -251,6 +252,7 @@ set(ui_files
     ui/vialacteainitialquery.ui 
     ui/vialacteastringdictwidget.ui 
     ui/viewselectedsourcedataset.ui 
+    ui/lutcustomize.ui 
     ui/vlkbquery.ui 
     ui/vlkbquerycomposer.ui 
     ui/vlkbsimplequerycomposer.ui 

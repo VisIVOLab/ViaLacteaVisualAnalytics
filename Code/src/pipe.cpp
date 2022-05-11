@@ -43,7 +43,7 @@
 #include "vstabledesktop.h"
 #include "vtkCubeAxesActor2D.h"
 #include "vtkDataSet.h"
-#include "vtkLODActor.h"
+#include "vtkPVLODActor.h"
 
 #include "qdebug.h"
 #include "vispoint.h"
@@ -360,8 +360,8 @@ void Pipe::setBoundingBox(vtkDataObject *data)
     outlineProperty->SetRepresentationToWireframe();
     outlineProperty->SetInterpolationToFlat();
 
-    // vtkLODActor* outlineActor = vtkLODActor::New();
-    outlineActor = vtkLODActor::New();
+    // vtkPVLODActor* outlineActor = vtkPVLODActor::New();
+    outlineActor = vtkPVLODActor::New();
     outlineActor->SetMapper(outlineMapper);
     outlineActor->SetProperty(outlineProperty);
     outlineActor->SetPickable(false);
@@ -404,7 +404,7 @@ void Pipe::setBoundingBox ( vtkDataObject *data )
     outlineProperty->SetRepresentationToWireframe();
     outlineProperty->SetInterpolationToFlat();
 
-    vtkLODActor* outlineActor = vtkLODActor::New();
+    vtkPVLODActor* outlineActor = vtkPVLODActor::New();
     outlineActor->SetMapper ( outlineMapper );
     outlineActor->SetProperty ( outlineProperty );
     outlineActor->SetPickable ( false );

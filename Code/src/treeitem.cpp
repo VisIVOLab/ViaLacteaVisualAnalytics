@@ -185,7 +185,7 @@ bool TreeItem::setVTI(vtkVolume *volume)
     return true;
 }
 
-bool TreeItem::setVTP(vtkLODActor *pActor)
+bool TreeItem::setVTP(vtkPVLODActor *pActor)
 {
     m_pActor = pActor;
     m_Type = VTP;
@@ -223,7 +223,7 @@ vtkVolume *TreeItem::getVTI()
     return m_volume;
 }
 
-vtkLODActor *TreeItem::getVTP()
+vtkPVLODActor *TreeItem::getVTP()
 {
     return m_pActor;
 }

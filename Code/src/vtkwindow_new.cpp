@@ -446,8 +446,8 @@ public:
 
         HigalSelectedSources *selectedSources = new HigalSelectedSources(vtkwin);
 
-        QHash<QString, vtkSmartPointer<vtkLODActor>>::iterator i;
-        QHash<QString, vtkSmartPointer<vtkLODActor>> tmp = vtkwin->getEllipseActorList();
+        QHash<QString, vtkSmartPointer<vtkPVLODActor>>::iterator i;
+        QHash<QString, vtkSmartPointer<vtkPVLODActor>> tmp = vtkwin->getEllipseActorList();
 
         QHash<QString, QListWidget *> listWidget_list;
 
@@ -1422,8 +1422,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         viewer->SetRenderer(m_Ren2);
         viewer->GetRenderer()->ResetCamera();
 
-        currentContourActor = vtkSmartPointer<vtkLODActor>::New();
-        currentContourActorForMainWindow = vtkSmartPointer<vtkLODActor>::New();
+        currentContourActor = vtkSmartPointer<vtkPVLODActor>::New();
+        currentContourActorForMainWindow = vtkSmartPointer<vtkPVLODActor>::New();
 
         ui->cuttingPlane_Slider->setRange(1, vis->GetNaxes(2));
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
@@ -1790,7 +1790,7 @@ void vtkwindow_new::addBubble(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    vtkSmartPointer<vtkLODActor> actor = vtkSmartPointer<vtkLODActor>::New();
+    vtkSmartPointer<vtkPVLODActor> actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(1, 0, 0);
 
@@ -2069,7 +2069,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     cleanFilter->Update();
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
-    vtkSmartPointer<vtkLODActor> actor = vtkSmartPointer<vtkLODActor>::New();
+    vtkSmartPointer<vtkPVLODActor> actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(0, 1, 0);
     QString name =
@@ -2086,7 +2086,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkPolyDataMapper> branches_contour1d_mapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
     branches_contour1d_mapper->SetInputConnection(branches_contour1d_cleanFilter->GetOutputPort());
-    vtkSmartPointer<vtkLODActor> branches_contour1d_actor = vtkSmartPointer<vtkLODActor>::New();
+    vtkSmartPointer<vtkPVLODActor> branches_contour1d_actor = vtkSmartPointer<vtkPVLODActor>::New();
     branches_contour1d_actor->SetMapper(branches_contour1d_mapper);
     branches_contour1d_actor->GetProperty()->SetColor(1, 0, 0);
     name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour1d");
@@ -2102,7 +2102,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkPolyDataMapper> branches_contour_mapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
     branches_contour_mapper->SetInputConnection(branches_contour_cleanFilter->GetOutputPort());
-    vtkSmartPointer<vtkLODActor> branches_contour_actor = vtkSmartPointer<vtkLODActor>::New();
+    vtkSmartPointer<vtkPVLODActor> branches_contour_actor = vtkSmartPointer<vtkPVLODActor>::New();
     branches_contour_actor->SetMapper(branches_contour_mapper);
     branches_contour_actor->GetProperty()->SetColor(0, 1, 1);
     name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour");
@@ -2113,8 +2113,8 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     sessionModified();
 }
 
-void vtkwindow_new::addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> actor, int objtype,
-                                     bool active)
+void vtkwindow_new::addCombinedLayer(QString name, vtkSmartPointer<vtkPVLODActor> actor,
+                                     int objtype, bool active)
 
 {
     if (VisualizedEllipseSourcesList.contains(name)) {
@@ -2348,7 +2348,7 @@ void vtkwindow_new::drawPolygonRegions(const std::vector<DS9Region *> &polygons)
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(1, 0, 0);
 
@@ -2390,7 +2390,7 @@ void vtkwindow_new::drawCircleRegions(const std::vector<DS9Region *> &circles)
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(0, 1, 0);
 
@@ -2465,7 +2465,7 @@ void vtkwindow_new::drawBoxRegions(const std::vector<DS9Region *> &boxes)
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(0, 0, 1);
 
@@ -2536,7 +2536,7 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(1, 1, 0);
 
@@ -2611,7 +2611,7 @@ void vtkwindow_new::addSourcesFromJson(const QString &fn)
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(1, 0, 0);
 
@@ -2715,7 +2715,7 @@ void vtkwindow_new::setTransition(QString q)
 
 
 
-    vtkSmartPointer<vtkLODActor> ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+    vtkSmartPointer<vtkPVLODActor> ellipseActor = vtkSmartPointer<vtkPVLODActor>::New();
     ellipseActor->SetMapper(mapper);
 
     double numOfLayer = visualized_actor_list.count();
@@ -2779,7 +2779,7 @@ void vtkwindow_new::drawEllipse(QHash<QString, vtkEllipse *> ellipse, QString so
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    vtkSmartPointer<vtkLODActor> ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+    vtkSmartPointer<vtkPVLODActor> ellipseActor = vtkSmartPointer<vtkPVLODActor>::New();
     ellipseActor->SetMapper(mapper);
 
     // mod fv  accorpamento layers
@@ -3264,7 +3264,7 @@ void vtkwindow_new::changeFitsPalette(std::string palette)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::drawSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor)
+void vtkwindow_new::drawSingleEllipse(vtkSmartPointer<vtkPVLODActor> ellipseActor)
 {
     ellipseActor->GetProperty()->SetLighting(true);
     ellipseActor->GetProperty()->SetLineWidth(3);
@@ -3274,7 +3274,7 @@ void vtkwindow_new::drawSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::removeSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActor)
+void vtkwindow_new::removeSingleEllipse(vtkSmartPointer<vtkPVLODActor> ellipseActor)
 {
     m_Ren1->RemoveActor(ellipseActor);
     ui->qVTK1->update();
@@ -3306,12 +3306,12 @@ void vtkwindow_new::loadObservedObject(VisPoint *vis)
     activateWindow();
 }
 
-QHash<QString, vtkSmartPointer<vtkLODActor>> vtkwindow_new::getVisualizedActorList()
+QHash<QString, vtkSmartPointer<vtkPVLODActor>> vtkwindow_new::getVisualizedActorList()
 {
     return visualized_actor_list;
 }
 
-QHash<QString, vtkSmartPointer<vtkLODActor>> vtkwindow_new::getEllipseActorList()
+QHash<QString, vtkSmartPointer<vtkPVLODActor>> vtkwindow_new::getEllipseActorList()
 {
     return ellipse_actor_list;
 }
@@ -4812,7 +4812,7 @@ void vtkwindow_new::drawRectangleFootprint(double points[8])
     if (rectangleActor != 0) {
         m_Ren1->RemoveActor(rectangleActor);
     }
-    rectangleActor = vtkSmartPointer<vtkLODActor>::New();
+    rectangleActor = vtkSmartPointer<vtkPVLODActor>::New();
     rectangleActor->SetMapper(mapper);
     rectangleActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
     m_Ren1->AddActor(rectangleActor);
@@ -5197,11 +5197,11 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &session
         auto listItem = ui->listWidget->currentItem();
         listItem->setText(layer["text"].toString(filename));
         changeFitsScale(layer["lutType"].toString("Gray").toStdString(),
-            layer["lutScale"].toString("Log").toStdString());
+                        layer["lutScale"].toString("Log").toStdString());
         vtkImageSlice::SafeDownCast(
-            imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
-            ->GetProperty()
-            ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
+                imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
+                ->GetProperty()
+                ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
         listItem->setCheckState(layer["show"].toBool(false) ? Qt::Checked : Qt::Unchecked);
     }
     ui->qVTK1->renderWindow()->GetInteractor()->Render();

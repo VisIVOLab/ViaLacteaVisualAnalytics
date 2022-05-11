@@ -94,7 +94,7 @@ int vtkfitstoolswidget::getNumOfElements()
     return ui->addedSourcesListWidget->model()->rowCount();
 }
 
-void vtkfitstoolswidget::addToList(QString name, vtkSmartPointer<vtkLODActor> actor)
+void vtkfitstoolswidget::addToList(QString name, vtkSmartPointer<vtkPVLODActor> actor)
 {
 
     QSignalMapper *mapper = new QSignalMapper(this);
@@ -144,8 +144,8 @@ void vtkfitstoolswidget::updateList()
     QSignalMapper *mapper = new QSignalMapper(this);
     QSignalMapper *mapper_slider = new QSignalMapper(this);
 
-    QHash<QString, vtkSmartPointer<vtkLODActor>>::iterator i;
-    QHash<QString, vtkSmartPointer<vtkLODActor>> tmp = vtkwin->getEllipseActorList();
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>>::iterator i;
+    QHash<QString, vtkSmartPointer<vtkPVLODActor>> tmp = vtkwin->getEllipseActorList();
 
     int row = 0;
 

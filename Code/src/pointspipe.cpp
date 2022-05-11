@@ -51,7 +51,7 @@
 
 #include "vtkAxesActor.h"
 #include "vtkGenericRenderWindowInteractor.h"
-#include "vtkLODActor.h"
+#include "vtkPVLODActor.h"
 #include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
 #include "vtkUnstructuredGrid.h"
@@ -80,7 +80,7 @@ PointsPipe::PointsPipe(VSTableDesktop *table) : Pipe(table)
     // constructVTK();
     m_glyphFilter = ExtendedGlyph3D::New();
     m_glyph = vtkGlyph3D::New();
-    m_pActor = vtkLODActor::New();
+    m_pActor = vtkPVLODActor::New();
     m_polyData = vtkPolyData::New();
     m_pUnstructuredGrid = vtkUnstructuredGrid::New();
     m_pMapper = vtkPolyDataMapper::New();
@@ -541,7 +541,7 @@ vtkRenderer *PointsPipe::getRenderer()
 }
 
 //---------------------------------------------------------------------
-vtkLODActor *PointsPipe::getActor()
+vtkPVLODActor *PointsPipe::getActor()
 //---------------------------------------------------------------------
 {
     return m_pActor;

@@ -1339,7 +1339,7 @@ void VisIVOImporterDesktop::doImport(QString wavelen, bool usingAPI)
                     vtkSmartPointer<vtkXMLPolyDataReader>::New();
             vtkSmartPointer<vtkPolyData> pPolyData = vtkSmartPointer<vtkPolyData>::New();
             vtkSmartPointer<vtkPolyDataMapper> pMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-            vtkSmartPointer<vtkLODActor> pActor = vtkSmartPointer<vtkLODActor>::New();
+            vtkSmartPointer<vtkPVLODActor> pActor = vtkSmartPointer<vtkPVLODActor>::New();
 
             vtpReader->SetFileName(fileName.toStdString().c_str());
             vtpReader->Update();

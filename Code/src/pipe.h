@@ -40,7 +40,7 @@ class vtkCamera;
 class vtkLookupTable;
 class VSTableDesktop;
 class vtkwindow_new;
-class vtkLODActor;
+class vtkPVLODActor;
 class vtkCubeAxesActor2D;
 
 class Pipe
@@ -57,7 +57,7 @@ public:
     bool readDataFor3D(QStringList list);
 
     virtual int getCamera();
-    vtkLODActor *outlineActor;
+    vtkPVLODActor *outlineActor;
     vtkCubeAxesActor2D *axesActor;
     std::string colorScalar;
     vtkScalarBarActor *scalarBar;

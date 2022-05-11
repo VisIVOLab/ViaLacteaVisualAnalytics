@@ -293,7 +293,7 @@ bool TreeModel::setVisualObject(const QModelIndex &index, VisPoint *vis)
     return result;
 }
 
-bool TreeModel::setVTP(const QModelIndex &index, vtkLODActor *pActor)
+bool TreeModel::setVTP(const QModelIndex &index, vtkPVLODActor *pActor)
 {
     TreeItem *item = getItem(index);
     bool result = item->setVTP(pActor);
@@ -336,7 +336,7 @@ VisPoint *TreeModel::getVisualObject(const QModelIndex &index)
     TreeItem *item = getItem(index);
     return item->getVisualObject();
 }
-vtkLODActor *TreeModel::getVTP(const QModelIndex &index)
+vtkPVLODActor *TreeModel::getVTP(const QModelIndex &index)
 {
     TreeItem *item = getItem(index);
     return item->getVTP();

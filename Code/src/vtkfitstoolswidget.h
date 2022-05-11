@@ -21,7 +21,7 @@ public:
     QVector<QSlider *> sliders;
     void changeLut(std::string palette);
     void changeLutScale(std::string palette, std::string scale);
-    void addToList(QString name, vtkSmartPointer<vtkLODActor> actor);
+    void addToList(QString name, vtkSmartPointer<vtkPVLODActor> actor);
     int getNumOfElements();
 
 private slots:

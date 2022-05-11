@@ -58,13 +58,13 @@ public:
     /*VisIVO*/
     bool setTable(const QModelIndex &index, VSTableDesktop *table);
     bool setVTI(const QModelIndex &index, vtkVolume *volume);
-    bool setVTP(const QModelIndex &index, vtkLODActor *pActor);
+    bool setVTP(const QModelIndex &index, vtkPVLODActor *pActor);
     bool setVisualObject(const QModelIndex &index, VisPoint *vis);
     // bool setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkImageActor> imgActor);
     bool setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkFitsReader> fitsReader);
     VisPoint *getVisualObject(const QModelIndex &index);
     VSTableDesktop *getTable(const QModelIndex &index);
-    vtkLODActor *getVTP(const QModelIndex &index);
+    vtkPVLODActor *getVTP(const QModelIndex &index);
     vtkVolume *getVTI(const QModelIndex &index);
     vtkSmartPointer<vtkFitsReader> getFITSIMG(const QModelIndex &index);
 

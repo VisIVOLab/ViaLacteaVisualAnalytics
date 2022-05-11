@@ -103,7 +103,7 @@ void SEDPlotPointCustom::drawSingleEllipse(vtkEllipse *ellipse)
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(cleanFilter->GetOutputPort());
 
-    ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+    ellipseActor = vtkSmartPointer<vtkPVLODActor>::New();
     ellipseActor->SetMapper(mapper);
 
     ellipseActor->GetProperty()->SetColor(0, 0, 0);

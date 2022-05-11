@@ -30,7 +30,7 @@
 #include "pipe.h"
 #include "vtkSmartPointer.h"
 
-class vtkLODActor;
+class vtkPVLODActor;
 class vtkSphereSource;
 class vtkConeSource;
 class vtkCylinderSource;
@@ -48,7 +48,7 @@ public:
     PointsPipe(VSTableDesktop *table);
 
     vtkRenderer *getRenderer();
-    vtkLODActor *getActor();
+    vtkPVLODActor *getActor();
     vtkPolyData *getPolyData();
     vtkPolyDataMapper *getMapper();
     vtkUnstructuredGrid *getUnstructuredGrid();
@@ -93,7 +93,7 @@ private:
 
     VSTableDesktop *m_VSTable;
     vtkPolyDataMapper *m_pMapper;
-    vtkLODActor *m_pActor;
+    vtkPVLODActor *m_pActor;
     vtkPolyData *m_polyData;
     vtkGlyph3D *m_glyph;
     vtkSmartPointer<vtkSphereSource> m_sphere;

@@ -42,7 +42,7 @@ private:
     QList<PlotWindow *> plotWindowList;
     QMenu *plotMenu;
     QMenu *existingWindowMenu;
-    vtkSmartPointer<vtkLODActor> ellipseActor;
+    vtkSmartPointer<vtkPVLODActor> ellipseActor;
     bool itemSelected;
     bool itemChanged;
 };

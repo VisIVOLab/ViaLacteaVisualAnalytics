@@ -45,7 +45,7 @@ void vtkfitstoolwidgetobject::setWavelength(QString w)
     wavelength = w;
 }
 
-void vtkfitstoolwidgetobject::setActor(vtkSmartPointer<vtkLODActor> a)
+void vtkfitstoolwidgetobject::setActor(vtkSmartPointer<vtkPVLODActor> a)
 {
     actor = a;
 }
