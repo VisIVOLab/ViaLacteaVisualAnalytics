@@ -33,12 +33,26 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}"
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 
-find_package(Qt5 REQUIRED COMPONENTS Widgets WebEngine WebEngineCore NetworkAuth)
+find_package(Qt5 REQUIRED COMPONENTS                      Charts                    Help                      Purchasing                QuickTemplates2           UiPlugin
+3DAnimation               ClipboardSupport                       Qml                       QuickTest                 UiTools
+3DCore                    Concurrent                Location                  QmlDebug                  QuickWidgets              VirtualKeyboard
+3DExtras                  Core                      MacExtras                                RemoteObjects             WebChannel
+3DInput                   DBus                      Multimedia                          RepParser                 WebEngine
+3DLogic                   DataVisualization         MultimediaQuick           QmlModels                 Script                    WebEngineCore
+3DQuick                   Designer                  MultimediaWidgets         QmlWorkerScript           ScriptTools               WebEngineWidgets
+3DQuickAnimation          DesignerComponents        Network                   Quick                     Scxml                     WebSockets
+3DQuickExtras             DeviceDiscoverySupport    NetworkAuth               Quick3D                   Sensors                   WebView
+3DQuickInput                                Nfc                       Quick3DAssetImport        SerialBus                 Widgets
+3DQuickRender             EdidSupport               OpenGL                    Quick3DRender             SerialPort                Xml
+3DQuickScene2D            EventDispatcherSupport    OpenGLExtensions          Quick3DRuntimeRender      ServiceSupport            XmlPatterns
+3DRender                  FbSupport                 PacketProtocol            Quick3DUtils              Sql
+AccessibilitySupport      FontDatabaseSupport       PlatformCompositorSupport              Svg
+  Gamepad                   Positioning               QuickControls2            Test
+Bluetooth                 GraphicsSupport           PositioningQuick          QuickParticles            TextToSpeech
+Bodymovin                 Gui                       PrintSupport              QuickShapes               ThemeSupport)
 
 set(CMAKE_AUTOMOC 1)
 set(CMAKE_AUTOUIC 1)
-
-
 
 set(sources
     src/aboutform.cpp 
@@ -255,9 +269,94 @@ target_link_libraries(ViaLacteaVisualAnalytics
    CFITSIO::CFITSIO
    ParaView::pqApplicationComponents
    ParaView::RemotingViews
+   Qt5::Charts
+   Qt5::Help
+   Qt5::Purchasing
+   Qt5::QuickTemplates2
+   Qt5::UiPlugin
+   Qt5::3DAnimation
+   Qt5::ClipboardSupport
+   Qt5::Qml
+   Qt5::QuickTest
+   Qt5::UiTools
+   Qt5::3DCore
+   Qt5::Concurrent
+   Qt5::Location
+   Qt5::QmlDebug
+   Qt5::QuickWidgets
+   Qt5::VirtualKeyboard
+   Qt5::3DExtras
    Qt5::Core
-   Qt5::Gui
+   Qt5::MacExtras
+   Qt5::RemoteObjects
+   Qt5::WebChannel
+   Qt5::3DInput
+   Qt5::DBus
+   Qt5::Multimedia
+   Qt5::RepParser
    Qt5::WebEngine
+   Qt5::3DLogic
+   Qt5::DataVisualization
+   Qt5::MultimediaQuick
+   Qt5::QmlModels
+   Qt5::Script
    Qt5::WebEngineCore
+   Qt5::3DQuick
+   Qt5::Designer
+   Qt5::MultimediaWidgets
+   Qt5::QmlWorkerScript
+   Qt5::ScriptTools
+   Qt5::WebEngineWidgets
+   Qt5::3DQuickAnimation
+   Qt5::DesignerComponents
+   Qt5::Network
+   Qt5::Quick
+   Qt5::Scxml
+   Qt5::WebSockets
+   Qt5::3DQuickExtras
+   Qt5::DeviceDiscoverySupport
    Qt5::NetworkAuth
-   Qt5::Widgets)
+   Qt5::Quick3D
+   Qt5::Sensors
+   Qt5::WebView
+   Qt5::3DQuickInput
+   Qt5::Nfc
+   Qt5::Quick3DAssetImport
+   Qt5::SerialBus
+   Qt5::Widgets
+   Qt5::3DQuickRender
+   Qt5::EdidSupport
+   Qt5::OpenGL
+   Qt5::Quick3DRender
+   Qt5::SerialPort
+   Qt5::Xml
+   Qt5::3DQuickScene2D
+   Qt5::EventDispatcherSupport
+   Qt5::OpenGLExtensions
+   Qt5::Quick3DRuntimeRender
+   Qt5::ServiceSupport
+   Qt5::XmlPatterns
+   Qt5::3DRender
+   Qt5::FbSupport
+   Qt5::PacketProtocol
+   Qt5::Quick3DUtils
+   Qt5::Sql
+   Qt5::AccessibilitySupport
+   Qt5::FontDatabaseSupport
+   Qt5::PlatformCompositorSupport
+   Qt5::Svg
+   Qt5::Gamepad
+   Qt5::Positioning
+   Qt5::QuickControls2
+   Qt5::Test
+   Qt5::Bluetooth
+   Qt5::GraphicsSupport
+   Qt5::PositioningQuick
+   Qt5::QuickParticles
+   Qt5::TextToSpeech
+   Qt5::Bodymovin
+   Qt5::Gui
+   Qt5::PrintSupport
+   Qt5::QuickShapes
+   Qt5::ThemeSupport
+   )
