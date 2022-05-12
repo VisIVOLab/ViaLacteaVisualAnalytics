@@ -113,6 +113,7 @@ SOURCES += \
     src/fitsimagestatisiticinfo.cpp \
     src/higalselectedsources.cpp \
     src/histogram.cpp \
+    src/interactors/vtkinteractorstyleimagecustom.cpp \
     src/libwcs/cel.c \
     src/libwcs/dateutil.c \
     src/libwcs/distort.c \
@@ -187,6 +188,9 @@ SOURCES += \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
+    src/vtkwindowcube.cpp \
+    src/vtkwindowimage.cpp \
+    src/vtkwindowsources.cpp \
     src/xmlparser.cpp
 
 
@@ -210,6 +214,7 @@ HEADERS  += \
     src/fitsimagestatisiticinfo.h \
     src/higalselectedsources.h \
     src/histogram.h \
+    src/interactors/vtkinteractorstyleimagecustom.h \
     src/libwcs/fitsfile.h \
     src/libwcs/wcs.h \
     src/loadingwidget.h \
@@ -264,6 +269,9 @@ HEADERS  += \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
+    src/vtkwindowcube.h \
+    src/vtkwindowimage.h \
+    src/vtkwindowsources.h \
     src/xmlparser.h
 
 
@@ -300,7 +308,10 @@ FORMS += \
     ui/vtkfitstoolswidget.ui \
     ui/vtkfitstoolwidget_new.ui \
     ui/vtktoolswidget.ui \
-    ui/vtkwindow_new.ui
+    ui/vtkwindow_new.ui \
+    ui/vtkwindowcube.ui \
+    ui/vtkwindowimage.ui \
+    ui/vtkwindowsources.ui
 
 
 RESOURCES += \

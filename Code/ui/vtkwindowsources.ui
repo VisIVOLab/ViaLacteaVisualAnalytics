@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>vtkWindowSources</class>
+ <widget class="QMainWindow" name="vtkWindowSources">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <widget class="QWidget" name="widget">
+   <layout class="QVBoxLayout">
+    <item alignment="Qt::AlignLeft">
+     <widget class="QWidget" name="widget_2" native="true">
+      <layout class="QHBoxLayout" name="_3">
+       <item>
+        <widget class="QGroupBox" name="lutGroupBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>400</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="title">
+          <string>LUT</string>
+         </property>
+         <layout class="QHBoxLayout" name="_4">
+          <item>
+           <widget class="QCheckBox" name="lutCheckBox"/>
+          </item>
+          <item>
+           <widget class="QComboBox" name="lutScalarComboBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="lutComboBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <item>
+             <property name="text">
+              <string>Gray</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Default</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Default Step</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>EField</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Glow</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>MinMax</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>PhysicsContour</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>PureRed</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>PureGreen</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>PureBlue</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Run1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Run2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Sar</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Temperature</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>TenStep</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>VolRenGlow</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>VolRenGreen</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>VolRenRGB</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>VolRenTwoLev</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllYellow</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllCyan</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllViolet</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllWhite</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllBlack</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllRed</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllGreen</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AllBlu</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="linearRadioBtn">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Linear</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="logRadioBtn">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Log</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolBtn">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="glyphGroupBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>400</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="title">
+          <string>Glyph</string>
+         </property>
+         <layout class="QHBoxLayout" name="_5">
+          <item>
+           <widget class="QCheckBox" name="glyphCheckBox"/>
+          </item>
+          <item>
+           <widget class="QComboBox" name="glyphShapeComboBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <item>
+             <property name="text">
+              <string>Sphere</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Cone</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Cylinder</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Cube</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="glyphScalarComboBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Scaling Factor:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="glyphScalingText">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>Glyph Scaling Factor</string>
+            </property>
+            <property name="text">
+             <string>0.5</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="_2">
+      <item>
+       <widget class="QVTKOpenGLNativeWidget" name="qVtk" native="true">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QVTKOpenGLNativeWidget</class>
+   <extends>QWidget</extends>
+   <header>QVTKOpenGLNativeWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
