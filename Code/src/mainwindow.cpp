@@ -48,6 +48,15 @@ extern "C" {
 */
 #include "vtkwindow_new.h"
 
+
+
+#include "pqAlwaysConnectedBehavior.h"
+#include "pqPersistentMainWindowStateBehavior.h"
+
+#include "pqApplicationCore.h"
+#include "pqObjectBuilder.h"
+
+
 /*
  *  type
  * 0 = ASCII
@@ -63,6 +72,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // m_RenderingWindow = NULL;
     //  QWidget::setWindowIcon(QIcon( ":/icons/VisIVODesktop.icns" ));
     ui->setupUi(this);
+    
+    //paraview init
+    new pqAlwaysConnectedBehavior(this);
+    new pqPersistentMainWindowStateBehavior(this);
+    pqApplicationCore* core = pqApplicationCore::instance();
+    // Make a connection to the builtin server
+       //pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
+    pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
+    //end paraview init
+    //run vialactea UI
+    on_actionVialactea_triggered();
+    
+    //------
     createModel();
     ui->treeView->setModel(m_VisIVOTreeModel);
     m_VisPointsObject = new VisPoint();
@@ -89,12 +111,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->importerGroupBox->hide();
     ui->filterGroupBox->hide();
     hideAllFilterParameter();
-
-    // ui->addIdentifierParameterGroupBox->hide();
-    // ui->appendParameterGroupBox->hide();
-
     ui->volumeGroupBox->hide();
-    on_actionVialactea_triggered();
+    //----
+    
+
 }
 
 MainWindow::~MainWindow()

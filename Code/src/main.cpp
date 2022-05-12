@@ -9,6 +9,8 @@
 
 #include <clocale>
 
+#include "pqPVApplicationCore.h"
+
 int main(int argc, char *argv[])
 {
     QWebEngineUrlScheme vlvaUrlScheme("vlva");
@@ -20,6 +22,10 @@ int main(int argc, char *argv[])
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
     QApplication a(argc, argv);
+    
+    //paraview init
+    pqPVApplicationCore appCore(argc, argv);
+  
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion("1.5.2");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
