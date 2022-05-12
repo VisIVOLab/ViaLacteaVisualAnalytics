@@ -17,7 +17,8 @@ endif()
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ParaView REQUIRED)
 find_package(CFITSIO REQUIRED)
-
+find_package (OPENMP REQUIRED )
+find_package(CURL REQUIRED)
 
 if (NOT PARAVIEW_USE_QT)
   message(STATUS
@@ -53,8 +54,11 @@ AccessibilitySupport      FontDatabaseSupport       PlatformCompositorSupport   
 Bluetooth                 GraphicsSupport           PositioningQuick          QuickParticles            TextToSpeech
 Bodymovin                 Gui                       PrintSupport              QuickShapes               ThemeSupport)
 
+
+set(CMAKE_INCLUDE_CURRENT_DIR "YES")
 set(CMAKE_AUTOMOC 1)
 set(CMAKE_AUTOUIC 1)
+set(CMAKE_AUTORCC 1)
 
 set(sources
     src/aboutform.cpp 
@@ -268,6 +272,33 @@ add_executable(ViaLacteaVisualAnalytics ${ui_files} ${sources} ${headers} )
 
 target_link_libraries(ViaLacteaVisualAnalytics
  PRIVATE
+   VTK::InteractionStyle
+   VTK::CommonColor
+   VTK::CommonCore
+   VTK::CommonDataModel
+   VTK::CommonTransforms
+   VTK::FiltersCore
+   VTK::FiltersModeling
+   VTK::FiltersSources
+   VTK::FiltersExtraction
+   VTK::IOImage
+   VTK::ImagingHybrid
+   VTK::InteractionStyle
+   VTK::InteractionImage
+   VTK::InteractionWidgets
+   VTK::RenderingAnnotation
+   VTK::RenderingContextOpenGL2
+   VTK::RenderingCore
+   VTK::RenderingFreeType
+   VTK::RenderingGL2PSOpenGL2
+   VTK::RenderingOpenGL2
+   VTK::RenderingVolume
+   VTK::RenderingVolumeOpenGL2
+   VTK::RenderingImage
+   VTK::FiltersCore
+   VTK::FiltersGeneral
+   VTK::FiltersGeometry
+   VTK::RenderingLabel
    CFITSIO::CFITSIO
    ParaView::pqApplicationComponents
    ParaView::RemotingViews
@@ -361,4 +392,5 @@ target_link_libraries(ViaLacteaVisualAnalytics
    Qt5::PrintSupport
    Qt5::QuickShapes
    Qt5::ThemeSupport
+   CURL::libcurl
    )
