@@ -152,6 +152,11 @@ set(sources
     src/vtktoolswidget.cpp 
     src/vtkwindow_new.cpp 
     src/xmlparser.cpp
+    src/interactors/vtkinteractorstyleimagecustom.cpp 
+    src/vtkwindowcube.cpp 
+    src/vtkwindowimage.cpp 
+    src/vtkwindowsources.cpp 
+
 )
 
 set (headers 
@@ -228,7 +233,13 @@ set (headers
     src/vtklegendscaleactor.h 
     src/vtktoolswidget.h 
     src/vtkwindow_new.h 
-    src/xmlparser.h)
+    src/xmlparser.h
+    src/interactors/vtkinteractorstyleimagecustom.h 
+    src/vtkwindowcube.h 
+    src/vtkwindowimage.h 
+    src/vtkwindowsources.h 
+    
+    )
 
 set(ui_files
     ui/aboutform.ui 
