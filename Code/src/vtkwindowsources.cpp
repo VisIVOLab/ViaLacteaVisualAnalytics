@@ -10,7 +10,7 @@
 #include <vtkFloatArray.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkLineSource.h>
-#include <vtkLODActor.h>
+#include <vtkPVLODActor.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineCornerFilter.h>
 #include <vtkPoints.h>
@@ -137,7 +137,7 @@ void vtkWindowSources::showSources()
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputData(polyData);
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetOpacity(0.65);
 
@@ -189,7 +189,7 @@ void vtkWindowSources::showBoundingBox()
     property->SetRepresentationToWireframe();
     property->SetInterpolationToFlat();
 
-    auto actor = vtkSmartPointer<vtkLODActor>::New();
+    auto actor = vtkSmartPointer<vtkPVLODActor>::New();
     actor->SetMapper(mapper);
     actor->SetProperty(property);
     actor->SetPickable(false);

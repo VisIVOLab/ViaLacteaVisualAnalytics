@@ -19,7 +19,7 @@
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageActor.h>
 #include <vtkImageMapToWindowLevelColors.h>
-#include <vtkLODActor.h>
+#include <vtkPVLODActor.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineFilter.h>
@@ -165,9 +165,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
     ui->sliceSpinBox->setRange(1, fitsReader->GetNaxes(2));
 
     // Added to renderers when the contour checkbox is checked
-    contoursActor = vtkSmartPointer<vtkLODActor>::New();
+    contoursActor = vtkSmartPointer<vtkPVLODActor>::New();
     contoursActor->GetProperty()->SetLineWidth(1);
-    contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
+    contoursActorForParent = vtkSmartPointer<vtkPVLODActor>::New();
     contoursActorForParent->GetProperty()->SetLineWidth(1);
 
     auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();

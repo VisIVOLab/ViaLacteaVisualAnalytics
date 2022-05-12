@@ -12,7 +12,7 @@
 class vtkFitsReader;
 class vtkfitstoolwidgetobject;
 class vtkActor;
-class vtkLODActor;
+class vtkPVLODActor;
 class vtkImageStack;
 class vtkRenderer;
 
@@ -56,7 +56,7 @@ private slots:
 private:
     Ui::vtkWindowImage *ui;
     vtkSmartPointer<vtkFitsReader> fitsReader;
-    vtkSmartPointer<vtkLODActor> footprintActor;
+    vtkSmartPointer<vtkPVLODActor> footprintActor;
     vtkSmartPointer<vtkImageStack> imageStack;
 
     QList<QMap<QString, QString>> vlkbInventory;

@@ -18,7 +18,7 @@
 #include <vtkImageSliceCollection.h>
 #include <vtkImageSliceMapper.h>
 #include <vtkImageStack.h>
-#include <vtkLODActor.h>
+#include <vtkPVLODActor.h>
 #include <vtkLookupTable.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
@@ -375,7 +375,7 @@ void vtkWindowImage::drawFootprint(const double *points)
         renderer()->RemoveActor(footprintActor);
     }
 
-    footprintActor = vtkSmartPointer<vtkLODActor>::New();
+    footprintActor = vtkSmartPointer<vtkPVLODActor>::New();
     footprintActor->SetMapper(mapper);
     footprintActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
 
