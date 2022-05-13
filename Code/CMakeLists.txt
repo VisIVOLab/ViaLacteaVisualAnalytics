@@ -19,6 +19,7 @@ find_package(ParaView REQUIRED)
 find_package(CFITSIO REQUIRED)
 find_package (OPENMP REQUIRED )
 find_package(CURL REQUIRED)
+find_package (Boost REQUIRED )
 
 if (NOT PARAVIEW_USE_QT)
   message(STATUS
@@ -34,7 +35,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}"
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 
-include_directories(${BOOST_INC_PATH})
+include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(Qt5 REQUIRED COMPONENTS                      Charts                    Help                      Purchasing                QuickTemplates2           UiPlugin
 3DAnimation               ClipboardSupport                       Qml                       QuickTest                 UiTools
