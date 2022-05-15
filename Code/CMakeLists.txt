@@ -38,18 +38,18 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(Qt5 REQUIRED COMPONENTS                      Charts                    Help                      Purchasing                QuickTemplates2           UiPlugin
-3DAnimation               ClipboardSupport                       Qml                       QuickTest                 UiTools
-3DCore                    Concurrent                Location                  QmlDebug                  QuickWidgets              VirtualKeyboard
-3DExtras                  Core                      MacExtras                                RemoteObjects             WebChannel
-3DInput                   DBus                      Multimedia                          RepParser                 WebEngine
-3DLogic                   DataVisualization         MultimediaQuick           QmlModels                 Script                    WebEngineCore
-3DQuick                   Designer                  MultimediaWidgets         QmlWorkerScript           ScriptTools               WebEngineWidgets
-3DQuickAnimation          DesignerComponents        Network                   Quick                     Scxml                     WebSockets
-3DQuickExtras             DeviceDiscoverySupport    NetworkAuth               Quick3D                   Sensors                   WebView
-3DQuickInput                                Nfc                       Quick3DAssetImport        SerialBus                 Widgets
-3DQuickRender             EdidSupport               OpenGL                    Quick3DRender             SerialPort                Xml
-3DQuickScene2D            EventDispatcherSupport    OpenGLExtensions          Quick3DRuntimeRender      ServiceSupport            XmlPatterns
-3DRender                  FbSupport                 PacketProtocol            Quick3DUtils              Sql
+              ClipboardSupport                       Qml                       QuickTest                 UiTools
+                   Concurrent                Location                  QmlDebug                  QuickWidgets              VirtualKeyboard
+                 Core                      MacExtras                                RemoteObjects             WebChannel
+                  DBus                      Multimedia                          RepParser                 WebEngine
+                  DataVisualization         MultimediaQuick           QmlModels                 Script                    WebEngineCore
+                                   MultimediaWidgets         QmlWorkerScript           ScriptTools               WebEngineWidgets
+                Network                   Quick                     Scxml                     WebSockets
+            DeviceDiscoverySupport    NetworkAuth                                 Sensors                   WebView
+                               Nfc                              SerialBus                 Widgets
+            EdidSupport               OpenGL                                SerialPort                Xml
+           EventDispatcherSupport    OpenGLExtensions               ServiceSupport            XmlPatterns
+                 FbSupport                 PacketProtocol                         Sql
 AccessibilitySupport      FontDatabaseSupport       PlatformCompositorSupport              Svg
   Gamepad                   Positioning               QuickControls2            Test
 Bluetooth                 GraphicsSupport           PositioningQuick          QuickParticles            TextToSpeech
@@ -275,7 +275,8 @@ set(ui_files
     ui/vtkfitstoolswidget.ui 
     ui/vtkfitstoolwidget_new.ui 
     ui/vtktoolswidget.ui 
-    ui/vtkwindow_new.ui)
+    ui/vtkwindow_new.ui
+    ui/vtkwindowcube.ui)
 
 set(xml_files
   SupportedReader.xml)
@@ -319,72 +320,53 @@ target_link_libraries(ViaLacteaVisualAnalytics
    Qt5::Purchasing
    Qt5::QuickTemplates2
    Qt5::UiPlugin
-   Qt5::3DAnimation
    Qt5::ClipboardSupport
    Qt5::Qml
    Qt5::QuickTest
    Qt5::UiTools
-   Qt5::3DCore
    Qt5::Concurrent
    Qt5::Location
    Qt5::QmlDebug
    Qt5::QuickWidgets
    Qt5::VirtualKeyboard
-   Qt5::3DExtras
    Qt5::Core
    Qt5::MacExtras
    Qt5::RemoteObjects
    Qt5::WebChannel
-   Qt5::3DInput
    Qt5::DBus
    Qt5::Multimedia
    Qt5::RepParser
    Qt5::WebEngine
-   Qt5::3DLogic
    Qt5::DataVisualization
    Qt5::MultimediaQuick
    Qt5::QmlModels
    Qt5::Script
    Qt5::WebEngineCore
-   Qt5::3DQuick
-   Qt5::Designer
    Qt5::MultimediaWidgets
    Qt5::QmlWorkerScript
    Qt5::ScriptTools
    Qt5::WebEngineWidgets
-   Qt5::3DQuickAnimation
-   Qt5::DesignerComponents
    Qt5::Network
    Qt5::Quick
    Qt5::Scxml
    Qt5::WebSockets
-   Qt5::3DQuickExtras
    Qt5::DeviceDiscoverySupport
    Qt5::NetworkAuth
-   Qt5::Quick3D
    Qt5::Sensors
    Qt5::WebView
-   Qt5::3DQuickInput
    Qt5::Nfc
-   Qt5::Quick3DAssetImport
    Qt5::SerialBus
    Qt5::Widgets
-   Qt5::3DQuickRender
    Qt5::EdidSupport
    Qt5::OpenGL
-   Qt5::Quick3DRender
    Qt5::SerialPort
    Qt5::Xml
-   Qt5::3DQuickScene2D
    Qt5::EventDispatcherSupport
    Qt5::OpenGLExtensions
-   Qt5::Quick3DRuntimeRender
    Qt5::ServiceSupport
    Qt5::XmlPatterns
-   Qt5::3DRender
    Qt5::FbSupport
    Qt5::PacketProtocol
-   Qt5::Quick3DUtils
    Qt5::Sql
    Qt5::AccessibilitySupport
    Qt5::FontDatabaseSupport
