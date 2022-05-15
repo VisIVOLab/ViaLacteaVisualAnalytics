@@ -1463,8 +1463,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             
             new pqAlwaysConnectedBehavior(this);
             new pqPersistentMainWindowStateBehavior(this);
-
-                // Make a connection to the builtin server
+            
+            // Make a connection to the builtin server
             
             QPointer<pqRenderView> view =
             qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
@@ -5055,7 +5055,6 @@ void vtkwindow_new::on_listWidget_customContextMenuRequested(const QPoint &pos)
 
 void vtkwindow_new::sendImageTo(QString id)
 {
-    
     /*
      qDebug()<<"CLIENT ID: "<<id;
      

@@ -55,6 +55,8 @@ extern "C" {
 
 #include "pqApplicationCore.h"
 #include "pqObjectBuilder.h"
+#include "vtkSMReaderFactory.h"
+#include "vtkSMProxyManager.h"
 
 
 /*
@@ -80,6 +82,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Make a connection to the builtin server
     //pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
     server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
+    
+    vtkSMReaderFactory* readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    readerFactory->RegisterPrototype("sources", "FitsReader");
+    
     //end paraview init
 
     //run vialactea UI

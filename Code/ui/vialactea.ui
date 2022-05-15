@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1266</width>
-    <height>843</height>
+    <height>877</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -32,7 +32,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWebEngineView" name="webView" native="true">
+      <widget class="QWebEngineView" name="webView">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -45,7 +45,7 @@
          <height>0</height>
         </size>
        </property>
-       <property name="url" stdset="0">
+       <property name="url">
         <url>
          <string>about:blank</string>
         </url>
@@ -588,6 +588,7 @@
     <addaction name="actionSettings"/>
     <addaction name="actionExit"/>
     <addaction name="actionLoad_SED_2"/>
+    <addaction name="actionLoad_DC_pv"/>
    </widget>
    <widget class="QMenu" name="menuAiuto">
     <property name="title">
@@ -629,12 +630,17 @@
     <string>Load session</string>
    </property>
   </action>
+  <action name="actionLoad_DC_pv">
+   <property name="text">
+    <string>Load DC - pv</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>QWebEngineView</class>
    <extends>QWidget</extends>
-   <header>QWebEngineView</header>
+   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
   </customwidget>
  </customwidgets>
  <resources>

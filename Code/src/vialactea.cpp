@@ -20,6 +20,9 @@
 #include <QSettings>
 #include <QWebChannel>
 
+#include "pqLoadDataReaction.h"
+
+
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
 void WebProcess::jsCall(const QString &point, const QString &radius)
@@ -40,6 +43,9 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
 {
     
     ui->setupUi(this);
+       
+    pqLoadDataReaction* dataLoader = new pqLoadDataReaction(ui->actionLoad_DC_pv);
+    QObject::connect(dataLoader, &pqLoadDataReaction::loadedData,this, &ViaLactea::onDataLoaded);
     
     ui->saveToDiskCheckBox->setVisible(false);
     ui->fileNameLineEdit->setVisible(false);
@@ -148,6 +154,37 @@ void ViaLactea::quitApp()
     p->disconnect(ui->webView);
     delete p;
     std::cout << "Deleted" << std::endl;
+}
+
+void ViaLactea::onDataLoaded(pqPipelineSource* source)
+{
+    
+    
+    /*
+    if (this->originSource)
+    {
+        pqApplicationCore::instance()->getObjectBuilder()->destroy(this->originSource);
+    }
+    
+    this->originSource = source;
+    
+    setupData();
+     */
+    
+    /*
+    auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
+    fitsReader_moment->SetFileName(fn.toStdString());
+    fitsReader_moment->isMoment3D = true;
+    fitsReader_moment->setMomentOrder(0);
+    auto win = new vtkwindow_new(this, fitsReader_moment);
+    setMasterWin(win);
+    
+    // Open a new window to visualize the datacube
+    auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
+    fitsReader_dc->SetFileName(fn.toStdString());
+    fitsReader_dc->is3D = true;
+    new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
+     */
 }
 
 void ViaLactea::updateVLKBSetting()
@@ -405,7 +442,7 @@ void ViaLactea::on_localDCPushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
                                               tr("FITS images(*.fit *.fits)"));
-    
+
     bool test= true;
     
     if (!fn.isEmpty()) {
