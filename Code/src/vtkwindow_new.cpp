@@ -113,6 +113,12 @@
 #include "vtkSMProxySelectionModel.h"
 #include "vtkSMParaViewPipelineControllerWithRendering.h"
 
+#include "pqAlwaysConnectedBehavior.h"
+#include "pqPersistentMainWindowStateBehavior.h"
+
+#include "pqApplicationCore.h"
+#include "pqObjectBuilder.h"
+
 #include "mainwindow.h"
 
 
@@ -1453,16 +1459,17 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             legendScaleActorImage->setFitsFile(myfits);
             m_Ren2->AddActor(legendScaleActorImage);
             
-            
             //paraview
+            
+            new pqAlwaysConnectedBehavior(this);
+            new pqPersistentMainWindowStateBehavior(this);
+
+                // Make a connection to the builtin server
+            
             QPointer<pqRenderView> view =
             qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
             pqActiveObjects::instance().setActiveView(view);
-            
-            QLabel *label = new QLabel(QString("->"));
-            ui->horizontalLayout_7->addWidget(label);
-            
-            ui->horizontalLayout_7->addWidget(view->widget());
+            ui->PVLayout->addWidget(view->widget());
             
             MainWindow *w = &Singleton<MainWindow>::Instance();
             
@@ -1489,14 +1496,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             
             view->resetDisplay();
             view->render();
-            
-            QLabel *label2 = new QLabel(QString("<-"));
-            ui->horizontalLayout_7->addWidget(label2);
-            
-            
-            view->resetDisplay();
-            
-            
             
             
             this->setWindowName("Datacube visualization");

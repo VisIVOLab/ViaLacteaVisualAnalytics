@@ -9,6 +9,7 @@
 
 #include <clocale>
 
+#include <QSurfaceFormat>
 #include "pqPVApplicationCore.h"
 
 int main(int argc, char *argv[])
@@ -19,8 +20,12 @@ int main(int argc, char *argv[])
     vlvaUrlScheme.setFlags(QWebEngineUrlScheme::SecureScheme);
     QWebEngineUrlScheme::registerScheme(vlvaUrlScheme);
 
-    QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
-
+    //QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+    QSurfaceFormat glFormat;
+    glFormat.setVersion(3, 3);
+    glFormat.setProfile(QSurfaceFormat::CoreProfile);
+    QSurfaceFormat::setDefaultFormat(glFormat);
+    
     QApplication a(argc, argv);
     
     //paraview init

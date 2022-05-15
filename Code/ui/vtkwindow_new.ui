@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>3990</width>
-    <height>625</height>
+    <width>2560</width>
+    <height>1387</height>
    </rect>
   </property>
   <property name="font">
@@ -1407,6 +1407,9 @@
           </item>
          </layout>
         </item>
+        <item>
+         <layout class="QHBoxLayout" name="PVLayout" stretch=""/>
+        </item>
        </layout>
       </widget>
      </widget>
@@ -1493,8 +1496,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>3990</width>
-     <height>23</height>
+     <width>2560</width>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

@@ -72,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // m_RenderingWindow = NULL;
     //  QWidget::setWindowIcon(QIcon( ":/icons/VisIVODesktop.icns" ));
     ui->setupUi(this);
-    
+
     //paraview init
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
@@ -81,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
     server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
     //end paraview init
-    
+
     //run vialactea UI
     on_actionVialactea_triggered();
     
