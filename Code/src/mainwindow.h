@@ -39,6 +39,7 @@
 #include <map>
 
 class vtkwindow_new;
+class pqServer;
 
 namespace Ui {
 class MainWindow;
@@ -59,6 +60,7 @@ public:
     Ui::MainWindow *ui;
     QString selectedFile;
     TreeModel *m_VisIVOTreeModel;
+    pqServer* server;
 
 public slots:
     void importAscii();

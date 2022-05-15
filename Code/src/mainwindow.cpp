@@ -78,9 +78,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     new pqPersistentMainWindowStateBehavior(this);
     pqApplicationCore* core = pqApplicationCore::instance();
     // Make a connection to the builtin server
-       //pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
-    pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
+    //pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
+    server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
     //end paraview init
+    
     //run vialactea UI
     on_actionVialactea_triggered();
     
