@@ -3,6 +3,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
+#include <vtkPoints.h>
+
 Island::Island(const QJsonObject &obj, QObject *parent) : QObject(parent), obj(obj)
 {
     this->name = obj["name"].toString();
@@ -33,14 +35,11 @@ Island::Island(const QJsonObject &obj, QObject *parent) : QObject(parent), obj(o
     this->sourceness_score = obj["sourceness_score"].toDouble();
     this->morph_label = obj["morph_label"].toString();
 
-    QJsonArray vertices = obj["vertices"].toArray();
-    foreach (auto &&it, vertices) {
+    foreach (auto &&it, obj["vertices"].toArray()) {
         QJsonArray vertex = it.toArray();
         QPair<double, double> point { vertex.at(0).toDouble(), vertex.at(1).toDouble() };
         this->vertices << point;
     }
-
-    return;
 }
 
 Source *Island::getSource() const
@@ -51,6 +50,26 @@ Source *Island::getSource() const
 const QList<QPair<double, double>> &Island::getVertices() const
 {
     return vertices;
+}
+
+void Island::updatePoints(vtkSmartPointer<vtkPoints> points)
+{
+    QJsonArray vertices;
+    for (int i = 0; i < points->GetNumberOfPoints(); ++i) {
+        double coords[3];
+        points->GetPoint(i, coords);
+        QJsonArray point;
+        point.append(coords[0]);
+        point.append(coords[1]);
+        vertices.append(point);
+    }
+
+    obj["vertices"] = vertices;
+}
+
+const QJsonObject &Island::getObj() const
+{
+    return obj;
 }
 
 const QString &Island::getName() const
@@ -190,6 +209,11 @@ const QString &Island::getMorphLabel() const
 
 Source::Source(QObject *parent, const QJsonObject &obj) : QObject(parent), obj(obj) { }
 
+const QJsonObject &Source::getObj() const
+{
+    return obj;
+}
+
 Source *Source::fromJson(const QJsonObject &obj, QObject *parent)
 {
     Source *s = new Source(parent, obj);
@@ -218,6 +242,16 @@ Source *Source::fromJson(const QJsonObject &obj, QObject *parent)
 const QList<Island *> &Source::getIslands() const
 {
     return islands;
+}
+
+void Source::updatePoints(vtkSmartPointer<vtkPoints> points)
+{
+    auto island = islands.at(0);
+    island->updatePoints(points);
+
+    auto islands = obj["islands"].toArray();
+    islands[0] = island->getObj();
+    obj["islands"] = islands;
 }
 
 const QString &Source::getName() const

@@ -7,6 +7,7 @@
 class QListWidgetItem;
 class Catalogue;
 class Island;
+class vtkwindow_new;
 
 namespace Ui {
 class SourceWidget;
@@ -17,7 +18,7 @@ class SourceWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit SourceWidget(QWidget *parent, Catalogue *catalogue);
+    explicit SourceWidget(QWidget *parent, Catalogue *catalogue, vtkwindow_new *win);
     ~SourceWidget();
 
 public slots:
@@ -25,10 +26,16 @@ public slots:
 
 private slots:
     void on_listExtracted_itemClicked(QListWidgetItem *item);
+    void on_btnEdit_clicked();
+    void on_btnSave_clicked();
 
 private:
     Ui::SourceWidget *ui;
     QPointer<Catalogue> catalogue;
+    vtkwindow_new *win;
+
+    QString iau_name;
+    bool editing;
 };
 
 #endif // SOURCEWIDGET_H

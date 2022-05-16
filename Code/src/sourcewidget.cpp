@@ -3,11 +3,14 @@
 
 #include "catalogue.h"
 #include "source.h"
+#include "vtkwindow_new.h"
+
+#include <vtkLODActor.h>
 
 #include <QListWidgetItem>
 
-SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue)
-    : QWidget(parent), ui(new Ui::SourceWidget), catalogue(catalogue)
+SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue, vtkwindow_new *win)
+    : QWidget(parent), ui(new Ui::SourceWidget), catalogue(catalogue), win(win), editing(false)
 {
     ui->setupUi(this);
 
@@ -25,6 +28,7 @@ SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue)
 
 SourceWidget::~SourceWidget()
 {
+    win->setVtkInteractorStyleImage();
     delete ui;
 }
 
@@ -89,4 +93,47 @@ void SourceWidget::on_listExtracted_itemClicked(QListWidgetItem *item)
     auto source = catalogue->getSource(item->text());
     auto island = source->getIslands().first();
     showIslandInfo(island);
+}
+
+void SourceWidget::on_btnEdit_clicked()
+{
+    QString name = ui->listExtracted->currentItem()->text();
+    if (name.isEmpty()) {
+        return;
+    }
+
+    if (editing) {
+        win->setVtkInteractorStyleImage();
+
+        qDebug() << Q_FUNC_INFO << "After editing";
+        auto source = catalogue->getExtractedNames().value(iau_name);
+        auto p = source.first;
+        for (int i = 0; i < p->GetNumberOfPoints(); ++i) {
+            double coords[3];
+            p->GetPoint(i, coords);
+            qDebug() << Q_FUNC_INFO << "P" << i << coords[0] << coords[1];
+        }
+
+        catalogue->updatePoints(iau_name, source.first);
+    } else {
+        iau_name = name;
+        auto source = catalogue->getExtractedNames().value(name);
+        win->setVtkInteractorEditSource(source);
+
+        qDebug() << Q_FUNC_INFO << "Before editing";
+        auto p = source.first;
+        for (int i = 0; i < p->GetNumberOfPoints(); ++i) {
+            double coords[3];
+            p->GetPoint(i, coords);
+            qDebug() << Q_FUNC_INFO << "P" << i << coords[0] << coords[1];
+        }
+    }
+
+    editing = !editing;
+    ui->btnEdit->setDown(editing);
+}
+
+void SourceWidget::on_btnSave_clicked()
+{
+    catalogue->save();
 }

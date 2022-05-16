@@ -26,10 +26,10 @@ Catalogue::Catalogue(QObject *parent, const QString &fn) : QObject(parent), file
 {
     QFile file(fn);
     file.open(QFile::ReadOnly);
-    doc = QJsonDocument::fromJson(file.readAll());
+    root = QJsonDocument::fromJson(file.readAll()).object();
     file.close();
 
-    QJsonArray sources = doc["sources"].toArray();
+    QJsonArray sources = root["sources"].toArray();
     foreach (auto &&it, sources) {
         Source *s = Source::fromJson(it.toObject(), this);
         this->sources.insert(s->getIauName(), s);
@@ -77,10 +77,35 @@ void Catalogue::ExtractSourceInsideRect(double rect[], vtkRenderWindow *renWin, 
     }
 }
 
-const QMap<QString, QPair<vtkSmartPointer<vtkPolyData>, vtkSmartPointer<vtkLODActor>>> &
+const QMap<QString, QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>>> &
 Catalogue::getExtractedNames() const
 {
     return extractedNames;
+}
+
+void Catalogue::updatePoints(const QString &iau_name, vtkSmartPointer<vtkPoints> points)
+{
+    auto source = sources.value(iau_name);
+    source->updatePoints(points);
+
+    auto sources = root["sources"].toArray();
+    sources[source->getIndex()] = source->getObj();
+    root["sources"] = sources;
+}
+
+void Catalogue::save()
+{
+    QString timestamp = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd_hh-mm-ss");
+    QString fn = QString("%1_%2.json").arg(QFileInfo(filepath).baseName(), timestamp);
+    QString out = QFileInfo(filepath).absoluteDir().absoluteFilePath(fn);
+
+    QFile f(out);
+    f.open(QIODevice::WriteOnly | QIODevice::Text);
+    QJsonDocument doc(root);
+    f.write(doc.toJson());
+    f.close();
+    QMessageBox::information(nullptr, "Catalogue saved",
+                             "Catalogue saved in " + QFileInfo(f).absoluteFilePath());
 }
 
 void Catalogue::drawExtractedSources(const QSet<QString> &names, vtkRenderWindow *renWin,
@@ -98,11 +123,13 @@ void Catalogue::drawExtractedSources(const QSet<QString> &names, vtkRenderWindow
             }
 
             auto points = vtkSmartPointer<vtkPoints>::New();
+            points->SetNumberOfPoints(vertices.count());
             auto cells = vtkSmartPointer<vtkCellArray>::New();
             cells->InsertNextCell(vertices.count() + 1);
-            foreach (auto &&point, vertices) {
-                vtkIdType id = points->InsertNextPoint(point.first + 1, point.second + 1, arcsec);
-                cells->InsertCellPoint(id);
+            for (long long i = 0; i < vertices.count(); ++i) {
+                auto point = vertices.at(i);
+                points->SetPoint(i, point.first + 1, point.second + 1, arcsec);
+                cells->InsertCellPoint(i);
             }
             cells->InsertCellPoint(0);
 
@@ -119,9 +146,9 @@ void Catalogue::drawExtractedSources(const QSet<QString> &names, vtkRenderWindow
 
             renWin->GetRenderers()->GetFirstRenderer()->AddActor(actor);
 
-            extractedNames.insert(iau_name,
-                                  QPair<vtkSmartPointer<vtkPolyData>, vtkSmartPointer<vtkLODActor>>(
-                                          polyData, actor));
+            extractedNames.insert(
+                    iau_name,
+                    QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>>(points, actor));
         }
     }
 

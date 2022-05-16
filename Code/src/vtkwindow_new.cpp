@@ -78,11 +78,13 @@
 #include "vtkOutlineFilter.h"
 #include "vtkPlane.h"
 #include "vtkPlanes.h"
+#include "vtkPointPicker.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkPolyLine.h"
 #include "vtkProp3D.h"
 #include "vtkProperty.h"
 #include "vtkProperty2D.h"
+#include "vtkPropPicker.h"
 #include "vtkRegularPolygonSource.h"
 #include "vtkRemovePolyData.h"
 #include "vtkRendererCollection.h"
@@ -1014,6 +1016,176 @@ private:
     void operator=(const InteractorStyleExtractSources &) = delete;
 };
 vtkStandardNewMacro(InteractorStyleExtractSources);
+
+class InteractorStyleEditSource : public vtkInteractorStyleTrackballActor
+{
+public:
+    static InteractorStyleEditSource *New();
+    vtkTypeMacro(InteractorStyleEditSource, vtkInteractorStyleTrackballActor);
+
+    void OnMouseMove() override
+    {
+        if (!this->Interactor || !moving) {
+            return;
+        }
+
+        int x = this->Interactor->GetEventPosition()[0];
+        int y = this->Interactor->GetEventPosition()[1];
+
+        /*
+        this->FindPokedRenderer(x, y);
+        if (!this->CurrentRenderer) {
+            return;
+        }
+        */
+        this->Coordinate = vtkSmartPointer<vtkCoordinate>::New();
+        this->Coordinate->SetCoordinateSystemToDisplay();
+        this->Coordinate->SetValue(x, y);
+        double *coords = this->Coordinate->GetComputedWorldValue(this->CurrentRenderer);
+
+        qDebug() << Q_FUNC_INFO << "POINT" << PointId << " - NEW COORDS" << coords[0] << coords[1];
+
+        this->Points->SetPoint(PointId, coords);
+        this->Points->Modified();
+
+        this->Interactor->Render();
+    }
+
+    void OnLeftButtonDown() override
+    {
+        this->moving = false;
+
+        if (!this->Interactor) {
+            return;
+        }
+
+        int x = this->Interactor->GetEventPosition()[0];
+        int y = this->Interactor->GetEventPosition()[1];
+        qDebug() << Q_FUNC_INFO << "Display coords" << x << y;
+
+        this->FindPokedRenderer(x, y);
+        // this->FindPickedActor(x, y);
+        if (!this->CurrentRenderer /* || !this->InteractionProp*/) {
+            return;
+        }
+
+        // auto actor = vtkLODActor::SafeDownCast(this->InteractionProp);
+        //  auto actor = this->Actor;
+        this->ActorPicker->PickProp(x, y, this->CurrentRenderer);
+        auto actor = vtkLODActor::SafeDownCast(this->ActorPicker->GetViewProp());
+        if (!actor || (actor != this->ActorFilter && actor != this->Actor)) {
+            return;
+        }
+        qDebug() << Q_FUNC_INFO << "Actor Picked" << actor;
+
+        if (this->PointPicker->Pick(x, y, 0, this->CurrentRenderer) == 0) {
+            return;
+        }
+        PointId = this->PointPicker->GetPointId();
+        qDebug() << Q_FUNC_INFO << "Point Picked" << PointId;
+        this->moving = true;
+
+        /*
+        auto mapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
+        if (!mapper) {
+            return;
+        }
+        qDebug() << Q_FUNC_INFO << "Mapper OK";
+
+        auto polydata = mapper->GetInput();
+        Points = polydata->GetPoints();
+        qDebug() << Q_FUNC_INFO << "Points OK" << Points->GetNumberOfPoints();
+        std::cout << std::endl;
+        this->Interactor->Render();
+        */
+    }
+
+    void OnLeftButtonUp() override
+    {
+        qDebug() << Q_FUNC_INFO;
+        this->moving = false;
+
+        if (!this->Interactor) {
+            return;
+        }
+
+        /*
+        if (this->PointId >= 0) {
+            // this->Points = nullptr;
+            this->PointId = -1;
+            this->Interactor->Render();
+        }
+        */
+    }
+
+    void OnMiddleButtonDown() override { }
+    void OnMiddleButtonUp() override { }
+    void OnRightButtonDown() override { }
+    void OnRightButtonUp() override { }
+
+    void SetSource(vtkSmartPointer<vtkPoints> points, vtkSmartPointer<vtkLODActor> actor)
+    {
+        this->Points = points;
+        this->Actor = actor;
+
+        vtkNew<vtkPolyData> polydata;
+        polydata->SetPoints(points);
+
+        vtkNew<vtkVertexGlyphFilter> filter;
+        filter->SetInputData(polydata);
+        filter->Update();
+
+        vtkNew<vtkPolyDataMapper> mapperFilter;
+        mapperFilter->SetInputConnection(filter->GetOutputPort());
+
+        ActorFilter = vtkSmartPointer<vtkLODActor>::New();
+        ActorFilter->SetMapper(mapperFilter);
+        ActorFilter->GetProperty()->SetPointSize(5);
+        ActorFilter->GetProperty()->SetColor(0, 1, 0);
+
+        RenderWindow->GetRenderers()->GetFirstRenderer()->AddActor(ActorFilter);
+        RenderWindow->Render();
+    }
+
+    void SetRenderWindow(vtkRenderWindow *win) { this->RenderWindow = win; }
+
+protected:
+    InteractorStyleEditSource()
+    {
+        this->moving = false;
+
+        this->PointPicker = vtkSmartPointer<vtkPointPicker>::New();
+        this->PointPicker->UseCellsOn();
+        this->ActorPicker = vtkSmartPointer<vtkPropPicker>::New();
+
+        this->Coordinate = vtkSmartPointer<vtkCoordinate>::New();
+        this->Coordinate->SetCoordinateSystemToDisplay();
+
+        this->Points = nullptr;
+    }
+
+    ~InteractorStyleEditSource()
+    {
+        RenderWindow->GetRenderers()->GetFirstRenderer()->RemoveActor(ActorFilter);
+        RenderWindow->Render();
+    }
+
+private:
+    InteractorStyleEditSource(const InteractorStyleEditSource &) = delete;
+    void operator=(const InteractorStyleEditSource &) = delete;
+
+    bool moving;
+    vtkSmartPointer<vtkCoordinate> Coordinate;
+    vtkSmartPointer<vtkPointPicker> PointPicker;
+    vtkSmartPointer<vtkPropPicker> ActorPicker;
+    vtkSmartPointer<vtkPoints> Points;
+    vtkIdType PointId;
+    vtkSmartPointer<vtkLODActor> Actor;
+    vtkSmartPointer<vtkLODActor> ActorFilter;
+
+    vtkRenderWindow *RenderWindow;
+};
+vtkStandardNewMacro(InteractorStyleEditSource);
 
 vtkwindow_new::~vtkwindow_new()
 {
@@ -3660,6 +3832,18 @@ void vtkwindow_new::setVtkInteractorExtractSources()
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
+void vtkwindow_new::setVtkInteractorEditSource(
+        const QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>> &source)
+{
+    auto style = vtkSmartPointer<InteractorStyleEditSource>::New();
+    style->SetRenderWindow(ui->qVTK1->renderWindow());
+    style->SetSource(source.first, source.second);
+
+    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle(style);
+    ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow(ui->qVTK1->renderWindow());
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
 void vtkwindow_new::on_spinBox_contour_valueChanged(int arg1)
 {
 
@@ -3850,7 +4034,7 @@ void vtkwindow_new::showSourceDockWidget()
         dock->setAttribute(Qt::WA_DeleteOnClose);
         dock->setFloating(true);
 
-        auto sourceWidget = new SourceWidget(dock, catalogue);
+        auto sourceWidget = new SourceWidget(dock, catalogue, this);
         dock->setWidget(sourceWidget);
         dock->show();
     }

@@ -4,36 +4,10 @@
 #include <QJsonObject>
 #include <QObject>
 
+#include <vtkSmartPointer.h>
+
+class vtkPoints;
 class vtkLODActor;
-
-/*
-== SOURCE PARAMETRI ==
-name (iau_name)
-nislands
-pos(x0,y0)
-pos_wcs(ra,dec)
-label
-classid
-morph_label
-sourceness_label
-sourceness_score
-== ISLAND PARAMETRI ==
-name (iau_name)
-npix
-pos=(x,y) bbox(xmin,xmax,ymin,ymax)
-pos_wcs(ra,dec) bbox_wcs(ra_min,ra_max,dec_min,dec_max)
-flux= S +- S_err
-Smax, Stot
-bkg, rms
-fitinfo=0/1, ncomponents (fit_quality, redchi2=chi/ndf)
-min_size, max_size (per il momento sono non implementate)
-beam_area_ratio_par
-resolved
-border
-sourceness_label
-sourceness_score
-*/
-
 class Source;
 
 class Island : public QObject
@@ -71,6 +45,10 @@ public:
     double getSourcenessScore() const;
     const QString &getMorphLabel() const;
     const QList<QPair<double, double>> &getVertices() const;
+
+    void updatePoints(vtkSmartPointer<vtkPoints> points);
+
+    const QJsonObject &getObj() const;
 
 private:
     QJsonObject obj;
@@ -116,6 +94,10 @@ public:
     const QString &getSourcenessLabel() const;
     double getSourcenessScore() const;
     const QList<Island *> &getIslands() const;
+
+    void updatePoints(vtkSmartPointer<vtkPoints> points);
+
+    const QJsonObject &getObj() const;
 
 private:
     explicit Source(QObject *parent, const QJsonObject &obj);

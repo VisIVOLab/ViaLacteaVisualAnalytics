@@ -189,6 +189,9 @@ public:
     QHash<vtkImageProperty *, double> image_init_color_level;
     QHash<vtkImageProperty *, double> image_init_window_level;
 
+    void setVtkInteractorEditSource(
+            const QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>> &source);
+
 signals:
     void speciesChanged();
     void surveyChanged();

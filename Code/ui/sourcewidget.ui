@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>325</width>
-    <height>795</height>
+    <height>864</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,6 +28,32 @@
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <widget class="QListWidget" name="listExtracted"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Operations</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <widget class="QPushButton" name="btnEdit">
+        <property name="text">
+         <string>Edit</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnSave">
+        <property name="text">
+         <string>Save</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
