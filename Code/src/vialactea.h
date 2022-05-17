@@ -12,6 +12,7 @@
 
 #include "pqPipelineSource.h"
 
+class pqPipelineSource;
 
 namespace Ui {
 class ViaLactea;
@@ -90,7 +91,8 @@ private:
     QString tilePath;
     QMap<int, QPair<QString, QString>> mapSurvey;
     vtkwindow_new *masterWin = nullptr;
-    
+    QPointer<pqPipelineSource> originSource;
+
     bool canImportToMasterWin(std::string importFn);
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
     

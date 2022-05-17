@@ -588,7 +588,6 @@
     <addaction name="actionSettings"/>
     <addaction name="actionExit"/>
     <addaction name="actionLoad_SED_2"/>
-    <addaction name="actionLoad_DC_pv"/>
    </widget>
    <widget class="QMenu" name="menuAiuto">
     <property name="title">
@@ -628,11 +627,6 @@
   <action name="actionLoad_session">
    <property name="text">
     <string>Load session</string>
-   </property>
-  </action>
-  <action name="actionLoad_DC_pv">
-   <property name="text">
-    <string>Load DC - pv</string>
    </property>
   </action>
  </widget>

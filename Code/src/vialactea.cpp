@@ -21,7 +21,13 @@
 #include <QWebChannel>
 
 #include "pqLoadDataReaction.h"
+#include "pqApplicationCore.h"
+#include "pqObjectBuilder.h"
 
+#include "vtkSMStringVectorProperty.h"
+#include "vtkSMProxy.h"
+
+#include "pqActiveObjects.h"
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -44,9 +50,6 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
     
     ui->setupUi(this);
        
-    pqLoadDataReaction* dataLoader = new pqLoadDataReaction(ui->actionLoad_DC_pv);
-    QObject::connect(dataLoader, &pqLoadDataReaction::loadedData,this, &ViaLactea::onDataLoaded);
-    
     ui->saveToDiskCheckBox->setVisible(false);
     ui->fileNameLineEdit->setVisible(false);
     ui->selectFsPushButton->setVisible(false);
@@ -159,8 +162,6 @@ void ViaLactea::quitApp()
 void ViaLactea::onDataLoaded(pqPipelineSource* source)
 {
     
-    
-    /*
     if (this->originSource)
     {
         pqApplicationCore::instance()->getObjectBuilder()->destroy(this->originSource);
@@ -168,6 +169,7 @@ void ViaLactea::onDataLoaded(pqPipelineSource* source)
     
     this->originSource = source;
     
+    /*
     setupData();
      */
     
@@ -448,6 +450,7 @@ void ViaLactea::on_localDCPushButton_clicked()
     if (!fn.isEmpty()) {
         if (test)
         {
+            /*
             auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
             fitsReader_moment->SetFileName(fn.toStdString());
             fitsReader_moment->isMoment3D = true;
@@ -460,6 +463,12 @@ void ViaLactea::on_localDCPushButton_clicked()
             fitsReader_dc->SetFileName(fn.toStdString());
             fitsReader_dc->is3D = true;
             new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
+             */
+           // qDebug()<<ui->localDCPushButton->actions()[0];
+            pqLoadDataReaction* dataLoader = new pqLoadDataReaction(new QAction());
+            auto newSources =dataLoader->loadData({fn});
+            onDataLoaded(newSources);
+
         }
         else
         {
