@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
-project(ViaLacteaVisualAnalytics)
+
+project(ViaLacteaVisualAnalytics LANGUAGES CXX C)
 
 # Set a default build type if none was specified
 set(default_build_type "Release")
@@ -14,52 +15,41 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     )
 endif()
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ParaView REQUIRED)
 find_package(CFITSIO REQUIRED)
-find_package (OPENMP REQUIRED )
+find_package(OpenMP REQUIRED)
+find_package(Boost REQUIRED)
 find_package(CURL REQUIRED)
-find_package (Boost REQUIRED )
+
+set(qt_components Widgets Network NetworkAuth WebEngineWidgets Concurrent Xml PrintSupport)
+find_package(Qt5 QUIET REQUIRED COMPONENTS ${qt_components})
+
+foreach(_qt_comp IN LISTS qt_components)
+    list(APPEND qt_modules "Qt5::${_qt_comp}")
+endforeach()
 
 if (NOT PARAVIEW_USE_QT)
-  message(STATUS
-    "Skipping example: ${CMAKE_PROJECT_NAME} example requires PARAVIEW_USE_QT "
-    "to be enabled. Please rebuild ParaView (or point to a different build of "
-    "ParaView) with PARAVIEW_USE_QT set to TRUE")
-  return ()
+    message(STATUS
+        "${CMAKE_PROJECT_NAME} requires PARAVIEW_USE_QT "
+        "to be enabled. Please rebuild ParaView (or point to a different build of "
+        "ParaView) with PARAVIEW_USE_QT set to TRUE")
+    return ()
 endif()
 
 include(GNUInstallDirs)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
-
-include_directories(${Boost_INCLUDE_DIRS})
-
-find_package(Qt5 REQUIRED COMPONENTS                      Charts                    Help                      Purchasing                QuickTemplates2           UiPlugin
-              ClipboardSupport                       Qml                       QuickTest                 UiTools
-                   Concurrent                Location                  QmlDebug                  QuickWidgets              VirtualKeyboard
-                 Core                      MacExtras                                RemoteObjects             WebChannel
-                  DBus                      Multimedia                          RepParser                 WebEngine
-                  DataVisualization         MultimediaQuick           QmlModels                 Script                    WebEngineCore
-                                   MultimediaWidgets         QmlWorkerScript           ScriptTools               WebEngineWidgets
-                Network                   Quick                     Scxml                     WebSockets
-            DeviceDiscoverySupport    NetworkAuth                                 Sensors                   WebView
-                               Nfc                              SerialBus                 Widgets
-            EdidSupport               OpenGL                                SerialPort                Xml
-           EventDispatcherSupport    OpenGLExtensions               ServiceSupport            XmlPatterns
-                 FbSupport                 PacketProtocol                         Sql
-AccessibilitySupport      FontDatabaseSupport       PlatformCompositorSupport              Svg
-  Gamepad                   Positioning               QuickControls2            Test
-Bluetooth                 GraphicsSupport           PositioningQuick          QuickParticles            TextToSpeech
-Bodymovin                 Gui                       PrintSupport              QuickShapes               ThemeSupport)
-
-
-set(CMAKE_INCLUDE_CURRENT_DIR "YES")
-set(CMAKE_AUTOMOC 1)
-set(CMAKE_AUTOUIC 1)
-set(CMAKE_AUTORCC 1)
 
 set(sources
     src/aboutform.cpp 
@@ -157,10 +147,9 @@ set(sources
     src/vtkwindowcube.cpp 
     src/vtkwindowimage.cpp 
     src/vtkwindowsources.cpp 
-
 )
 
-set (headers 
+set(headers 
     src/aboutform.h 
     src/astroutils.h 
     src/authkeys.h 
@@ -238,9 +227,8 @@ set (headers
     src/interactors/vtkinteractorstyleimagecustom.h 
     src/vtkwindowcube.h 
     src/vtkwindowimage.h 
-    src/vtkwindowsources.h 
-    
-    )
+    src/vtkwindowsources.h     
+)
 
 set(ui_files
     ui/aboutform.ui 
@@ -276,115 +264,20 @@ set(ui_files
     ui/vtkfitstoolwidget_new.ui 
     ui/vtktoolswidget.ui 
     ui/vtkwindow_new.ui
-    ui/vtkwindowcube.ui)
+    ui/vtkwindowcube.ui
+)
 
-set(xml_files
-  SupportedReader.xml)
+set(resources visivo.qrc)
 
-add_executable(ViaLacteaVisualAnalytics ${ui_files} ${sources} ${headers} )
+add_executable(ViaLacteaVisualAnalytics ${ui_files} ${resources} ${sources} ${headers})
 
-target_link_libraries(ViaLacteaVisualAnalytics
- PRIVATE
-   VTK::InteractionStyle
-   VTK::CommonColor
-   VTK::CommonCore
-   VTK::CommonDataModel
-   VTK::CommonTransforms
-   VTK::FiltersCore
-   VTK::FiltersModeling
-   VTK::FiltersSources
-   VTK::FiltersExtraction
-   VTK::IOImage
-   VTK::ImagingHybrid
-   VTK::InteractionStyle
-   VTK::InteractionImage
-   VTK::InteractionWidgets
-   VTK::RenderingAnnotation
-   VTK::RenderingContextOpenGL2
-   VTK::RenderingCore
-   VTK::RenderingFreeType
-   VTK::RenderingGL2PSOpenGL2
-   VTK::RenderingOpenGL2
-   VTK::RenderingVolume
-   VTK::RenderingVolumeOpenGL2
-   VTK::RenderingImage
-   VTK::FiltersCore
-   VTK::FiltersGeneral
-   VTK::FiltersGeometry
-   VTK::RenderingLabel
-   CFITSIO::CFITSIO
-   ParaView::pqApplicationComponents
-   ParaView::RemotingViews
-   Qt5::Charts
-   Qt5::Help
-   Qt5::Purchasing
-   Qt5::QuickTemplates2
-   Qt5::UiPlugin
-   Qt5::ClipboardSupport
-   Qt5::Qml
-   Qt5::QuickTest
-   Qt5::UiTools
-   Qt5::Concurrent
-   Qt5::Location
-   Qt5::QmlDebug
-   Qt5::QuickWidgets
-   Qt5::VirtualKeyboard
-   Qt5::Core
-   Qt5::MacExtras
-   Qt5::RemoteObjects
-   Qt5::WebChannel
-   Qt5::DBus
-   Qt5::Multimedia
-   Qt5::RepParser
-   Qt5::WebEngine
-   Qt5::DataVisualization
-   Qt5::MultimediaQuick
-   Qt5::QmlModels
-   Qt5::Script
-   Qt5::WebEngineCore
-   Qt5::MultimediaWidgets
-   Qt5::QmlWorkerScript
-   Qt5::ScriptTools
-   Qt5::WebEngineWidgets
-   Qt5::Network
-   Qt5::Quick
-   Qt5::Scxml
-   Qt5::WebSockets
-   Qt5::DeviceDiscoverySupport
-   Qt5::NetworkAuth
-   Qt5::Sensors
-   Qt5::WebView
-   Qt5::Nfc
-   Qt5::SerialBus
-   Qt5::Widgets
-   Qt5::EdidSupport
-   Qt5::OpenGL
-   Qt5::SerialPort
-   Qt5::Xml
-   Qt5::EventDispatcherSupport
-   Qt5::OpenGLExtensions
-   Qt5::ServiceSupport
-   Qt5::XmlPatterns
-   Qt5::FbSupport
-   Qt5::PacketProtocol
-   Qt5::Sql
-   Qt5::AccessibilitySupport
-   Qt5::FontDatabaseSupport
-   Qt5::PlatformCompositorSupport
-   Qt5::Svg
-   Qt5::Gamepad
-   Qt5::Positioning
-   Qt5::QuickControls2
-   Qt5::Test
-   Qt5::Bluetooth
-   Qt5::GraphicsSupport
-   Qt5::PositioningQuick
-   Qt5::QuickParticles
-   Qt5::TextToSpeech
-   Qt5::Bodymovin
-   Qt5::Gui
-   Qt5::PrintSupport
-   Qt5::QuickShapes
-   Qt5::ThemeSupport
-   CURL::libcurl
-   )
+target_include_directories(ViaLacteaVisualAnalytics PRIVATE ${Boost_INCLUDE_DIRS})
+
+target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
+    ${qt_modules}
+    ${VTK_LIBRARIES}
+    ParaView::pqApplicationComponents
+    ParaView::RemotingViews
+    CFITSIO::CFITSIO
+    CURL::libcurl
+)
