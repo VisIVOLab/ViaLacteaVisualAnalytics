@@ -98,30 +98,6 @@
 #include <QtConcurrent>
 
 
-#include "pqApplicationCore.h"
-#include "pqObjectBuilder.h"
-#include "pqActiveObjects.h"
-#include "pqRenderView.h"
-
-
-#include "vtkSMPropertyHelper.h"
-#include "vtkSMProxyManager.h"
-#include "vtkSMSessionProxyManager.h"
-#include "vtkSMReaderFactory.h"
-#include "vtkSMPVRepresentationProxy.h"
-#include "vtkDataObject.h"
-#include "vtkSMProxySelectionModel.h"
-#include "vtkSMParaViewPipelineControllerWithRendering.h"
-
-#include "pqAlwaysConnectedBehavior.h"
-#include "pqPersistentMainWindowStateBehavior.h"
-
-#include "pqApplicationCore.h"
-#include "pqObjectBuilder.h"
-
-#include "mainwindow.h"
-
-
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
 VTK_MODULE_INIT(vtkRenderingFreeType)
@@ -1459,45 +1435,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             legendScaleActorImage->setFitsFile(myfits);
             m_Ren2->AddActor(legendScaleActorImage);
             
-            //paraview
-            
-            new pqAlwaysConnectedBehavior(this);
-            new pqPersistentMainWindowStateBehavior(this);
-            
-            // Make a connection to the builtin server
-            
-            QPointer<pqRenderView> view =
-            qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
-            pqActiveObjects::instance().setActiveView(view);
-            ui->PVLayout->addWidget(view->widget());
-            
-            MainWindow *w = &Singleton<MainWindow>::Instance();
-            
-            vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
-            vtkSmartPointer<vtkSMProxy> source;
-            vtkSMSessionProxyManager* pxm = w->server->proxyManager();
-            
-            source.TakeReference(pxm->NewProxy("sources", "SphereSource"));
-            controller->InitializeProxy(source);
-            controller->RegisterPipelineProxy(source);
-            vtkSMSourceProxy::SafeDownCast(source)->UpdatePipeline();
-            vtkSMSourceProxy::SafeDownCast(source)->UpdatePipeline();
-            vtkSmartPointer<vtkSMProxy> elevation;
-            elevation.TakeReference(pxm->NewProxy("filters", "ElevationFilter"));
-            controller->PreInitializeProxy(elevation);
-            vtkSMPropertyHelper(elevation, "Input").Set(source);
-            controller->PostInitializeProxy(elevation);
-            controller->RegisterPipelineProxy(elevation);
-            // updating source so that when elevation filter is created, the defaults
-            // are setup correctly using the correct data bounds etc.
-            vtkSMSourceProxy::SafeDownCast(source)->UpdatePipeline();
-            // Show the result.
-            controller->Show(vtkSMSourceProxy::SafeDownCast(elevation), 0, view->getViewProxy());
-            
-            view->resetDisplay();
-            view->render();
-            
-            
+           
             this->setWindowName("Datacube visualization");
             showMaximized();
             activateWindow();

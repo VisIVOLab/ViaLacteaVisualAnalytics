@@ -25,6 +25,7 @@ class vtkWindowCube : public QMainWindow
 public:
     explicit vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                            QString velocityUnit = "km/s");
+    explicit vtkWindowCube();
     ~vtkWindowCube();
 
 private slots:

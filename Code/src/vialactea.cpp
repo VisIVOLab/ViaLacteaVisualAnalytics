@@ -14,6 +14,7 @@
 #include "vialacteainitialquery.h"
 #include "vialacteastringdictwidget.h"
 #include "vlkbsimplequerycomposer.h"
+#include "vtkwindowcube.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -169,6 +170,7 @@ void ViaLactea::onDataLoaded(pqPipelineSource* source)
     
     this->originSource = source;
     
+    new vtkWindowCube();
     /*
     setupData();
      */
@@ -450,20 +452,20 @@ void ViaLactea::on_localDCPushButton_clicked()
     if (!fn.isEmpty()) {
         if (test)
         {
-            /*
+            
             auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
             fitsReader_moment->SetFileName(fn.toStdString());
             fitsReader_moment->isMoment3D = true;
             fitsReader_moment->setMomentOrder(0);
             auto win = new vtkwindow_new(this, fitsReader_moment);
             setMasterWin(win);
-            
+             
             // Open a new window to visualize the datacube
             auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
             fitsReader_dc->SetFileName(fn.toStdString());
             fitsReader_dc->is3D = true;
             new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
-             */
+          
            // qDebug()<<ui->localDCPushButton->actions()[0];
             pqLoadDataReaction* dataLoader = new pqLoadDataReaction(new QAction());
             auto newSources =dataLoader->loadData({fn});

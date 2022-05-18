@@ -408,6 +408,9 @@
       </item>
      </layout>
     </item>
+<item>
+ <layout class="QHBoxLayout" name="PVLayout" stretch=""/>
+</item>
     <item>
      <layout class="QHBoxLayout" name="_18">
       <item>
