@@ -228,6 +228,10 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     ui->qVtkCube->hide();
     ui->qVtkSlice->hide();
     
+    lowerBound = 0.5;
+    upperBound = 10;
+
+    
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
     
@@ -331,8 +335,6 @@ void vtkWindowCube::updateVelocityText()
 
 void vtkWindowCube::setThreshold(double threshold)
 {
-    qDebug()<<"set Threshold";
- 
     vtkSMProxy* filterProxy = contourFilter->getProxy();
     pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"),threshold);
     filterProxy->UpdateVTKObjects();
@@ -523,14 +525,13 @@ void vtkWindowCube::on_thresholdText_editingFinished()
     qDebug()<<"on_thresholdText_editingFinished";
    
     double threshold = ui->thresholdText->text().toDouble();
-    //TO BE RESTORED WHEN WE WILL HAVE MIN - MAX values
-    /*// Clamp threshold
+    // Clamp threshold
     threshold = fmin(fmax(threshold, lowerBound), upperBound);
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
     
     int tickPosition = 100 * (threshold - lowerBound) / (upperBound - lowerBound);
     ui->thresholdSlider->setValue(tickPosition);
-    */
+    
     setThreshold(threshold);
 }
 
