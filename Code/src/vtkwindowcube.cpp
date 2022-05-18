@@ -57,6 +57,8 @@
 
 #include "pqApplicationCore.h"
 #include "pqObjectBuilder.h"
+#include "pqSMAdaptor.h"
+
 
 #include "mainwindow.h"
 
@@ -213,10 +215,10 @@ velocityUnit(velocityUnit)
 }
 
 //paraview 
-vtkWindowCube::vtkWindowCube(): ui(new Ui::vtkWindowCube)
+vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::vtkWindowCube)
 {
     MainWindow *w = &Singleton<MainWindow>::Instance();
-
+    
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("paraview");
@@ -224,11 +226,9 @@ vtkWindowCube::vtkWindowCube(): ui(new Ui::vtkWindowCube)
     //temp hack, if those two widget are in place
     ui->qVtkCube->hide();
     ui->qVtkSlice->hide();
-
+    
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
-    
-    // Make a connection to the builtin server
     
     QPointer<pqRenderView> viewCube =
     qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
@@ -244,33 +244,36 @@ vtkWindowCube::vtkWindowCube(): ui(new Ui::vtkWindowCube)
     
     
     vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
-    vtkSmartPointer<vtkSMProxy> source;
     vtkSMSessionProxyManager* pxm = w->server->proxyManager();
     
-    source.TakeReference(pxm->NewProxy("sources", "SphereSource"));
-    controller->InitializeProxy(source);
-    controller->RegisterPipelineProxy(source);
-    vtkSMSourceProxy::SafeDownCast(source)->UpdatePipeline();
-    vtkSMSourceProxy::SafeDownCast(source)->UpdatePipeline();
-    vtkSmartPointer<vtkSMProxy> elevation;
-    elevation.TakeReference(pxm->NewProxy("filters", "ElevationFilter"));
-    controller->PreInitializeProxy(elevation);
-    vtkSMPropertyHelper(elevation, "Input").Set(source);
-    controller->PostInitializeProxy(elevation);
-    controller->RegisterPipelineProxy(elevation);
-    // updating source so that when elevation filter is created, the defaults
-    // are setup correctly using the correct data bounds etc.
-    vtkSMSourceProxy::SafeDownCast(source)->UpdatePipeline();
-    // Show the result.
-    controller->Show(vtkSMSourceProxy::SafeDownCast(elevation), 0, viewCube->getViewProxy());
+    pqActiveObjects::instance().setActiveSource(fitsSource);
+    pqObjectBuilder *builder = pqApplicationCore::instance()->getObjectBuilder();
+    
+    // Outline
+    auto drepOutline = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewCube);
+    auto reprProxyOutline = drepOutline->getProxy();
+    vtkSMPropertyHelper(reprProxyOutline, "Representation").Set("Outline");
+    vtkSMPropertyHelper(reprProxyOutline, "LineWidth").Set(1);
+    double red[3] = { 1.0, 0.0, 0.0 };
+    vtkSMPropertyHelper(reprProxyOutline, "AmbientColor").Set(red, 3);
+    reprProxyOutline->UpdateVTKObjects();
+    
+    // Contour Filter
+    auto filter = builder->createFilter("filters", "Contour", fitsSource);
+    auto reprSurface = builder->createDataRepresentation(filter->getOutputPort(0), viewCube);
+    auto reprProxySurface = reprSurface->getProxy();
+    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "FITSImage", vtkDataObject::POINT);
+    pqSMAdaptor::setEnumerationProperty(reprProxySurface->GetProperty("Representation"), "Surface");
+    vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
+    reprProxySurface->UpdateVTKObjects();
+    
+    
     
     viewCube->resetDisplay();
     viewCube->render();
     
     showMaximized();
     activateWindow();
-    
-    
 }
 
 vtkWindowCube::~vtkWindowCube()

@@ -13,6 +13,8 @@ class vtkFitsReader;
 class vtkFlyingEdges3D;
 class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
+class pqPipelineSource;
+
 
 namespace Ui {
 class vtkWindowCube;
@@ -25,7 +27,7 @@ class vtkWindowCube : public QMainWindow
 public:
     explicit vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                            QString velocityUnit = "km/s");
-    explicit vtkWindowCube();
+    explicit vtkWindowCube(QPointer<pqPipelineSource> fitsSource);
     ~vtkWindowCube();
 
 private slots:
