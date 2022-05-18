@@ -231,7 +231,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
     
-    QPointer<pqRenderView> viewCube =
+    viewCube =
     qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
     pqActiveObjects::instance().setActiveView(viewCube);
     viewCube->widget()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -260,22 +260,15 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     reprProxyOutline->UpdateVTKObjects();
     
     // Contour Filter
-    auto filter = builder->createFilter("filters", "Contour", fitsSource);
-    vtkSMProxy* filterProxy = filter->getProxy();
-
-    pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"), 0.9194);
-
-    filterProxy->UpdateVTKObjects();
-    filter->updatePipeline();
-    
-    auto reprSurface = builder->createDataRepresentation(filter->getOutputPort(0), viewCube);
+    contourFilter = builder->createFilter("filters", "Contour", fitsSource);
+    auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     auto reprProxySurface = reprSurface->getProxy();
-
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "FITSImage", vtkDataObject::POINT);
     pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
-    //0.9194
     reprProxySurface->UpdateVTKObjects();
+    ui->thresholdText->setText("5");
+    setThreshold(5);
     
     // Slice
     auto drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
@@ -338,8 +331,14 @@ void vtkWindowCube::updateVelocityText()
 
 void vtkWindowCube::setThreshold(double threshold)
 {
-    isosurface->SetValue(0, threshold);
-    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+    qDebug()<<"set Threshold";
+ 
+    vtkSMProxy* filterProxy = contourFilter->getProxy();
+    pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"),threshold);
+    filterProxy->UpdateVTKObjects();
+    contourFilter->updatePipeline();
+    viewCube->resetDisplay();
+    viewCube->render();
 }
 
 void vtkWindowCube::showContours()
@@ -521,18 +520,24 @@ void vtkWindowCube::on_actionLeft_triggered()
 
 void vtkWindowCube::on_thresholdText_editingFinished()
 {
+    qDebug()<<"on_thresholdText_editingFinished";
+   
     double threshold = ui->thresholdText->text().toDouble();
-    // Clamp threshold
+    //TO BE RESTORED WHEN WE WILL HAVE MIN - MAX values
+    /*// Clamp threshold
     threshold = fmin(fmax(threshold, lowerBound), upperBound);
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
     
     int tickPosition = 100 * (threshold - lowerBound) / (upperBound - lowerBound);
     ui->thresholdSlider->setValue(tickPosition);
+    */
     setThreshold(threshold);
 }
 
 void vtkWindowCube::on_thresholdSlider_sliderReleased()
 {
+    qDebug()<<"on_thresholdSlider_sliderReleased";
+
     double threshold =
     (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));

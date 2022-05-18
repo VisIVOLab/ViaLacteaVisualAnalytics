@@ -14,6 +14,7 @@ class vtkFlyingEdges3D;
 class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
 class pqPipelineSource;
+class pqRenderView;
 
 
 namespace Ui {
@@ -73,6 +74,9 @@ private:
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
+    
+    pqPipelineSource* contourFilter;
+    QPointer<pqRenderView> viewCube;
 
     void showStatusBarMessage(const std::string &msg);
 
