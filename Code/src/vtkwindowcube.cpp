@@ -61,6 +61,7 @@
 
 
 #include "mainwindow.h"
+#include <QDebug>
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                              QString velocityUnit)
@@ -260,17 +261,32 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     
     // Contour Filter
     auto filter = builder->createFilter("filters", "Contour", fitsSource);
+    vtkSMProxy* filterProxy = filter->getProxy();
+
+    pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"), 0.9194);
+
+    filterProxy->UpdateVTKObjects();
+    filter->updatePipeline();
+    
     auto reprSurface = builder->createDataRepresentation(filter->getOutputPort(0), viewCube);
     auto reprProxySurface = reprSurface->getProxy();
+
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "FITSImage", vtkDataObject::POINT);
-    pqSMAdaptor::setEnumerationProperty(reprProxySurface->GetProperty("Representation"), "Surface");
+    pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
+    //0.9194
     reprProxySurface->UpdateVTKObjects();
     
-    
+    // Slice
+    auto drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
+    auto reprProxySlice = drepSlice->getProxy();
+    vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
+    reprProxySlice->UpdateVTKObjects();
     
     viewCube->resetDisplay();
     viewCube->render();
+    viewSlice->resetDisplay();
+    viewSlice->render();
     
     showMaximized();
     activateWindow();
