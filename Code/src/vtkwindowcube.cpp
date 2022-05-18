@@ -215,7 +215,8 @@ velocityUnit(velocityUnit)
 //paraview 
 vtkWindowCube::vtkWindowCube(): ui(new Ui::vtkWindowCube)
 {
-    
+    MainWindow *w = &Singleton<MainWindow>::Instance();
+
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("paraview");
@@ -240,17 +241,7 @@ vtkWindowCube::vtkWindowCube(): ui(new Ui::vtkWindowCube)
     pqActiveObjects::instance().setActiveView(viewSlice);
     viewSlice->widget()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     ui->PVLayout->addWidget(viewSlice->widget());
-
     
-/*
- 
- <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-  <horstretch>0</horstretch>
-  <verstretch>0</verstretch>
-
- */
-    
-    MainWindow *w = &Singleton<MainWindow>::Instance();
     
     vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
     vtkSmartPointer<vtkSMProxy> source;
