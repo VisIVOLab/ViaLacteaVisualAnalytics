@@ -59,6 +59,7 @@
 #include "pqObjectBuilder.h"
 #include "pqSMAdaptor.h"
 
+#include "vtkPVDataInformation.h"
 
 #include "mainwindow.h"
 #include <QDebug>
@@ -230,7 +231,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     
     lowerBound = 0.5;
     upperBound = 10;
-
     
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
@@ -263,6 +263,11 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     vtkSMPropertyHelper(reprProxyOutline, "AmbientColor").Set(red, 3);
     reprProxyOutline->UpdateVTKObjects();
     
+    vtkPVDataInformation* dataInfo = fitsSource->getOutputPort(0)->getDataInformation();
+    double bounds[6]={0};
+    dataInfo->GetBounds(bounds);
+
+    
     // Contour Filter
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
@@ -278,20 +283,23 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
     auto reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
-//    this->SliceMode = XY_PLANE;
-/*
- XY_PLANE = VTK_XY_PLANE,
- YZ_PLANE = VTK_YZ_PLANE,
- XZ_PLANE = VTK_XZ_PLANE
 
- */
-    
+    /*
+         this->SliceMode = XY_PLANE;
+
+         XY_PLANE = VTK_XY_PLANE,
+         YZ_PLANE = VTK_YZ_PLANE,
+         XZ_PLANE = VTK_XZ_PLANE
+     */
+
     // Slice
     drepSliceCube = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewCube);
     auto reprProxySliceCube = drepSliceCube->getProxy();
     vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
 
     on_sliceSpinBox_valueChanged(0);
+    //    ui->sliceSlider->setRange(1, 100);
+    ui->sliceSpinBox->setRange(1, bounds[5]+1);
 
     
     viewCube->resetDisplay();
@@ -498,7 +506,6 @@ void vtkWindowCube::on_sliceSlider_sliderReleased()
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
-    
     vtkSMProxy* reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
     reprProxySlice->UpdateVTKObjects();
@@ -517,7 +524,7 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     if (ui->contourCheckBox->isChecked()) {
         showContours();
     }
-     */
+    */
 }
 
 void vtkWindowCube::on_actionFront_triggered()
