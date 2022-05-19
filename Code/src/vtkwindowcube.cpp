@@ -241,7 +241,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     viewCube->widget()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     ui->PVLayout->addWidget(viewCube->widget());
     
-    QPointer<pqRenderView> viewSlice =
+    viewSlice =
     qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
     pqActiveObjects::instance().setActiveView(viewSlice);
     viewSlice->widget()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -267,18 +267,32 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     auto reprProxySurface = reprSurface->getProxy();
-    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "FITSImage", vtkDataObject::POINT);
-    pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
+    //vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "FITSImage", vtkDataObject::POINT);
+    //pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
     reprProxySurface->UpdateVTKObjects();
-    ui->thresholdText->setText("5");
-    setThreshold(5);
+    ui->thresholdText->setText("0.9");
+    setThreshold(0.9);
     
     // Slice
-    auto drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
+    drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
     auto reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
-    reprProxySlice->UpdateVTKObjects();
+//    this->SliceMode = XY_PLANE;
+/*
+ XY_PLANE = VTK_XY_PLANE,
+ YZ_PLANE = VTK_YZ_PLANE,
+ XZ_PLANE = VTK_XZ_PLANE
+
+ */
+    
+    // Slice
+    drepSliceCube = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewCube);
+    auto reprProxySliceCube = drepSliceCube->getProxy();
+    vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
+
+    on_sliceSpinBox_valueChanged(0);
+
     
     viewCube->resetDisplay();
     viewCube->render();
@@ -484,10 +498,26 @@ void vtkWindowCube::on_sliceSlider_sliderReleased()
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
+    
+    vtkSMProxy* reprProxySlice = drepSlice->getProxy();
+    vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
+    reprProxySlice->UpdateVTKObjects();
+    
+    vtkSMProxy* reprProxySliceCube = drepSliceCube->getProxy();
+    vtkSMPropertyHelper(reprProxySliceCube, "Slice").Set(value);
+    reprProxySliceCube->UpdateVTKObjects();
+    
+    viewSlice->resetDisplay();
+    viewSlice->render();
+    viewCube->resetDisplay();
+    viewCube->render();
+
+    /*
     ui->sliceSlider->setValue(value);
     if (ui->contourCheckBox->isChecked()) {
         showContours();
     }
+     */
 }
 
 void vtkWindowCube::on_actionFront_triggered()

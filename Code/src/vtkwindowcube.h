@@ -15,6 +15,7 @@ class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
 class pqPipelineSource;
 class pqRenderView;
+class pqDataRepresentation;
 
 
 namespace Ui {
@@ -76,7 +77,10 @@ private:
     vtkSmartPointer<vtkActor> contoursActorForParent;
     
     pqPipelineSource* contourFilter;
+    pqDataRepresentation* drepSlice;
+    pqDataRepresentation* drepSliceCube;
     QPointer<pqRenderView> viewCube;
+    QPointer<pqRenderView> viewSlice;
 
     void showStatusBarMessage(const std::string &msg);
 
