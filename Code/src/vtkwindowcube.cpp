@@ -272,12 +272,17 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     auto reprProxySurface = reprSurface->getProxy();
-    //vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "FITSImage", vtkDataObject::POINT);
+    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "SolidColor", vtkDataObject::POINT);
     //pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
     reprProxySurface->UpdateVTKObjects();
     ui->thresholdText->setText("0.9");
     setThreshold(0.9);
+    vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
+    vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
+    vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
+    reprProxySurface->UpdateVTKObjects();
+
     
     // Slice
     drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
@@ -286,7 +291,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
 
     /*
          this->SliceMode = XY_PLANE;
-
          XY_PLANE = VTK_XY_PLANE,
          YZ_PLANE = VTK_YZ_PLANE,
          XZ_PLANE = VTK_XZ_PLANE
