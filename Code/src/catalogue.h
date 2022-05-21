@@ -35,12 +35,13 @@ public:
 
     void updatePoints(const QString &iau_name, vtkSmartPointer<vtkPoints> points);
     void removeSource(const QString &iau_name);
+    void renameSource(const QString &iau_name, const QString &new_iau_name);
 
     void save();
 
 signals:
-    void SourceExtracted();
-    void SourceDeleted();
+    void SourcesExtracted();
+    void ExtractedSourcesUpdated();
 
 private:
     QString filepath;

@@ -39,6 +39,13 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
+       <widget class="QPushButton" name="btnRename">
+        <property name="text">
+         <string>Rename</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="btnEdit">
         <property name="text">
          <string>Edit</string>

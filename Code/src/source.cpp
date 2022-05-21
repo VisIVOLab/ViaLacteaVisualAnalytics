@@ -54,6 +54,7 @@ const QList<QPair<double, double>> &Island::getVertices() const
 
 void Island::updatePoints(vtkSmartPointer<vtkPoints> points)
 {
+    this->vertices.clear();
     QJsonArray vertices;
     for (int i = 0; i < points->GetNumberOfPoints(); ++i) {
         double coords[3];
@@ -62,9 +63,18 @@ void Island::updatePoints(vtkSmartPointer<vtkPoints> points)
         point.append(coords[0]);
         point.append(coords[1]);
         vertices.append(point);
+
+        QPair<double, double> pair { coords[0], coords[1] };
+        this->vertices << pair;
     }
 
     obj["vertices"] = vertices;
+}
+
+void Island::setIauName(const QString &iau_name)
+{
+    this->iau_name = iau_name;
+    obj["iau_name"] = iau_name;
 }
 
 const QJsonObject &Island::getObj() const
@@ -248,6 +258,19 @@ void Source::updatePoints(vtkSmartPointer<vtkPoints> points)
 {
     auto island = islands.at(0);
     island->updatePoints(points);
+
+    auto islands = obj["islands"].toArray();
+    islands[0] = island->getObj();
+    obj["islands"] = islands;
+}
+
+void Source::setIauName(const QString &iau_name)
+{
+    this->iau_name = iau_name;
+    obj["iau_name"] = iau_name;
+
+    auto island = islands.at(0);
+    island->setIauName(iau_name);
 
     auto islands = obj["islands"].toArray();
     islands[0] = island->getObj();

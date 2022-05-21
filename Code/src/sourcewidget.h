@@ -31,6 +31,8 @@ private slots:
 
     void on_btnDelete_clicked();
 
+    void on_btnRename_clicked();
+
 private:
     Ui::SourceWidget *ui;
     QPointer<Catalogue> catalogue;

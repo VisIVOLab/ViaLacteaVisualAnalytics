@@ -7,6 +7,7 @@
 
 #include <vtkLODActor.h>
 
+#include <QInputDialog>
 #include <QListWidgetItem>
 #include <QMessageBox>
 
@@ -28,8 +29,8 @@ SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue, vtkwindow_new 
     };
 
     fillList();
-    connect(catalogue, &Catalogue::SourceExtracted, this, fillList);
-    connect(catalogue, &Catalogue::SourceDeleted, this, fillList);
+    connect(catalogue, &Catalogue::SourcesExtracted, this, fillList);
+    connect(catalogue, &Catalogue::ExtractedSourcesUpdated, this, fillList);
 }
 
 SourceWidget::~SourceWidget()
@@ -162,4 +163,32 @@ void SourceWidget::on_btnDelete_clicked()
     }
 
     catalogue->removeSource(item->text());
+}
+
+void SourceWidget::on_btnRename_clicked()
+{
+    if (editing) {
+        QMessageBox::warning(this, "Message", "Exit edit mode first!");
+        return;
+    }
+
+    auto item = ui->listExtracted->currentItem();
+    if (!item || item->text().isEmpty()) {
+        return;
+    }
+
+    bool ok;
+    QString new_name = QInputDialog::getText(this, "Rename",
+                                             "Enter a new name for the source: " + item->text(),
+                                             QLineEdit::Normal, item->text(), &ok);
+    if (!ok || new_name.isEmpty()) {
+        return;
+    }
+
+    if (catalogue->getSource(new_name) != nullptr) {
+        QMessageBox::warning(this, "Rename", "A source with that name already exists!");
+        return;
+    }
+
+    catalogue->renameSource(item->text(), new_name);
 }

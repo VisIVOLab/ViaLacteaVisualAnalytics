@@ -47,6 +47,7 @@ public:
     const QList<QPair<double, double>> &getVertices() const;
 
     void updatePoints(vtkSmartPointer<vtkPoints> points);
+    void setIauName(const QString &iau_name);
 
     const QJsonObject &getObj() const;
 
@@ -96,6 +97,7 @@ public:
     const QList<Island *> &getIslands() const;
 
     void updatePoints(vtkSmartPointer<vtkPoints> points);
+    void setIauName(const QString &iau_name);
 
     const QJsonObject &getObj() const;
 

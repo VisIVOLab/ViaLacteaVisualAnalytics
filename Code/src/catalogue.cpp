@@ -74,7 +74,7 @@ void Catalogue::ExtractSourceInsideRect(double rect[], double arcsec)
 
     if (!extracted.isEmpty()) {
         drawExtractedSources(extracted, arcsec);
-        emit SourceExtracted();
+        emit SourcesExtracted();
     }
 }
 
@@ -113,7 +113,29 @@ void Catalogue::removeSource(const QString &iau_name)
     renWin->Render();
 
     source->deleteLater();
-    emit SourceDeleted();
+    emit ExtractedSourcesUpdated();
+}
+
+void Catalogue::renameSource(const QString &iau_name, const QString &new_iau_name)
+{
+    if (!extractedNames.contains(iau_name) || iau_name == new_iau_name || new_iau_name.isEmpty()) {
+        return;
+    }
+
+    auto pair = extractedNames.value(iau_name);
+    extractedNames.remove(iau_name);
+    extractedNames.insert(new_iau_name, pair);
+
+    auto source = sources.value(iau_name);
+    source->setIauName(new_iau_name);
+    sources.remove(iau_name);
+    sources.insert(new_iau_name, source);
+
+    auto tmp = root["sources"].toArray();
+    tmp[indexOf(iau_name)] = source->getObj();
+    root["sources"] = tmp;
+
+    emit ExtractedSourcesUpdated();
 }
 
 void Catalogue::save()
