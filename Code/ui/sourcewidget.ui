@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>325</width>
+    <width>345</width>
     <height>864</height>
    </rect>
   </property>
@@ -45,6 +45,13 @@
         </property>
         <property name="checkable">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnDelete">
+        <property name="text">
+         <string>Delete</string>
         </property>
        </widget>
       </item>

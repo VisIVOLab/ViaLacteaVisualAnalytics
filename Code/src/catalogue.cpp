@@ -22,7 +22,8 @@
 
 #include <QtConcurrent>
 
-Catalogue::Catalogue(QObject *parent, const QString &fn) : QObject(parent), filepath(fn)
+Catalogue::Catalogue(QObject *parent, const QString &fn, vtkRenderWindow *renWin)
+    : QObject(parent), filepath(fn), renWin(renWin)
 {
     QFile file(fn);
     file.open(QFile::ReadOnly);
@@ -36,7 +37,7 @@ Catalogue::Catalogue(QObject *parent, const QString &fn) : QObject(parent), file
     }
 }
 
-void Catalogue::ExtractSourceInsideRect(double rect[], vtkRenderWindow *renWin, double arcsec)
+void Catalogue::ExtractSourceInsideRect(double rect[], double arcsec)
 {
     double x1 = fmin(rect[0], rect[2]);
     double y1 = fmin(rect[1], rect[3]);
@@ -72,7 +73,7 @@ void Catalogue::ExtractSourceInsideRect(double rect[], vtkRenderWindow *renWin, 
     });
 
     if (!extracted.isEmpty()) {
-        drawExtractedSources(extracted, renWin, arcsec);
+        drawExtractedSources(extracted, arcsec);
         emit SourceExtracted();
     }
 }
@@ -89,8 +90,30 @@ void Catalogue::updatePoints(const QString &iau_name, vtkSmartPointer<vtkPoints>
     source->updatePoints(points);
 
     auto sources = root["sources"].toArray();
-    sources[source->getIndex()] = source->getObj();
+    sources[indexOf(iau_name)] = source->getObj();
     root["sources"] = sources;
+}
+
+void Catalogue::removeSource(const QString &iau_name)
+{
+    if (!extractedNames.contains(iau_name)) {
+        return;
+    }
+
+    auto pair = extractedNames.value(iau_name);
+    extractedNames.remove(iau_name);
+    auto source = sources.value(iau_name);
+    sources.remove(iau_name);
+
+    auto tmp = root["sources"].toArray();
+    tmp.removeAt(indexOf(iau_name));
+    root["sources"] = tmp;
+
+    renWin->GetRenderers()->GetFirstRenderer()->RemoveActor(pair.second);
+    renWin->Render();
+
+    source->deleteLater();
+    emit SourceDeleted();
 }
 
 void Catalogue::save()
@@ -108,8 +131,19 @@ void Catalogue::save()
                              "Catalogue saved in " + QFileInfo(f).absoluteFilePath());
 }
 
-void Catalogue::drawExtractedSources(const QSet<QString> &names, vtkRenderWindow *renWin,
-                                     double arcsec)
+int Catalogue::indexOf(const QString &iau_name) const
+{
+    auto sources = root["sources"].toArray();
+    for (int i = 0; i < sources.count(); ++i) {
+        auto obj = sources[i].toObject();
+        if (obj["iau_name"].toString() == iau_name) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void Catalogue::drawExtractedSources(const QSet<QString> &names, double arcsec)
 {
     foreach (auto &&iau_name, names) {
         if (extractedNames.contains(iau_name))

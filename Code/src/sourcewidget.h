@@ -29,6 +29,8 @@ private slots:
     void on_btnEdit_clicked();
     void on_btnSave_clicked();
 
+    void on_btnDelete_clicked();
+
 private:
     Ui::SourceWidget *ui;
     QPointer<Catalogue> catalogue;

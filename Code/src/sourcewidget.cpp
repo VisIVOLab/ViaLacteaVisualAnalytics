@@ -8,6 +8,7 @@
 #include <vtkLODActor.h>
 
 #include <QListWidgetItem>
+#include <QMessageBox>
 
 SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue, vtkwindow_new *win)
     : QWidget(parent), ui(new Ui::SourceWidget), catalogue(catalogue), win(win), editing(false)
@@ -20,10 +21,15 @@ SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue, vtkwindow_new 
         foreach (auto &&name, catalogue->getExtractedNames().keys()) {
             ui->listExtracted->addItem(name);
         }
+
+        if (ui->listExtracted->count() > 0) {
+            emit ui->listExtracted->itemClicked(ui->listExtracted->item(0));
+        }
     };
 
     fillList();
     connect(catalogue, &Catalogue::SourceExtracted, this, fillList);
+    connect(catalogue, &Catalogue::SourceDeleted, this, fillList);
 }
 
 SourceWidget::~SourceWidget()
@@ -97,8 +103,8 @@ void SourceWidget::on_listExtracted_itemClicked(QListWidgetItem *item)
 
 void SourceWidget::on_btnEdit_clicked()
 {
-    QString name = ui->listExtracted->currentItem()->text();
-    if (name.isEmpty()) {
+    auto item = ui->listExtracted->currentItem();
+    if (!item || item->text().isEmpty()) {
         return;
     }
 
@@ -116,8 +122,8 @@ void SourceWidget::on_btnEdit_clicked()
 
         catalogue->updatePoints(iau_name, source.first);
     } else {
-        iau_name = name;
-        auto source = catalogue->getExtractedNames().value(name);
+        iau_name = item->text();
+        auto source = catalogue->getExtractedNames().value(iau_name);
         win->setVtkInteractorEditSource(source);
 
         qDebug() << Q_FUNC_INFO << "Before editing";
@@ -135,5 +141,25 @@ void SourceWidget::on_btnEdit_clicked()
 
 void SourceWidget::on_btnSave_clicked()
 {
+    if (editing) {
+        QMessageBox::warning(this, "Message", "Exit edit mode first!");
+        return;
+    }
+
     catalogue->save();
+}
+
+void SourceWidget::on_btnDelete_clicked()
+{
+    if (editing) {
+        QMessageBox::warning(this, "Message", "Exit edit mode first!");
+        return;
+    }
+
+    auto item = ui->listExtracted->currentItem();
+    if (!item || item->text().isEmpty()) {
+        return;
+    }
+
+    catalogue->removeSource(item->text());
 }

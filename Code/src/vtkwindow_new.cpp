@@ -2758,7 +2758,7 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
 
 void vtkwindow_new::addSourcesFromJson(const QString &fn)
 {
-    this->catalogue = new Catalogue(this, fn);
+    this->catalogue = new Catalogue(this, fn, ui->qVTK1->renderWindow());
     auto sources = catalogue->getSources();
     if (sources.isEmpty()) {
         QMessageBox::information(this, "No sources", "The file does not contain any sources.");
@@ -3807,13 +3807,13 @@ void vtkwindow_new::extractSourcesInsideRect(int *rect)
     auto coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();
     coordinate->SetValue(X0, Y0);
-    double* p1 = coordinate->GetComputedWorldValue(renderer);
+    double *p1 = coordinate->GetComputedWorldValue(renderer);
     coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();
     coordinate->SetValue(X1, Y1);
-    double* p2 = coordinate->GetComputedWorldValue(renderer);
+    double *p2 = coordinate->GetComputedWorldValue(renderer);
     double rectInWorldCoords[] = { p1[0], p1[1], p2[0], p2[1] };
-    catalogue->ExtractSourceInsideRect(rectInWorldCoords, ui->qVTK1->renderWindow(),
+    catalogue->ExtractSourceInsideRect(rectInWorldCoords,
                                        AstroUtils::arcsecPixel(myfits->GetFileName()));
 
     showSourceDockWidget();
@@ -5525,11 +5525,11 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &session
         auto listItem = ui->listWidget->currentItem();
         listItem->setText(layer["text"].toString(filename));
         changeFitsScale(layer["lutType"].toString("Gray").toStdString(),
-            layer["lutScale"].toString("Log").toStdString());
+                        layer["lutScale"].toString("Log").toStdString());
         vtkImageSlice::SafeDownCast(
-            imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
-            ->GetProperty()
-            ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
+                imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
+                ->GetProperty()
+                ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
         listItem->setCheckState(layer["show"].toBool(false) ? Qt::Checked : Qt::Unchecked);
     }
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
