@@ -66,6 +66,10 @@ private:
     int currentSlice;
     QString velocityUnit;
 
+    double dataMin;
+    double dataMax;
+
+    double rms;
     double lowerBound;
     double upperBound;
 

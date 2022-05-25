@@ -230,13 +230,10 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     //temp hack, if those two widget are in place
     ui->qVtkCube->hide();
     ui->qVtkSlice->hide();
-    
-    lowerBound = 0.5;
-    upperBound = 10;
-    
+
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
-    
+
     viewCube =
     qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
     pqActiveObjects::instance().setActiveView(viewCube);
@@ -265,9 +262,14 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     vtkSMPropertyHelper(reprProxyOutline, "AmbientColor").Set(red, 3);
     reprProxyOutline->UpdateVTKObjects();
     
-    vtkPVDataInformation* dataInfo = fitsSource->getOutputPort(0)->getDataInformation();
+    auto fitsInfo = fitsSource->getOutputPort(0)->getDataInformation();
+    auto fitsImageInfo = fitsInfo->GetPointDataInformation()->GetArrayInformation("FITSImage");
+    double dataRange[2];
     double bounds[6]={0};
-    dataInfo->GetBounds(bounds);
+    fitsInfo->GetBounds(bounds);
+    fitsImageInfo->GetComponentRange(0, dataRange);
+    dataMin = dataRange[0];
+    dataMax = dataRange[1];
 
     auto calc = builder->createFilter("filters", "PythonCalculator", fitsSource);
     if (calc) {
@@ -281,8 +283,13 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
         auto arrayInformation = dataInformation->GetPointDataInformation()->GetArrayInformation("RMS");
         double range[2];
         arrayInformation->GetComponentRange(0, range);
-        qDebug() << "RMS:" << range[0];
+        rms = range[0];
     }
+
+    lowerBound = 3*rms;
+    upperBound = dataMax;
+
+    qDebug() << "FITS INFO\nDATA RANGE [" << dataMin << "," << dataMax << "]\nRMS" << rms << "\nTHRESHOLD BOUNDS [" << lowerBound << "," << upperBound << "]";
 
     // Contour Filter
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
@@ -292,8 +299,8 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     //pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
     reprProxySurface->UpdateVTKObjects();
-    ui->thresholdText->setText("0.9");
-    setThreshold(0.9);
+    ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
+    setThreshold(lowerBound);
     vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
@@ -316,8 +323,14 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     auto reprProxySliceCube = drepSliceCube->getProxy();
     vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
 
+    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
+    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
+    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
+    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
+
     on_sliceSpinBox_valueChanged(0);
-    //    ui->sliceSlider->setRange(1, 100);
+    ui->sliceSlider->setRange(1, bounds[5]+1);
     ui->sliceSpinBox->setRange(1, bounds[5]+1);
 
     
@@ -509,6 +522,7 @@ void vtkWindowCube::setCameraElevation(double el)
 
 void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 {
+    /*
     if (ui->contourCheckBox->isChecked()) {
         removeContours();
     }
@@ -516,6 +530,7 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
     currentSlice = value - 1;
     updateVelocityText();
     updateSliceDatacube();
+    */
 }
 
 void vtkWindowCube::on_sliceSlider_sliderReleased()
