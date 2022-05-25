@@ -60,6 +60,8 @@
 #include "pqSMAdaptor.h"
 
 #include "vtkPVDataInformation.h"
+#include "vtkPVArrayInformation.h"
+#include "vtkPVDataSetAttributesInformation.h"
 
 #include "mainwindow.h"
 #include <QDebug>
@@ -267,7 +269,21 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     double bounds[6]={0};
     dataInfo->GetBounds(bounds);
 
-    
+    auto calc = builder->createFilter("filters", "PythonCalculator", fitsSource);
+    if (calc) {
+        auto calcProxy = calc->getProxy();
+        vtkSMPropertyHelper(calcProxy, "Expression").Set("sqrt(mean(FITSImage**2))");
+        vtkSMPropertyHelper(calcProxy, "ArrayName").Set("RMS");
+        vtkSMPropertyHelper(calcProxy, "CopyArrays").Set(0);
+        calcProxy->UpdateVTKObjects();
+        calc->updatePipeline();
+        auto dataInformation = calc->getOutputPort(0)->getDataInformation();
+        auto arrayInformation = dataInformation->GetPointDataInformation()->GetArrayInformation("RMS");
+        double range[2];
+        arrayInformation->GetComponentRange(0, range);
+        qDebug() << "RMS:" << range[0];
+    }
+
     // Contour Filter
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
@@ -282,7 +298,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
     reprProxySurface->UpdateVTKObjects();
-
     
     // Slice
     drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
