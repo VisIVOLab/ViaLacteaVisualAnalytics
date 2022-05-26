@@ -59,6 +59,7 @@
 #include "pqSMAdaptor.h"
 
 #include "vtkPVDataInformation.h"
+#include "vtkPVArrayInformation.h"
 #include "vtkPVDataSetAttributesInformation.h"
 #include "vtkPVRenderView.h"
 
