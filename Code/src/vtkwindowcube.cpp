@@ -60,9 +60,10 @@
 #include "pqSMAdaptor.h"
 
 #include "vtkPVDataInformation.h"
+#include "vtkPVRenderView.h"
 
-#include "mainwindow.h"
 #include <QDebug>
+#include "mainwindow.h"
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                              QString velocityUnit)
@@ -232,6 +233,15 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     lowerBound = 0.5;
     upperBound = 10;
     
+    ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
+    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
+    /*
+     ui->minCubeText->setText(QString::number(fitsReader->GetMin(), 'f', 4));
+    ui->maxCubeText->setText(QString::number(fitsReader->GetMax(), 'f', 4));
+    ui->rmsCubeText->setText(QString::number(fitsReader->GetRMS(), 'f', 4));
+    */
+    
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
     
@@ -266,18 +276,29 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     vtkPVDataInformation* dataInfo = fitsSource->getOutputPort(0)->getDataInformation();
     double bounds[6]={0};
     dataInfo->GetBounds(bounds);
+    
+    vtkSmartPointer<vtkImageData> img;
+    auto rv = vtkPVRenderView::SafeDownCast(viewCube->GetClientSideObject());
+    img->GetPointData();
+    
+    qDebug()<<fitsSource->getHelperKeys();
+    qDebug()<<fitsSource->getOutputPort(0)->getDataClassName();
+    dataInfo->GetNumberOfDataSets();
+    vtkPVArrayInformation *pp= dataInfo->GetPointArrayInformation();
+    vtkPVDataSetAttributesInformation *cc= dataInfo->GetCellDataInformation();
+    vtkPVDataSetAttributesInformation *ff = dataInfo->GetFieldDataInformation();
+
 
     
     // Contour Filter
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     auto reprProxySurface = reprSurface->getProxy();
-    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, "SolidColor", vtkDataObject::POINT);
+    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
     //pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
     reprProxySurface->UpdateVTKObjects();
-    ui->thresholdText->setText("0.9");
-    setThreshold(0.9);
+    setThreshold(lowerBound);
     vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
@@ -302,7 +323,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
 
     on_sliceSpinBox_valueChanged(0);
-    //    ui->sliceSlider->setRange(1, 100);
+    ui->sliceSlider->setRange(1, bounds[5]+1);
     ui->sliceSpinBox->setRange(1, bounds[5]+1);
 
     
@@ -331,6 +352,7 @@ void vtkWindowCube::showStatusBarMessage(const std::string &msg)
 
 void vtkWindowCube::updateSliceDatacube()
 {
+    /*
     planeActor->SetPosition(0, 0, currentSlice + 1);
     
     float *range = fitsReader->GetRangeSlice(currentSlice);
@@ -347,6 +369,7 @@ void vtkWindowCube::updateSliceDatacube()
     sliceViewer->GetRenderer()->ResetCamera();
     sliceViewer->Render();
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+    */
 }
 
 void vtkWindowCube::updateVelocityText()
@@ -494,22 +517,31 @@ void vtkWindowCube::setCameraElevation(double el)
 
 void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 {
+    qDebug()<<"on_sliceSlider_valueChanged";
+    /*
     if (ui->contourCheckBox->isChecked()) {
         removeContours();
     }
-    
+    */
     currentSlice = value - 1;
+    /*
     updateVelocityText();
     updateSliceDatacube();
+     */
+
 }
 
 void vtkWindowCube::on_sliceSlider_sliderReleased()
 {
+    qDebug()<<"on_sliceSlider_sliderReleased";
+
     ui->sliceSpinBox->setValue(ui->sliceSlider->value());
 }
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
+    qDebug()<<"on_sliceSpinBox_valueChanged";
+
     vtkSMProxy* reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
     reprProxySlice->UpdateVTKObjects();
