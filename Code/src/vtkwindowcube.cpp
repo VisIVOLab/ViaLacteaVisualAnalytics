@@ -19,7 +19,6 @@
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageActor.h>
 #include <vtkImageMapToWindowLevelColors.h>
-#include <vtkPVLODActor.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineFilter.h>
@@ -27,6 +26,7 @@
 #include <vtkPlanes.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
+#include <vtkPVLODActor.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkResliceImageViewer.h>
@@ -37,20 +37,19 @@
 
 #include "singleton.h"
 
+#include "pqActiveObjects.h"
 #include "pqApplicationCore.h"
 #include "pqObjectBuilder.h"
-#include "pqActiveObjects.h"
 #include "pqRenderView.h"
 
-
+#include "vtkDataObject.h"
+#include "vtkSMParaViewPipelineControllerWithRendering.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxyManager.h"
-#include "vtkSMSessionProxyManager.h"
-#include "vtkSMReaderFactory.h"
-#include "vtkSMPVRepresentationProxy.h"
-#include "vtkDataObject.h"
 #include "vtkSMProxySelectionModel.h"
-#include "vtkSMParaViewPipelineControllerWithRendering.h"
+#include "vtkSMPVRepresentationProxy.h"
+#include "vtkSMReaderFactory.h"
+#include "vtkSMSessionProxyManager.h"
 
 #include "pqAlwaysConnectedBehavior.h"
 #include "pqPersistentMainWindowStateBehavior.h"
@@ -60,48 +59,48 @@
 #include "pqSMAdaptor.h"
 
 #include "vtkPVDataInformation.h"
+#include "vtkPVDataSetAttributesInformation.h"
 #include "vtkPVRenderView.h"
 
-#include <QDebug>
 #include "mainwindow.h"
+#include <QDebug>
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                              QString velocityUnit)
-: QMainWindow(parent),
-ui(new Ui::vtkWindowCube),
-fitsReader(fitsReader),
-parentWindow(qobject_cast<vtkWindowImage *>(parent)),
-currentSlice(0),
-velocityUnit(velocityUnit)
+    : QMainWindow(parent),
+      ui(new Ui::vtkWindowCube),
+      fitsReader(fitsReader),
+      parentWindow(qobject_cast<vtkWindowImage *>(parent)),
+      currentSlice(0),
+      velocityUnit(velocityUnit)
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(QString::fromStdString(fitsReader->GetFileName()));
-    
-    
+
     fitsReader->is3D = true;
     fitsReader->CalculateRMS();
-    
+
     lowerBound = 3 * fitsReader->GetRMS();
     upperBound = fitsReader->GetMax();
-    
+
     // Start datacube pipeline
     auto renWinCube = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkCube->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkCube->setRenderWindow(renWinCube);
-    
+
     auto rendererCube = vtkSmartPointer<vtkRenderer>::New();
     rendererCube->SetBackground(0.21, 0.23, 0.25);
     rendererCube->GlobalWarningDisplayOff();
     renWinCube->AddRenderer(rendererCube);
-    
+
     ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
     ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
     ui->minCubeText->setText(QString::number(fitsReader->GetMin(), 'f', 4));
     ui->maxCubeText->setText(QString::number(fitsReader->GetMax(), 'f', 4));
     ui->rmsCubeText->setText(QString::number(fitsReader->GetRMS(), 'f', 4));
-    
+
     // Outline
     auto outlineFilter = vtkSmartPointer<vtkOutlineFilter>::New();
     outlineFilter->SetInputData(fitsReader->GetOutput());
@@ -110,7 +109,7 @@ velocityUnit(velocityUnit)
     outlineMapper->ScalarVisibilityOff();
     auto outlineActor = vtkSmartPointer<vtkActor>::New();
     outlineActor->SetMapper(outlineMapper);
-    
+
     // Isosurface
     isosurface = vtkSmartPointer<vtkFlyingEdges3D>::New();
     isosurface->SetInputData(fitsReader->GetOutput());
@@ -122,7 +121,7 @@ velocityUnit(velocityUnit)
     auto isosurfaceActor = vtkSmartPointer<vtkActor>::New();
     isosurfaceActor->SetMapper(isosurfaceMapper);
     isosurfaceActor->GetProperty()->SetColor(1.0, 0.5, 1.0);
-    
+
     // Plane
     double *bounds = fitsReader->GetOutput()->GetBounds();
     auto planes = vtkSmartPointer<vtkPlanes>::New();
@@ -135,7 +134,7 @@ velocityUnit(velocityUnit)
     planeMapper->SetInputData(frustumSource->GetOutput());
     planeActor = vtkSmartPointer<vtkActor>::New();
     planeActor->SetMapper(planeMapper);
-    
+
     // Axes
     auto axesActor = vtkSmartPointer<vtkAxesActor>::New();
     axesActor->SetXAxisLabelText("X");
@@ -152,38 +151,38 @@ velocityUnit(velocityUnit)
     axesWidget->SetViewport(0.0, 0.0, 0.2, 0.2);
     axesWidget->SetEnabled(1);
     axesWidget->InteractiveOff();
-    
+
     // Legend
     auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorCube->LegendVisibilityOff();
     legendActorCube->setFitsFile(fitsReader);
-    
+
     rendererCube->GetActiveCamera()->GetPosition(initialCameraPosition);
     rendererCube->GetActiveCamera()->GetFocalPoint(initialCameraFocalPoint);
-    
+
     rendererCube->AddActor(outlineActor);
     rendererCube->AddActor(isosurfaceActor);
     rendererCube->AddActor(planeActor);
     rendererCube->AddActor(legendActorCube);
-    
+
     rendererCube->ResetCamera();
     renWinCube->GetInteractor()->Render();
     // End datacube pipeline
-    
+
     // Start slice pipeline
     auto renWinSlice = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
-    
+
     auto rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
     rendererSlice->GlobalWarningDisplayOff();
     renWinSlice->AddRenderer(rendererSlice);
-    
+
     auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(fitsReader->GetRangeSlice(0)[0], fitsReader->GetRangeSlice(0)[1]);
     SelectLookTable("Gray", lutSlice);
-    
+
     sliceViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     sliceViewer->SetInputData(fitsReader->GetOutput());
     sliceViewer->GetWindowLevel()->SetOutputFormatToRGB();
@@ -191,79 +190,67 @@ velocityUnit(velocityUnit)
     sliceViewer->GetImageActor()->InterpolateOff();
     sliceViewer->SetRenderWindow(renWinSlice);
     sliceViewer->SetRenderer(rendererSlice);
-    
+
     ui->sliceSlider->setRange(1, fitsReader->GetNaxes(2));
     ui->sliceSpinBox->setRange(1, fitsReader->GetNaxes(2));
-    
+
     // Added to renderers when the contour checkbox is checked
     contoursActor = vtkSmartPointer<vtkPVLODActor>::New();
     contoursActor->GetProperty()->SetLineWidth(1);
     contoursActorForParent = vtkSmartPointer<vtkPVLODActor>::New();
     contoursActorForParent->GetProperty()->SetLineWidth(1);
-    
+
     auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorSlice->LegendVisibilityOff();
     legendActorSlice->setFitsFile(fitsReader);
     rendererSlice->AddActor(legendActorSlice);
-    
+
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
     interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
     interactorStyle->SetLayerFitsReaderFunc(
-                                            [this]() -> vtkSmartPointer<vtkFitsReader> { return this->fitsReader; });
+            [this]() -> vtkSmartPointer<vtkFitsReader> { return this->fitsReader; });
     interactorStyle->SetPixelZCompFunc([this]() -> int { return this->sliceViewer->GetSlice(); });
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
-    
+
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
 }
 
-//paraview 
-vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::vtkWindowCube)
+// paraview
+vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui::vtkWindowCube)
 {
     MainWindow *w = &Singleton<MainWindow>::Instance();
-    
+
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("paraview");
-    
-    //temp hack, if those two widget are in place
+
+    // temp hack, if those two widget are in place
     ui->qVtkCube->hide();
     ui->qVtkSlice->hide();
-    
-    lowerBound = 0.5;
-    upperBound = 10;
-    
-    ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
-    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
-    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
-    /*
-     ui->minCubeText->setText(QString::number(fitsReader->GetMin(), 'f', 4));
-    ui->maxCubeText->setText(QString::number(fitsReader->GetMax(), 'f', 4));
-    ui->rmsCubeText->setText(QString::number(fitsReader->GetRMS(), 'f', 4));
-    */
-    
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
-    
-    viewCube =
-    qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
+
+    viewCube = qobject_cast<pqRenderView *>(
+            pqApplicationCore::instance()->getObjectBuilder()->createView(
+                    pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
     pqActiveObjects::instance().setActiveView(viewCube);
-    viewCube->widget()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    viewCube->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->PVLayout->addWidget(viewCube->widget());
-    
-    viewSlice =
-    qobject_cast<pqRenderView*>(pqApplicationCore::instance()->getObjectBuilder()->createView(pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
+
+    viewSlice = qobject_cast<pqRenderView *>(
+            pqApplicationCore::instance()->getObjectBuilder()->createView(
+                    pqRenderView::renderViewType(), pqActiveObjects::instance().activeServer()));
     pqActiveObjects::instance().setActiveView(viewSlice);
-    viewSlice->widget()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    viewSlice->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->PVLayout->addWidget(viewSlice->widget());
-    
-    
+
     vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
-    vtkSMSessionProxyManager* pxm = w->server->proxyManager();
-    
+    vtkSMSessionProxyManager *pxm = w->server->proxyManager();
+
     pqActiveObjects::instance().setActiveSource(fitsSource);
     pqObjectBuilder *builder = pqApplicationCore::instance()->getObjectBuilder();
-    
+
     // Outline
     auto drepOutline = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewCube);
     auto reprProxyOutline = drepOutline->getProxy();
@@ -272,41 +259,55 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
     double red[3] = { 1.0, 0.0, 0.0 };
     vtkSMPropertyHelper(reprProxyOutline, "AmbientColor").Set(red, 3);
     reprProxyOutline->UpdateVTKObjects();
-    
-    vtkPVDataInformation* dataInfo = fitsSource->getOutputPort(0)->getDataInformation();
-    double bounds[6]={0};
-    dataInfo->GetBounds(bounds);
-    
-    vtkSmartPointer<vtkImageData> img;
-    auto rv = vtkPVRenderView::SafeDownCast(viewCube->GetClientSideObject());
-    img->GetPointData();
-    
-    qDebug()<<fitsSource->getHelperKeys();
-    qDebug()<<fitsSource->getOutputPort(0)->getDataClassName();
-    dataInfo->GetNumberOfDataSets();
-    vtkPVArrayInformation *pp= dataInfo->GetPointArrayInformation();
-    vtkPVDataSetAttributesInformation *cc= dataInfo->GetCellDataInformation();
-    vtkPVDataSetAttributesInformation *ff = dataInfo->GetFieldDataInformation();
 
+    auto fitsInfo = fitsSource->getOutputPort(0)->getDataInformation();
+    auto fitsImageInfo = fitsInfo->GetPointDataInformation()->GetArrayInformation("FITSImage");
+    double dataRange[2];
+    double bounds[6] = { 0 };
+    fitsInfo->GetBounds(bounds);
+    fitsImageInfo->GetComponentRange(0, dataRange);
+    dataMin = dataRange[0];
+    dataMax = dataRange[1];
 
-    
+    auto calc = builder->createFilter("filters", "PythonCalculator", fitsSource);
+    if (calc) {
+        auto calcProxy = calc->getProxy();
+        vtkSMPropertyHelper(calcProxy, "Expression").Set("sqrt(mean(FITSImage**2))");
+        vtkSMPropertyHelper(calcProxy, "ArrayName").Set("RMS");
+        vtkSMPropertyHelper(calcProxy, "CopyArrays").Set(0);
+        calcProxy->UpdateVTKObjects();
+        calc->updatePipeline();
+        auto dataInformation = calc->getOutputPort(0)->getDataInformation();
+        auto arrayInformation =
+                dataInformation->GetPointDataInformation()->GetArrayInformation("RMS");
+        double range[2];
+        arrayInformation->GetComponentRange(0, range);
+        rms = range[0];
+    }
+
+    lowerBound = 3 * rms;
+    upperBound = dataMax;
+
+    qDebug() << "FITS INFO\nDATA RANGE [" << dataMin << "," << dataMax << "]\nRMS" << rms
+             << "\nTHRESHOLD BOUNDS [" << lowerBound << "," << upperBound << "]";
+
     // Contour Filter
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     auto reprProxySurface = reprSurface->getProxy();
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
-    //pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
+    // pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
     reprProxySurface->UpdateVTKObjects();
+    ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
     setThreshold(lowerBound);
     vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
     reprProxySurface->UpdateVTKObjects();
 
-    
     // Slice
-    drepSlice = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewSlice);
+    drepSlice = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewSlice);
     auto reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
 
@@ -318,20 +319,25 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource): ui(new Ui::
      */
 
     // Slice
-    drepSliceCube = builder->createDataRepresentation( fitsSource->getOutputPort(0), viewCube);
+    drepSliceCube = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewCube);
     auto reprProxySliceCube = drepSliceCube->getProxy();
     vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
 
-    on_sliceSpinBox_valueChanged(0);
-    ui->sliceSlider->setRange(1, bounds[5]+1);
-    ui->sliceSpinBox->setRange(1, bounds[5]+1);
+    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
+    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
+    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
+    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
 
-    
+    on_sliceSpinBox_valueChanged(0);
+    ui->sliceSlider->setRange(1, bounds[5] + 1);
+    ui->sliceSpinBox->setRange(1, bounds[5] + 1);
+
     viewCube->resetDisplay();
     viewCube->render();
     viewSlice->resetDisplay();
     viewSlice->render();
-    
+
     showMaximized();
     activateWindow();
 }
@@ -341,7 +347,7 @@ vtkWindowCube::~vtkWindowCube()
     if (parentWindow) {
         parentWindow->removeActorFromRenderer(contoursActorForParent);
     }
-    
+
     delete ui;
 }
 
@@ -354,18 +360,18 @@ void vtkWindowCube::updateSliceDatacube()
 {
     /*
     planeActor->SetPosition(0, 0, currentSlice + 1);
-    
+
     float *range = fitsReader->GetRangeSlice(currentSlice);
     ui->minSliceText->setText(QString::number(range[0], 'f', 4));
     ui->maxSliceText->setText(QString::number(range[1], 'f', 4));
-    
+
     auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(range[0], range[1]);
     SelectLookTable("Gray", lutSlice);
-    
+
     sliceViewer->GetWindowLevel()->SetLookupTable(lutSlice);
     sliceViewer->SetSlice(currentSlice);
-    
+
     sliceViewer->GetRenderer()->ResetCamera();
     sliceViewer->Render();
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
@@ -384,8 +390,8 @@ void vtkWindowCube::updateVelocityText()
 
 void vtkWindowCube::setThreshold(double threshold)
 {
-    vtkSMProxy* filterProxy = contourFilter->getProxy();
-    pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"),threshold);
+    vtkSMProxy *filterProxy = contourFilter->getProxy();
+    pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"), threshold);
     filterProxy->UpdateVTKObjects();
     contourFilter->updatePipeline();
     viewCube->resetDisplay();
@@ -397,67 +403,67 @@ void vtkWindowCube::showContours()
     auto plane = vtkSmartPointer<vtkPlane>::New();
     plane->SetOrigin(0, 0, sliceViewer->GetSlice());
     plane->SetNormal(0, 0, 1);
-    
+
     auto cutter = vtkSmartPointer<vtkCutter>::New();
     cutter->SetCutFunction(plane);
     cutter->SetInputData(fitsReader->GetOutput());
     cutter->Update();
-    
+
     int level = ui->levelText->text().toInt();
     double min = ui->lowerBoundText->text().toDouble();
     double max = ui->upperBoundText->text().toDouble();
-    
+
     auto contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
     contoursFilter->GenerateValues(level, min, max);
     contoursFilter->SetInputConnection(cutter->GetOutputPort());
-    
+
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(contoursFilter->GetOutputPort());
     mapper->SetScalarRange(min, max);
     mapper->ScalarVisibilityOn();
     mapper->SetScalarModeToUsePointData();
     mapper->SetColorModeToMapScalars();
-    
+
     contoursActor->SetMapper(mapper);
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
-    
+
     if (parentWindow) {
         double sky_coord_gal[2];
         AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 0, sky_coord_gal, WCS_GALACTIC);
-        
+
         double coord[3];
         AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
                            sky_coord_gal[1], coord);
-        
+
         double angle = 0;
         double x1 = coord[0];
         double y1 = coord[1];
-        
+
         AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 100, sky_coord_gal, WCS_GALACTIC);
         AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
                            sky_coord_gal[1], coord);
-        
+
         if (x1 != coord[0]) {
             double m = fabs((coord[1] - y1) / (coord[0] - x1));
             angle = 90 - atan(m) * 180 / M_PI;
         }
-        
+
         double bounds[6];
         fitsReader->GetOutput()->GetBounds(bounds);
-        
+
         double scaledPixel = AstroUtils::arcsecPixel(fitsReader->GetFileName())
-        / AstroUtils::arcsecPixel(parentWindow->getFitsReader()->GetFileName());
-        
+                / AstroUtils::arcsecPixel(parentWindow->getFitsReader()->GetFileName());
+
         auto transform = vtkSmartPointer<vtkTransform>::New();
         transform->Translate(0, 0, -1 * sliceViewer->GetSlice());
         transform->Translate(bounds[0], bounds[2], 0);
         transform->RotateWXYZ(angle, 0, 0, 1);
         transform->Translate(-bounds[0], -bounds[2], 0);
-        
+
         auto mapperForParent = vtkSmartPointer<vtkPolyDataMapper>::New();
         mapperForParent->ShallowCopy(mapper);
-        
+
         contoursActorForParent->ShallowCopy(contoursActor);
         contoursActorForParent->SetMapper(mapperForParent);
         contoursActorForParent->SetScale(scaledPixel, scaledPixel, 1);
@@ -471,7 +477,7 @@ void vtkWindowCube::removeContours()
 {
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
-    
+
     if (parentWindow) {
         parentWindow->removeActorFromRenderer(contoursActorForParent);
     }
@@ -517,7 +523,7 @@ void vtkWindowCube::setCameraElevation(double el)
 
 void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 {
-    qDebug()<<"on_sliceSlider_valueChanged";
+    qDebug() << "on_sliceSlider_valueChanged";
     /*
     if (ui->contourCheckBox->isChecked()) {
         removeContours();
@@ -528,28 +534,27 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
     updateVelocityText();
     updateSliceDatacube();
      */
-
 }
 
 void vtkWindowCube::on_sliceSlider_sliderReleased()
 {
-    qDebug()<<"on_sliceSlider_sliderReleased";
+    qDebug() << "on_sliceSlider_sliderReleased";
 
     ui->sliceSpinBox->setValue(ui->sliceSlider->value());
 }
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
-    qDebug()<<"on_sliceSpinBox_valueChanged";
+    qDebug() << "on_sliceSpinBox_valueChanged";
 
-    vtkSMProxy* reprProxySlice = drepSlice->getProxy();
+    vtkSMProxy *reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
     reprProxySlice->UpdateVTKObjects();
-    
-    vtkSMProxy* reprProxySliceCube = drepSliceCube->getProxy();
+
+    vtkSMProxy *reprProxySliceCube = drepSliceCube->getProxy();
     vtkSMPropertyHelper(reprProxySliceCube, "Slice").Set(value);
     reprProxySliceCube->UpdateVTKObjects();
-    
+
     viewSlice->resetDisplay();
     viewSlice->render();
     viewCube->resetDisplay();
@@ -595,25 +600,25 @@ void vtkWindowCube::on_actionLeft_triggered()
 
 void vtkWindowCube::on_thresholdText_editingFinished()
 {
-    qDebug()<<"on_thresholdText_editingFinished";
-   
+    qDebug() << "on_thresholdText_editingFinished";
+
     double threshold = ui->thresholdText->text().toDouble();
     // Clamp threshold
     threshold = fmin(fmax(threshold, lowerBound), upperBound);
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
-    
+
     int tickPosition = 100 * (threshold - lowerBound) / (upperBound - lowerBound);
     ui->thresholdSlider->setValue(tickPosition);
-    
+
     setThreshold(threshold);
 }
 
 void vtkWindowCube::on_thresholdSlider_sliderReleased()
 {
-    qDebug()<<"on_thresholdSlider_sliderReleased";
+    qDebug() << "on_thresholdSlider_sliderReleased";
 
     double threshold =
-    (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
+            (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
     setThreshold(threshold);
 }
