@@ -233,6 +233,9 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     // temp hack, if those two widget are in place
     ui->qVtkCube->hide();
     ui->qVtkSlice->hide();
+    
+    ui->action100->setChecked(true);
+    
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
     
@@ -299,7 +302,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     // Contour Filter
     contourFilter = builder->createFilter("filters", "Contour", fitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
-    auto reprProxySurface = reprSurface->getProxy();
+    reprProxySurface = reprSurface->getProxy();
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
     // pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
@@ -309,6 +312,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
     vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
+    setVolumeRenderingOpacity(1);
     reprProxySurface->UpdateVTKObjects();
     
     // Slice
@@ -424,7 +428,6 @@ void vtkWindowCube::setThreshold(double threshold)
     pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"), threshold);
     filterProxy->UpdateVTKObjects();
     contourFilter->updatePipeline();
-    viewCube->resetDisplay();
     viewCube->render();
 }
 
@@ -585,9 +588,7 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     vtkSMPropertyHelper(reprProxySliceCube, "Slice").Set(value);
     reprProxySliceCube->UpdateVTKObjects();
     
-    viewSlice->resetDisplay();
     viewSlice->render();
-    viewCube->resetDisplay();
     viewCube->render();
     
     /*
@@ -691,4 +692,47 @@ void vtkWindowCube::on_actionCalculate_order_0_triggered()
 void vtkWindowCube::on_actionCalculate_order_1_triggered()
 {
     calculateAndShowMomentMap(1);
+}
+
+void vtkWindowCube::on_action0_triggered()
+{
+    ui->action25->setChecked(false);
+    ui->action50->setChecked(false);
+    ui->action100->setChecked(false);
+    
+    setVolumeRenderingOpacity(0);
+}
+
+void vtkWindowCube::on_action25_triggered()
+{
+    ui->action0->setChecked(false);
+    ui->action50->setChecked(false);
+    ui->action100->setChecked(false);
+    
+    setVolumeRenderingOpacity(0.25);
+}
+
+void vtkWindowCube::on_action50_triggered()
+{
+    ui->action0->setChecked(false);
+    ui->action25->setChecked(false);
+    ui->action100->setChecked(false);
+    
+    setVolumeRenderingOpacity(0.5);
+}
+
+void vtkWindowCube::on_action100_triggered()
+{
+    ui->action0->setChecked(false);
+    ui->action25->setChecked(false);
+    ui->action50->setChecked(false);
+    
+    setVolumeRenderingOpacity(1);
+}
+
+void vtkWindowCube::setVolumeRenderingOpacity(double opacity)
+{
+    vtkSMPropertyHelper(reprProxySurface, "Opacity").Set(opacity);
+    reprProxySurface->UpdateVTKObjects();
+    viewCube->render();
 }

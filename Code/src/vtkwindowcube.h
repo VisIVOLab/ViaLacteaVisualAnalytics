@@ -16,7 +16,7 @@ class vtkOrientationMarkerWidget;
 class pqPipelineSource;
 class pqRenderView;
 class pqDataRepresentation;
-
+class vtkSMProxy;
 
 namespace Ui {
 class vtkWindowCube;
@@ -54,6 +54,13 @@ private slots:
 
     void on_actionCalculate_order_0_triggered();
     void on_actionCalculate_order_1_triggered();
+    
+    void on_action0_triggered();
+    void on_action25_triggered();
+    void on_action50_triggered();
+    void on_action100_triggered();
+
+
 
 private:
     Ui::vtkWindowCube *ui;
@@ -81,6 +88,7 @@ private:
     vtkSmartPointer<vtkActor> contoursActorForParent;
     
     pqPipelineSource* contourFilter;
+    vtkSMProxy* reprProxySurface;
     pqDataRepresentation* drepSlice;
     pqDataRepresentation* drepSliceCube;
     QPointer<pqRenderView> viewCube;
@@ -97,6 +105,8 @@ private:
     void removeContours();
 
     void calculateAndShowMomentMap(int order);
+    
+    void setVolumeRenderingOpacity(double opacity);
 
     void resetCamera();
     void setCameraAzimuth(double az);
