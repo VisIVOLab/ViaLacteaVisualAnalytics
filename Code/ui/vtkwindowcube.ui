@@ -483,8 +483,20 @@
      </widget>
      <addaction name="menuOpacity"/>
     </widget>
+    <widget class="QMenu" name="menuSlice">
+     <property name="title">
+      <string>Slice</string>
+     </property>
+     <widget class="QMenu" name="menuColor_Map">
+      <property name="title">
+       <string>Color Map</string>
+      </property>
+      <addaction name="separator"/>
+     </widget>
+     <addaction name="menuColor_Map"/>
+    </widget>
     <addaction name="menuVolume"/>
-    <addaction name="actionSlice"/>
+    <addaction name="menuSlice"/>
    </widget>
    <addaction name="menuCamera"/>
    <addaction name="menuMoment"/>
@@ -553,11 +565,6 @@
   <action name="actionCalculate_order_1">
    <property name="text">
     <string>Calculate order 1</string>
-   </property>
-  </action>
-  <action name="actionSlice">
-   <property name="text">
-    <string>Slice</string>
    </property>
   </action>
   <action name="action0">

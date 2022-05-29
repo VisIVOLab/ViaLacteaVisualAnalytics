@@ -333,29 +333,33 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     auto reprProxySliceCube = drepSliceCube->getProxy();
     vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySliceCube, "FITSImage", vtkDataObject::POINT);
-    vtkSMPropertyHelper(reprProxySliceCube, "LookupTable").Set("Green");
     vtkSMPropertyHelper helper(reprProxySliceCube, "ColorArrayName");
     const char* arrayName = helper.GetInputArrayNameToProcess();
     vtkNew<vtkSMTransferFunctionManager> mgr;
     
-    if (vtkSMProperty* lutProperty = reprProxySliceCube->GetProperty("LookupTable"))
-    {
-        vtkSMTransferFunctionProxy* lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
+        lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
                                                                                         mgr->GetColorTransferFunction(arrayName, reprProxySliceCube->GetSessionProxyManager()));
-        int rescaleMode =
-        vtkSMPropertyHelper(lutProxy, "AutomaticRescaleRangeMode", true).GetAsInt();
-        
+
         auto presets = vtkSMTransferFunctionPresets::GetInstance();
-        //qDebug()<<presets->HasPreset("X Ray");
-        lutProxy->ApplyPreset(presets->GetFirstPresetWithName("X Ray"), (bool)rescaleMode);
         
-        vtkSMPropertyHelper(lutProperty).Set(lutProxy);
-        bool extend = rescaleMode == vtkSMTransferFunctionManager::GROW_ON_APPLY;
-        bool force = false;
-        vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(reprProxySliceCube, extend, force);
-        reprProxySliceCube->UpdateVTKObjects();
-    }
+        for (int i=0; i< presets->GetNumberOfPresets();i++)
+        {
+            QString name= presets->GetPresetName(i).c_str();
+            QAction *lut = new QAction(name);
+            lut->setCheckable (true);
+            if (presets->GetPresetName(i) == "X Ray")
+                lut->setChecked(true);
+
+            ui->menuColor_Map->addAction(lut);
+            
+            connect(lut, &QAction::triggered, this,[=](){
+                changeSliceColorMap(name);
+            });
+        }
+
     
+    
+    changeSliceColorMap("X Ray");
     
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
     ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
@@ -590,6 +594,7 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     
     viewSlice->render();
     viewCube->render();
+    viewSlice->resetDisplay();
     
     /*
      ui->sliceSlider->setValue(value);
@@ -735,4 +740,34 @@ void vtkWindowCube::setVolumeRenderingOpacity(double opacity)
     vtkSMPropertyHelper(reprProxySurface, "Opacity").Set(opacity);
     reprProxySurface->UpdateVTKObjects();
     viewCube->render();
+}
+
+void vtkWindowCube::changeSliceColorMap(QString name)
+{
+    //here need to uncheck all the other item in menu
+    
+    
+    auto reprProxySliceCube = drepSliceCube->getProxy();
+
+    if (vtkSMProperty* lutProperty = reprProxySliceCube->GetProperty("LookupTable"))
+    {
+        int rescaleMode =
+        vtkSMPropertyHelper(lutProxy, "AutomaticRescaleRangeMode", true).GetAsInt();
+        
+        auto presets = vtkSMTransferFunctionPresets::GetInstance();
+        
+        lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toLocal8Bit().data()), (bool)rescaleMode);
+        
+        vtkSMPropertyHelper(lutProperty).Set(lutProxy);
+        bool extend = rescaleMode == vtkSMTransferFunctionManager::GROW_ON_APPLY;
+        bool force = false;
+        vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(reprProxySliceCube, extend, force);
+        reprProxySliceCube->UpdateVTKObjects();
+        viewCube->render();
+        viewSlice->render();
+        viewSlice->resetDisplay();
+
+
+    }
+    
 }

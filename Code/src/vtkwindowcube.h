@@ -17,6 +17,7 @@ class pqPipelineSource;
 class pqRenderView;
 class pqDataRepresentation;
 class vtkSMProxy;
+class vtkSMTransferFunctionProxy;
 
 namespace Ui {
 class vtkWindowCube;
@@ -59,6 +60,7 @@ private slots:
     void on_action25_triggered();
     void on_action50_triggered();
     void on_action100_triggered();
+    void changeSliceColorMap(QString name);
 
 
 
@@ -93,7 +95,8 @@ private:
     pqDataRepresentation* drepSliceCube;
     QPointer<pqRenderView> viewCube;
     QPointer<pqRenderView> viewSlice;
-
+    vtkSMTransferFunctionProxy* lutProxy;
+    
     void showStatusBarMessage(const std::string &msg);
 
     void updateSliceDatacube();
