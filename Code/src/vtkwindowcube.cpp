@@ -441,8 +441,11 @@ void vtkWindowCube::updateSliceDatacube()
 
 void vtkWindowCube::updateVelocityText()
 {
-    double velocity = fitsReader->getInitSlice() + fitsReader->GetCdelt(2) * currentSlice;
-    if (velocityUnit.startsWith("m")) {
+    
+    double initSlice = headerMap.value("CRVAL3").toDouble() - (headerMap.value("CDELT3").toDouble() * (headerMap.value("CPIX3").toDouble() - 1));
+
+    double velocity = initSlice + headerMap.value("CDELT3").toDouble() * currentSlice;
+    if (headerMap.value("CUNIT3").startsWith("m")) {
         // Return value in km/s
         velocity /= 1000;
     }
@@ -590,9 +593,8 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
      */
     currentSlice = value - 1;
     ui->sliceSpinBox->setValue(currentSlice);
-    
-    /*
      updateVelocityText();
+    /*
      updateSliceDatacube();
      */
     
@@ -608,7 +610,6 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     
     vtkSMProxy *reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
-    
     reprProxySlice->UpdateVTKObjects();
     
     vtkSMProxy *reprProxySliceCube = drepSliceCube->getProxy();
@@ -618,7 +619,6 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     viewSlice->render();
     viewCube->render();
     viewSlice->resetDisplay();
-    
     /*
      ui->sliceSlider->setValue(value);
      if (ui->contourCheckBox->isChecked()) {
@@ -659,7 +659,6 @@ void vtkWindowCube::on_actionLeft_triggered()
 
 void vtkWindowCube::on_thresholdText_editingFinished()
 {
-    qDebug() << "on_thresholdText_editingFinished";
     
     double threshold = ui->thresholdText->text().toDouble();
     // Clamp threshold
@@ -674,7 +673,6 @@ void vtkWindowCube::on_thresholdText_editingFinished()
 
 void vtkWindowCube::on_thresholdSlider_sliderReleased()
 {
-    qDebug() << "on_thresholdSlider_sliderReleased";
     
     double threshold =
     (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
