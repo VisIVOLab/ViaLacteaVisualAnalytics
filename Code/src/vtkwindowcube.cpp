@@ -66,6 +66,9 @@
 #include "vtkSMTransferFunctionProxy.h"
 #include "vtkSMTransferFunctionManager.h"
 #include "vtkSMTransferFunctionPresets.h"
+#include "vtkPVDataMover.h"
+
+#include "vtkSMTooltipSelectionPipeline.h"
 
 #include "mainwindow.h"
 #include <QDebug>
@@ -256,6 +259,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
     vtkSMSessionProxyManager *pxm = w->server->proxyManager();
     
+    
     pqActiveObjects::instance().setActiveSource(fitsSource);
     pqObjectBuilder *builder = pqApplicationCore::instance()->getObjectBuilder();
     
@@ -269,6 +273,8 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     reprProxyOutline->UpdateVTKObjects();
     
     auto fitsInfo = fitsSource->getOutputPort(0)->getDataInformation();
+    
+    
     auto fitsImageInfo = fitsInfo->GetPointDataInformation()->GetArrayInformation("FITSImage");
     double dataRange[2];
     double bounds[6] = { 0 };
@@ -276,6 +282,35 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     fitsImageInfo->GetComponentRange(0, dataRange);
     dataMin = dataRange[0];
     dataMax = dataRange[1];
+    
+    qDebug()<<"# por"<<fitsSource->getNumberOfOutputPorts();
+    
+    auto fitsInfo2 = fitsSource->getOutputPort(1)->getDataInformation();
+    
+    
+    //get header from server to client, adapting vtkSMTooltipSelectionPipeline::ConnectPVMoveSelectionToClient(
+    
+    auto dataMover = vtk::TakeSmartPointer(pxm->NewProxy("misc", "DataMover"));
+    vtkSMPropertyHelper(dataMover, "Producer").Set(fitsSource->getProxy());
+    vtkSMPropertyHelper(dataMover, "PortNumber").Set(static_cast<int>(1));
+    vtkSMPropertyHelper(dataMover, "SkipEmptyDataSets").Set(1);
+    dataMover->UpdateVTKObjects();
+    dataMover->InvokeCommand("Execute");
+    
+    auto dataMover2 = vtkPVDataMover::SafeDownCast(dataMover->GetClientSideObject());
+    vtkTable *headerTable= vtkTable::SafeDownCast(dataMover2->GetDataSetAtIndex(0));
+    
+    std::cout << "Table has " << headerTable->GetNumberOfRows() << " rows."
+    << std::endl;
+    std::cout << "Table has " << headerTable->GetNumberOfColumns() << " columns."
+    << std::endl;
+    
+    for (vtkIdType i = 0; i < headerTable->GetNumberOfRows(); i++)
+    {
+        std::cout  << (headerTable->GetValue(i, 0)).ToString()
+        << " " << (headerTable->GetValue(i, 1)).ToString()<<std::endl;
+    }
+    
     
     auto calc = builder->createFilter("filters", "PythonCalculator", fitsSource);
     if (calc) {
@@ -337,26 +372,26 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     const char* arrayName = helper.GetInputArrayNameToProcess();
     vtkNew<vtkSMTransferFunctionManager> mgr;
     
-        lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
-                                                                                        mgr->GetColorTransferFunction(arrayName, reprProxySliceCube->GetSessionProxyManager()));
-
-        auto presets = vtkSMTransferFunctionPresets::GetInstance();
+    lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
+                                                        mgr->GetColorTransferFunction(arrayName, reprProxySliceCube->GetSessionProxyManager()));
+    
+    auto presets = vtkSMTransferFunctionPresets::GetInstance();
+    
+    for (int i=0; i< presets->GetNumberOfPresets();i++)
+    {
+        QString name= presets->GetPresetName(i).c_str();
+        QAction *lut = new QAction(name);
+        lut->setCheckable (true);
+        if (presets->GetPresetName(i) == "X Ray")
+            lut->setChecked(true);
         
-        for (int i=0; i< presets->GetNumberOfPresets();i++)
-        {
-            QString name= presets->GetPresetName(i).c_str();
-            QAction *lut = new QAction(name);
-            lut->setCheckable (true);
-            if (presets->GetPresetName(i) == "X Ray")
-                lut->setChecked(true);
-
-            ui->menuColor_Map->addAction(lut);
-            
-            connect(lut, &QAction::triggered, this,[=](){
-                changeSliceColorMap(name);
-            });
-        }
-
+        ui->menuColor_Map->addAction(lut);
+        
+        connect(lut, &QAction::triggered, this,[=](){
+            changeSliceColorMap(name);
+        });
+    }
+    
     
     
     changeSliceColorMap("X Ray");
@@ -748,7 +783,7 @@ void vtkWindowCube::changeSliceColorMap(QString name)
     
     
     auto reprProxySliceCube = drepSliceCube->getProxy();
-
+    
     if (vtkSMProperty* lutProperty = reprProxySliceCube->GetProperty("LookupTable"))
     {
         int rescaleMode =
@@ -766,8 +801,8 @@ void vtkWindowCube::changeSliceColorMap(QString name)
         viewCube->render();
         viewSlice->render();
         viewSlice->resetDisplay();
-
-
+        
+        
     }
     
 }
