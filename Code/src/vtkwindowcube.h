@@ -97,6 +97,8 @@ private:
     QPointer<pqRenderView> viewSlice;
     vtkSMTransferFunctionProxy* lutProxy;
     
+    QMap<QString, QString> headerMap;
+    
     void showStatusBarMessage(const std::string &msg);
 
     void updateSliceDatacube();

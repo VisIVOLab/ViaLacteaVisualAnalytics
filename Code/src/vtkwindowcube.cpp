@@ -283,11 +283,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     dataMin = dataRange[0];
     dataMax = dataRange[1];
     
-    qDebug()<<"# por"<<fitsSource->getNumberOfOutputPorts();
-    
-    auto fitsInfo2 = fitsSource->getOutputPort(1)->getDataInformation();
-    
-    
     //get header from server to client, adapting vtkSMTooltipSelectionPipeline::ConnectPVMoveSelectionToClient(
     
     auto dataMover = vtk::TakeSmartPointer(pxm->NewProxy("misc", "DataMover"));
@@ -300,15 +295,9 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     auto dataMover2 = vtkPVDataMover::SafeDownCast(dataMover->GetClientSideObject());
     vtkTable *headerTable= vtkTable::SafeDownCast(dataMover2->GetDataSetAtIndex(0));
     
-    std::cout << "Table has " << headerTable->GetNumberOfRows() << " rows."
-    << std::endl;
-    std::cout << "Table has " << headerTable->GetNumberOfColumns() << " columns."
-    << std::endl;
-    
     for (vtkIdType i = 0; i < headerTable->GetNumberOfRows(); i++)
     {
-        std::cout  << (headerTable->GetValue(i, 0)).ToString()
-        << " " << (headerTable->GetValue(i, 1)).ToString()<<std::endl;
+        headerMap.insert(QString::fromStdString(headerTable->GetValue(i, 0).ToString()), QString::fromStdString(headerTable->GetValue(i, 1).ToString()));
     }
     
     
@@ -391,7 +380,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
             changeSliceColorMap(name);
         });
     }
-    
     
     
     changeSliceColorMap("X Ray");
