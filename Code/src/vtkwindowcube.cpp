@@ -284,7 +284,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     dataMax = dataRange[1];
     
     //get header from server to client, adapting vtkSMTooltipSelectionPipeline::ConnectPVMoveSelectionToClient(
-    
     auto dataMover = vtk::TakeSmartPointer(pxm->NewProxy("misc", "DataMover"));
     vtkSMPropertyHelper(dataMover, "Producer").Set(fitsSource->getProxy());
     vtkSMPropertyHelper(dataMover, "PortNumber").Set(static_cast<int>(1));
@@ -328,7 +327,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     reprProxySurface = reprSurface->getProxy();
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
-    // pqSMAdaptor::setElementProperty(reprProxySurface->GetProperty("Representation"), "Surface");
     vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
     reprProxySurface->UpdateVTKObjects();
     ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
@@ -380,7 +378,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
             changeSliceColorMap(name);
         });
     }
-    
     
     changeSliceColorMap("X Ray");
     
@@ -442,9 +439,9 @@ void vtkWindowCube::updateSliceDatacube()
 void vtkWindowCube::updateVelocityText()
 {
     
-    double initSlice = headerMap.value("CRVAL3").toDouble() - (headerMap.value("CDELT3").toDouble() * (headerMap.value("CPIX3").toDouble() - 1));
-
+    double initSlice = headerMap.value("CRVAL3").toDouble() - (headerMap.value("CDELT3").toDouble() * (headerMap.value("CRPIX3").toDouble() - 1));
     double velocity = initSlice + headerMap.value("CDELT3").toDouble() * currentSlice;
+    
     if (headerMap.value("CUNIT3").startsWith("m")) {
         // Return value in km/s
         velocity /= 1000;
@@ -593,7 +590,7 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
      */
     currentSlice = value - 1;
     ui->sliceSpinBox->setValue(currentSlice);
-     updateVelocityText();
+    updateVelocityText();
     /*
      updateSliceDatacube();
      */
@@ -607,7 +604,7 @@ void vtkWindowCube::on_sliceSlider_sliderReleased()
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
-    
+    currentSlice = value;
     vtkSMProxy *reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
     reprProxySlice->UpdateVTKObjects();
@@ -619,6 +616,7 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     viewSlice->render();
     viewCube->render();
     viewSlice->resetDisplay();
+    updateVelocityText();
     /*
      ui->sliceSlider->setValue(value);
      if (ui->contourCheckBox->isChecked()) {
