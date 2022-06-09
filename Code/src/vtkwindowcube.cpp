@@ -364,6 +364,8 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     
+    QActionGroup *lutGroup = new QActionGroup(this);
+
     for (int i=0; i< presets->GetNumberOfPresets();i++)
     {
         QString name= presets->GetPresetName(i).c_str();
@@ -372,12 +374,15 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
         if (presets->GetPresetName(i) == "X Ray")
             lut->setChecked(true);
         
-        ui->menuColor_Map->addAction(lut);
+        lutGroup->addAction(lut);
         
         connect(lut, &QAction::triggered, this,[=](){
             changeSliceColorMap(name);
         });
     }
+    
+    ui->menuColor_Map->addActions(lutGroup->actions());
+
     
     changeSliceColorMap("X Ray");
     
