@@ -101,7 +101,6 @@ private:
     
     void showStatusBarMessage(const std::string &msg);
 
-    void updateSliceDatacube();
     void updateVelocityText();
 
     void setThreshold(double threshold);

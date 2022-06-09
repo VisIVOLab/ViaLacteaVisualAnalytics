@@ -414,28 +414,6 @@ void vtkWindowCube::showStatusBarMessage(const std::string &msg)
     ui->statusBar->showMessage(QString::fromStdString(msg));
 }
 
-void vtkWindowCube::updateSliceDatacube()
-{
-    /*
-     planeActor->SetPosition(0, 0, currentSlice + 1);
-     
-     float *range = fitsReader->GetRangeSlice(currentSlice);
-     ui->minSliceText->setText(QString::number(range[0], 'f', 4));
-     ui->maxSliceText->setText(QString::number(range[1], 'f', 4));
-     
-     auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
-     lutSlice->SetTableRange(range[0], range[1]);
-     SelectLookTable("Gray", lutSlice);
-     
-     sliceViewer->GetWindowLevel()->SetLookupTable(lutSlice);
-     sliceViewer->SetSlice(currentSlice);
-     
-     sliceViewer->GetRenderer()->ResetCamera();
-     sliceViewer->Render();
-     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
-     */
-}
-
 void vtkWindowCube::updateVelocityText()
 {
     
@@ -591,9 +569,6 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
     currentSlice = value - 1;
     ui->sliceSpinBox->setValue(currentSlice);
     updateVelocityText();
-    /*
-     updateSliceDatacube();
-     */
     
 }
 
