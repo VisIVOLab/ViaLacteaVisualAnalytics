@@ -280,7 +280,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     
     auto fitsImageInfo = fitsInfo->GetPointDataInformation()->GetArrayInformation("FITSImage");
     double dataRange[2];
-    double bounds[6] = { 0 };
+    bounds[0] = { 0 };
     fitsInfo->GetBounds(bounds);
     fitsImageInfo->GetComponentRange(0, dataRange);
     dataMin = dataRange[0];
@@ -592,18 +592,14 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     vtkSMPropertyHelper(reprProxySliceCube, "SliceMode").Set(VTK_XY_PLANE);
     reprProxySliceCube->UpdateVTKObjects();
     
-    auto slice = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "Cut", this->FitsSource);
+    auto slice = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "ExtractGrid", this->FitsSource);
     if (slice) {
         auto sliceProxy = slice->getProxy();
-        vtkSMProxy* cutFunction = vtkSMPropertyHelper(sliceProxy, "CutFunction").GetAsProxy();
-        double normal[] = { 0, 0, 1 };
-        vtkSMPropertyHelper(cutFunction, "Normal").Set(normal, 3);
-        double origin[] = { 0, 0, (double)currentSlice-1 };
-        vtkSMPropertyHelper(cutFunction, "Origin").Set(origin, 3);
-        cutFunction->UpdateVTKObjects();
+        int selectedSlice[] = { (int)bounds[0], (int)bounds[1], (int)bounds[2],(int)bounds[3],(currentSlice-1),(currentSlice-1) };
+
+        vtkSMPropertyHelper(sliceProxy, "VOI").Set(selectedSlice, 6);
         sliceProxy->UpdateVTKObjects();
         slice->updatePipeline();
-        
         auto dataInformation = slice->getOutputPort(0)->getDataInformation();
         auto fitsImageInfo = dataInformation->GetPointDataInformation()->GetArrayInformation(0);
         if (fitsImageInfo)
@@ -615,6 +611,7 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
             
         }
     }
+    
     //controller->UnRegisterProxy(slice);
     viewSlice->render();
     viewCube->render();
@@ -789,7 +786,6 @@ void vtkWindowCube::changeSliceColorMap(QString name)
         viewCube->render();
         viewSlice->render();
         viewSlice->resetDisplay();
-        
         
     }
     
