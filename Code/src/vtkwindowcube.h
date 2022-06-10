@@ -82,6 +82,8 @@ private:
     double lowerBound;
     double upperBound;
 
+    pqPipelineSource* FitsSource;
+    
     vtkSmartPointer<vtkActor> planeActor;
     vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;

@@ -70,6 +70,8 @@
 
 #include "vtkSMTooltipSelectionPipeline.h"
 
+#include "vtkImageSliceRepresentation.h"
+
 #include "mainwindow.h"
 #include <QDebug>
 
@@ -238,6 +240,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     ui->qVtkSlice->hide();
     
     ui->action100->setChecked(true);
+    this->FitsSource=fitsSource;
     
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
@@ -260,11 +263,11 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     vtkSMSessionProxyManager *pxm = w->server->proxyManager();
     
     
-    pqActiveObjects::instance().setActiveSource(fitsSource);
+    pqActiveObjects::instance().setActiveSource(this->FitsSource);
     pqObjectBuilder *builder = pqApplicationCore::instance()->getObjectBuilder();
     
     // Outline
-    auto drepOutline = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewCube);
+    auto drepOutline = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube);
     auto reprProxyOutline = drepOutline->getProxy();
     vtkSMPropertyHelper(reprProxyOutline, "Representation").Set("Outline");
     vtkSMPropertyHelper(reprProxyOutline, "LineWidth").Set(1);
@@ -272,7 +275,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     vtkSMPropertyHelper(reprProxyOutline, "AmbientColor").Set(red, 3);
     reprProxyOutline->UpdateVTKObjects();
     
-    auto fitsInfo = fitsSource->getOutputPort(0)->getDataInformation();
+    auto fitsInfo = this->FitsSource->getOutputPort(0)->getDataInformation();
     
     
     auto fitsImageInfo = fitsInfo->GetPointDataInformation()->GetArrayInformation("FITSImage");
@@ -285,7 +288,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     
     //get header from server to client, adapting vtkSMTooltipSelectionPipeline::ConnectPVMoveSelectionToClient(
     auto dataMover = vtk::TakeSmartPointer(pxm->NewProxy("misc", "DataMover"));
-    vtkSMPropertyHelper(dataMover, "Producer").Set(fitsSource->getProxy());
+    vtkSMPropertyHelper(dataMover, "Producer").Set(this->FitsSource->getProxy());
     vtkSMPropertyHelper(dataMover, "PortNumber").Set(static_cast<int>(1));
     vtkSMPropertyHelper(dataMover, "SkipEmptyDataSets").Set(1);
     dataMover->UpdateVTKObjects();
@@ -300,7 +303,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     }
     
     
-    auto calc = builder->createFilter("filters", "PythonCalculator", fitsSource);
+    auto calc = builder->createFilter("filters", "PythonCalculator", this->FitsSource);
     if (calc) {
         auto calcProxy = calc->getProxy();
         vtkSMPropertyHelper(calcProxy, "Expression").Set("sqrt(mean(FITSImage**2))");
@@ -319,11 +322,8 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     lowerBound = 3 * rms;
     upperBound = dataMax;
     
-    qDebug() << "FITS INFO\nDATA RANGE [" << dataMin << "," << dataMax << "]\nRMS" << rms
-    << "\nTHRESHOLD BOUNDS [" << lowerBound << "," << upperBound << "]";
-    
     // Contour Filter
-    contourFilter = builder->createFilter("filters", "Contour", fitsSource);
+    contourFilter = builder->createFilter("filters", "Contour", this->FitsSource);
     auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
     reprProxySurface = reprSurface->getProxy();
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
@@ -338,20 +338,13 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     reprProxySurface->UpdateVTKObjects();
     
     // Slice
-    drepSlice = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewSlice);
+    drepSlice = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice);
     auto reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySlice, "FITSImage", vtkDataObject::POINT);
     
-    /*
-     this->SliceMode = XY_PLANE;
-     XY_PLANE = VTK_XY_PLANE,
-     YZ_PLANE = VTK_YZ_PLANE,
-     XZ_PLANE = VTK_XZ_PLANE
-     */
-    
     // Slice
-    drepSliceCube = builder->createDataRepresentation(fitsSource->getOutputPort(0), viewCube);
+    drepSliceCube = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube);
     auto reprProxySliceCube = drepSliceCube->getProxy();
     vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
     vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySliceCube, "FITSImage", vtkDataObject::POINT);
@@ -363,9 +356,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
                                                         mgr->GetColorTransferFunction(arrayName, reprProxySliceCube->GetSessionProxyManager()));
     
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
-    
     QActionGroup *lutGroup = new QActionGroup(this);
-
     for (int i=0; i< presets->GetNumberOfPresets();i++)
     {
         QString name= presets->GetPresetName(i).c_str();
@@ -382,8 +373,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     }
     
     ui->menuColor_Map->addActions(lutGroup->actions());
-
-    
     changeSliceColorMap("X Ray");
     
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
@@ -392,7 +381,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
     ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
     
-    on_sliceSpinBox_valueChanged(0);
+    on_sliceSpinBox_valueChanged(1);
     ui->sliceSlider->setRange(1, bounds[5] + 1);
     ui->sliceSpinBox->setRange(1, bounds[5] + 1);
     
@@ -407,6 +396,8 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
 
 vtkWindowCube::~vtkWindowCube()
 {
+    this->FitsSource = NULL;
+    
     if (parentWindow) {
         parentWindow->removeActorFromRenderer(contoursActorForParent);
     }
@@ -421,9 +412,8 @@ void vtkWindowCube::showStatusBarMessage(const std::string &msg)
 
 void vtkWindowCube::updateVelocityText()
 {
-    
     double initSlice = headerMap.value("CRVAL3").toDouble() - (headerMap.value("CDELT3").toDouble() * (headerMap.value("CRPIX3").toDouble() - 1));
-    double velocity = initSlice + headerMap.value("CDELT3").toDouble() * currentSlice;
+    double velocity = initSlice + headerMap.value("CDELT3").toDouble() * (currentSlice-1);
     
     if (headerMap.value("CUNIT3").startsWith("m")) {
         // Return value in km/s
@@ -584,19 +574,53 @@ void vtkWindowCube::on_sliceSlider_sliderReleased()
 
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
+    /*
+         XY_PLANE = VTK_XY_PLANE,
+         YZ_PLANE = VTK_YZ_PLANE,
+         XZ_PLANE = VTK_XZ_PLANE
+     */
+    
     currentSlice = value;
+    
     vtkSMProxy *reprProxySlice = drepSlice->getProxy();
-    vtkSMPropertyHelper(reprProxySlice, "Slice").Set(value);
+    vtkSMPropertyHelper(reprProxySlice, "Slice").Set(currentSlice-1);
+    vtkSMPropertyHelper(reprProxySlice, "SliceMode").Set(VTK_XY_PLANE);
     reprProxySlice->UpdateVTKObjects();
     
     vtkSMProxy *reprProxySliceCube = drepSliceCube->getProxy();
-    vtkSMPropertyHelper(reprProxySliceCube, "Slice").Set(value);
+    vtkSMPropertyHelper(reprProxySliceCube, "Slice").Set(currentSlice-1);
+    vtkSMPropertyHelper(reprProxySliceCube, "SliceMode").Set(VTK_XY_PLANE);
     reprProxySliceCube->UpdateVTKObjects();
     
+    auto slice = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "Cut", this->FitsSource);
+    if (slice) {
+        auto sliceProxy = slice->getProxy();
+        vtkSMProxy* cutFunction = vtkSMPropertyHelper(sliceProxy, "CutFunction").GetAsProxy();
+        double normal[] = { 0, 0, 1 };
+        vtkSMPropertyHelper(cutFunction, "Normal").Set(normal, 3);
+        double origin[] = { 0, 0, (double)currentSlice-1 };
+        vtkSMPropertyHelper(cutFunction, "Origin").Set(origin, 3);
+        cutFunction->UpdateVTKObjects();
+        sliceProxy->UpdateVTKObjects();
+        slice->updatePipeline();
+
+        auto dataInformation = slice->getOutputPort(0)->getDataInformation();
+        auto fitsImageInfo = dataInformation->GetPointDataInformation()->GetArrayInformation(0);
+        if (fitsImageInfo)
+        {
+            double dataRange[2];
+        fitsImageInfo->GetComponentRange(0, dataRange);
+        ui->minSliceText->setText(QString::number(dataRange[0]));
+        ui->maxSliceText->setText(QString::number(dataRange[1]));
+   
+        }
+    }
+    //controller->UnRegisterProxy(slice);
     viewSlice->render();
     viewCube->render();
     viewSlice->resetDisplay();
     updateVelocityText();
+        
     /*
      ui->sliceSlider->setValue(value);
      if (ui->contourCheckBox->isChecked()) {
