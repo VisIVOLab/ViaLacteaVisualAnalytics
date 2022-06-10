@@ -703,6 +703,8 @@ public:
             }
         }
         // Forward events
+        vtkInteractorStyleImage::OnMouseMove();
+
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
         coordinate->SetValue(this->GetInteractor()->GetEventPosition()[0],
@@ -756,23 +758,26 @@ public:
         statusBarText += " <image> X: " + QString::number(world_coord[0])
                 + " Y: " + QString::number(world_coord[1]);
 
-        // WCS_GALACTIC = 3
-        AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_gal,
-                            3);
+        if (!fits->ctypeXY) {
+            // WCS_GALACTIC = 3
+            AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1],
+                                sky_coord_gal, 3);
 
-        statusBarText += " <galactic> GLON: " + QString::number(sky_coord_gal[0])
-                + " GLAT: " + QString::number(sky_coord_gal[1]);
+            statusBarText += " <galactic> GLON: " + QString::number(sky_coord_gal[0])
+                    + " GLAT: " + QString::number(sky_coord_gal[1]);
 
-        // WCS_J2000 = 1
-        AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_fk5,
-                            1);
+            // WCS_J2000 = 1
+            AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1],
+                                sky_coord_fk5, 1);
 
-        statusBarText += " <fk5> RA: " + QString::number(sky_coord_fk5[0])
-                + " DEC: " + QString::number(sky_coord_fk5[1]);
+            statusBarText += " <fk5> RA: " + QString::number(sky_coord_fk5[0])
+                    + " DEC: " + QString::number(sky_coord_fk5[1]);
 
-        AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord);
-        statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
-                + " DEC: " + QString::number(sky_coord[1]);
+            AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1],
+                                sky_coord);
+            statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
+                    + " DEC: " + QString::number(sky_coord[1]);
+        }
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
 
@@ -835,7 +840,6 @@ public:
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
  */
-        vtkInteractorStyleImage::OnMouseMove();
     }
 
     virtual void OnChar()
@@ -1248,12 +1252,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         imageStack = vtkSmartPointer<vtkImageStack>::New();
         imageStack->AddImage(imageSliceBase);
 
-        vtkSmartPointer<vtkLegendScaleActor> legendScaleActorImage =
-                vtkSmartPointer<vtkLegendScaleActor>::New();
-        legendScaleActorImage->LegendVisibilityOff();
-        legendScaleActorImage->setFitsFile(myfits);
+        if (!myfits->ctypeXY) {
+            auto legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+            legendScaleActorImage->LegendVisibilityOff();
+            legendScaleActorImage->setFitsFile(myfits);
+            m_Ren1->AddActor(legendScaleActorImage);
+        }
 
-        m_Ren1->AddActor(legendScaleActorImage);
         m_Ren1->AddViewProp(imageStack);
         m_Ren1->ResetCamera();
 
@@ -1304,6 +1309,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->lut3dGroupBox->hide();
         ui->glyphGroupBox->hide();
         ui->filterGroupBox->hide();
+
+        if (myfits->ctypeXY) {
+            ui->menuMoment->menuAction()->setVisible(false);
+        }
 
         ui->minLineEdit->setText(QString::number(min, 'f', 4));
         ui->maxLineEdit->setText(QString::number(max, 'f', 4));
@@ -1381,10 +1390,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         vtkAxesWidget->SetViewport(0.0, 0.0, 0.2, 0.2);
         vtkAxesWidget->SetEnabled(1);
         vtkAxesWidget->InteractiveOff();
-        vtkSmartPointer<vtkLegendScaleActor> legendScaleActor3d =
-                vtkSmartPointer<vtkLegendScaleActor>::New();
-        legendScaleActor3d->LegendVisibilityOff();
-        legendScaleActor3d->setFitsFile(myfits);
 
         m_Ren1->GetActiveCamera()->GetPosition(cam_init_pos);
         m_Ren1->GetActiveCamera()->GetFocalPoint(cam_init_foc);
@@ -1393,7 +1398,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->AddActor(outlineA);
         m_Ren1->AddActor(shellA);
         m_Ren1->AddActor(sliceA);
-        m_Ren1->AddActor(legendScaleActor3d);
+
+        if (!myfits->ctypeXY) {
+            auto legendScaleActor3d = vtkSmartPointer<vtkLegendScaleActor>::New();
+            legendScaleActor3d->LegendVisibilityOff();
+            legendScaleActor3d->setFitsFile(myfits);
+            m_Ren1->AddActor(legendScaleActor3d);
+        }
 
         // Start isocontourVtkWin (right)
         auto renWin2 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
@@ -1428,11 +1439,12 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->cuttingPlane_Slider->setRange(1, vis->GetNaxes(2));
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
 
-        vtkSmartPointer<vtkLegendScaleActor> legendScaleActorImage =
-                vtkSmartPointer<vtkLegendScaleActor>::New();
-        legendScaleActorImage->LegendVisibilityOff();
-        legendScaleActorImage->setFitsFile(myfits);
-        m_Ren2->AddActor(legendScaleActorImage);
+        if (!myfits->ctypeXY) {
+            auto legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+            legendScaleActorImage->LegendVisibilityOff();
+            legendScaleActorImage->setFitsFile(myfits);
+            m_Ren2->AddActor(legendScaleActorImage);
+        }
 
         this->setWindowName("Datacube visualization");
         showMaximized();
@@ -4238,7 +4250,7 @@ void vtkwindow_new::goContour()
             currentContourActor);
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 
-    if (myParentVtkWindow != 0) {
+    if (myParentVtkWindow != 0 && !myfits->ctypeXY) {
         // Riporto i contorni su visualizzazione principale
         double *sky_coord_gal = new double[2];
         AstroUtils().xy2sky(myfits->GetFileName(), 0, 0, sky_coord_gal, 3);

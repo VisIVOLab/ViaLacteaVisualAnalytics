@@ -406,49 +406,53 @@ void ViaLactea::on_localDCPushButton_clicked()
     QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
                                               tr("FITS images(*.fit *.fits)"));
 
-    if (!fn.isEmpty()) {
-        if (masterWin == nullptr) {
-            double coords[2], rectSize[2];
-            AstroUtils().GetCenterCoords(fn.toStdString(), coords);
-            AstroUtils().GetRectSize(fn.toStdString(), rectSize);
+    if (fn.isEmpty()) {
+        return;
+    }
 
-            VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-            connect(vq, &VialacteaInitialQuery::searchDone,
-                    [vq, fn, this](QList<QMap<QString, QString>> results) {
-                        // Open a new window to visualize the momentmap
-                        auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
-                        fitsReader_moment->SetFileName(fn.toStdString());
-                        fitsReader_moment->isMoment3D = true;
-                        fitsReader_moment->setMomentOrder(0);
-                        auto win = new vtkwindow_new(this, fitsReader_moment);
-                        win->setDbElements(results);
-                        setMasterWin(win);
+    // Check if the fits is a simcube
+    auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
+    fitsReader_dc->SetFileName(fn.toStdString());
+    if (fitsReader_dc->ctypeXY) {
+        qDebug() << Q_FUNC_INFO << fn << " CTYPEs are X-Y, treating it as a simulated  cube";
+        new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
+        return;
+    }
 
-                        // Open a new window to visualize the datacube
-                        auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
-                        fitsReader_dc->SetFileName(fn.toStdString());
-                        fitsReader_dc->is3D = true;
-                        new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
+    if (masterWin == nullptr) {
+        double coords[2], rectSize[2];
+        AstroUtils().GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils().GetRectSize(fn.toStdString(), rectSize);
 
-                        vq->deleteLater();
-                    });
-            vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-        } else if (canImportToMasterWin(fn.toStdString())) {
-            auto moment = vtkSmartPointer<vtkFitsReader>::New();
-            moment->SetFileName(fn.toStdString());
-            moment->isMoment3D = true;
-            moment->setMomentOrder(0);
-            masterWin->addLayerImage(moment);
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone,
+                [vq, fn, fitsReader_dc, this](QList<QMap<QString, QString>> results) {
+                    // Open a new window to visualize the momentmap
+                    auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
+                    fitsReader_moment->SetFileName(fn.toStdString());
+                    fitsReader_moment->isMoment3D = true;
+                    fitsReader_moment->setMomentOrder(0);
+                    auto win = new vtkwindow_new(this, fitsReader_moment);
+                    win->setDbElements(results);
+                    setMasterWin(win);
 
-            auto dc = vtkSmartPointer<vtkFitsReader>::New();
-            dc->SetFileName(fn.toStdString());
-            dc->is3D = true;
-            new vtkwindow_new(masterWin, dc, 1, masterWin);
-        } else {
-            QMessageBox::warning(this, QObject::tr("Import DC"),
-                                 QObject::tr("The regions do not overlap, the file cannot be "
-                                             "imported in the current session."));
-        }
+                    // Open a new window to visualize the datacube
+                    new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
+                    vq->deleteLater();
+                });
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    } else if (canImportToMasterWin(fn.toStdString())) {
+        auto moment = vtkSmartPointer<vtkFitsReader>::New();
+        moment->SetFileName(fn.toStdString());
+        moment->isMoment3D = true;
+        moment->setMomentOrder(0);
+        masterWin->addLayerImage(moment);
+
+        new vtkwindow_new(masterWin, fitsReader_dc, 1, masterWin);
+    } else {
+        QMessageBox::warning(this, QObject::tr("Import DC"),
+                             QObject::tr("The regions do not overlap, the file cannot be "
+                                         "imported in the current session."));
     }
 }
 

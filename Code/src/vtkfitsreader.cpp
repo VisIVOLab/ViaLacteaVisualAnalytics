@@ -34,6 +34,7 @@ vtkFitsReader::vtkFitsReader()
 
     this->is3D = false;
     this->isMoment3D = false;
+    this->ctypeXY = false;
 
     qDebug() << "New.vtkFitsReader";
 }
@@ -50,6 +51,8 @@ void vtkFitsReader::SetFileName(std::string name)
     }
 
     filename = name;
+    ReadHeader();
+
     this->Modified();
 
     qDebug() << "SetFileName.vtkFitsReader";
@@ -634,6 +637,10 @@ void vtkFitsReader::ReadHeader()
     cdelt[2] = delt3.toDouble();
 
     initSlice = crval[2] - (cdelt[2] * (cpix[2] - 1));
+
+    if (strcmp(xStr, "x") == 0 && strcmp(yStr, "y") == 0) {
+        this->ctypeXY = true;
+    }
 }
 
 // Note: from cookbook.c in fitsio distribution.
