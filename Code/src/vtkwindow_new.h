@@ -335,6 +335,8 @@ private slots:
     void addLocalSources();
     void loadDS9RegionFile();
     void cutoutDatacube(QString c);
+    void actionCollapseTriggered();
+    void showCollapsedImage(const QString &filepath);
 
     void on_cameraLeft_clicked();
     void on_bottomCamera_clicked();

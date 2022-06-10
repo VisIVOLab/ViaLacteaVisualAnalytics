@@ -92,6 +92,8 @@
 #include "ds9region/DS9Region.h"
 #include "ds9region/DS9RegionParser.h"
 
+#include "simcube/simcube_projection.hpp"
+
 #include <QDir>
 #include <QSettings>
 #include <QSignalMapper>
@@ -1311,7 +1313,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->filterGroupBox->hide();
 
         if (myfits->ctypeXY) {
+            // Replace moment with a collapse option
             ui->menuMoment->menuAction()->setVisible(false);
+            auto m = new QMenu("Actions", ui->menubar);
+            auto a = new QAction("Collapse", m);
+            connect(a, &QAction::triggered, this, &vtkwindow_new::actionCollapseTriggered);
+            m->addAction(a);
+            ui->menubar->addMenu(m);
         }
 
         ui->minLineEdit->setText(QString::number(min, 'f', 4));
@@ -3006,6 +3014,39 @@ void vtkwindow_new::cutoutDatacube(QString c)
     dbquery *queryWindow = new dbquery();
     queryWindow->setCoordinate(splittedStrings.at(0), splittedStrings.at(1));
     queryWindow->show();
+}
+
+void vtkwindow_new::actionCollapseTriggered()
+{
+    double *angles = ui->qVTK1->renderWindow()
+                             ->GetRenderers()
+                             ->GetFirstRenderer()
+                             ->GetActiveCamera()
+                             ->GetOrientation();
+    QString text = QString("Orientation angles\n  X: %1\n  Y: %2\n  Z:  %3\nScale:")
+                           .arg(QString::number(angles[0]), QString::number(angles[1]),
+                                QString::number(angles[2]));
+    bool ok;
+    double scale = QInputDialog::getDouble(this, "Collapse Sim-Cube", text, 2.8, 0.0, 10.0, 2, &ok);
+    if (!ok) {
+        return;
+    }
+
+    QString inFile = QString::fromStdString(myfits->GetFileName());
+    QFileInfo inInfo(inFile);
+    QString outFile = inInfo.baseName() + "_collapsed.fits";
+    outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
+    simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(), angles, scale);
+    showCollapsedImage(outFile);
+}
+
+void vtkwindow_new::showCollapsedImage(const QString &filepath)
+{
+    auto fits = vtkSmartPointer<vtkFitsReader>::New();
+    fits->SetFileName(filepath.toStdString());
+    auto win = new vtkwindow_new(this, fits);
+    win->activateWindow();
+    win->raise();
 }
 
 void vtkwindow_new::addLocalSources()

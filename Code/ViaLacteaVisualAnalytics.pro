@@ -159,14 +159,21 @@ SOURCES += \
     src/selectedsourcesform.cpp \
     src/sessionloader.cpp \
     src/settingform.cpp \
+    src/simcube/simcube_projection-collapse/api-collapse.cpp \
+    src/simcube/simcube_projection-collapse/fits_simcube.cpp \
+    src/simcube/simcube_projection-collapse/image.cpp \
+    src/simcube/simcube_projection-collapse/projection.cpp \
+    src/simcube/simcube_projection-collapse/utils.cpp \
+    src/simcube/simcube_projection-galactic/api-galactic.cpp \
+    src/simcube/simcube_projection-galactic/fits_simimg.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
     src/usertablewindow.cpp \
     src/vialactea.cpp \
-    src/vialactea_fileload.cpp \
     src/vialacteainitialquery.cpp \
     src/vialacteasource.cpp \
     src/vialacteastringdictwidget.cpp \
+    src/vialactea_fileload.cpp \
     src/viewselectedsourcedataset.cpp \
     src/visivoimporterdesktop.cpp \
     src/visivoutilsdesktop.cpp \
@@ -182,8 +189,8 @@ SOURCES += \
     src/vtkextracthistogram.cpp \
     src/vtkfitsreader.cpp \
     src/vtkfitstoolswidget.cpp \
-    src/vtkfitstoolwidget_new.cpp \
     src/vtkfitstoolwidgetobject.cpp \
+    src/vtkfitstoolwidget_new.cpp \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
@@ -235,15 +242,21 @@ HEADERS  += \
     src/selectedsourcesform.h \
     src/sessionloader.h \
     src/settingform.h \
+    src/simcube/simcube_projection-collapse/fits_simcube.hpp \
+    src/simcube/simcube_projection-collapse/image.hpp \
+    src/simcube/simcube_projection-collapse/projection.hpp \
+    src/simcube/simcube_projection-collapse/utils.hpp \
+    src/simcube/simcube_projection-galactic/fits_simimg.hpp \
+    src/simcube/simcube_projection.hpp \
     src/singleton.h \
     src/treeitem.h \
     src/treemodel.h \
     src/usertablewindow.h \
     src/vialactea.h \
-    src/vialactea_fileload.h \
     src/vialacteainitialquery.h \
     src/vialacteasource.h \
     src/vialacteastringdictwidget.h \
+    src/vialactea_fileload.h \
     src/viewselectedsourcedataset.h \
     src/visivoimporterdesktop.h \
     src/visivoutilsdesktop.h \
@@ -259,8 +272,8 @@ HEADERS  += \
     src/vtkextracthistogram.h \
     src/vtkfitsreader.h \
     src/vtkfitstoolswidget.h \
-    src/vtkfitstoolwidget_new.h \
     src/vtkfitstoolwidgetobject.h \
+    src/vtkfitstoolwidget_new.h \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
