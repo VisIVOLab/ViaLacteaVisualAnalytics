@@ -575,9 +575,9 @@ void vtkWindowCube::on_sliceSlider_sliderReleased()
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
     /*
-         XY_PLANE = VTK_XY_PLANE,
-         YZ_PLANE = VTK_YZ_PLANE,
-         XZ_PLANE = VTK_XZ_PLANE
+     XY_PLANE = VTK_XY_PLANE,
+     YZ_PLANE = VTK_YZ_PLANE,
+     XZ_PLANE = VTK_XZ_PLANE
      */
     
     currentSlice = value;
@@ -603,16 +603,16 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
         cutFunction->UpdateVTKObjects();
         sliceProxy->UpdateVTKObjects();
         slice->updatePipeline();
-
+        
         auto dataInformation = slice->getOutputPort(0)->getDataInformation();
         auto fitsImageInfo = dataInformation->GetPointDataInformation()->GetArrayInformation(0);
         if (fitsImageInfo)
         {
             double dataRange[2];
-        fitsImageInfo->GetComponentRange(0, dataRange);
-        ui->minSliceText->setText(QString::number(dataRange[0]));
-        ui->maxSliceText->setText(QString::number(dataRange[1]));
-   
+            fitsImageInfo->GetComponentRange(0, dataRange);
+            ui->minSliceText->setText(QString::number(dataRange[0]));
+            ui->maxSliceText->setText(QString::number(dataRange[1]));
+            
         }
     }
     //controller->UnRegisterProxy(slice);
@@ -620,7 +620,7 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     viewCube->render();
     viewSlice->resetDisplay();
     updateVelocityText();
-        
+    
     /*
      ui->sliceSlider->setValue(value);
      if (ui->contourCheckBox->isChecked()) {
