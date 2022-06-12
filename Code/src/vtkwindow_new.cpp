@@ -14,6 +14,8 @@
 #include "qdebug.h"
 #include "selectedsourcefieldsselect.h"
 #include "selectedsourcesform.h"
+#include "simcollapsedialog.h"
+#include "simplacedialog.h"
 #include "singleton.h"
 #include "ui_higalselectedsources.h"
 #include "vialactea.h"
@@ -1259,6 +1261,21 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             legendScaleActorImage->LegendVisibilityOff();
             legendScaleActorImage->setFitsFile(myfits);
             m_Ren1->AddActor(legendScaleActorImage);
+        } else {
+            auto m = new QMenu("Actions", this);
+            auto a = new QAction("Place", m);
+            connect(a, &QAction::triggered, this, [this]() {
+                SimPlaceDialog *dialog = new SimPlaceDialog(this);
+                dialog->setAttribute(Qt::WA_DeleteOnClose);
+                connect(dialog, &SimPlaceDialog::dialogSubmitted, this,
+                        &vtkwindow_new::placeCollapsedImage);
+                dialog->setModal(true);
+                dialog->show();
+                dialog->raise();
+                dialog->activateWindow();
+            });
+            m->addAction(a);
+            ui->menubar->addMenu(m);
         }
 
         m_Ren1->AddViewProp(imageStack);
@@ -3023,21 +3040,26 @@ void vtkwindow_new::actionCollapseTriggered()
                              ->GetFirstRenderer()
                              ->GetActiveCamera()
                              ->GetOrientation();
-    QString text = QString("Orientation angles\n  X: %1\n  Y: %2\n  Z:  %3\nScale:")
-                           .arg(QString::number(angles[0]), QString::number(angles[1]),
-                                QString::number(angles[2]));
-    bool ok;
-    double scale = QInputDialog::getDouble(this, "Collapse Sim-Cube", text, 2.8, 0.0, 10.0, 2, &ok);
-    if (!ok) {
-        return;
-    }
 
-    QString inFile = QString::fromStdString(myfits->GetFileName());
-    QFileInfo inInfo(inFile);
-    QString outFile = inInfo.baseName() + "_collapsed.fits";
-    outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
-    simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(), angles, scale);
-    showCollapsedImage(outFile);
+    SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &SimCollapseDialog::dialogSubmitted, this, [this, angles](double scale) {
+        QString inFile = QString::fromStdString(myfits->GetFileName());
+        QFileInfo inInfo(inFile);
+        QString outFile = inInfo.baseName() + "_collapsed.fits";
+        outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
+        try {
+            simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(), angles,
+                                         scale);
+            showCollapsedImage(outFile);
+        } catch (const std::exception &e) {
+            QMessageBox::critical(this, "Error", e.what());
+        }
+    });
+    dialog->setModal(true);
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
 }
 
 void vtkwindow_new::showCollapsedImage(const QString &filepath)
@@ -3047,6 +3069,33 @@ void vtkwindow_new::showCollapsedImage(const QString &filepath)
     auto win = new vtkwindow_new(this, fits);
     win->activateWindow();
     win->raise();
+}
+
+void vtkwindow_new::placeCollapsedImage(double lon, double lat, double distance)
+{
+    // Make a copy and work on it
+    QString inFile = QString::fromStdString(myfits->GetFileName());
+    QFileInfo inInfo(inFile);
+    QString outFile = inInfo.baseName() + "_gal.fits";
+    outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
+
+    if (QFile::exists(outFile)) {
+        QFile::remove(outFile);
+    }
+    QFile::copy(inFile, outFile);
+
+    double coords[] { lon, lat };
+    try {
+        simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords);
+    } catch (const std::exception &e) {
+        QMessageBox::critical(this, "Error", e.what());
+        return;
+    }
+
+    QMessageBox::information(this, "Success",
+                             "The FITS Header has been updated.\n"
+                             "You can load the image from the main window now.");
+    this->close();
 }
 
 void vtkwindow_new::addLocalSources()
@@ -5263,11 +5312,11 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &session
         auto listItem = ui->listWidget->currentItem();
         listItem->setText(layer["text"].toString(filename));
         changeFitsScale(layer["lutType"].toString("Gray").toStdString(),
-            layer["lutScale"].toString("Log").toStdString());
+                        layer["lutScale"].toString("Log").toStdString());
         vtkImageSlice::SafeDownCast(
-            imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
-            ->GetProperty()
-            ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
+                imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
+                ->GetProperty()
+                ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
         listItem->setCheckState(layer["show"].toBool(false) ? Qt::Checked : Qt::Unchecked);
     }
     ui->qVTK1->renderWindow()->GetInteractor()->Render();

@@ -159,6 +159,7 @@ SOURCES += \
     src/selectedsourcesform.cpp \
     src/sessionloader.cpp \
     src/settingform.cpp \
+    src/simcollapsedialog.cpp \
     src/simcube/simcube_projection-collapse/api-collapse.cpp \
     src/simcube/simcube_projection-collapse/fits_simcube.cpp \
     src/simcube/simcube_projection-collapse/image.cpp \
@@ -166,6 +167,7 @@ SOURCES += \
     src/simcube/simcube_projection-collapse/utils.cpp \
     src/simcube/simcube_projection-galactic/api-galactic.cpp \
     src/simcube/simcube_projection-galactic/fits_simimg.cpp \
+    src/simplacedialog.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
     src/usertablewindow.cpp \
@@ -242,12 +244,14 @@ HEADERS  += \
     src/selectedsourcesform.h \
     src/sessionloader.h \
     src/settingform.h \
+    src/simcollapsedialog.h \
     src/simcube/simcube_projection-collapse/fits_simcube.hpp \
     src/simcube/simcube_projection-collapse/image.hpp \
     src/simcube/simcube_projection-collapse/projection.hpp \
     src/simcube/simcube_projection-collapse/utils.hpp \
     src/simcube/simcube_projection-galactic/fits_simimg.hpp \
     src/simcube/simcube_projection.hpp \
+    src/simplacedialog.h \
     src/singleton.h \
     src/treeitem.h \
     src/treemodel.h \
@@ -301,6 +305,8 @@ FORMS += \
     ui/selectedsourcesform.ui \
     ui/sessionloader.ui \
     ui/settingform.ui \
+    ui/simcollapsedialog.ui \
+    ui/simplacedialog.ui \
     ui/usertablewindow.ui \
     ui/vialactea.ui \
     ui/vialactea_fileload.ui \
