@@ -93,6 +93,8 @@ private:
     vtkSmartPointer<vtkActor> contoursActorForParent;
     
     pqPipelineSource* contourFilter;
+    pqPipelineSource* contourFilter2D;
+    pqPipelineSource* sliceFilter;
     vtkSMProxy* reprProxySurface;
     pqDataRepresentation* drepSlice;
     pqDataRepresentation* drepSliceCube;

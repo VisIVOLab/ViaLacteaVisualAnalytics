@@ -32,6 +32,7 @@
 #include <vtkResliceImageViewer.h>
 #include <vtkTextActor.h>
 #include <vtkTransform.h>
+#include <vtkDoubleArray.h>
 
 #include <cmath>
 
@@ -362,7 +363,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
         QString name= presets->GetPresetName(i).c_str();
         QAction *lut = new QAction(name);
         lut->setCheckable (true);
-        if (presets->GetPresetName(i) == "X Ray")
+        if (presets->GetPresetName(i) == "Grayscale")
             lut->setChecked(true);
         
         lutGroup->addAction(lut);
@@ -373,7 +374,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     }
     
     ui->menuColor_Map->addActions(lutGroup->actions());
-    changeSliceColorMap("X Ray");
+    changeSliceColorMap("Grayscale");
     
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
     ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
@@ -381,6 +382,9 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
     ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
     
+    sliceFilter = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "ExtractGrid", this->FitsSource);
+    contourFilter2D = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "Contour", sliceFilter);
+
     on_sliceSpinBox_valueChanged(1);
     ui->sliceSlider->setRange(1, bounds[5] + 1);
     ui->sliceSpinBox->setRange(1, bounds[5] + 1);
@@ -433,87 +437,151 @@ void vtkWindowCube::setThreshold(double threshold)
 
 void vtkWindowCube::showContours()
 {
-    auto plane = vtkSmartPointer<vtkPlane>::New();
-    plane->SetOrigin(0, 0, sliceViewer->GetSlice());
-    plane->SetNormal(0, 0, 1);
     
-    auto cutter = vtkSmartPointer<vtkCutter>::New();
-    cutter->SetCutFunction(plane);
-    cutter->SetInputData(fitsReader->GetOutput());
-    cutter->Update();
     
     int level = ui->levelText->text().toInt();
     double min = ui->lowerBoundText->text().toDouble();
     double max = ui->upperBoundText->text().toDouble();
     
-    auto contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
-    contoursFilter->GenerateValues(level, min, max);
-    contoursFilter->SetInputConnection(cutter->GetOutputPort());
+    /*
+     if(contourFilter2D!=NULL)
+     pqApplicationCore::instance()->getObjectBuilder()->destroy(contourFilter2D);
+     */
     
-    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(contoursFilter->GetOutputPort());
-    mapper->SetScalarRange(min, max);
-    mapper->ScalarVisibilityOn();
-    mapper->SetScalarModeToUsePointData();
-    mapper->SetColorModeToMapScalars();
+    removeContours();
+    contourFilter2D = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "Contour", sliceFilter);
+
     
-    contoursActor->SetMapper(mapper);
-    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
     
-    if (parentWindow) {
-        double sky_coord_gal[2];
-        AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 0, sky_coord_gal, WCS_GALACTIC);
-        
-        double coord[3];
-        AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
-                           sky_coord_gal[1], coord);
-        
-        double angle = 0;
-        double x1 = coord[0];
-        double y1 = coord[1];
-        
-        AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 100, sky_coord_gal, WCS_GALACTIC);
-        AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
-                           sky_coord_gal[1], coord);
-        
-        if (x1 != coord[0]) {
-            double m = fabs((coord[1] - y1) / (coord[0] - x1));
-            angle = 90 - atan(m) * 180 / M_PI;
-        }
-        
-        double bounds[6];
-        fitsReader->GetOutput()->GetBounds(bounds);
-        
-        double scaledPixel = AstroUtils::arcsecPixel(fitsReader->GetFileName())
-        / AstroUtils::arcsecPixel(parentWindow->getFitsReader()->GetFileName());
-        
-        auto transform = vtkSmartPointer<vtkTransform>::New();
-        transform->Translate(0, 0, -1 * sliceViewer->GetSlice());
-        transform->Translate(bounds[0], bounds[2], 0);
-        transform->RotateWXYZ(angle, 0, 0, 1);
-        transform->Translate(-bounds[0], -bounds[2], 0);
-        
-        auto mapperForParent = vtkSmartPointer<vtkPolyDataMapper>::New();
-        mapperForParent->ShallowCopy(mapper);
-        
-        contoursActorForParent->ShallowCopy(contoursActor);
-        contoursActorForParent->SetMapper(mapperForParent);
-        contoursActorForParent->SetScale(scaledPixel, scaledPixel, 1);
-        contoursActorForParent->SetPosition(x1, y1, 1);
-        contoursActorForParent->SetUserTransform(transform);
-        parentWindow->addActorToRenderer(contoursActorForParent);
+    double red[3] = { 1, 0, 0 };
+    double val;
+    vtkSMPropertyHelper(contourFilter2D->getProxy(), "ContourValues").Set(0);
+    
+    contourFilter2D->getProxy()->UpdateVTKObjects();
+    contourFilter2D->updatePipeline();
+    
+    if (ui->levelText->text().toInt() == 1)
+    {
+        vtkSMPropertyHelper(contourFilter2D->getProxy(), "ContourValues").Set(min);
     }
+    else {
+        for (int i = 0; i < ui->levelText->text().toInt(); ++i)
+        {
+            val=min + i * (max - min) / (ui->levelText->text().toInt() - 1);
+            vtkSMPropertyHelper(contourFilter2D->getProxy(), "ContourValues").Set(i, val);
+            
+        }
+    }
+    
+    contourFilter2D->getProxy()->UpdateVTKObjects();
+    contourFilter2D->updatePipeline();
+    
+    
+    auto reprSurface = pqApplicationCore::instance()->getObjectBuilder()->createDataRepresentation(contourFilter2D->getOutputPort(0), viewSlice);
+    reprProxySurface = reprSurface->getProxy();
+    vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
+    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
+    vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(1);
+    vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(1);
+    vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
+    
+    
+    reprProxySurface->UpdateVTKObjects();
+    viewSlice->render();
+    
+    
+    /*
+     auto plane = vtkSmartPointer<vtkPlane>::New();
+     plane->SetOrigin(0, 0, sliceViewer->GetSlice());
+     plane->SetNormal(0, 0, 1);
+     
+     auto cutter = vtkSmartPointer<vtkCutter>::New();
+     cutter->SetCutFunction(plane);
+     cutter->SetInputData(fitsReader->GetOutput());
+     cutter->Update();
+     
+     int level = ui->levelText->text().toInt();
+     double min = ui->lowerBoundText->text().toDouble();
+     double max = ui->upperBoundText->text().toDouble();
+     
+     auto contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
+     contoursFilter->GenerateValues(level, min, max);
+     contoursFilter->SetInputConnection(cutter->GetOutputPort());
+     
+     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+     mapper->SetInputConnection(contoursFilter->GetOutputPort());
+     mapper->SetScalarRange(min, max);
+     mapper->ScalarVisibilityOn();
+     mapper->SetScalarModeToUsePointData();
+     mapper->SetColorModeToMapScalars();
+     
+     contoursActor->SetMapper(mapper);
+     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
+     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+     
+     if (parentWindow) {
+     double sky_coord_gal[2];
+     AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 0, sky_coord_gal, WCS_GALACTIC);
+     
+     double coord[3];
+     AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
+     sky_coord_gal[1], coord);
+     
+     double angle = 0;
+     double x1 = coord[0];
+     double y1 = coord[1];
+     
+     AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 100, sky_coord_gal, WCS_GALACTIC);
+     AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
+     sky_coord_gal[1], coord);
+     
+     if (x1 != coord[0]) {
+     double m = fabs((coord[1] - y1) / (coord[0] - x1));
+     angle = 90 - atan(m) * 180 / M_PI;
+     }
+     
+     double bounds[6];
+     fitsReader->GetOutput()->GetBounds(bounds);
+     
+     double scaledPixel = AstroUtils::arcsecPixel(fitsReader->GetFileName())
+     / AstroUtils::arcsecPixel(parentWindow->getFitsReader()->GetFileName());
+     
+     auto transform = vtkSmartPointer<vtkTransform>::New();
+     transform->Translate(0, 0, -1 * sliceViewer->GetSlice());
+     transform->Translate(bounds[0], bounds[2], 0);
+     transform->RotateWXYZ(angle, 0, 0, 1);
+     transform->Translate(-bounds[0], -bounds[2], 0);
+     
+     auto mapperForParent = vtkSmartPointer<vtkPolyDataMapper>::New();
+     mapperForParent->ShallowCopy(mapper);
+     
+     contoursActorForParent->ShallowCopy(contoursActor);
+     contoursActorForParent->SetMapper(mapperForParent);
+     contoursActorForParent->SetScale(scaledPixel, scaledPixel, 1);
+     contoursActorForParent->SetPosition(x1, y1, 1);
+     contoursActorForParent->SetUserTransform(transform);
+     parentWindow->addActorToRenderer(contoursActorForParent);
+     }
+     
+     */
 }
 
 void vtkWindowCube::removeContours()
 {
-    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
-    
-    if (parentWindow) {
-        parentWindow->removeActorFromRenderer(contoursActorForParent);
+    /*
+     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
+     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+     
+     if (parentWindow) {
+     parentWindow->removeActorFromRenderer(contoursActorForParent);
+     }
+     */
+    if (contourFilter2D) {
+        pqApplicationCore::instance()->getObjectBuilder()->destroy(contourFilter2D);
+        contourFilter2D=nullptr;
+        viewSlice->render();
     }
+    
 }
 
 void vtkWindowCube::calculateAndShowMomentMap(int order)
@@ -592,15 +660,14 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
     vtkSMPropertyHelper(reprProxySliceCube, "SliceMode").Set(VTK_XY_PLANE);
     reprProxySliceCube->UpdateVTKObjects();
     
-    auto slice = pqApplicationCore::instance()->getObjectBuilder()->createFilter("filters", "ExtractGrid", this->FitsSource);
-    if (slice) {
-        auto sliceProxy = slice->getProxy();
-        int selectedSlice[] = { (int)bounds[0], (int)bounds[1], (int)bounds[2],(int)bounds[3],(currentSlice-1),(currentSlice-1) };
-
+    if (sliceFilter) {
+        auto sliceProxy = sliceFilter->getProxy();
+        int selectedSlice[] = { (int)bounds[0], (int)bounds[1], (int)bounds[2], (int)bounds[3], (currentSlice-1), (currentSlice-1) };
+        
         vtkSMPropertyHelper(sliceProxy, "VOI").Set(selectedSlice, 6);
         sliceProxy->UpdateVTKObjects();
-        slice->updatePipeline();
-        auto dataInformation = slice->getOutputPort(0)->getDataInformation();
+        sliceFilter->updatePipeline();
+        auto dataInformation = sliceFilter->getOutputPort(0)->getDataInformation();
         auto fitsImageInfo = dataInformation->GetPointDataInformation()->GetArrayInformation(0);
         if (fitsImageInfo)
         {
@@ -609,21 +676,22 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
             ui->minSliceText->setText(QString::number(dataRange[0]));
             ui->maxSliceText->setText(QString::number(dataRange[1]));
             
+            lutProxy->RescaleTransferFunction(lutProxy,dataRange[0],dataRange[1],true);
         }
+        
     }
     
+    // pxm->UnRegisterProxy(slice);
     //controller->UnRegisterProxy(slice);
     viewSlice->render();
     viewCube->render();
     viewSlice->resetDisplay();
     updateVelocityText();
     
-    /*
-     ui->sliceSlider->setValue(value);
-     if (ui->contourCheckBox->isChecked()) {
-     showContours();
-     }
-     */
+    if (ui->contourCheckBox->isChecked()) {
+        showContours();
+    }
+    
 }
 
 void vtkWindowCube::on_actionFront_triggered()
@@ -764,8 +832,6 @@ void vtkWindowCube::setVolumeRenderingOpacity(double opacity)
 
 void vtkWindowCube::changeSliceColorMap(QString name)
 {
-    //here need to uncheck all the other item in menu
-    
     
     auto reprProxySliceCube = drepSliceCube->getProxy();
     
@@ -777,10 +843,13 @@ void vtkWindowCube::changeSliceColorMap(QString name)
         auto presets = vtkSMTransferFunctionPresets::GetInstance();
         
         lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toLocal8Bit().data()), (bool)rescaleMode);
+        double range [2] ={0};
+        lutProxy->GetRange(range);
         
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);
         bool extend = rescaleMode == vtkSMTransferFunctionManager::GROW_ON_APPLY;
         bool force = false;
+        
         vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(reprProxySliceCube, extend, force);
         reprProxySliceCube->UpdateVTKObjects();
         viewCube->render();

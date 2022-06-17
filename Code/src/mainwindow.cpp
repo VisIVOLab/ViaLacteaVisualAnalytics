@@ -80,7 +80,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     new pqPersistentMainWindowStateBehavior(this);
     pqApplicationCore* core = pqApplicationCore::instance();
     // Make a connection to the builtin server
-    //pqServer* server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
+    //server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
     server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
     
     vtkSMReaderFactory* readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
