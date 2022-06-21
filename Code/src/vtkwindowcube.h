@@ -35,7 +35,6 @@ public:
 
 private slots:
     void on_sliceSlider_valueChanged(int value);
-    void on_sliceSlider_sliderReleased();
     void on_sliceSpinBox_valueChanged(int value);
 
     void on_actionFront_triggered();
@@ -60,9 +59,9 @@ private slots:
     void on_action25_triggered();
     void on_action50_triggered();
     void on_action100_triggered();
-    void changeSliceColorMap(QString name);
-
-
+    
+    void changeColorMap(QString name);
+    void changeColorMap(QString name, vtkSMProxy* proxy);
 
 private:
     Ui::vtkWindowCube *ui;
@@ -109,6 +108,7 @@ private:
     void updateVelocityText();
 
     void setThreshold(double threshold);
+    void setSliceDatacube(int value);
 
     void showContours();
     void removeContours();
