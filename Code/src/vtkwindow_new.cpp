@@ -3043,19 +3043,28 @@ void vtkwindow_new::actionCollapseTriggered()
 
     SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dialog, &SimCollapseDialog::dialogSubmitted, this, [this, angles](double scale) {
-        QString inFile = QString::fromStdString(myfits->GetFileName());
-        QFileInfo inInfo(inFile);
-        QString outFile = inInfo.baseName() + "_collapsed.fits";
-        outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
-        try {
-            simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(), angles,
-                                         scale);
-            showCollapsedImage(outFile);
-        } catch (const std::exception &e) {
-            QMessageBox::critical(this, "Error", e.what());
-        }
-    });
+    connect(dialog, &SimCollapseDialog::dialogSubmitted, this,
+            [this, angles](double scale, double lon, double lat, double distance) {
+                QString inFile = QString::fromStdString(myfits->GetFileName());
+                QFileInfo inInfo(inFile);
+                QString outFile = inInfo.baseName() + "_collapsed_gal.fits";
+                outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
+                try {
+                    double coords[] { lon, lat };
+
+                    simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(),
+                                                 angles, scale);
+                    // showCollapsedImage(outFile);
+                    simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords);
+                    auto fits = vtkSmartPointer<vtkFitsReader>::New();
+                    fits->SetFileName(outFile.toStdString());
+                    auto win = new vtkwindow_new(this, fits);
+                    win->activateWindow();
+                    win->raise();
+                } catch (const std::exception &e) {
+                    QMessageBox::critical(this, "Error", e.what());
+                }
+            });
     dialog->setModal(true);
     dialog->show();
     dialog->raise();

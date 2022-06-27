@@ -16,7 +16,7 @@ public:
     ~SimCollapseDialog();
 
 signals:
-    void dialogSubmitted(double scale);
+    void dialogSubmitted(double scale, double lon, double lat, double distance);
 
 private slots:
     void on_buttonBox_rejected();

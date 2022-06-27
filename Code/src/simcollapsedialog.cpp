@@ -23,6 +23,9 @@ void SimCollapseDialog::on_buttonBox_rejected()
 void SimCollapseDialog::on_buttonBox_accepted()
 {
     double scale = ui->spinScale->value();
-    emit dialogSubmitted(scale);
+    double lon = ui->spinLon->value();
+    double lat = ui->spinLat->value();
+    double distance = ui->spinDistance->value();
+    emit dialogSubmitted(scale, lon, lat, distance);
     this->close();
 }
