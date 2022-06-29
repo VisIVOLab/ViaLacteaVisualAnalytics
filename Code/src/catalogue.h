@@ -39,6 +39,8 @@ public:
 
     void save();
 
+    const QString &getFilepath() const;
+
 signals:
     void SourcesExtracted();
     void ExtractedSourcesUpdated();

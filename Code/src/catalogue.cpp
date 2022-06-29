@@ -153,6 +153,11 @@ void Catalogue::save()
                              "Catalogue saved in " + QFileInfo(f).absoluteFilePath());
 }
 
+const QString &Catalogue::getFilepath() const
+{
+    return filepath;
+}
+
 int Catalogue::indexOf(const QString &iau_name) const
 {
     auto sources = root["sources"].toArray();

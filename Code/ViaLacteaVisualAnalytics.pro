@@ -160,6 +160,7 @@ SOURCES += \
     src/selectedsourcesform.cpp \
     src/sessionloader.cpp \
     src/settingform.cpp \
+    src/sfilterdialog.cpp \
     src/source.cpp \
     src/sourcewidget.cpp \
     src/treeitem.cpp \
@@ -239,6 +240,7 @@ HEADERS  += \
     src/selectedsourcesform.h \
     src/sessionloader.h \
     src/settingform.h \
+    src/sfilterdialog.h \
     src/singleton.h \
     src/source.h \
     src/sourcewidget.h \
@@ -294,6 +296,7 @@ FORMS += \
     ui/selectedsourcesform.ui \
     ui/sessionloader.ui \
     ui/settingform.ui \
+    ui/sfilterdialog.ui \
     ui/sourcewidget.ui \
     ui/usertablewindow.ui \
     ui/vialactea.ui \

@@ -142,6 +142,7 @@ public:
 
     vtkSmartPointer<vtkImageViewer2> imageViewer;
     void addSources(VSTableDesktop *m_VisIVOTable);
+    void showFilteredSources(const QStringList &ids);
     void addSourcesFromJson(const QString &fn);
     void addFilaments(VSTableDesktop *m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop *m_VisIVOTable);
@@ -238,6 +239,8 @@ private:
     QPointer<QDockWidget> dock;
     QStringList ds9RegionFiles;
     QStringList jsonRegionFiles;
+
+    vtkSmartPointer<vtkLODActor> filteredSources;
 
     QHash<QString, QString> designation2fileMap;
     QHash<QString, vtkSmartPointer<vtkLODActor>> VisualizedEllipseSourcesList;
@@ -343,6 +346,7 @@ private slots:
     void addLocalSources();
     void loadDS9RegionFile();
     void cutoutDatacube(QString c);
+    void openFilterDialog();
 
     void on_cameraLeft_clicked();
     void on_bottomCamera_clicked();

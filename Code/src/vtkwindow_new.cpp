@@ -15,6 +15,7 @@
 #include "qdebug.h"
 #include "selectedsourcefieldsselect.h"
 #include "selectedsourcesform.h"
+#include "sfilterdialog.h"
 #include "singleton.h"
 #include "source.h"
 #include "sourcewidget.h"
@@ -1382,6 +1383,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         connect(extract, &QAction::triggered, this, &vtkwindow_new::setVtkInteractorExtractSources);
         ui->menuWindow->addAction(extract);
 
+        QAction *filter = new QAction("Filter", this);
+        connect(filter, &QAction::triggered, this, &vtkwindow_new::openFilterDialog);
+        ui->menuWindow->addAction(filter);
+
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
         QAction *local = new QAction("Local", this);
         local->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
@@ -2453,6 +2458,56 @@ void vtkwindow_new::addSources(VSTableDesktop *m_VisIVOTable)
     sessionModified();
 }
 
+void vtkwindow_new::showFilteredSources(const QStringList &ids)
+{
+    // Remove existing actor
+    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+    renderer->RemoveActor(filteredSources);
+
+    auto sources = catalogue->getSources();
+    double arcsec = AstroUtils::arcsecPixel(myfits->GetFileName());
+    auto appendPolyData = vtkSmartPointer<vtkAppendPolyData>::New();
+    foreach (const QString &id, ids) {
+        Source *s = sources.value(id);
+        if (!s)
+            continue;
+
+        foreach (auto &&island, s->getIslands()) {
+            auto vertices = island->getVertices();
+            if (vertices.isEmpty()) {
+                continue;
+            }
+
+            auto points = vtkSmartPointer<vtkPoints>::New();
+            auto cells = vtkSmartPointer<vtkCellArray>::New();
+            cells->InsertNextCell(vertices.count() + 1);
+            foreach (auto &&point, vertices) {
+                vtkIdType id = points->InsertNextPoint(point.first + 1, point.second + 1, arcsec);
+                cells->InsertCellPoint(id);
+            }
+            cells->InsertCellPoint(0);
+
+            auto polyData = vtkSmartPointer<vtkPolyData>::New();
+            polyData->SetPoints(points);
+            polyData->SetLines(cells);
+            appendPolyData->AddInputData(polyData);
+        }
+    }
+
+    auto cleanPolyData = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanPolyData->SetInputConnection(appendPolyData->GetOutputPort());
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanPolyData->GetOutputPort());
+
+    filteredSources = vtkSmartPointer<vtkLODActor>::New();
+    filteredSources->SetMapper(mapper);
+    filteredSources->GetProperty()->SetColor(0, 1, 1);
+    renderer->AddActor(filteredSources);
+
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
 void vtkwindow_new::loadDS9RegionFile()
 {
     QString fn = QFileDialog::getOpenFileName(this, "DS9 Region file", QDir::homePath(),
@@ -3180,6 +3235,16 @@ void vtkwindow_new::cutoutDatacube(QString c)
     dbquery *queryWindow = new dbquery();
     queryWindow->setCoordinate(splittedStrings.at(0), splittedStrings.at(1));
     queryWindow->show();
+}
+
+void vtkwindow_new::openFilterDialog()
+{
+    SFilterDialog *d = new SFilterDialog(this->catalogue, this);
+    d->setAttribute(Qt::WA_DeleteOnClose);
+    // d->setModal(true);
+    d->show();
+    d->raise();
+    d->activateWindow();
 }
 
 void vtkwindow_new::addLocalSources()
