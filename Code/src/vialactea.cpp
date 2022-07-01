@@ -157,10 +157,9 @@ void ViaLactea::quitApp()
     QWebEnginePage *p = ui->webView->page();
     p->disconnect(ui->webView);
     delete p;
-    std::cout << "Deleted" << std::endl;
 }
 
-void ViaLactea::onDataLoaded(pqPipelineSource* source)
+void ViaLactea::onDataLoaded(pqPipelineSource* source, std::string fn)
 {
     
     if (this->originSource)
@@ -170,7 +169,7 @@ void ViaLactea::onDataLoaded(pqPipelineSource* source)
     
     this->originSource = source;
     
-    new vtkWindowCube(this->originSource);
+    new vtkWindowCube(this->originSource, fn);
 }
 
 void ViaLactea::updateVLKBSetting()
@@ -451,7 +450,7 @@ void ViaLactea::on_localDCPushButton_clicked()
            // qDebug()<<ui->localDCPushButton->actions()[0];
             pqLoadDataReaction* dataLoader = new pqLoadDataReaction(new QAction());
             auto newSources =dataLoader->loadData({fn});
-            onDataLoaded(newSources);
+            onDataLoaded(newSources,fn.toStdString().substr(fn.toStdString().find_last_of("/\\") + 1));
 
         }
         else

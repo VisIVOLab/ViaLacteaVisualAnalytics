@@ -72,6 +72,9 @@
 #include "vtkSMTooltipSelectionPipeline.h"
 
 #include "vtkImageSliceRepresentation.h"
+#include "vtkSMViewProxy.h"
+
+#include "pqActiveObjects.h"
 
 #include "vtkSMProperty.h"
 #include "mainwindow.h"
@@ -229,7 +232,7 @@ velocityUnit(velocityUnit)
 }
 
 // paraview
-vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui::vtkWindowCube)
+vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string fn) : ui(new Ui::vtkWindowCube)
 {
     MainWindow *w = &Singleton<MainWindow>::Instance();
     
@@ -242,6 +245,9 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     ui->qVtkSlice->hide();
     
     ui->action100->setChecked(true);
+    
+    this->filename=fn;
+    
     this->FitsSource=fitsSource;
     
     new pqAlwaysConnectedBehavior(this);
@@ -264,10 +270,13 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
     vtkSMSessionProxyManager *pxm = w->server->proxyManager();
     
-    
+    auto renderingSettings = pxm->GetProxy("settings","RenderViewSettings");
+    vtkSMPropertyHelper(renderingSettings, "ShowAnnotation").Set(1);
+
     pqActiveObjects::instance().setActiveSource(this->FitsSource);
     pqObjectBuilder *builder = pqApplicationCore::instance()->getObjectBuilder();
-    
+
+
     // Outline
     auto drepOutline = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube);
     auto reprProxyOutline = drepOutline->getProxy();
@@ -278,8 +287,6 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     reprProxyOutline->UpdateVTKObjects();
     
     auto fitsInfo = this->FitsSource->getOutputPort(0)->getDataInformation();
-    
-    
     auto fitsImageInfo = fitsInfo->GetPointDataInformation()->GetArrayInformation("FITSImage");
     double dataRange[2];
     bounds[0] = { 0 };
@@ -303,6 +310,22 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     {
         headerMap.insert(QString::fromStdString(headerTable->GetValue(i, 0).ToString()), QString::fromStdString(headerTable->GetValue(i, 1).ToString()));
     }
+    
+    QString fh=createFitsHeader(headerMap);
+
+    auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
+    legendActorCube->LegendVisibilityOff();
+    legendActorCube->setFitsHeader(fh.toStdString());
+
+    auto rw=viewCube->getViewProxy()->GetRenderWindow()->GetRenderers();
+    vtkRenderer::SafeDownCast(rw->GetItemAsObject(1))->AddActor(legendActorCube);
+       
+    auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
+    legendActorSlice->LegendVisibilityOff();
+    legendActorSlice->setFitsHeader(fh.toStdString());
+
+    auto rwSlice=viewSlice->getViewProxy()->GetRenderWindow()->GetRenderers();
+    rwSlice->GetFirstRenderer()->AddActor(legendActorSlice);
     
     
     auto calc = builder->createFilter("filters", "PythonCalculator", this->FitsSource);
@@ -338,7 +361,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
     setVolumeRenderingOpacity(1);
     reprProxySurface->UpdateVTKObjects();
-    
+   
     // Slice
     drepSlice = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice);
     auto reprProxySlice = drepSlice->getProxy();
@@ -388,7 +411,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource) : ui(new Ui:
     
     ui->sliceSlider->setRange(1, bounds[5] + 1);
     ui->sliceSpinBox->setRange(1, bounds[5] + 1);
-
+    
     setSliceDatacube(1);
     
     viewCube->resetDisplay();
@@ -410,6 +433,75 @@ vtkWindowCube::~vtkWindowCube()
     
     delete ui;
 }
+
+QString vtkWindowCube::createFitsHeader( QMap<QString, QString> headerMap)
+{
+    fitsfile* fptr;
+    //char* filename=;
+    int status= 0;
+    
+    QString headerFile=QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp").append(QDir::separator()).append(this->filename.c_str());
+    qDebug()<<headerFile;
+    
+    fits_create_file(&fptr, ("!"+headerFile).toStdString().c_str(), &status);
+    // write a keyword
+    int datatype;
+
+    fits_update_key_log(fptr, "SIMPLE",  TRUE, "", &status);
+
+    foreach ( const auto& key, headerMap.keys() )
+    {
+        const auto& value = headerMap[ key ];
+        if (key.compare("SIMPLE")==0)
+        {
+            continue;
+        }
+        
+        if (strchr(value.toStdString().c_str(), '\''))
+        {
+            datatype = TSTRING;
+        }else if (strchr(value.toStdString().c_str(), '\"'))
+            datatype= TSTRING;
+        else if (strchr(value.toStdString().c_str(),'.'))
+            datatype= TDOUBLE;
+        else if (isdigit(value.toStdString().c_str()[0]))
+            datatype= TLONG;
+        else if (strcasecmp(value.toStdString().c_str(), "TRUE")  == 0 ||
+                 strcasecmp(value.toStdString().c_str(), "FALSE") == 0)
+            datatype= TLOGICAL;
+      else
+          datatype = TLONG;
+        
+        switch(datatype) {
+            case TSTRING:
+            {
+                //remove quotes
+                char * cstr = new char [value.toStdString().length()+1];
+                std::strcpy (cstr, value.toStdString().c_str());
+                std::string str(cstr);
+                std::string result = str.substr(1,str.size()-2);
+                
+                fits_update_key_str(fptr,  key.toStdString().c_str(), result.c_str(), "", &status);
+                break;
+            }
+            case TFLOAT:
+                fits_update_key_flt(fptr, key.toStdString().c_str(), atof(value.toStdString().c_str()), -7, "", &status);
+                break;
+            case TDOUBLE:
+                fits_update_key_dbl(fptr, key.toStdString().c_str(), atof(value.toStdString().c_str()), -15, "", &status);
+                break;
+            case TLONG:
+            {
+                fits_update_key_lng(fptr, key.toStdString().c_str(), atol(value.toStdString().c_str()), "", &status);
+                break;
+            }
+        }
+    }
+    fits_close_file(fptr, &status);
+    
+    return headerFile;
+}
+
 
 void vtkWindowCube::showStatusBarMessage(const std::string &msg)
 {
@@ -480,34 +572,6 @@ void vtkWindowCube::showContours()
     viewSlice->render();
     
     /*
-     auto plane = vtkSmartPointer<vtkPlane>::New();
-     plane->SetOrigin(0, 0, sliceViewer->GetSlice());
-     plane->SetNormal(0, 0, 1);
-     
-     auto cutter = vtkSmartPointer<vtkCutter>::New();
-     cutter->SetCutFunction(plane);
-     cutter->SetInputData(fitsReader->GetOutput());
-     cutter->Update();
-     
-     int level = ui->levelText->text().toInt();
-     double min = ui->lowerBoundText->text().toDouble();
-     double max = ui->upperBoundText->text().toDouble();
-     
-     auto contoursFilter = vtkSmartPointer<vtkContourFilter>::New();
-     contoursFilter->GenerateValues(level, min, max);
-     contoursFilter->SetInputConnection(cutter->GetOutputPort());
-     
-     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-     mapper->SetInputConnection(contoursFilter->GetOutputPort());
-     mapper->SetScalarRange(min, max);
-     mapper->ScalarVisibilityOn();
-     mapper->SetScalarModeToUsePointData();
-     mapper->SetColorModeToMapScalars();
-     
-     contoursActor->SetMapper(mapper);
-     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
-     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
-     
      if (parentWindow) {
      double sky_coord_gal[2];
      AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 0, sky_coord_gal, WCS_GALACTIC);
@@ -615,7 +679,7 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 {
     /*
      if (ui->contourCheckBox->isChecked()) {
-        removeContours();
+     removeContours();
      }
      */
     qDebug()<<"on_sliceSlider_valueChanged "<<value;
@@ -624,7 +688,7 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
     updateVelocityText();
     if(ui->sliceSpinBox->value()!=value)
         ui->sliceSpinBox->setValue(value);
-
+    
     
 }
 
@@ -637,18 +701,18 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
         ui->sliceSlider->setValue(value);
         ui->sliceSlider->repaint();
     }
-
-
+    
+    
 }
 
 void vtkWindowCube::setSliceDatacube(int value)
 {
     qDebug()<<"setslice "<<value;
-
+    
     /*
-         XY_PLANE = VTK_XY_PLANE,
-         YZ_PLANE = VTK_YZ_PLANE,
-         XZ_PLANE = VTK_XZ_PLANE
+     XY_PLANE = VTK_XY_PLANE,
+     YZ_PLANE = VTK_YZ_PLANE,
+     XZ_PLANE = VTK_XZ_PLANE
      */
     
     currentSlice = value-1;
@@ -839,7 +903,6 @@ void vtkWindowCube::changeColorMap(QString name)
 
 void vtkWindowCube::changeColorMap(QString name, vtkSMProxy* proxy)
 {
-    
     if (vtkSMProperty* lutProperty = proxy->GetProperty("LookupTable"))
     {
         int rescaleMode =

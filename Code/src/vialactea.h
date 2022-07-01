@@ -100,7 +100,7 @@ protected:
     void closeEvent(QCloseEvent *);
     
 protected slots:
-    void onDataLoaded(pqPipelineSource *);
+    void onDataLoaded(pqPipelineSource *, std::string fn);
     
     
 };

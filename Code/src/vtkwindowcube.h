@@ -30,7 +30,7 @@ class vtkWindowCube : public QMainWindow
 public:
     explicit vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
                            QString velocityUnit = "km/s");
-    explicit vtkWindowCube(QPointer<pqPipelineSource> fitsSource);
+    explicit vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string fn);
     ~vtkWindowCube();
 
 private slots:
@@ -71,6 +71,8 @@ private:
     double initialCameraFocalPoint[3];
     double initialCameraPosition[3];
 
+    std::string filename;
+    
     int currentSlice;
     QString velocityUnit;
 
@@ -120,6 +122,8 @@ private:
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);
+    QString createFitsHeader( QMap<QString, QString> headerMap);
+
 };
 
 #endif // VTKWINDOWCUBE_H
