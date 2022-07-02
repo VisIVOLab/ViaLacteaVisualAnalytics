@@ -414,6 +414,13 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     
     setSliceDatacube(1);
     
+    auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
+    interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
+    interactorStyle->SetLayerFitsReaderFunc(fh.toStdString());
+    interactorStyle->SetPixelZCompFunc([this]() -> int { return currentSlice; });
+
+    viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    
     viewCube->resetDisplay();
     viewCube->render();
     viewSlice->resetDisplay();

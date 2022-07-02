@@ -11,6 +11,8 @@
 
 #include <sstream>
 
+#include <QDebug>
+
 vtkStandardNewMacro(vtkInteractorStyleImageCustom);
 
 //----------------------------------------------------------------------------
@@ -18,6 +20,8 @@ vtkInteractorStyleImageCustom::vtkInteractorStyleImageCustom()
 {
     this->Coordinate = vtkSmartPointer<vtkCoordinate>::New();
     this->Coordinate->SetCoordinateSystemToDisplay();
+    this->CurrentLayerFitsReader = NULL;
+    this->CurrentLayerFitsHeader = "";
 
     this->zComp = []() -> int { return 0; };
 }
@@ -55,9 +59,11 @@ void vtkInteractorStyleImageCustom::OnMouseMove()
     double sky_coord_fk5[2];
 
     std::ostringstream oss;
-
+    vtkSmartPointer<vtkFitsReader> FitsReader = NULL;
     // Pixel value and coords
-    auto FitsReader = CurrentLayerFitsReader();
+    if (this->CurrentLayerFitsReader != NULL)
+        FitsReader =  CurrentLayerFitsReader();
+ /*
     float *pixel = static_cast<float *>(
             FitsReader->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], zComp()));
     oss << "<value> ";
@@ -65,20 +71,25 @@ void vtkInteractorStyleImageCustom::OnMouseMove()
         oss << pixel[0];
     else
         oss << "NaN";
+ */
+    std::string filename;
     oss << " <image> X: " << world_coord[0] << " Y: " << world_coord[1];
-
+    if(FitsReader!=NULL)
+        filename = FitsReader->GetFileName();
+    else
+        filename=this->CurrentLayerFitsHeader;
     // Galactic coords
-    AstroUtils::xy2sky(FitsReader->GetFileName(), world_coord[0], world_coord[1], sky_coord_gal,
+    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord_gal,
                        WCS_GALACTIC);
     oss << " <galactic> GLON: " << sky_coord_gal[0] << " GLAT: " << sky_coord_gal[1];
 
     // fk5 coords
-    AstroUtils::xy2sky(FitsReader->GetFileName(), world_coord[0], world_coord[1], sky_coord_fk5,
+    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord_fk5,
                        WCS_J2000);
     oss << " <fk5> RA: " << sky_coord_fk5[0] << " DEC: " << sky_coord_fk5[1];
 
     // Ecliptic coords
-    AstroUtils::xy2sky(FitsReader->GetFileName(), world_coord[0], world_coord[1], sky_coord);
+    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord);
     oss << " <ecliptic> RA: " << sky_coord[0] << " DEC: " << sky_coord[1];
 
     CoordsCallback(oss.str());
@@ -125,6 +136,12 @@ void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc(
 {
     this->CurrentLayerFitsReader = callback;
 }
+
+void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc( std::string fn)
+{
+    this->CurrentLayerFitsHeader=fn;
+}
+
 
 //----------------------------------------------------------------------------
 void vtkInteractorStyleImageCustom::SetPixelZCompFunc(const std::function<int()> &callback)
