@@ -193,6 +193,7 @@ SOURCES += \
     src/vtkfitstoolswidget.cpp \
     src/vtkfitstoolwidgetobject.cpp \
     src/vtkfitstoolwidget_new.cpp \
+    src/vtkfitswriter.cpp \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
@@ -278,6 +279,7 @@ HEADERS  += \
     src/vtkfitstoolswidget.h \
     src/vtkfitstoolwidgetobject.h \
     src/vtkfitstoolwidget_new.h \
+    src/vtkfitswriter.h \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \

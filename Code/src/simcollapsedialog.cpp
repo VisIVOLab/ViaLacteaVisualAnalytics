@@ -26,6 +26,7 @@ void SimCollapseDialog::on_buttonBox_accepted()
     double lon = ui->spinLon->value();
     double lat = ui->spinLat->value();
     double distance = ui->spinDistance->value();
-    emit dialogSubmitted(scale, lon, lat, distance);
+    double beam = ui->spinBeam->value();
+    emit dialogSubmitted(scale, lon, lat, distance, beam);
     this->close();
 }

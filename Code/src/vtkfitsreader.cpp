@@ -651,6 +651,8 @@ void vtkFitsReader::ReadHeader()
     if (ctype1 == "x" && ctype2 == "y") {
         this->ctypeXY = true;
     }
+
+    fits_close_file(fptr, &status);
 }
 
 // Note: from cookbook.c in fitsio distribution.

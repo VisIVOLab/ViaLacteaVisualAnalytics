@@ -47,6 +47,7 @@
 #include "vtkfitstoolswidget.h"
 #include "vtkfitstoolwidget_new.h"
 #include "vtkfitstoolwidgetobject.h"
+#include "vtkfitswriter.h"
 #include "vtkFrustumSource.h"
 #include "vtkGenericOpenGLRenderWindow.h"
 #include "vtkGeometryFilter.h"
@@ -56,6 +57,7 @@
 #include "vtkImageBlend.h"
 #include "vtkImageChangeInformation.h"
 #include "vtkImageDataGeometryFilter.h"
+#include "vtkImageGaussianSmooth.h"
 #include "vtkImageMapToWindowLevelColors.h"
 #include "vtkImageProperty.h"
 #include "vtkImageResize.h"
@@ -3044,7 +3046,7 @@ void vtkwindow_new::actionCollapseTriggered()
     SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &SimCollapseDialog::dialogSubmitted, this,
-            [this, angles](double scale, double lon, double lat, double distance) {
+            [this, angles](double scale, double lon, double lat, double distance, double beam) {
                 QString inFile = QString::fromStdString(myfits->GetFileName());
                 QFileInfo inInfo(inFile);
                 QString outFile = inInfo.baseName() + "_collapsed_gal.fits";
@@ -3054,11 +3056,35 @@ void vtkwindow_new::actionCollapseTriggered()
 
                     simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(),
                                                  angles, scale);
-                    // showCollapsedImage(outFile);
+
                     simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords);
+
                     auto fits = vtkSmartPointer<vtkFitsReader>::New();
                     fits->SetFileName(outFile.toStdString());
-                    auto win = new vtkwindow_new(this, fits);
+                    if (beam == 0.0) {
+                        qDebug() << Q_FUNC_INFO << "beam == 0.0";
+                        auto win = new vtkwindow_new(this, fits);
+                        win->activateWindow();
+                        win->raise();
+                        return;
+                    }
+
+                    qDebug() << Q_FUNC_INFO << "beam != 0.0" << beam;
+                    auto gaussian = vtkSmartPointer<vtkImageGaussianSmooth>::New();
+                    gaussian->SetDimensionality(2);
+                    gaussian->SetRadiusFactor(3.0f);
+                    gaussian->SetStandardDeviation(beam / 2.335);
+                    gaussian->SetInputData(fits->GetOutput());
+                    gaussian->Update();
+
+                    auto writer = vtkSmartPointer<vtkFitsWriter>::New();
+                    writer->SetInputData(gaussian->GetOutput());
+                    writer->SetFileName(outFile.toStdString().c_str());
+                    writer->Write();
+
+                    auto fitsFiltered = vtkSmartPointer<vtkFitsReader>::New();
+                    fitsFiltered->SetFileName(outFile.toStdString());
+                    auto win = new vtkwindow_new(this, fitsFiltered);
                     win->activateWindow();
                     win->raise();
                 } catch (const std::exception &e) {
