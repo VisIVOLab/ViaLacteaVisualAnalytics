@@ -28,10 +28,13 @@ private slots:
     void on_listExtracted_itemClicked(QListWidgetItem *item);
     void on_btnEdit_clicked();
     void on_btnSave_clicked();
-
     void on_btnDelete_clicked();
-
     void on_btnRename_clicked();
+    void on_listFiltered_itemClicked(QListWidgetItem *item);
+
+    void on_btnMorphLabel_clicked();
+
+    void on_btnDeleteAll_clicked();
 
 private:
     Ui::SourceWidget *ui;

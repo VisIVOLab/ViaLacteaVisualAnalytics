@@ -51,6 +51,8 @@ public:
 
     const QJsonObject &getObj() const;
 
+    void setMorph_label(const QString &newMorph_label);
+
 private:
     QJsonObject obj;
 
@@ -100,6 +102,8 @@ public:
     void setIauName(const QString &iau_name);
 
     const QJsonObject &getObj() const;
+
+    void setMorph_label(const QString &newMorph_label);
 
 private:
     explicit Source(QObject *parent, const QJsonObject &obj);

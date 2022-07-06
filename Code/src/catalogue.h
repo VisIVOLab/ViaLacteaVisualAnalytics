@@ -36,14 +36,21 @@ public:
     void updatePoints(const QString &iau_name, vtkSmartPointer<vtkPoints> points);
     void removeSource(const QString &iau_name);
     void renameSource(const QString &iau_name, const QString &new_iau_name);
+    void updateMorphLabel(const QString &iau_name, const QString &morph_label);
 
     void save();
 
+    void filterSources(const QStringList &ids);
+    void removeFilteredSources();
+
     const QString &getFilepath() const;
+
+    const QStringList &getFilteredIds() const;
 
 signals:
     void SourcesExtracted();
     void ExtractedSourcesUpdated();
+    void SourcesFiltered(const QStringList &ids);
 
 private:
     QString filepath;
@@ -59,6 +66,9 @@ private:
 
     // Extracted dataset
     QMap<QString, QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>>> extractedNames;
+
+    QStringList filteredIds;
+    vtkSmartPointer<vtkLODActor> FilteredActor;
 
     void drawExtractedSources(const QSet<QString> &names, double arcsec);
 };

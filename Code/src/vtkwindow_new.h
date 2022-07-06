@@ -143,6 +143,7 @@ public:
     vtkSmartPointer<vtkImageViewer2> imageViewer;
     void addSources(VSTableDesktop *m_VisIVOTable);
     void showFilteredSources(const QStringList &ids);
+    void hideFilteredSources();
     void addSourcesFromJson(const QString &fn);
     void addFilaments(VSTableDesktop *m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop *m_VisIVOTable);

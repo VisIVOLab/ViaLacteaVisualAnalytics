@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>373</width>
-    <height>301</height>
+    <width>500</width>
+    <height>410</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,29 +15,113 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Fields</string>
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QComboBox" name="comboBox"/>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="comboFields"/>
      </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>morph_label</string>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="comboMorphLabel"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>sourceness_label</string>
        </property>
-      </spacer>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QComboBox" name="comboSourcenessLabel">
+       <item>
+        <property name="text">
+         <string>REAL</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>FAKE</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>CANDIDATE</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>class_label</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QComboBox" name="comboClassLabel">
+       <item>
+        <property name="text">
+         <string>UNKNOWN</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>GALAXY</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>QSO</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>HII</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SNR</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PN</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>YSO</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>MULTI-CLASS</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PULSAR</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>STAR</string>
+        </property>
+       </item>
+      </widget>
      </item>
     </layout>
    </item>
@@ -51,10 +135,10 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit"/>
+      <widget class="QLineEdit" name="textPredicate"/>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="btnFilter">
        <property name="text">
         <string>Filter</string>
        </property>
@@ -69,8 +153,51 @@
      </property>
     </widget>
    </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Click confirm to continue</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnConfirm">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Confirm</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>comboFields</tabstop>
+  <tabstop>comboMorphLabel</tabstop>
+  <tabstop>comboSourcenessLabel</tabstop>
+  <tabstop>comboClassLabel</tabstop>
+  <tabstop>textPredicate</tabstop>
+  <tabstop>btnFilter</tabstop>
+  <tabstop>listView</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

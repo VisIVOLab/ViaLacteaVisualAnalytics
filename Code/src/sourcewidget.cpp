@@ -16,21 +16,24 @@ SourceWidget::SourceWidget(QWidget *parent, Catalogue *catalogue, vtkwindow_new 
 {
     ui->setupUi(this);
 
-    auto fillList = [this, catalogue]() -> void {
+    auto fillListExtracted = [this, catalogue]() -> void {
         ui->listExtracted->clear();
-
-        foreach (auto &&name, catalogue->getExtractedNames().keys()) {
-            ui->listExtracted->addItem(name);
-        }
+        ui->listExtracted->addItems(catalogue->getExtractedNames().keys());
 
         if (ui->listExtracted->count() > 0) {
             emit ui->listExtracted->itemClicked(ui->listExtracted->item(0));
         }
     };
 
-    fillList();
-    connect(catalogue, &Catalogue::SourcesExtracted, this, fillList);
-    connect(catalogue, &Catalogue::ExtractedSourcesUpdated, this, fillList);
+    fillListExtracted();
+    connect(catalogue, &Catalogue::SourcesExtracted, this, fillListExtracted);
+    connect(catalogue, &Catalogue::ExtractedSourcesUpdated, this, fillListExtracted);
+
+    ui->listFiltered->addItems(catalogue->getFilteredIds());
+    connect(catalogue, &Catalogue::SourcesFiltered, this, [this](const QStringList &ids) {
+        ui->listFiltered->clear();
+        ui->listFiltered->addItems(ids);
+    });
 }
 
 SourceWidget::~SourceWidget()
@@ -191,4 +194,33 @@ void SourceWidget::on_btnRename_clicked()
     }
 
     catalogue->renameSource(item->text(), new_name);
+}
+
+void SourceWidget::on_listFiltered_itemClicked(QListWidgetItem *item)
+{
+    auto source = catalogue->getSource(item->text());
+    auto island = source->getIslands().first();
+    showIslandInfo(island);
+}
+
+void SourceWidget::on_btnMorphLabel_clicked()
+{
+    QStringList morph_label_val { "UNKNOWN",  "COMPACT", "POINT-LIKE",
+                                  "EXTENDED", "DIFFUSE", "COMPACT-EXTENDED" };
+
+    bool ok;
+    QString item = QInputDialog::getItem(this, "Set morph_label", "morph_label:", morph_label_val,
+                                         0, false, &ok);
+
+    if (ok && !item.isEmpty()) {
+        foreach (auto &&iau_name, catalogue->getFilteredIds()) {
+            catalogue->updateMorphLabel(iau_name, item);
+        }
+        QMessageBox::information(this, "Set morph_label", "Field changed to all filtered sources.");
+    }
+}
+
+void SourceWidget::on_btnDeleteAll_clicked()
+{
+    catalogue->removeFilteredSources();
 }

@@ -138,6 +138,16 @@ void Catalogue::renameSource(const QString &iau_name, const QString &new_iau_nam
     emit ExtractedSourcesUpdated();
 }
 
+void Catalogue::updateMorphLabel(const QString &iau_name, const QString &morph_label)
+{
+    auto source = sources.value(iau_name);
+    source->setMorph_label(morph_label);
+
+    auto sources = root["sources"].toArray();
+    sources[indexOf(iau_name)] = source->getObj();
+    root["sources"] = sources;
+}
+
 void Catalogue::save()
 {
     QString timestamp = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd_hh-mm-ss");
@@ -151,6 +161,30 @@ void Catalogue::save()
     f.close();
     QMessageBox::information(nullptr, "Catalogue saved",
                              "Catalogue saved in " + QFileInfo(f).absoluteFilePath());
+}
+
+void Catalogue::filterSources(const QStringList &ids)
+{
+    this->filteredIds = ids;
+    emit SourcesFiltered(ids);
+}
+
+void Catalogue::removeFilteredSources()
+{
+    auto tmp = root["sources"].toArray();
+
+    foreach (auto &&iau_name, filteredIds) {
+        int index = indexOf(iau_name);
+        Source *sourceObj = sources.value(iau_name);
+        sources.remove(iau_name);
+        tmp.removeAt(index);
+        sourceObj->deleteLater();
+        root["sources"] = tmp;
+    }
+
+    // Clear list and notify observers that the list is empty
+    filteredIds.clear();
+    emit SourcesFiltered(filteredIds);
 }
 
 const QString &Catalogue::getFilepath() const
@@ -168,6 +202,11 @@ int Catalogue::indexOf(const QString &iau_name) const
         }
     }
     return -1;
+}
+
+const QStringList &Catalogue::getFilteredIds() const
+{
+    return filteredIds;
 }
 
 void Catalogue::drawExtractedSources(const QSet<QString> &names, double arcsec)

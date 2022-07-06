@@ -2508,6 +2508,13 @@ void vtkwindow_new::showFilteredSources(const QStringList &ids)
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
+void vtkwindow_new::hideFilteredSources()
+{
+    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+    renderer->RemoveActor(filteredSources);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
 void vtkwindow_new::loadDS9RegionFile()
 {
     QString fn = QFileDialog::getOpenFileName(this, "DS9 Region file", QDir::homePath(),
@@ -3245,6 +3252,10 @@ void vtkwindow_new::openFilterDialog()
     d->show();
     d->raise();
     d->activateWindow();
+    connect(d, &SFilterDialog::accepted, this, [this]() {
+        showFilteredSources(catalogue->getFilteredIds());
+        showSourceDockWidget();
+    });
 }
 
 void vtkwindow_new::addLocalSources()

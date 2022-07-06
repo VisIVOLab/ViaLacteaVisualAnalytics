@@ -82,6 +82,12 @@ const QJsonObject &Island::getObj() const
     return obj;
 }
 
+void Island::setMorph_label(const QString &newMorph_label)
+{
+    morph_label = newMorph_label;
+    obj["morph_label"] = newMorph_label;
+}
+
 const QString &Island::getName() const
 {
     return name;
@@ -218,6 +224,19 @@ const QString &Island::getMorphLabel() const
 }
 
 Source::Source(QObject *parent, const QJsonObject &obj) : QObject(parent), obj(obj) { }
+
+void Source::setMorph_label(const QString &newMorph_label)
+{
+    morph_label = newMorph_label;
+    obj["morph_label"] = newMorph_label;
+
+    auto island = islands.at(0);
+    island->setMorph_label(newMorph_label);
+
+    auto islands = obj["islands"].toArray();
+    islands[0] = island->getObj();
+    obj["islands"] = islands;
+}
 
 const QJsonObject &Source::getObj() const
 {
