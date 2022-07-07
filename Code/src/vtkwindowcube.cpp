@@ -518,7 +518,7 @@ void vtkWindowCube::showStatusBarMessage(const std::string &msg)
 void vtkWindowCube::updateVelocityText()
 {
     double initSlice = headerMap.value("CRVAL3").toDouble() - (headerMap.value("CDELT3").toDouble() * (headerMap.value("CRPIX3").toDouble() - 1));
-    double velocity = initSlice + headerMap.value("CDELT3").toDouble() * (currentSlice-1);
+    double velocity = initSlice + headerMap.value("CDELT3").toDouble() * currentSlice;
     
     if (headerMap.value("CUNIT3").startsWith("m")) {
         // Return value in km/s
