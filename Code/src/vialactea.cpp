@@ -29,6 +29,10 @@
 #include "vtkSMProxy.h"
 #include "vtkSMStringVectorProperty.h"
 
+#include "vtkSMReaderFactory.h"
+#include "vtkSMProxyManager.h"
+#include "vtkSMSessionProxyManager.h"
+
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
 void WebProcess::jsCall(const QString &point, const QString &radius)
@@ -173,6 +177,9 @@ bool ViaLactea::connectToPVServer()
     server = pqApplicationCore::instance()->getObjectBuilder()->createServer(
             pqServerResource(serverUrl), 3);
 
+    vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    readerFactory->RegisterPrototype("sources", "FitsReader");
+    
     return server != nullptr;
 }
 
@@ -449,7 +456,11 @@ void ViaLactea::on_localDCPushButton_clicked()
                 "Not connected to pvserver. Check the connection url in the settings.");
         return;
     }
-    pqFileDialog dialog(server, this, QString(), QString(), "*.fits");
+    
+    vtkSMReaderFactory* readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    QString filters = readerFactory->GetSupportedFileTypes(server->session());
+   
+    pqFileDialog dialog(server, this, QString(), QString(),filters);
     dialog.setFileMode(pqFileDialog::ExistingFile);
     if (dialog.exec() == pqFileDialog::Accepted) {
         QString file = dialog.getSelectedFiles().first();
@@ -458,6 +469,7 @@ void ViaLactea::on_localDCPushButton_clicked()
         auto newSources = dataLoader->loadData({ file });
         onDataLoaded(newSources, fileStd.substr(fileStd.find_last_of("/\\") + 1));
     }
+
     /*
     QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
                                               tr("FITS images(*.fit *.fits)"));
