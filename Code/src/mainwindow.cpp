@@ -48,16 +48,13 @@ extern "C" {
 */
 #include "vtkwindow_new.h"
 
-
-
 #include "pqAlwaysConnectedBehavior.h"
 #include "pqPersistentMainWindowStateBehavior.h"
 
 #include "pqApplicationCore.h"
 #include "pqObjectBuilder.h"
-#include "vtkSMReaderFactory.h"
 #include "vtkSMProxyManager.h"
-
+#include "vtkSMReaderFactory.h"
 
 /*
  *  type
@@ -75,22 +72,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //  QWidget::setWindowIcon(QIcon( ":/icons/VisIVODesktop.icns" ));
     ui->setupUi(this);
 
-    //paraview init
+    // paraview init
     new pqAlwaysConnectedBehavior(this);
     new pqPersistentMainWindowStateBehavior(this);
-    pqApplicationCore* core = pqApplicationCore::instance();
-    // Make a connection to the builtin server
-    //server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
-    server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
-    
-    vtkSMReaderFactory* readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
-    readerFactory->RegisterPrototype("sources", "FitsReader");
-    
-    //end paraview init
+    // pqApplicationCore* core = pqApplicationCore::instance();
+    //  Make a connection to the builtin server
+    // server = core->getObjectBuilder()->createServer(pqServerResource("builtin:"));
+    // server = core->getObjectBuilder()->createServer(pqServerResource("cs://localhost:11111"));
 
-    //run vialactea UI
+    vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    readerFactory->RegisterPrototype("sources", "FitsReader");
+
+    // end paraview init
+
+    // run vialactea UI
     on_actionVialactea_triggered();
-    
+
     //------
     createModel();
     ui->treeView->setModel(m_VisIVOTreeModel);
@@ -120,8 +117,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     hideAllFilterParameter();
     ui->volumeGroupBox->hide();
     //----
-    
-
 }
 
 MainWindow::~MainWindow()

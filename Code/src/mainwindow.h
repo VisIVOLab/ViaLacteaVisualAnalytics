@@ -60,7 +60,7 @@ public:
     Ui::MainWindow *ui;
     QString selectedFile;
     TreeModel *m_VisIVOTreeModel;
-    pqServer* server;
+    // pqServer* server;
 
 public slots:
     void importAscii();

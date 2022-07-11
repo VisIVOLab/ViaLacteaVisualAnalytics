@@ -12,6 +12,7 @@
 
 #include "pqPipelineSource.h"
 
+class pqServer;
 class pqPipelineSource;
 
 namespace Ui {
@@ -21,13 +22,13 @@ class ViaLactea;
 class WebProcess : public QObject
 {
     Q_OBJECT
-    
+
 public:
     explicit WebProcess(QObject *parent = nullptr);
-    
-    public slots:
+
+public slots:
     void jsCall(const QString &point, const QString &radius);
-    
+
 signals:
     void processJavascript(const QString &point, const QString &radius);
 };
@@ -35,7 +36,7 @@ signals:
 class ViaLactea : public QMainWindow
 {
     Q_OBJECT
-    
+
 public:
     explicit ViaLactea(QWidget *parent = 0);
     ~ViaLactea();
@@ -43,15 +44,17 @@ public:
     bool isMasterWin(vtkwindow_new *win);
     void resetMasterWin();
     void setMasterWin(vtkwindow_new *win);
-    
+
+    QPointer<pqServer> getServer() const { return server; }
+
     // VLKB URLs
     static const QString ONLINE_TILE_PATH;
     static const QString VLKB_URL_IA2;
     static const QString TAP_URL_IA2;
     static const QString VLKB_URL_NEANIAS;
     static const QString TAP_URL_NEANIAS;
-    
-    private slots:
+
+private slots:
     void quitApp(); // Added page delete befor main app quits
     void on_queryPushButton_clicked();
     void on_noneRadioButton_clicked(bool checked);
@@ -75,34 +78,35 @@ public:
     void on_dbLineEdit_textChanged(const QString &arg1);
     void updateVLKBSetting();
     void on_actionLoad_session_triggered();
-    
+
     void on_loadTableButton_clicked();
-    
+
 private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
-    
+
     // for javascript communication procedures
     WebProcess *webobj;
-    
+
     QString selectedBand;
     QString m_sSettingsFile;
     QString tilePath;
     QMap<int, QPair<QString, QString>> mapSurvey;
     vtkwindow_new *masterWin = nullptr;
+    QPointer<pqServer> server;
     QPointer<pqPipelineSource> originSource;
+
+    bool connectToPVServer();
 
     bool canImportToMasterWin(std::string importFn);
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
-    
+
 protected:
     void closeEvent(QCloseEvent *);
-    
+
 protected slots:
     void onDataLoaded(pqPipelineSource *, std::string fn);
-    
-    
 };
 
 #endif // VIALACTEA_H

@@ -57,6 +57,9 @@ void SettingForm::readSettingsFromFile()
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
 
+    QString serverUrl = settings.value("pvserver.url", "cs://localhost:11111").toString();
+    ui->textServerUrl->setText(serverUrl);
+
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
     AuthWrapper *vlkbAuth;
     if (vlkbtype == "ia2") {
@@ -139,6 +142,7 @@ void SettingForm::on_OkPushButton_clicked()
     settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
+    settings.setValue("pvserver.url", ui->textServerUrl->text());
     if (ui->ia2VLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "ia2");
     else
