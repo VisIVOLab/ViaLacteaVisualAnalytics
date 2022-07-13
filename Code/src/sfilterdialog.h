@@ -69,8 +69,13 @@ private:
                          "fit_quality",
                          "crossmatch_info" };
 
+    QStringList class_label_val { "UNKNOWN", "GALAXY", "QSO",         "HII",    "SNR",
+                                  "PN",      "YSO",    "MULTI-CLASS", "PULSAR", "STAR" };
+
     QStringList morph_label_val { "UNKNOWN",  "COMPACT", "POINT-LIKE",
-                              "EXTENDED", "DIFFUSE", "COMPACT-EXTENDED" };
+                                  "EXTENDED", "DIFFUSE", "COMPACT-EXTENDED" };
+
+    QStringList sourceness_label_val { "REAL", "FAKE", "CANDIDATE" };
 };
 
 #endif // SFILTERDIALOG_H

@@ -31,10 +31,11 @@ private slots:
     void on_btnDelete_clicked();
     void on_btnRename_clicked();
     void on_listFiltered_itemClicked(QListWidgetItem *item);
-
     void on_btnMorphLabel_clicked();
-
     void on_btnDeleteAll_clicked();
+    void on_btnClassLabel_clicked();
+    void on_btnSourcenessLabel_clicked();
+    void on_btnExport_clicked();
 
 private:
     Ui::SourceWidget *ui;

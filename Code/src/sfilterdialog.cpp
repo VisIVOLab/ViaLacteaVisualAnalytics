@@ -18,6 +18,8 @@ SFilterDialog::SFilterDialog(Catalogue *c, QWidget *parent)
 
     ui->comboFields->addItems(fields);
     ui->comboMorphLabel->addItems(morph_label_val);
+    ui->comboClassLabel->addItems(class_label_val);
+    ui->comboSourcenessLabel->addItems(sourceness_label_val);
 
     model = new QStringListModel(this);
     ui->listView->setModel(model);

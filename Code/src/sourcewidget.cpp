@@ -7,6 +7,7 @@
 
 #include <vtkLODActor.h>
 
+#include <QFileDialog>
 #include <QInputDialog>
 #include <QListWidgetItem>
 #include <QMessageBox>
@@ -55,7 +56,7 @@ void SourceWidget::showIslandInfo(const Island *island)
 
     ui->labelSourceIau->setText(source->getIauName());
     ui->labelSourceClassId->setText(QString::number(source->getClassid()));
-    ui->labelSourceLabel->setText(source->getLabel());
+    ui->labelSourceLabel->setText(source->getClassLabel());
     ui->labelNumIslands->setText(QString::number(source->getNIslands()));
     ui->labelSourcePos->setText(pos);
     ui->labelSourcePosWCS->setText(pos_wcs);
@@ -91,6 +92,10 @@ void SourceWidget::showIslandInfo(const Island *island)
     ui->labelIslandBkgRms->setText(QString("%1, %2")
                                            .arg(QString::number(island->getBkg(), 'f', 6))
                                            .arg(QString::number(island->getRms(), 'f', 6)));
+    ui->labelIslandFit->setText(island->isFitInfoPresent() ? "1" : "0");
+    ui->labelIslandMinMax->setText(QString("%1, %2")
+                                           .arg(QString::number(island->getMinSize(), 'f', 6))
+                                           .arg(QString::number(island->getMaxSize(), 'f', 6)));
     ui->labelIslandBeam->setText(QString::number(island->getBeamAreaRatioPar(), 'f', 6));
     ui->labelIslandResolved->setText(island->getResolved() ? "true" : "false");
     ui->labelIslandBorder->setText(island->getBorder() ? "true" : "false");
@@ -150,7 +155,11 @@ void SourceWidget::on_btnSave_clicked()
         return;
     }
 
-    catalogue->save();
+    QString fn =
+            QFileDialog::getSaveFileName(this, "Export sources", QString(), "JSON file (*.json)");
+    if (!fn.isEmpty()) {
+        catalogue->save(fn);
+    }
 }
 
 void SourceWidget::on_btnDelete_clicked()
@@ -223,4 +232,48 @@ void SourceWidget::on_btnMorphLabel_clicked()
 void SourceWidget::on_btnDeleteAll_clicked()
 {
     catalogue->removeFilteredSources();
+}
+
+void SourceWidget::on_btnClassLabel_clicked()
+{
+    QStringList class_label_val { "UNKNOWN", "GALAXY", "QSO",         "HII",    "SNR",
+                                  "PN",      "YSO",    "MULTI-CLASS", "PULSAR", "STAR" };
+
+    bool ok;
+    QString item = QInputDialog::getItem(this, "Set class_label", "class_label:", class_label_val,
+                                         0, false, &ok);
+
+    if (ok && !item.isEmpty()) {
+        foreach (auto &&iau_name, catalogue->getFilteredIds()) {
+            catalogue->updateClassLabel(iau_name, item);
+        }
+        QMessageBox::information(this, "Set class_label", "Field changed to all filtered sources.");
+    }
+}
+
+void SourceWidget::on_btnSourcenessLabel_clicked()
+{
+    QStringList sourceness_label_val { "REAL", "FAKE", "CANDIDATE" };
+
+    bool ok;
+    QString item =
+            QInputDialog::getItem(this, "Set sourceness_label_val",
+                                  "sourceness_label_val:", sourceness_label_val, 0, false, &ok);
+
+    if (ok && !item.isEmpty()) {
+        foreach (auto &&iau_name, catalogue->getFilteredIds()) {
+            catalogue->updateSourcenessLabel(iau_name, item);
+        }
+        QMessageBox::information(this, "Set sourceness_label_val",
+                                 "Field changed to all filtered sources.");
+    }
+}
+
+void SourceWidget::on_btnExport_clicked()
+{
+    QString fn =
+            QFileDialog::getSaveFileName(this, "Export sources", QString(), "JSON file (*.json)");
+    if (!fn.isEmpty()) {
+        catalogue->exportFilteredSources(fn);
+    }
 }

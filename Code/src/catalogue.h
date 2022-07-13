@@ -37,11 +37,14 @@ public:
     void removeSource(const QString &iau_name);
     void renameSource(const QString &iau_name, const QString &new_iau_name);
     void updateMorphLabel(const QString &iau_name, const QString &morph_label);
+    void updateClassLabel(const QString &iau_name, const QString &class_label);
+    void updateSourcenessLabel(const QString &iau_name, const QString &sourceness_label);
 
-    void save();
+    void save(const QString &fn);
 
     void filterSources(const QStringList &ids);
     void removeFilteredSources();
+    void exportFilteredSources(const QString &fn);
 
     const QString &getFilepath() const;
 

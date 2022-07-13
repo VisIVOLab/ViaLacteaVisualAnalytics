@@ -148,13 +148,29 @@ void Catalogue::updateMorphLabel(const QString &iau_name, const QString &morph_l
     root["sources"] = sources;
 }
 
-void Catalogue::save()
+void Catalogue::updateClassLabel(const QString &iau_name, const QString &class_label)
 {
-    QString timestamp = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd_hh-mm-ss");
-    QString fn = QString("%1_%2.json").arg(QFileInfo(filepath).baseName(), timestamp);
-    QString out = QFileInfo(filepath).absoluteDir().absoluteFilePath(fn);
+    auto source = sources.value(iau_name);
+    source->setClass_label(class_label);
 
-    QFile f(out);
+    auto sources = root["sources"].toArray();
+    sources[indexOf(iau_name)] = source->getObj();
+    root["sources"] = sources;
+}
+
+void Catalogue::updateSourcenessLabel(const QString &iau_name, const QString &sourceness_label)
+{
+    auto source = sources.value(iau_name);
+    source->setSourceness_label(sourceness_label);
+
+    auto sources = root["sources"].toArray();
+    sources[indexOf(iau_name)] = source->getObj();
+    root["sources"] = sources;
+}
+
+void Catalogue::save(const QString &fn)
+{
+    QFile f(fn);
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QJsonDocument doc(root);
     f.write(doc.toJson());
@@ -185,6 +201,26 @@ void Catalogue::removeFilteredSources()
     // Clear list and notify observers that the list is empty
     filteredIds.clear();
     emit SourcesFiltered(filteredIds);
+}
+
+void Catalogue::exportFilteredSources(const QString &fn)
+{
+    if (filteredIds.isEmpty())
+        return;
+
+    QJsonObject out(root);
+    QJsonArray sourcesArray;
+    foreach (auto &&iau_name, filteredIds) {
+        sourcesArray.append(sources.value(iau_name)->getObj());
+    }
+    out["sources"] = sourcesArray;
+    QJsonDocument doc(out);
+
+    QFile f(fn);
+    f.open(QIODevice::WriteOnly | QIODevice::Text);
+    f.write(doc.toJson());
+    f.close();
+    QMessageBox::information(nullptr, "Catalogue exported", "Catalogue exported");
 }
 
 const QString &Catalogue::getFilepath() const

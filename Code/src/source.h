@@ -41,6 +41,7 @@ public:
     double getBeamAreaRatioPar() const;
     bool getResolved() const;
     bool getBorder() const;
+    bool isFitInfoPresent() const;
     const QString &getSourcenessLabel() const;
     double getSourcenessScore() const;
     const QString &getMorphLabel() const;
@@ -52,6 +53,11 @@ public:
     const QJsonObject &getObj() const;
 
     void setMorph_label(const QString &newMorph_label);
+    void setClass_label(const QString &newClass_label);
+    void setSourceness_label(const QString &newSourceness_label);
+
+    double getMinSize() const;
+    double getMaxSize() const;
 
 private:
     QJsonObject obj;
@@ -65,15 +71,18 @@ private:
     double ra, dec;
     double ra_min, dec_min;
     double ra_max, dec_max;
+    double min_size, max_size;
     double S, S_err;
     double Smax, Stot;
     double bkg, rms;
+    bool fit_info;
     double beam_area_ratio_par;
     bool resolved;
     bool border;
     QString sourceness_label;
     double sourceness_score;
     QString morph_label;
+    QString class_label;
     QList<QPair<double, double>> vertices;
 };
 
@@ -87,7 +96,7 @@ public:
     int getIndex() const;
     const QString &getIauName() const;
     int getClassid() const;
-    const QString &getLabel() const;
+    const QString &getClassLabel() const;
     int getNIslands() const;
     double getX0() const;
     double getY0() const;
@@ -104,6 +113,8 @@ public:
     const QJsonObject &getObj() const;
 
     void setMorph_label(const QString &newMorph_label);
+    void setClass_label(const QString &newClass_label);
+    void setSourceness_label(const QString &newSourceness_label);
 
 private:
     explicit Source(QObject *parent, const QJsonObject &obj);
@@ -114,7 +125,7 @@ private:
     int index;
     QString iau_name;
     int classid;
-    QString label;
+    QString class_label;
     int nislands;
     double x0;
     double y0;

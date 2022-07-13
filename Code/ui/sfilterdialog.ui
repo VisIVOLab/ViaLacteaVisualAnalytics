@@ -44,23 +44,7 @@
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QComboBox" name="comboSourcenessLabel">
-       <item>
-        <property name="text">
-         <string>REAL</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>FAKE</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>CANDIDATE</string>
-        </property>
-       </item>
-      </widget>
+      <widget class="QComboBox" name="comboSourcenessLabel"/>
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_5">
@@ -70,58 +54,7 @@
       </widget>
      </item>
      <item row="3" column="1">
-      <widget class="QComboBox" name="comboClassLabel">
-       <item>
-        <property name="text">
-         <string>UNKNOWN</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>GALAXY</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>QSO</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>HII</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>SNR</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>PN</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>YSO</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>MULTI-CLASS</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>PULSAR</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>STAR</string>
-        </property>
-       </item>
-      </widget>
+      <widget class="QComboBox" name="comboClassLabel"/>
      </item>
     </layout>
    </item>

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>373</width>
-    <height>936</height>
+    <width>400</width>
+    <height>711</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -60,8 +60,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>340</width>
-        <height>936</height>
+        <width>359</width>
+        <height>1019</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -105,9 +105,30 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
           <item>
+           <widget class="QPushButton" name="btnClassLabel">
+            <property name="text">
+             <string>Set class_label</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="btnMorphLabel">
             <property name="text">
              <string>Set morph_label</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnSourcenessLabel">
+            <property name="text">
+             <string>Set sourceness_label</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnExport">
+            <property name="text">
+             <string>Export</string>
             </property>
            </widget>
           </item>
@@ -382,7 +403,7 @@
           <item row="7" column="0">
            <widget class="QLabel" name="label_17">
             <property name="text">
-             <string>fitinfo</string>
+             <string>fit_info</string>
             </property>
            </widget>
           </item>

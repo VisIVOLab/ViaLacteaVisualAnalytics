@@ -22,6 +22,8 @@ Island::Island(const QJsonObject &obj, QObject *parent) : QObject(parent), obj(o
     this->ra_max = obj["ra_max"].toDouble();
     this->dec_min = obj["dec_min"].toDouble();
     this->dec_max = obj["dec_max"].toDouble();
+    this->min_size = obj["min_size"].toDouble();
+    this->max_size = obj["max_size"].toDouble();
     this->S = obj["S"].toDouble();
     this->S_err = obj["S_err"].toDouble();
     this->Smax = obj["Smax"].toDouble();
@@ -29,11 +31,13 @@ Island::Island(const QJsonObject &obj, QObject *parent) : QObject(parent), obj(o
     this->bkg = obj["bkg"].toDouble();
     this->rms = obj["rms"].toDouble();
     this->beam_area_ratio_par = obj["beam_area_ratio_par"].toDouble();
+    this->fit_info = !(obj["fit_info"].toObject().isEmpty());
     this->resolved = obj["resolved"].toBool();
     this->border = obj["border"].toBool();
     this->sourceness_label = obj["sourceness_label"].toString();
     this->sourceness_score = obj["sourceness_score"].toDouble();
     this->morph_label = obj["morph_label"].toString();
+    this->class_label = obj["class_label"].toString();
 
     foreach (auto &&it, obj["vertices"].toArray()) {
         QJsonArray vertex = it.toArray();
@@ -86,6 +90,28 @@ void Island::setMorph_label(const QString &newMorph_label)
 {
     morph_label = newMorph_label;
     obj["morph_label"] = newMorph_label;
+}
+
+void Island::setClass_label(const QString &newClass_label)
+{
+    class_label = newClass_label;
+    obj["class_label"] = newClass_label;
+}
+
+double Island::getMinSize() const
+{
+    return min_size;
+}
+
+double Island::getMaxSize() const
+{
+    return max_size;
+}
+
+void Island::setSourceness_label(const QString &newSourceness_label)
+{
+    sourceness_label = newSourceness_label;
+    obj["sourceness_label"] = newSourceness_label;
 }
 
 const QString &Island::getName() const
@@ -208,6 +234,11 @@ bool Island::getBorder() const
     return border;
 }
 
+bool Island::isFitInfoPresent() const
+{
+    return fit_info;
+}
+
 const QString &Island::getSourcenessLabel() const
 {
     return sourceness_label;
@@ -238,6 +269,32 @@ void Source::setMorph_label(const QString &newMorph_label)
     obj["islands"] = islands;
 }
 
+void Source::setClass_label(const QString &newClass_label)
+{
+    class_label = newClass_label;
+    obj["class_label"] = newClass_label;
+
+    auto island = islands.at(0);
+    island->setClass_label(newClass_label);
+
+    auto islands = obj["islands"].toArray();
+    islands[0] = island->getObj();
+    obj["islands"] = islands;
+}
+
+void Source::setSourceness_label(const QString &newSourceness_label)
+{
+    sourceness_label = newSourceness_label;
+    obj["sourceness_label"] = newSourceness_label;
+
+    auto island = islands.at(0);
+    island->setSourceness_label(newSourceness_label);
+
+    auto islands = obj["islands"].toArray();
+    islands[0] = island->getObj();
+    obj["islands"] = islands;
+}
+
 const QJsonObject &Source::getObj() const
 {
     return obj;
@@ -250,7 +307,7 @@ Source *Source::fromJson(const QJsonObject &obj, QObject *parent)
     s->index = obj["index"].toInt();
     s->iau_name = obj["iau_name"].toString();
     s->classid = obj["classid"].toInt();
-    s->label = obj["label"].toString();
+    s->class_label = obj["class_label"].toString();
     s->nislands = obj["nislands"].toInt();
     s->x0 = obj["x0"].toDouble();
     s->y0 = obj["y0"].toDouble();
@@ -316,9 +373,9 @@ int Source::getClassid() const
     return classid;
 }
 
-const QString &Source::getLabel() const
+const QString &Source::getClassLabel() const
 {
-    return label;
+    return class_label;
 }
 
 int Source::getNIslands() const
