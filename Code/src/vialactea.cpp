@@ -36,7 +36,11 @@ const QString ViaLactea::TAP_URL_IA2 = "http://ia2-vialactea.oats.inaf.it:8080/v
 const QString ViaLactea::VLKB_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb-datasets-1.2/";
 const QString ViaLactea::TAP_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb/tap";
 
-ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLactea)
+ViaLactea::ViaLactea(QWidget *parent)
+    : QMainWindow(parent),
+      ui(new Ui::ViaLactea),
+      settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
+      settings(settingsFile, QSettings::NativeFormat)
 {
 
     ui->setupUi(this);
@@ -44,7 +48,6 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
     ui->saveToDiskCheckBox->setVisible(false);
     ui->fileNameLineEdit->setVisible(false);
     ui->selectFsPushButton->setVisible(false);
-    // ui->loadTableButton->hide();
 
     // Cleanup previous run tmp
     QDir dir_tmp(
@@ -53,14 +56,7 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
         dir_tmp.remove(dirFile);
     }
 
-    m_sSettingsFile = QDir::homePath()
-                              .append(QDir::separator())
-                              .append("VisIVODesktopTemp")
-                              .append("/setting.ini");
-
     updateVLKBSetting();
-
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
     /*
     if (settings.value("vlkbtype", "ia2").toString() == "neanias") {
@@ -152,7 +148,6 @@ void ViaLactea::quitApp()
 
 void ViaLactea::updateVLKBSetting()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
 
     if (vlkbtype == "ia2") {
@@ -305,17 +300,26 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
     QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(),
                                               "Fits images (*.fits)");
 
-    if (!fn.isEmpty()) {
-        if (masterWin == nullptr) {
+    if (fn.isEmpty()) {
+        return;
+    }
+
+    bool doSearch = settings.value("vlkb.search", false).toBool();
+
+    if (masterWin == nullptr) {
+        // First import
+
+        auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        fits->SetFileName(fn.toStdString());
+
+        if (doSearch) {
             double coords[2], rectSize[2];
-            AstroUtils().GetCenterCoords(fn.toStdString(), coords);
-            AstroUtils().GetRectSize(fn.toStdString(), rectSize);
+            AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+            AstroUtils::GetRectSize(fn.toStdString(), rectSize);
 
             VialacteaInitialQuery *vq = new VialacteaInitialQuery;
             connect(vq, &VialacteaInitialQuery::searchDone,
-                    [vq, fn, this](QList<QMap<QString, QString>> results) {
-                        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-                        fits->SetFileName(fn.toStdString());
+                    [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
                         auto win = new vtkwindow_new(this, fits);
                         win->setDbElements(results);
                         setMasterWin(win);
@@ -323,15 +327,26 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
                     });
 
             vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-        } else if (canImportToMasterWin(fn.toStdString())) {
-            auto fits = vtkSmartPointer<vtkFitsReader>::New();
-            fits->SetFileName(fn.toStdString());
-            masterWin->addLayerImage(fits);
         } else {
-            QMessageBox::warning(this, QObject::tr("Import image"),
-                                 QObject::tr("The regions do not overlap, the file cannot be "
-                                             "imported in the current session."));
+            auto win = new vtkwindow_new(this, fits);
+            setMasterWin(win);
         }
+
+        this->showMinimized();
+    } else if (canImportToMasterWin(fn.toStdString())) {
+        // An image is already open and we can add this image as a layer
+
+        auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        fits->SetFileName(fn.toStdString());
+        masterWin->addLayerImage(fits);
+
+        this->showMinimized();
+    } else {
+        // An image is already open and we can NOT add this image as a layer
+
+        QMessageBox::warning(this, QObject::tr("Import image"),
+                             QObject::tr("The regions do not overlap, the file cannot be "
+                                         "imported in the current session."));
     }
 }
 
@@ -347,8 +362,6 @@ void ViaLactea::on_actionSettings_triggered()
 
 void ViaLactea::reload()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-
     // tilePath = settings.value("tilepath", "").toString();
 
     if (settings.value("online", false) == true) {
@@ -406,49 +419,67 @@ void ViaLactea::on_localDCPushButton_clicked()
     QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
                                               tr("FITS images(*.fit *.fits)"));
 
-    if (!fn.isEmpty()) {
-        if (masterWin == nullptr) {
+    if (fn.isEmpty()) {
+        return;
+    }
+
+    bool doSearch = settings.value("vlkb.search", false).toBool();
+
+    auto load = [fn, this](const QList<QMap<QString, QString>> &results =
+                                   QList<QMap<QString, QString>>()) {
+        // Open a new window to visualize the momentmap
+        auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
+        fitsReader_moment->SetFileName(fn.toStdString());
+        fitsReader_moment->isMoment3D = true;
+        fitsReader_moment->setMomentOrder(0);
+        auto win = new vtkwindow_new(this, fitsReader_moment);
+        if (!results.isEmpty()) {
+            win->setDbElements(results);
+        }
+        setMasterWin(win);
+
+        // Open a new window to visualize the datacube
+        auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
+        fitsReader_dc->SetFileName(fn.toStdString());
+        fitsReader_dc->is3D = true;
+        new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
+    };
+
+    if (masterWin == nullptr) {
+
+        if (doSearch) {
             double coords[2], rectSize[2];
-            AstroUtils().GetCenterCoords(fn.toStdString(), coords);
-            AstroUtils().GetRectSize(fn.toStdString(), rectSize);
+            AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+            AstroUtils::GetRectSize(fn.toStdString(), rectSize);
 
             VialacteaInitialQuery *vq = new VialacteaInitialQuery;
             connect(vq, &VialacteaInitialQuery::searchDone,
-                    [vq, fn, this](QList<QMap<QString, QString>> results) {
-                        // Open a new window to visualize the momentmap
-                        auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
-                        fitsReader_moment->SetFileName(fn.toStdString());
-                        fitsReader_moment->isMoment3D = true;
-                        fitsReader_moment->setMomentOrder(0);
-                        auto win = new vtkwindow_new(this, fitsReader_moment);
-                        win->setDbElements(results);
-                        setMasterWin(win);
-
-                        // Open a new window to visualize the datacube
-                        auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
-                        fitsReader_dc->SetFileName(fn.toStdString());
-                        fitsReader_dc->is3D = true;
-                        new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
-
+                    [vq, fn, load](QList<QMap<QString, QString>> results) {
+                        load(results);
                         vq->deleteLater();
                     });
             vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-        } else if (canImportToMasterWin(fn.toStdString())) {
-            auto moment = vtkSmartPointer<vtkFitsReader>::New();
-            moment->SetFileName(fn.toStdString());
-            moment->isMoment3D = true;
-            moment->setMomentOrder(0);
-            masterWin->addLayerImage(moment);
-
-            auto dc = vtkSmartPointer<vtkFitsReader>::New();
-            dc->SetFileName(fn.toStdString());
-            dc->is3D = true;
-            new vtkwindow_new(masterWin, dc, 1, masterWin);
         } else {
-            QMessageBox::warning(this, QObject::tr("Import DC"),
-                                 QObject::tr("The regions do not overlap, the file cannot be "
-                                             "imported in the current session."));
+            load();
         }
+
+        this->showMinimized();
+    } else if (canImportToMasterWin(fn.toStdString())) {
+        auto moment = vtkSmartPointer<vtkFitsReader>::New();
+        moment->SetFileName(fn.toStdString());
+        moment->isMoment3D = true;
+        moment->setMomentOrder(0);
+        masterWin->addLayerImage(moment);
+
+        auto dc = vtkSmartPointer<vtkFitsReader>::New();
+        dc->SetFileName(fn.toStdString());
+        dc->is3D = true;
+        new vtkwindow_new(masterWin, dc, 1, masterWin);
+        this->showMinimized();
+    } else {
+        QMessageBox::warning(this, QObject::tr("Import DC"),
+                             QObject::tr("The regions do not overlap, the file cannot be "
+                                         "imported in the current session."));
     }
 }
 
@@ -642,7 +673,6 @@ void ViaLactea::on_actionLoad_session_triggered()
 
 void ViaLactea::on_loadTableButton_clicked()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
 
     if (vlkbtype == "neanias") {
@@ -655,8 +685,10 @@ void ViaLactea::on_loadTableButton_clicked()
     if (fn.isEmpty())
         return;
 
-    auto win = new UserTableWindow(fn, m_sSettingsFile, this);
+    auto win = new UserTableWindow(fn, settingsFile, this);
     win->showMaximized();
     win->activateWindow();
     win->raise();
+
+    this->showMinimized();
 }

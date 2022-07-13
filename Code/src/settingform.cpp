@@ -71,6 +71,9 @@ void SettingForm::readSettingsFromFile()
         vlkbAuth = m_neaniasVlkbAuth;
     }
 
+    bool searchOnImport = settings.value("vlkb.search", false).toBool();
+    ui->checkSearchOnImport->setChecked(searchOnImport);
+
     if (vlkbAuth->isAuthenticated()) {
         vlkb_loggedin();
     } else {
@@ -146,6 +149,7 @@ void SettingForm::on_OkPushButton_clicked()
 
     //  settings.setValue("workdir",  ui->lineEdit_2->text());
 
+    settings.setValue("vlkb.search", ui->checkSearchOnImport->isChecked());
     settings.setValue("vlkburl", ui->vlkbUrl_lineEdit->text());
     settings.setValue("vlkbtableurl", ui->tapUrl_lineEdit->text());
     settings.setValue("online", ui->checkBox->isChecked());

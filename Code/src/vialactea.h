@@ -9,6 +9,7 @@
 #include <QMap>
 #include <QPair>
 #include <QPointer>
+#include <QSettings>
 
 namespace Ui {
 class ViaLactea;
@@ -83,7 +84,8 @@ private:
     WebProcess *webobj;
 
     QString selectedBand;
-    QString m_sSettingsFile;
+    QString settingsFile;
+    QSettings settings;
     QString tilePath;
     QMap<int, QPair<QString, QString>> mapSurvey;
     vtkwindow_new *masterWin = nullptr;
