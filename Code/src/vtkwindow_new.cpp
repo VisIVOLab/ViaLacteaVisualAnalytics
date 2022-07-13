@@ -2874,7 +2874,7 @@ void vtkwindow_new::addSourcesFromJson(const QString &fn)
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    // TODO: session
+    jsonRegionFiles.append(fn);
 }
 
 void vtkwindow_new::closeEvent(QCloseEvent *event)
