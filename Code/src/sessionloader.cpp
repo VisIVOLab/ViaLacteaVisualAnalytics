@@ -33,8 +33,8 @@ SessionLoader::SessionLoader(QWidget *parent, const QString &sessionFilepath)
 
     if (root.isEmpty()) {
         QMessageBox::critical(this, tr("Load a session"),
-            tr("Failed to parse the session configuration.\n"
-               "Loading aborted."));
+                              tr("Failed to parse the session configuration.\n"
+                                 "Loading aborted."));
         return;
     }
 
@@ -100,7 +100,7 @@ void SessionLoader::setFitsRowColor(int row, const QBrush &b)
 
 void SessionLoader::initTable()
 {
-    auto createCheckItem = [](bool checked) -> QTableWidgetItem* {
+    auto createCheckItem = [](bool checked) -> QTableWidgetItem * {
         auto check = new QTableWidgetItem;
         check->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         if (checked) {
@@ -111,7 +111,7 @@ void SessionLoader::initTable()
         return check;
     };
 
-    foreach (auto&& it, layers) {
+    foreach (auto &&it, layers) {
         QJsonObject layer = it.toObject();
         bool enabled = layer["enabled"].toBool();
         QString type = layer["type"].toString("Continuum");
@@ -186,16 +186,15 @@ void SessionLoader::on_btnLoad_clicked()
 {
     if (originLayerIdx < 0) {
         QMessageBox::warning(this, "Incomplete session",
-            "Please select an origin layer (right click) to continue.");
+                             "Please select an origin layer (right click) to continue.");
         return;
     }
     ui->tableFits->item(originLayerIdx, 0)->setCheckState(Qt::Checked);
 
     if (!testOverlaps()) {
-        QMessageBox::warning(
-            this, "Overlaps",
-            "Some layers do not overlap.\n"
-            "Remove them or change the origin layer (right click).");
+        QMessageBox::warning(this, "Overlaps",
+                             "Some layers do not overlap.\n"
+                             "Remove them or change the origin layer (right click).");
         return;
     }
 
@@ -235,7 +234,7 @@ void SessionLoader::on_btnLoad_clicked()
         fitsReader->setMomentOrder(originLayer["moment_order"].toInt(0));
     }
 
-    auto vl = qobject_cast<ViaLactea*>(parent());
+    auto vl = qobject_cast<ViaLactea *>(parent());
     if (ui->checkQuery->isChecked()) {
         double coords[2], rectSize[2];
         AstroUtils::GetCenterCoords(fits.toStdString(), coords);
@@ -243,19 +242,21 @@ void SessionLoader::on_btnLoad_clicked()
         auto vq = new VialacteaInitialQuery;
         vq->setParent(this);
         connect(vq, &VialacteaInitialQuery::searchDone, this,
-            [this, vl, fitsReader](QList<QMap<QString, QString>> results) {
-                auto win = new vtkwindow_new(vl, fitsReader);
-                win->setDbElements(results);
-                win->loadSession(sessionFilepath, sessionRootFolder);
-                vl->setMasterWin(win);
-                this->close();
-            });
+                [this, vl, fitsReader](QList<QMap<QString, QString>> results) {
+                    auto win = new vtkwindow_new(vl, fitsReader);
+                    win->setDbElements(results);
+                    win->loadSession(sessionFilepath, sessionRootFolder);
+                    vl->setMasterWin(win);
+                    vl->showMinimized();
+                    this->close();
+                });
         vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
     } else {
         auto win = new vtkwindow_new(vl, fitsReader);
         win->loadSession(sessionFilepath, sessionRootFolder);
-        auto vl = qobject_cast<ViaLactea*>(parent());
+        auto vl = qobject_cast<ViaLactea *>(parent());
         vl->setMasterWin(win);
+        vl->showMinimized();
         this->close();
     }
 }

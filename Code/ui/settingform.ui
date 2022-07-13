@@ -276,6 +276,13 @@
         </item>
        </layout>
       </item>
+      <item>
+       <widget class="QCheckBox" name="checkSearchOnImport">
+        <property name="text">
+         <string>Search when loading local data</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
