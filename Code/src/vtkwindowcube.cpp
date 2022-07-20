@@ -322,7 +322,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     legendActorCube->setFitsHeader(fh.toStdString());
 
     auto rw = viewCube->getViewProxy()->GetRenderWindow()->GetRenderers();
-    vtkRenderer::SafeDownCast(rw->GetItemAsObject(1))->AddActor(legendActorCube);
+    vtkRenderer::SafeDownCast(rwSlice->GetItemAsObject(1))->AddActor(legendActorCube);
 
     auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorSlice->LegendVisibilityOff();
