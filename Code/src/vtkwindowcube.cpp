@@ -348,42 +348,36 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
 
     lowerBound = 3 * rms;
     upperBound = dataMax;
+    
+    
+    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
+    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
+    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
+    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
+    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
+   
+    bool contour3d=false;
+    bool slice=false;
+    bool sliceCube=false;
 
-    // Contour Filter
-    contourFilter = builder->createFilter("filters", "Contour", this->FitsSource);
-    auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
-    reprProxySurface = reprSurface->getProxy();
-    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
-    vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
-    reprProxySurface->UpdateVTKObjects();
-    ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
-    setThreshold(lowerBound);
-    vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
-    vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
-    vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
-    setVolumeRenderingOpacity(1);
-    reprProxySurface->UpdateVTKObjects();
-
-    // Slice
-    drepSlice = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice);
-    auto reprProxySlice = drepSlice->getProxy();
-    vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
-    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySlice, "FITSImage",
-                                                  vtkDataObject::POINT);
-
-    // Slice
-    drepSliceCube = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube);
-    auto reprProxySliceCube = drepSliceCube->getProxy();
-    vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
-    vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySliceCube, "FITSImage",
-                                                  vtkDataObject::POINT);
-    vtkSMPropertyHelper helper(reprProxySliceCube, "ColorArrayName");
-    const char *arrayName = helper.GetInputArrayNameToProcess();
-    vtkNew<vtkSMTransferFunctionManager> mgr;
-
-    lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
-            mgr->GetColorTransferFunction(arrayName, reprProxySliceCube->GetSessionProxyManager()));
-
+    if (contour3d)
+    {
+        // Contour Filter
+        contourFilter = builder->createFilter("filters", "Contour", this->FitsSource);
+        auto reprSurface = builder->createDataRepresentation(contourFilter->getOutputPort(0), viewCube);
+        reprProxySurface = reprSurface->getProxy();
+        vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySurface, nullptr, 0);
+        vtkSMPropertyHelper(reprProxySurface, "Representation").Set("Surface");
+        reprProxySurface->UpdateVTKObjects();
+        ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
+        setThreshold(lowerBound);
+        vtkSMPropertyHelper(reprProxySurface, "Ambient").Set(0.5);
+        vtkSMPropertyHelper(reprProxySurface, "Diffuse").Set(0.5);
+        vtkSMPropertyHelper(reprProxySurface, "AmbientColor").Set(red, 3);
+        setVolumeRenderingOpacity(1);
+        reprProxySurface->UpdateVTKObjects();
+    }
+    
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     QActionGroup *lutGroup = new QActionGroup(this);
     for (int i = 0; i < presets->GetNumberOfPresets(); i++) {
@@ -399,23 +393,41 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     }
 
     ui->menuColor_Map->addActions(lutGroup->actions());
-    changeColorMap("Grayscale", drepSlice->getProxy());
+    
+    if (slice)
+    {
+        // Slice
+        drepSlice = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice);
+        auto reprProxySlice = drepSlice->getProxy();
+        vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
+        vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySlice, "FITSImage",
+                                                      vtkDataObject::POINT);
+        changeColorMap("Grayscale", drepSlice->getProxy());
 
-    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
-    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
-    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
-    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
-    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
+    }
+    if (sliceCube)
+    {
+        // Slice
+        drepSliceCube = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube);
+        auto reprProxySliceCube = drepSliceCube->getProxy();
+        vtkSMPropertyHelper(reprProxySliceCube, "Representation").Set("Slice");
+        vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySliceCube, "FITSImage",
+                                                      vtkDataObject::POINT);
+        vtkSMPropertyHelper helper(reprProxySliceCube, "ColorArrayName");
+        const char *arrayName = helper.GetInputArrayNameToProcess();
+        vtkNew<vtkSMTransferFunctionManager> mgr;
+        lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
+                mgr->GetColorTransferFunction(arrayName, reprProxySliceCube->GetSessionProxyManager()));
 
-    sliceFilter = pqApplicationCore::instance()->getObjectBuilder()->createFilter(
-            "filters", "ExtractGrid", this->FitsSource);
-    contourFilter2D = pqApplicationCore::instance()->getObjectBuilder()->createFilter(
-            "filters", "Contour", sliceFilter);
+        sliceFilter = pqApplicationCore::instance()->getObjectBuilder()->createFilter(
+                "filters", "ExtractGrid", this->FitsSource);
+        contourFilter2D = pqApplicationCore::instance()->getObjectBuilder()->createFilter(
+                "filters", "Contour", sliceFilter);
+        ui->sliceSlider->setRange(1, bounds[5] + 1);
+        ui->sliceSpinBox->setRange(1, bounds[5] + 1);
 
-    ui->sliceSlider->setRange(1, bounds[5] + 1);
-    ui->sliceSpinBox->setRange(1, bounds[5] + 1);
-
-    setSliceDatacube(1);
+        setSliceDatacube(1);
+    }
 
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
     interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
@@ -637,12 +649,12 @@ void vtkWindowCube::showContours()
 void vtkWindowCube::removeContours()
 {
     /*
-     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
-     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+         ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
+         ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 
-     if (parentWindow) {
-     parentWindow->removeActorFromRenderer(contoursActorForParent);
-     }
+         if (parentWindow) {
+            parentWindow->removeActorFromRenderer(contoursActorForParent);
+         }
      */
     if (contourFilter2D) {
         pqApplicationCore::instance()->getObjectBuilder()->destroy(contourFilter2D);
@@ -692,9 +704,9 @@ void vtkWindowCube::setCameraElevation(double el)
 void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 {
     /*
-     if (ui->contourCheckBox->isChecked()) {
-     removeContours();
-     }
+         if (ui->contourCheckBox->isChecked()) {
+            removeContours();
+         }
      */
     qDebug() << "on_sliceSlider_valueChanged " << value;
     currentSlice = value - 1;
@@ -707,8 +719,9 @@ void vtkWindowCube::on_sliceSlider_valueChanged(int value)
 void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 {
     qDebug() << "on_sliceSpinBox_valueChanged " << value << " slid: " << ui->sliceSlider->value();
-    // setSliceDatacube(value);
-    if (ui->sliceSlider->value() != value) {
+
+    if (ui->sliceSlider->value() != value)
+    {
         ui->sliceSlider->setValue(value);
         ui->sliceSlider->repaint();
     }
@@ -717,15 +730,12 @@ void vtkWindowCube::on_sliceSpinBox_valueChanged(int value)
 void vtkWindowCube::setSliceDatacube(int value)
 {
     qDebug() << "setslice " << value;
-
     /*
-     XY_PLANE = VTK_XY_PLANE,
-     YZ_PLANE = VTK_YZ_PLANE,
-     XZ_PLANE = VTK_XZ_PLANE
+         XY_PLANE = VTK_XY_PLANE,
+         YZ_PLANE = VTK_YZ_PLANE,
+         XZ_PLANE = VTK_XZ_PLANE
      */
-
     currentSlice = value - 1;
-
     vtkSMProxy *reprProxySlice = drepSlice->getProxy();
     vtkSMPropertyHelper(reprProxySlice, "Slice").Set(currentSlice);
     vtkSMPropertyHelper(reprProxySlice, "SliceMode").Set(VTK_XY_PLANE);
@@ -751,7 +761,6 @@ void vtkWindowCube::setSliceDatacube(int value)
             fitsImageInfo->GetComponentRange(0, dataRange);
             ui->minSliceText->setText(QString::number(dataRange[0]));
             ui->maxSliceText->setText(QString::number(dataRange[1]));
-
             lutProxy->RescaleTransferFunction(lutProxy, dataRange[0], dataRange[1], true);
         }
     }
