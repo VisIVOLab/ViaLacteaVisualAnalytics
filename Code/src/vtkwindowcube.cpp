@@ -307,11 +307,12 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     dataMover->InvokeCommand("Execute");
 
     auto dataMover2 = vtkPVDataMover::SafeDownCast(dataMover->GetClientSideObject());
-    vtkTable *headerTable = vtkTable::SafeDownCast(dataMover2->GetDataSetAtIndex(0));
-
-    for (vtkIdType i = 0; i < headerTable->GetNumberOfRows(); i++) {
-        headerMap.insert(QString::fromStdString(headerTable->GetValue(i, 0).ToString()),
-                         QString::fromStdString(headerTable->GetValue(i, 1).ToString()));
+    for (int table = 0; table < dataMover2->GetNumberOfDataSets(); ++table) {
+        vtkTable *headerTable = vtkTable::SafeDownCast(dataMover2->GetDataSetAtIndex(table));
+        for (vtkIdType i = 0; i < headerTable->GetNumberOfRows(); i++) {
+            headerMap.insert(QString::fromStdString(headerTable->GetValue(i, 0).ToString()),
+                             QString::fromStdString(headerTable->GetValue(i, 1).ToString()));
+        }
     }
 
     QString fh = createFitsHeader(headerMap);
@@ -329,23 +330,9 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
 
     auto rwSlice = viewSlice->getViewProxy()->GetRenderWindow()->GetRenderers();
     rwSlice->GetFirstRenderer()->AddActor(legendActorSlice);
+    vtkRenderer::SafeDownCast(rwSlice->GetItemAsObject(1))->AddActor(legendActorSlice);
 
-    auto calc = builder->createFilter("filters", "PythonCalculator", this->FitsSource);
-    if (calc) {
-        auto calcProxy = calc->getProxy();
-        vtkSMPropertyHelper(calcProxy, "Expression").Set("sqrt(mean(FITSImage**2))");
-        vtkSMPropertyHelper(calcProxy, "ArrayName").Set("RMS");
-        vtkSMPropertyHelper(calcProxy, "CopyArrays").Set(0);
-        calcProxy->UpdateVTKObjects();
-        calc->updatePipeline();
-        auto dataInformation = calc->getOutputPort(0)->getDataInformation();
-        auto arrayInformation =
-                dataInformation->GetPointDataInformation()->GetArrayInformation("RMS");
-        double range[2];
-        arrayInformation->GetComponentRange(0, range);
-        rms = range[0];
-    }
-
+    rms = readRMSFromHeader(headerMap);
     lowerBound = 3 * rms;
     upperBound = dataMax;
     
@@ -457,7 +444,7 @@ vtkWindowCube::~vtkWindowCube()
     delete ui;
 }
 
-QString vtkWindowCube::createFitsHeader(QMap<QString, QString> headerMap)
+QString vtkWindowCube::createFitsHeader(const QMap<QString, QString> &headerMap)
 {
     fitsfile *fptr;
     // char* filename=;
@@ -525,6 +512,30 @@ QString vtkWindowCube::createFitsHeader(QMap<QString, QString> headerMap)
     fits_close_file(fptr, &status);
 
     return headerFile;
+}
+
+double vtkWindowCube::readRMSFromHeader(const QMap<QString, QString> &headerMap)
+{
+    if (headerMap.contains("RMS")) {
+        return headerMap.value("RMS").toDouble();
+    }
+
+    int n = headerMap.value("MSn").toInt();
+    if (n <= 0) {
+        qDebug() << Q_FUNC_INFO
+                 << "Missing required header keywords to calculate RMS from partial values";
+        return 0.0;
+    }
+
+    double sum = 0.0;
+    for (int i = 0; i < n; ++i) {
+        QString keyword("MS");
+        keyword.append(QString::number(i));
+        double val = headerMap.value(keyword).toDouble();
+        sum += val;
+    }
+
+    return sqrt(sum / n);
 }
 
 void vtkWindowCube::showStatusBarMessage(const std::string &msg)

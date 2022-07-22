@@ -122,8 +122,9 @@ private:
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);
-    QString createFitsHeader( QMap<QString, QString> headerMap);
 
+    QString createFitsHeader(const QMap<QString, QString> &headerMap);
+    double readRMSFromHeader(const QMap<QString, QString> &headerMap);
 };
 
 #endif // VTKWINDOWCUBE_H
