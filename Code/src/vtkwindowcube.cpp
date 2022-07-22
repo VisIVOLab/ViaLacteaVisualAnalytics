@@ -344,8 +344,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
    
     bool contour3d=false;
-    bool slice=false;
-    bool sliceCube=false;
+    bool slice=true;
 
     if (contour3d)
     {
@@ -381,18 +380,8 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
 
     ui->menuColor_Map->addActions(lutGroup->actions());
     
+   
     if (slice)
-    {
-        // Slice
-        drepSlice = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice);
-        auto reprProxySlice = drepSlice->getProxy();
-        vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
-        vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySlice, "FITSImage",
-                                                      vtkDataObject::POINT);
-        changeColorMap("Grayscale", drepSlice->getProxy());
-
-    }
-    if (sliceCube)
     {
         // Slice
         drepSliceCube = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube);
@@ -410,10 +399,22 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
                 "filters", "ExtractGrid", this->FitsSource);
         contourFilter2D = pqApplicationCore::instance()->getObjectBuilder()->createFilter(
                 "filters", "Contour", sliceFilter);
+
+        // Slice
+        drepSlice = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice);
+        auto reprProxySlice = drepSlice->getProxy();
+        vtkSMPropertyHelper(reprProxySlice, "Representation").Set("Slice");
+        vtkSMPVRepresentationProxy::SetScalarColoring(reprProxySlice, "FITSImage",
+                                                      vtkDataObject::POINT);
+        //changeColorMap("Grayscale", drepSlice->getProxy());
+        
         ui->sliceSlider->setRange(1, bounds[5] + 1);
         ui->sliceSpinBox->setRange(1, bounds[5] + 1);
 
         setSliceDatacube(1);
+        
+        changeColorMap("Grayscale", sliceFilter->getProxy());
+
     }
 
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
