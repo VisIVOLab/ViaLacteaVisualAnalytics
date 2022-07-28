@@ -242,6 +242,10 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("paraview");
 
+    // Hide menu entries unusable here
+    ui->menuCamera->menuAction()->setVisible(false);
+    ui->menuMoment->menuAction()->setVisible(false);
+
     // temp hack, if those two widget are in place
     ui->qVtkCube->hide();
     ui->qVtkSlice->hide();
@@ -412,7 +416,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
 
         setSliceDatacube(1);
 
-        changeColorMap("Grayscale", sliceFilter->getProxy());
+        changeColorMap("Grayscale");
     }
 
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
