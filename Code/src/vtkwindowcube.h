@@ -34,8 +34,8 @@ public:
     ~vtkWindowCube();
 
 private slots:
-    void on_sliceSlider_valueChanged(int value);
-    void on_sliceSpinBox_valueChanged(int value);
+    void on_sliceSlider_sliderReleased();
+    void on_sliceSpinBox_editingFinished();
 
     void on_actionFront_triggered();
     void on_actionBack_triggered();
@@ -54,14 +54,14 @@ private slots:
 
     void on_actionCalculate_order_0_triggered();
     void on_actionCalculate_order_1_triggered();
-    
+
     void on_action0_triggered();
     void on_action25_triggered();
     void on_action50_triggered();
     void on_action100_triggered();
-    
+
     void changeColorMap(QString name);
-    void changeColorMap(QString name, vtkSMProxy* proxy);
+    void changeColorMap(QString name, vtkSMProxy *proxy);
 
 private:
     Ui::vtkWindowCube *ui;
@@ -72,7 +72,7 @@ private:
     double initialCameraPosition[3];
 
     std::string filename;
-    
+
     int currentSlice;
     QString velocityUnit;
 
@@ -84,27 +84,27 @@ private:
     double lowerBound;
     double upperBound;
 
-    pqPipelineSource* FitsSource;
-    
+    pqPipelineSource *FitsSource;
+
     vtkSmartPointer<vtkActor> planeActor;
     vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
-    
-    pqPipelineSource* contourFilter;
-    pqPipelineSource* contourFilter2D;
-    pqPipelineSource* sliceFilter;
-    vtkSMProxy* reprProxySurface;
-    pqDataRepresentation* drepSlice;
-    pqDataRepresentation* drepSliceCube;
+
+    pqPipelineSource *contourFilter;
+    pqPipelineSource *contourFilter2D;
+    pqPipelineSource *sliceFilter;
+    vtkSMProxy *reprProxySurface;
+    pqDataRepresentation *drepSlice;
+    pqDataRepresentation *drepSliceCube;
     QPointer<pqRenderView> viewCube;
     QPointer<pqRenderView> viewSlice;
-    vtkSMTransferFunctionProxy* lutProxy;
-    
+    vtkSMTransferFunctionProxy *lutProxy;
+
     QMap<QString, QString> headerMap;
-    
+
     void showStatusBarMessage(const std::string &msg);
 
     void updateVelocityText();
@@ -116,7 +116,7 @@ private:
     void removeContours();
 
     void calculateAndShowMomentMap(int order);
-    
+
     void setVolumeRenderingOpacity(double opacity);
 
     void resetCamera();
