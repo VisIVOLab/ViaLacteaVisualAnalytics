@@ -38,13 +38,13 @@ private:
     QStringList transitions;
 };
 
-class Source : public QObject
+class SourceCutouts : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit Source(const QString &designation, double glon, double glat,
-                    QObject *parent = nullptr);
+    explicit SourceCutouts(const QString &designation, double glon, double glat,
+                           QObject *parent = nullptr);
     void parseSearchResults(const QList<QMap<QString, QString>> &results);
 
     const QString &getDesignation() const;
@@ -100,7 +100,7 @@ private:
     QMultiMap<QString, QPair<QString, QString>> selectedSurveys3d;
 
     QList<QMap<QString, QString>> sources;
-    QList<Source *> selectedSources;
+    QList<SourceCutouts *> selectedSources;
 
     void getSurveysData();
     void buildUI(const QStringList &surveysData);

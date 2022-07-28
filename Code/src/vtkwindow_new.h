@@ -4,7 +4,9 @@
 #include "contour.h"
 #include "loadingwidget.h"
 #include "pointspipe.h"
+#include "sourcewidget.h"
 #include "vialacteastringdictwidget.h"
+
 #include "vtkActor.h"
 #include "vtkAxes.h"
 #include "vtkAxesActor.h"
@@ -60,6 +62,7 @@ class vtkfitstoolswidget;
 class FitsImageStatisiticInfo;
 class contour;
 class DS9Region;
+class Catalogue;
 
 namespace Ui {
 class vtkwindow_new;
@@ -139,6 +142,8 @@ public:
 
     vtkSmartPointer<vtkImageViewer2> imageViewer;
     void addSources(VSTableDesktop *m_VisIVOTable);
+    void showFilteredSources(const QStringList &ids);
+    void hideFilteredSources();
     void addSourcesFromJson(const QString &fn);
     void addFilaments(VSTableDesktop *m_VisIVOTable);
     void addSourcesFromBM(VSTableDesktop *m_VisIVOTable);
@@ -186,6 +191,9 @@ public:
     QHash<vtkImageProperty *, double> image_init_color_level;
     QHash<vtkImageProperty *, double> image_init_window_level;
 
+    void setVtkInteractorEditSource(
+            const QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>> &source);
+
 signals:
     void speciesChanged();
     void surveyChanged();
@@ -222,14 +230,18 @@ private:
     bool sessionSaved = false;
 
     vtkfitstoolwidget_new *vtkfitstoolwindow;
+    QPointer<Catalogue> catalogue;
 
     QString windowName;
     // QString filenameWithPath;
     QHash<QString, vtkSmartPointer<vtkLODActor>> ellipse_actor_list;
     QHash<QString, vtkSmartPointer<vtkLODActor>> visualized_actor_list;
 
+    QPointer<QDockWidget> dock;
     QStringList ds9RegionFiles;
     QStringList jsonRegionFiles;
+
+    vtkSmartPointer<vtkLODActor> filteredSources;
 
     QHash<QString, QString> designation2fileMap;
     QHash<QString, vtkSmartPointer<vtkLODActor>> VisualizedEllipseSourcesList;
@@ -335,6 +347,7 @@ private slots:
     void addLocalSources();
     void loadDS9RegionFile();
     void cutoutDatacube(QString c);
+    void openFilterDialog();
 
     void on_cameraLeft_clicked();
     void on_bottomCamera_clicked();
@@ -366,6 +379,10 @@ private slots:
     void on_colorPushButton_clicked();
     void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addImageToList(vtkfitstoolwidgetobject *o);
+
+    void showSourceDockWidget();
+    void extractSourcesInsideRect(int *rect);
+    void setVtkInteractorExtractSources();
 
     void checkboxImageClicked(int cb, bool status = false);
     void checkboxClicked(int cb, bool status = false);
