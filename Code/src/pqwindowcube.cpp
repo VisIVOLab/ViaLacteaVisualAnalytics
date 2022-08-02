@@ -1,5 +1,5 @@
-#include "vtkwindowcube.h"
-#include "ui_vtkwindowcube.h"
+#include "pqwindowcube.h"
+#include "ui_pqwindowcube.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
 
@@ -81,10 +81,10 @@
 #include "vtkSMProperty.h"
 #include <QDebug>
 
-vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
-                             QString velocityUnit)
+pqWindowCube::pqWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
+                           QString velocityUnit)
     : QMainWindow(parent),
-      ui(new Ui::vtkWindowCube),
+      ui(new Ui::pqWindowCube),
       fitsReader(fitsReader),
       parentWindow(qobject_cast<vtkWindowImage *>(parent)),
       currentSlice(0),
@@ -233,14 +233,14 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fit
 }
 
 // paraview
-vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string fn)
-    : ui(new Ui::vtkWindowCube), contourFilter(nullptr)
+pqWindowCube::pqWindowCube(QPointer<pqPipelineSource> fitsSource, std::string fn)
+    : ui(new Ui::pqWindowCube), contourFilter(nullptr)
 {
     MainWindow *w = &Singleton<MainWindow>::Instance();
 
     ui->setupUi(this);
     connect(ui->actionVolGenerate, &QAction::triggered, this,
-            &vtkWindowCube::generateVolumeRendering);
+            &pqWindowCube::generateVolumeRendering);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(QString::fromStdString(fn));
 
@@ -413,7 +413,7 @@ vtkWindowCube::vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string 
     activateWindow();
 }
 
-vtkWindowCube::~vtkWindowCube()
+pqWindowCube::~pqWindowCube()
 {
     this->FitsSource = NULL;
 
@@ -424,7 +424,7 @@ vtkWindowCube::~vtkWindowCube()
     delete ui;
 }
 
-QString vtkWindowCube::createFitsHeader(const QMap<QString, QString> &headerMap)
+QString pqWindowCube::createFitsHeader(const QMap<QString, QString> &headerMap)
 {
     fitsfile *fptr;
     // char* filename=;
@@ -494,7 +494,7 @@ QString vtkWindowCube::createFitsHeader(const QMap<QString, QString> &headerMap)
     return headerFile;
 }
 
-double vtkWindowCube::readRMSFromHeader(const QMap<QString, QString> &headerMap)
+double pqWindowCube::readRMSFromHeader(const QMap<QString, QString> &headerMap)
 {
     if (headerMap.contains("RMS")) {
         return headerMap.value("RMS").toDouble();
@@ -518,12 +518,12 @@ double vtkWindowCube::readRMSFromHeader(const QMap<QString, QString> &headerMap)
     return sqrt(sum / n);
 }
 
-void vtkWindowCube::showStatusBarMessage(const std::string &msg)
+void pqWindowCube::showStatusBarMessage(const std::string &msg)
 {
     ui->statusBar->showMessage(QString::fromStdString(msg));
 }
 
-void vtkWindowCube::updateVelocityText()
+void pqWindowCube::updateVelocityText()
 {
     double initSlice = headerMap.value("CRVAL3").toDouble()
             - (headerMap.value("CDELT3").toDouble() * (headerMap.value("CRPIX3").toDouble() - 1));
@@ -536,7 +536,7 @@ void vtkWindowCube::updateVelocityText()
     ui->velocityText->setText(QString::number(velocity).append(" Km/s"));
 }
 
-void vtkWindowCube::setThreshold(double threshold)
+void pqWindowCube::setThreshold(double threshold)
 {
     vtkSMProxy *filterProxy = contourFilter->getProxy();
     pqSMAdaptor::setElementProperty(filterProxy->GetProperty("ContourValues"), threshold);
@@ -545,7 +545,7 @@ void vtkWindowCube::setThreshold(double threshold)
     viewCube->render();
 }
 
-void vtkWindowCube::showContours()
+void pqWindowCube::showContours()
 {
 
     double min = ui->lowerBoundText->text().toDouble();
@@ -637,7 +637,7 @@ void vtkWindowCube::showContours()
      */
 }
 
-void vtkWindowCube::removeContours()
+void pqWindowCube::removeContours()
 {
     /*
          ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
@@ -654,7 +654,7 @@ void vtkWindowCube::removeContours()
     }
 }
 
-void vtkWindowCube::calculateAndShowMomentMap(int order)
+void pqWindowCube::calculateAndShowMomentMap(int order)
 {
     if (parentWindow) {
         auto moment = vtkSmartPointer<vtkFitsReader>::New();
@@ -666,7 +666,7 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     }
 }
 
-void vtkWindowCube::resetCamera()
+void pqWindowCube::resetCamera()
 {
     auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
     auto camera = renderer->GetActiveCamera();
@@ -676,7 +676,7 @@ void vtkWindowCube::resetCamera()
     renderer->ResetCamera();
 }
 
-void vtkWindowCube::setCameraAzimuth(double az)
+void pqWindowCube::setCameraAzimuth(double az)
 {
     resetCamera();
     auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
@@ -684,7 +684,7 @@ void vtkWindowCube::setCameraAzimuth(double az)
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkWindowCube::setCameraElevation(double el)
+void pqWindowCube::setCameraElevation(double el)
 {
     resetCamera();
     auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
@@ -692,7 +692,7 @@ void vtkWindowCube::setCameraElevation(double el)
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkWindowCube::on_sliceSlider_sliderReleased()
+void pqWindowCube::on_sliceSlider_sliderReleased()
 {
     int value = ui->sliceSlider->value();
 
@@ -704,7 +704,7 @@ void vtkWindowCube::on_sliceSlider_sliderReleased()
     setSliceDatacube(value);
 }
 
-void vtkWindowCube::on_sliceSpinBox_editingFinished()
+void pqWindowCube::on_sliceSpinBox_editingFinished()
 {
     int value = ui->sliceSpinBox->value();
 
@@ -717,7 +717,7 @@ void vtkWindowCube::on_sliceSpinBox_editingFinished()
     setSliceDatacube(value);
 }
 
-void vtkWindowCube::setSliceDatacube(int value)
+void pqWindowCube::setSliceDatacube(int value)
 {
     if (currentSlice == (value - 1)) {
         // No need to update the slice
@@ -765,37 +765,37 @@ void vtkWindowCube::setSliceDatacube(int value)
     }
 }
 
-void vtkWindowCube::on_actionFront_triggered()
+void pqWindowCube::on_actionFront_triggered()
 {
     setCameraAzimuth(0);
 }
 
-void vtkWindowCube::on_actionBack_triggered()
+void pqWindowCube::on_actionBack_triggered()
 {
     setCameraAzimuth(-180);
 }
 
-void vtkWindowCube::on_actionTop_triggered()
+void pqWindowCube::on_actionTop_triggered()
 {
     setCameraElevation(90);
 }
 
-void vtkWindowCube::on_actionRight_triggered()
+void pqWindowCube::on_actionRight_triggered()
 {
     setCameraAzimuth(90);
 }
 
-void vtkWindowCube::on_actionBottom_triggered()
+void pqWindowCube::on_actionBottom_triggered()
 {
     setCameraElevation(-90);
 }
 
-void vtkWindowCube::on_actionLeft_triggered()
+void pqWindowCube::on_actionLeft_triggered()
 {
     setCameraAzimuth(-90);
 }
 
-void vtkWindowCube::on_thresholdText_editingFinished()
+void pqWindowCube::on_thresholdText_editingFinished()
 {
 
     double threshold = ui->thresholdText->text().toDouble();
@@ -809,7 +809,7 @@ void vtkWindowCube::on_thresholdText_editingFinished()
     setThreshold(threshold);
 }
 
-void vtkWindowCube::on_thresholdSlider_sliderReleased()
+void pqWindowCube::on_thresholdSlider_sliderReleased()
 {
 
     double threshold =
@@ -818,7 +818,7 @@ void vtkWindowCube::on_thresholdSlider_sliderReleased()
     setThreshold(threshold);
 }
 
-void vtkWindowCube::on_contourCheckBox_toggled(bool checked)
+void pqWindowCube::on_contourCheckBox_toggled(bool checked)
 {
     if (checked) {
         showContours();
@@ -827,38 +827,38 @@ void vtkWindowCube::on_contourCheckBox_toggled(bool checked)
     }
 }
 
-void vtkWindowCube::on_levelText_editingFinished()
+void pqWindowCube::on_levelText_editingFinished()
 {
     if (ui->contourCheckBox->isChecked()) {
         showContours();
     }
 }
 
-void vtkWindowCube::on_lowerBoundText_editingFinished()
+void pqWindowCube::on_lowerBoundText_editingFinished()
 {
     if (ui->contourCheckBox->isChecked()) {
         showContours();
     }
 }
 
-void vtkWindowCube::on_upperBoundText_editingFinished()
+void pqWindowCube::on_upperBoundText_editingFinished()
 {
     if (ui->contourCheckBox->isChecked()) {
         showContours();
     }
 }
 
-void vtkWindowCube::on_actionCalculate_order_0_triggered()
+void pqWindowCube::on_actionCalculate_order_0_triggered()
 {
     calculateAndShowMomentMap(0);
 }
 
-void vtkWindowCube::on_actionCalculate_order_1_triggered()
+void pqWindowCube::on_actionCalculate_order_1_triggered()
 {
     calculateAndShowMomentMap(1);
 }
 
-void vtkWindowCube::on_action0_triggered()
+void pqWindowCube::on_action0_triggered()
 {
     ui->action25->setChecked(false);
     ui->action50->setChecked(false);
@@ -867,7 +867,7 @@ void vtkWindowCube::on_action0_triggered()
     setVolumeRenderingOpacity(0);
 }
 
-void vtkWindowCube::on_action25_triggered()
+void pqWindowCube::on_action25_triggered()
 {
     ui->action0->setChecked(false);
     ui->action50->setChecked(false);
@@ -876,7 +876,7 @@ void vtkWindowCube::on_action25_triggered()
     setVolumeRenderingOpacity(0.25);
 }
 
-void vtkWindowCube::on_action50_triggered()
+void pqWindowCube::on_action50_triggered()
 {
     ui->action0->setChecked(false);
     ui->action25->setChecked(false);
@@ -885,7 +885,7 @@ void vtkWindowCube::on_action50_triggered()
     setVolumeRenderingOpacity(0.5);
 }
 
-void vtkWindowCube::on_action100_triggered()
+void pqWindowCube::on_action100_triggered()
 {
     ui->action0->setChecked(false);
     ui->action25->setChecked(false);
@@ -894,14 +894,14 @@ void vtkWindowCube::on_action100_triggered()
     setVolumeRenderingOpacity(1);
 }
 
-void vtkWindowCube::setVolumeRenderingOpacity(double opacity)
+void pqWindowCube::setVolumeRenderingOpacity(double opacity)
 {
     vtkSMPropertyHelper(reprProxySurface, "Opacity").Set(opacity);
     reprProxySurface->UpdateVTKObjects();
     viewCube->render();
 }
 
-void vtkWindowCube::generateVolumeRendering()
+void pqWindowCube::generateVolumeRendering()
 {
     if (contourFilter != nullptr) {
         return;
@@ -924,12 +924,12 @@ void vtkWindowCube::generateVolumeRendering()
     reprProxySurface->UpdateVTKObjects();
 }
 
-void vtkWindowCube::changeColorMap(QString name)
+void pqWindowCube::changeColorMap(QString name)
 {
     changeColorMap(name, drepSlice->getProxy());
 }
 
-void vtkWindowCube::changeColorMap(QString name, vtkSMProxy *proxy)
+void pqWindowCube::changeColorMap(QString name, vtkSMProxy *proxy)
 {
     if (vtkSMProperty *lutProperty = proxy->GetProperty("LookupTable")) {
         int rescaleMode =

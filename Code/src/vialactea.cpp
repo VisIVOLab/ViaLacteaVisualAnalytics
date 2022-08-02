@@ -5,6 +5,7 @@
 #include "astroutils.h"
 #include "authwrapper.h"
 #include "mainwindow.h"
+#include "pqwindowcube.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
 #include "sessionloader.h"
@@ -14,7 +15,6 @@
 #include "vialacteainitialquery.h"
 #include "vialacteastringdictwidget.h"
 #include "vlkbsimplequerycomposer.h"
-#include "vtkwindowcube.h"
 
 #include <pqFileDialog.h>
 #include <QFileDialog>
@@ -29,8 +29,8 @@
 #include "vtkSMProxy.h"
 #include "vtkSMStringVectorProperty.h"
 
-#include "vtkSMReaderFactory.h"
 #include "vtkSMProxyManager.h"
+#include "vtkSMReaderFactory.h"
 #include "vtkSMSessionProxyManager.h"
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
@@ -179,7 +179,7 @@ bool ViaLactea::connectToPVServer()
 
     vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
     readerFactory->RegisterPrototype("sources", "FitsReader");
-    
+
     return server != nullptr;
 }
 
@@ -192,7 +192,7 @@ void ViaLactea::onDataLoaded(pqPipelineSource *source, std::string fn)
 
     this->originSource = source;
 
-    new vtkWindowCube(this->originSource, fn);
+    new pqWindowCube(this->originSource, fn);
 }
 
 void ViaLactea::updateVLKBSetting()
@@ -456,11 +456,11 @@ void ViaLactea::on_localDCPushButton_clicked()
                 "Not connected to pvserver. Check the connection url in the settings.");
         return;
     }
-    
-    vtkSMReaderFactory* readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+
+    vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
     QString filters = readerFactory->GetSupportedFileTypes(server->session());
-   
-    pqFileDialog dialog(server, this, QString(), QString(),filters);
+
+    pqFileDialog dialog(server, this, QString(), QString(), filters);
     dialog.setFileMode(pqFileDialog::ExistingFile);
     if (dialog.exec() == pqFileDialog::Accepted) {
         QString file = dialog.getSelectedFiles().first();

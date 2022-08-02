@@ -1,5 +1,5 @@
-#ifndef VTKWINDOWCUBE_H
-#define VTKWINDOWCUBE_H
+#ifndef PQWINDOWCUBE_H
+#define PQWINDOWCUBE_H
 
 #include "vtkwindowimage.h"
 
@@ -20,18 +20,18 @@ class vtkSMProxy;
 class vtkSMTransferFunctionProxy;
 
 namespace Ui {
-class vtkWindowCube;
+class pqWindowCube;
 }
 
-class vtkWindowCube : public QMainWindow
+class pqWindowCube : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit vtkWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
-                           QString velocityUnit = "km/s");
-    explicit vtkWindowCube(QPointer<pqPipelineSource> fitsSource, std::string fn);
-    ~vtkWindowCube();
+    explicit pqWindowCube(QWidget *parent, vtkSmartPointer<vtkFitsReader> fitsReader,
+                          QString velocityUnit = "km/s");
+    explicit pqWindowCube(QPointer<pqPipelineSource> fitsSource, std::string fn);
+    ~pqWindowCube();
 
 private slots:
     void on_sliceSlider_sliderReleased();
@@ -65,7 +65,7 @@ private slots:
     void changeColorMap(QString name, vtkSMProxy *proxy);
 
 private:
-    Ui::vtkWindowCube *ui;
+    Ui::pqWindowCube *ui;
     vtkSmartPointer<vtkFitsReader> fitsReader;
     QPointer<vtkWindowImage> parentWindow;
 
@@ -128,4 +128,4 @@ private:
     double readRMSFromHeader(const QMap<QString, QString> &headerMap);
 };
 
-#endif // VTKWINDOWCUBE_H
+#endif // PQWINDOWCUBE_H
