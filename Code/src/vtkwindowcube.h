@@ -60,6 +60,7 @@ private slots:
     void on_action50_triggered();
     void on_action100_triggered();
 
+    void generateVolumeRendering();
     void changeColorMap(QString name);
     void changeColorMap(QString name, vtkSMProxy *proxy);
 

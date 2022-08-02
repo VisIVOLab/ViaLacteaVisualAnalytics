@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1266</width>
-    <height>877</height>
+    <height>996</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -58,7 +58,7 @@
           <item>
            <widget class="QGroupBox" name="groupBox_2">
             <property name="title">
-             <string>Local image</string>
+             <string>Load image</string>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
@@ -78,7 +78,7 @@
           <item>
            <widget class="QGroupBox" name="groupBox_3">
             <property name="title">
-             <string>Local DC</string>
+             <string>Load DC</string>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_6">
              <item>
@@ -577,7 +577,7 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>24</height>
+     <height>29</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
