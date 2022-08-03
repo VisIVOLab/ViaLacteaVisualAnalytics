@@ -83,6 +83,8 @@ private:
     double upperBound;
     int currentSlice;
 
+    void showStatusBarMessage(const std::string &msg);
+
     void readInfoFromSource();
     void readHeaderFromSource();
     QString createFitsHeaderFile(const FitsHeaderMap &fitsHeader);
@@ -93,10 +95,6 @@ private:
     void showLegendScaleActors();
     void showSlice();
     void changeColorMap(const QString &name);
-
-    QString velocityUnit;
-
-    void showStatusBarMessage(const std::string &msg);
 
     void setSliceDatacube(int value);
     void updateVelocityText();
