@@ -24,7 +24,7 @@ class pqWindowCube : public QMainWindow
     using FitsHeaderMap = QMap<QString, QString>;
 
 public:
-    explicit pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn);
+    explicit pqWindowCube(pqPipelineSource *fitsSource, std::string fn);
     ~pqWindowCube() override;
 
 private slots:
@@ -75,9 +75,9 @@ private:
 
     QString fitsHeaderPath;
     FitsHeaderMap fitsHeader;
-    double bounds[6] {};
-    double dataMin {};
-    double dataMax {};
+    double bounds[6];
+    double dataMin;
+    double dataMax;
     double rms;
     double lowerBound;
     double upperBound;
@@ -106,10 +106,6 @@ private:
 
     void showContours();
     void removeContours();
-
-    void resetCamera();
-    void setCameraAzimuth(double az);
-    void setCameraElevation(double el);
 };
 
 #endif // PQWINDOWCUBE_H

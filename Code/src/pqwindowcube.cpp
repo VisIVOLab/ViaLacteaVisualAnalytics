@@ -1,9 +1,8 @@
 #include "pqwindowcube.h"
 #include "ui_pqwindowcube.h"
 
-#include "vtklegendscaleactor.h"
-
 #include "interactors/vtkinteractorstyleimagecustom.h"
+#include "vtklegendscaleactor.h"
 
 #include <pqActiveObjects.h>
 #include <pqAlwaysConnectedBehavior.h>
@@ -12,6 +11,7 @@
 #include <pqPipelineSource.h>
 #include <pqRenderView.h>
 
+#include <vtkCamera.h>
 #include <vtkPVArrayInformation.h>
 #include <vtkPVDataInformation.h>
 #include <vtkPVDataMover.h>
@@ -21,6 +21,7 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSMPropertyHelper.h>
 #include <vtkSMPVRepresentationProxy.h>
+#include <vtkSMRenderViewProxy.h>
 #include <vtkSMSessionProxyManager.h>
 #include <vtkSMTransferFunctionManager.h>
 #include <vtkSMTransferFunctionPresets.h>
@@ -33,11 +34,12 @@
 
 #include <cmath>
 #include <cstring>
+#include <utility>
 
-pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn)
+pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, std::string fn)
     : ui(new Ui::pqWindowCube),
       FitsSource(fitsSource),
-      FitsFileName(fn),
+      FitsFileName(std::move(fn)),
       currentSlice(-1),
       contourFilter(nullptr),
       contourFilter2D(nullptr)
@@ -47,9 +49,6 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn)
     setWindowTitle(QString::fromStdString(FitsFileName));
     connect(ui->actionVolGenerate, &QAction::triggered, this,
             &pqWindowCube::generateVolumeRendering);
-
-    // Hide menu entries unusable here
-    ui->menuCamera->menuAction()->setVisible(false);
 
     // ParaView Init
     builder = pqApplicationCore::instance()->getObjectBuilder();
@@ -395,38 +394,6 @@ void pqWindowCube::removeContours()
     }
 }
 
-void pqWindowCube::resetCamera()
-{
-    /*
-    auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
-    auto camera = renderer->GetActiveCamera();
-    camera->SetViewUp(0, 1, 0);
-    camera->SetPosition(initialCameraPosition);
-    camera->SetFocalPoint(initialCameraFocalPoint);
-    renderer->ResetCamera();
-     */
-}
-
-void pqWindowCube::setCameraAzimuth(double az)
-{
-    /*
-    resetCamera();
-    auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
-    renderer->GetActiveCamera()->Azimuth(az);
-    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
-     */
-}
-
-void pqWindowCube::setCameraElevation(double el)
-{
-    /*
-    resetCamera();
-    auto renderer = ui->qVtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
-    renderer->GetActiveCamera()->Elevation(el);
-    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
-     */
-}
-
 void pqWindowCube::on_sliceSlider_sliderReleased()
 {
     int value = ui->sliceSlider->value();
@@ -541,32 +508,46 @@ void pqWindowCube::changeColorMap(const QString &name)
 
 void pqWindowCube::on_actionFront_triggered()
 {
-    setCameraAzimuth(0);
+    // Negative Z
+    viewCube->resetViewDirection(0, 0, -1, 0, 1, 0);
+    viewCube->render();
 }
 
 void pqWindowCube::on_actionBack_triggered()
 {
-    setCameraAzimuth(-180);
+    // Positive Z
+    viewCube->resetViewDirection(0, 0, 1, 0, 1, 0);
+    viewCube->render();
 }
 
 void pqWindowCube::on_actionTop_triggered()
 {
-    setCameraElevation(90);
+    // Negative Y
+    viewCube->resetViewDirection(0, -1, 0, 0, 0, 1);
+    viewCube->render();
 }
 
 void pqWindowCube::on_actionRight_triggered()
 {
-    setCameraAzimuth(90);
+    // Negative X, rotation 90
+    viewCube->resetViewDirection(-1, 0, 0, 0, 0, 1);
+    viewCube->getRenderViewProxy()->GetActiveCamera()->Roll(90);
+    viewCube->render();
 }
 
 void pqWindowCube::on_actionBottom_triggered()
 {
-    setCameraElevation(-90);
+    // Positive Y
+    viewCube->resetViewDirection(0, 1, 0, 0, 0, 1);
+    viewCube->render();
 }
 
 void pqWindowCube::on_actionLeft_triggered()
 {
-    setCameraAzimuth(-90);
+    // Positive X, rotation -90
+    viewCube->resetViewDirection(1, 0, 0, 0, 0, 1);
+    viewCube->getRenderViewProxy()->GetActiveCamera()->Roll(-90);
+    viewCube->render();
 }
 
 void pqWindowCube::on_thresholdText_editingFinished()
