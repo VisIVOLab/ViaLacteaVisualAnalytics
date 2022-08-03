@@ -62,30 +62,28 @@ void vtkInteractorStyleImageCustom::OnMouseMove()
     vtkSmartPointer<vtkFitsReader> FitsReader = NULL;
     // Pixel value and coords
     if (this->CurrentLayerFitsReader != NULL)
-        FitsReader =  CurrentLayerFitsReader();
- /*
-    float *pixel = static_cast<float *>(
-            FitsReader->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], zComp()));
-    oss << "<value> ";
-    if (pixel != NULL)
-        oss << pixel[0];
-    else
-        oss << "NaN";
- */
+        FitsReader = CurrentLayerFitsReader();
+    /*
+       float *pixel = static_cast<float *>(
+               FitsReader->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], zComp()));
+       oss << "<value> ";
+       if (pixel != NULL)
+           oss << pixel[0];
+       else
+           oss << "NaN";
+    */
     std::string filename;
     oss << " <image> X: " << world_coord[0] << " Y: " << world_coord[1];
-    if(FitsReader!=NULL)
+    if (FitsReader != NULL)
         filename = FitsReader->GetFileName();
     else
-        filename=this->CurrentLayerFitsHeader;
+        filename = this->CurrentLayerFitsHeader;
     // Galactic coords
-    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord_gal,
-                       WCS_GALACTIC);
+    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord_gal, WCS_GALACTIC);
     oss << " <galactic> GLON: " << sky_coord_gal[0] << " GLAT: " << sky_coord_gal[1];
 
     // fk5 coords
-    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord_fk5,
-                       WCS_J2000);
+    AstroUtils::xy2sky(filename, world_coord[0], world_coord[1], sky_coord_fk5, WCS_J2000);
     oss << " <fk5> RA: " << sky_coord_fk5[0] << " DEC: " << sky_coord_fk5[1];
 
     // Ecliptic coords
@@ -137,11 +135,11 @@ void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc(
     this->CurrentLayerFitsReader = callback;
 }
 
-void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc( std::string fn)
+//----------------------------------------------------------------------------
+void vtkInteractorStyleImageCustom::SetLayerFitsReaderFunc(const std::string &fn)
 {
-    this->CurrentLayerFitsHeader=fn;
+    this->CurrentLayerFitsHeader = fn;
 }
-
 
 //----------------------------------------------------------------------------
 void vtkInteractorStyleImageCustom::SetPixelZCompFunc(const std::function<int()> &callback)

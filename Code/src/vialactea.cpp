@@ -192,7 +192,10 @@ void ViaLactea::onDataLoaded(pqPipelineSource *source, std::string fn)
 
     this->originSource = source;
 
-    new pqWindowCube(this->originSource, fn);
+    auto win = new pqWindowCube(this->originSource, fn);
+    win->showMaximized();
+    win->raise();
+    win->activateWindow();
 }
 
 void ViaLactea::updateVLKBSetting()

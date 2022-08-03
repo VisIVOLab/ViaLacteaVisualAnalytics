@@ -13,7 +13,7 @@
   <widget class="QWidget" name="widget">
    <layout class="QVBoxLayout" name="_2">
     <item>
-     <layout class="QHBoxLayout" name="_3">
+     <layout class="QHBoxLayout" name="controls">
       <item>
        <widget class="QGroupBox" name="thresholdGroupBox">
         <property name="sizePolicy">
@@ -411,30 +411,6 @@
     <item>
      <layout class="QHBoxLayout" name="PVLayout"/>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="_18">
-      <item>
-       <widget class="QVTKOpenGLNativeWidget" name="qVtkCube" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QVTKOpenGLNativeWidget" name="qVtkSlice" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -443,7 +419,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>29</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">
@@ -456,13 +432,6 @@
     <addaction name="actionRight"/>
     <addaction name="actionBottom"/>
     <addaction name="actionLeft"/>
-   </widget>
-   <widget class="QMenu" name="menuMoment">
-    <property name="title">
-     <string>Moment</string>
-    </property>
-    <addaction name="actionCalculate_order_0"/>
-    <addaction name="actionCalculate_order_1"/>
    </widget>
    <widget class="QMenu" name="menuRendering">
     <property name="title">
@@ -479,6 +448,7 @@
       <addaction name="action0"/>
       <addaction name="action25"/>
       <addaction name="action50"/>
+      <addaction name="action75"/>
       <addaction name="action100"/>
      </widget>
      <addaction name="actionVolGenerate"/>
@@ -488,19 +458,18 @@
      <property name="title">
       <string>Slice</string>
      </property>
-     <widget class="QMenu" name="menuColor_Map">
+     <widget class="QMenu" name="menuColorMap">
       <property name="title">
        <string>Color Map</string>
       </property>
       <addaction name="separator"/>
      </widget>
-     <addaction name="menuColor_Map"/>
+     <addaction name="menuColorMap"/>
     </widget>
     <addaction name="menuVolume"/>
     <addaction name="menuSlice"/>
    </widget>
    <addaction name="menuCamera"/>
-   <addaction name="menuMoment"/>
    <addaction name="menuRendering"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
@@ -558,16 +527,6 @@
     <string>Left</string>
    </property>
   </action>
-  <action name="actionCalculate_order_0">
-   <property name="text">
-    <string>Calculate order 0</string>
-   </property>
-  </action>
-  <action name="actionCalculate_order_1">
-   <property name="text">
-    <string>Calculate order 1</string>
-   </property>
-  </action>
   <action name="action0">
    <property name="checkable">
     <bool>true</bool>
@@ -596,6 +555,9 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>100%</string>
    </property>
@@ -605,15 +567,15 @@
     <string>Generate</string>
    </property>
   </action>
+  <action name="action75">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>75%</string>
+   </property>
+  </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QVTKOpenGLNativeWidget</class>
-   <extends>QWidget</extends>
-   <header>QVTKOpenGLNativeWidget.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../visivo.qrc"/>
  </resources>

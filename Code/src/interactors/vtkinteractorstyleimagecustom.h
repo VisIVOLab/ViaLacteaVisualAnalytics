@@ -22,8 +22,8 @@ public:
 
     void SetCoordsCallback(const std::function<void(std::string)> &callback);
     void SetLayerFitsReaderFunc(const std::function<vtkSmartPointer<vtkFitsReader>()> &callback);
-    void SetLayerFitsReaderFunc( std::string fn);
-    
+    void SetLayerFitsReaderFunc(const std::string &fn);
+
     void SetPixelZCompFunc(const std::function<int()> &callback);
 
 protected:
@@ -37,7 +37,7 @@ private:
     std::map<vtkImageProperty *, double> ColorWindow;
 
     vtkSmartPointer<vtkCoordinate> Coordinate;
-    std::function<void(std::string)> CoordsCallback;
+    std::function<void(const std::string &)> CoordsCallback;
     std::function<vtkSmartPointer<vtkFitsReader>()> CurrentLayerFitsReader;
     std::string CurrentLayerFitsHeader;
     std::function<int()> zComp;
