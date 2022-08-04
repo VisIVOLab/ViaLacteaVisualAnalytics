@@ -124,6 +124,7 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, std::string fn)
 
 pqWindowCube::~pqWindowCube()
 {
+    builder->destroySources(server);
     this->FitsSource = NULL;
     delete ui;
 }
