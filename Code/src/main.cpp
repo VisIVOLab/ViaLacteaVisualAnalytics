@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     pqPVApplicationCore appCore(argc, argv);
   
     a.setApplicationName("Vialactea - Visual Analytics client");
-    a.setApplicationVersion("1.5.2");
+    a.setApplicationVersion("1.6-beta.1");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
 
     setlocale(LC_NUMERIC, "C");
