@@ -125,6 +125,7 @@ SOURCES += \
     src/libwcs/iget.c \
     src/libwcs/imhfile.c \
     src/libwcs/imio.c \
+    src/libwcs/imutil.c \
     src/libwcs/lin.c \
     src/libwcs/platepos.c \
     src/libwcs/proj.c \
@@ -160,6 +161,7 @@ SOURCES += \
     src/sessionloader.cpp \
     src/settingform.cpp \
     src/simcollapsedialog.cpp \
+    src/simcube/imresize.cpp \
     src/simcube/simcube_projection-collapse/api-collapse.cpp \
     src/simcube/simcube_projection-collapse/fits_simcube.cpp \
     src/simcube/simcube_projection-collapse/image.cpp \
@@ -246,6 +248,7 @@ HEADERS  += \
     src/sessionloader.h \
     src/settingform.h \
     src/simcollapsedialog.h \
+    src/simcube/imresize.h \
     src/simcube/simcube_projection-collapse/fits_simcube.hpp \
     src/simcube/simcube_projection-collapse/image.hpp \
     src/simcube/simcube_projection-collapse/projection.hpp \
