@@ -75,45 +75,10 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
-      <widget class="QDoubleSpinBox" name="spinScale">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="minimum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.800000000000000</double>
-       </property>
-      </widget>
-     </item>
      <item row="4" column="0">
       <widget class="QLabel" name="label_6">
        <property name="text">
         <string>Longitude (deg):</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QDoubleSpinBox" name="spinLon">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="maximum">
-        <double>360.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -124,54 +89,10 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="1">
-      <widget class="QDoubleSpinBox" name="spinLat">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="minimum">
-        <double>-90.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>90.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.000000000000000</double>
-       </property>
-      </widget>
-     </item>
      <item row="6" column="0">
       <widget class="QLabel" name="label_8">
        <property name="text">
         <string>Distance (pc):</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="1">
-      <widget class="QDoubleSpinBox" name="spinDistance">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="minimum">
-        <double>0.001000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>10000000.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>200.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -181,7 +102,7 @@
         <string>Half-width at half-maximum</string>
        </property>
        <property name="text">
-        <string>HWHM:</string>
+        <string>Sigma:</string>
        </property>
       </widget>
      </item>
@@ -192,22 +113,41 @@
        </property>
       </widget>
      </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="textScale">
+       <property name="text">
+        <string>1.8</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="textLon">
+       <property name="text">
+        <string>0.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLineEdit" name="textLat">
+       <property name="text">
+        <string>0.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="textDistance">
+       <property name="text">
+        <string>10.0</string>
+       </property>
+      </widget>
+     </item>
      <item row="7" column="1">
-      <widget class="QDoubleSpinBox" name="spinHalfWidth">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
+      <widget class="QLineEdit" name="textSigma">
        <property name="toolTip">
-        <string>Half width at half maximum</string>
+        <string>Set 0 to not filter the image</string>
        </property>
-       <property name="decimals">
-        <number>6</number>
-       </property>
-       <property name="maximum">
-        <double>200.000000000000000</double>
+       <property name="text">
+        <string>0.0</string>
        </property>
       </widget>
      </item>
@@ -219,11 +159,6 @@
   <tabstop>textX</tabstop>
   <tabstop>textY</tabstop>
   <tabstop>textZ</tabstop>
-  <tabstop>spinScale</tabstop>
-  <tabstop>spinLon</tabstop>
-  <tabstop>spinLat</tabstop>
-  <tabstop>spinDistance</tabstop>
-  <tabstop>spinHalfWidth</tabstop>
  </tabstops>
  <resources/>
  <connections/>

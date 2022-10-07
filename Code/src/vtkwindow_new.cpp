@@ -3042,7 +3042,7 @@ void vtkwindow_new::actionCollapseTriggered()
     SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &SimCollapseDialog::dialogSubmitted, this,
-            [this, angles](double scale, double lon, double lat, double distance, double ghwidth) {
+            [this, angles](double scale, double lon, double lat, double distance, double sigma) {
                 QString inFile = QString::fromStdString(myfits->GetFileName());
                 QFileInfo inInfo(inFile);
                 QString outFile = inInfo.baseName() + "_collapsed_gal.fits";
@@ -3061,8 +3061,8 @@ void vtkwindow_new::actionCollapseTriggered()
                     qDebug() << Q_FUNC_INFO << "cdelt_gal_deg" << cdelt_gal_deg[0]
                              << cdelt_gal_deg[1];
 
-                    if (ghwidth == 0.0) {
-                        qDebug() << Q_FUNC_INFO << "ghwidth == 0.0";
+                    if (sigma == 0.0) {
+                        qDebug() << Q_FUNC_INFO << "sigma == 0.0";
                         auto fits = vtkSmartPointer<vtkFitsReader>::New();
                         fits->SetFileName(outFile.toStdString());
                         auto win = new vtkwindow_new(this, fits);
@@ -3071,14 +3071,14 @@ void vtkwindow_new::actionCollapseTriggered()
                         return;
                     }
 
-                    qDebug() << Q_FUNC_INFO << "ghwidth != 0.0" << ghwidth;
-                    double cdelt2_new = (ghwidth * 2) / 3;
+                    qDebug() << Q_FUNC_INFO << "sigma != 0.0" << sigma;
+                    double cdelt2_new = (sigma * 2.355) / 3;
                     if (cdelt2_new < cdelt_gal_deg[1]) {
                         qDebug() << Q_FUNC_INFO << "cdelt2_new < cdelt2:" << cdelt2_new;
                         QMessageBox::information(
                                 this, "Invalid value",
-                                "Invalid Half-Width at Half-Maximum value.\nThe new CDELT would be "
-                                "lower than the current value.\nChange HWHM or set it to 0 to "
+                                "Invalid Sigma value.\nThe new CDELT would be "
+                                "lower than the current value.\nChange Sigma or set it to 0 to "
                                 "not rescale the image.");
                         return;
                     }
@@ -3086,37 +3086,16 @@ void vtkwindow_new::actionCollapseTriggered()
                     int resizeFactor = cdelt2_new / cdelt_gal_deg[1];
                     qDebug() << Q_FUNC_INFO << "CDELT2_NEW:" << cdelt2_new
                              << " - Resize Factor: " << resizeFactor;
-                    // double ghwidth = beam / 2;
 
                     char outFileChar[outFile.size() + 1];
                     strcpy(outFileChar, outFile.toStdString().c_str());
 
-                    imresize(outFileChar, resizeFactor, ghwidth);
+                    imresize(outFileChar, resizeFactor, sigma);
                     auto fits = vtkSmartPointer<vtkFitsReader>::New();
                     fits->SetFileName(outFile.toStdString());
                     auto win = new vtkwindow_new(this, fits);
                     win->activateWindow();
                     win->raise();
-
-                    /*
-                    auto gaussian = vtkSmartPointer<vtkImageGaussianSmooth>::New();
-                    gaussian->SetDimensionality(2);
-                    gaussian->SetRadiusFactor(3.0f);
-                    gaussian->SetStandardDeviation(beam / 2.335);
-                    gaussian->SetInputData(fits->GetOutput());
-                    gaussian->Update();
-
-                    auto writer = vtkSmartPointer<vtkFitsWriter>::New();
-                    writer->SetInputData(gaussian->GetOutput());
-                    writer->SetFileName(outFile.toStdString().c_str());
-                    writer->Write();
-
-                    auto fitsFiltered = vtkSmartPointer<vtkFitsReader>::New();
-                    fitsFiltered->SetFileName(outFile.toStdString());
-                    auto win = new vtkwindow_new(this, fitsFiltered);
-                    win->activateWindow();
-                    win->raise();
-                    */
                 } catch (const std::exception &e) {
                     QMessageBox::critical(this, "Error", e.what());
                 }

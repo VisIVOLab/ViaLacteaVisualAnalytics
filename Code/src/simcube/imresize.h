@@ -8,6 +8,6 @@
 #define IMRESIZE_H
 
 extern "C" {
-void imresize(char *name, int resizeFactor, double ghwidth, int kernelSize = 3);
+void imresize(char *name, int resizeFactor, double sigma, int kernelSize = 15);
 }
 #endif // IMRESIZE_H

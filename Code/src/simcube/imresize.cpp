@@ -18,8 +18,6 @@
 
 #include "imresize.h"
 
-#define GAUSSIAN 3
-
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
@@ -38,7 +36,7 @@ extern void setghwidth(double);
 extern char *ShrinkFITSHeader(char *, char *, int, int, int, int);
 extern char *ShrinkFITSImage(char *, char *, int, int, int, int, int);
 
-void imresize(char *name, int resizeFactor, double ghwidth, int kernelSize)
+void imresize(char *name, int resizeFactor, double sigma, int kernelSize)
 {
     char *image; /* FITS image */
     char *header; /* FITS header */
@@ -56,15 +54,14 @@ void imresize(char *name, int resizeFactor, double ghwidth, int kernelSize)
     int xfactor = resizeFactor;
     int yfactor = resizeFactor;
 
-    int filter = GAUSSIAN;
+    int filter = 3; /* MEDIAN=1, MEAN=2, GAUSSIAN=3 */
     int xsize = kernelSize;
     int ysize = kernelSize;
 
     // int overwrite = 1;
-
     strcpy(newname, name);
 
-    setghwidth(ghwidth);
+    setghwidth(sigma);
 
     if ((header = fitsrhead(name, &lhead, &nbhead)) != NULL) {
         if ((image = fitsrimage(name, nbhead, header)) == NULL) {
@@ -75,6 +72,20 @@ void imresize(char *name, int resizeFactor, double ghwidth, int kernelSize)
     } else {
         fprintf(stderr, "Cannot read FITS file %s\n", name);
         return;
+    }
+
+    if ((newimage = FiltFITS(header, image, filter, xsize, ysize, nlog)) == NULL)
+        fprintf(stderr, "Cannot filter image %s; file is unchanged.\n", name);
+    else {
+        free(image);
+        image = newimage;
+
+        /* Add IMSMOOTH keyword to say how image was changed */
+        if (hgets(header, "IMSMOOTH", 63, history))
+            hputs(header, "HISTORY", history);
+        sprintf(history, "Gaussian halfwidth %.2f pixels filtered over %d x %d pixels", sigma,
+                xsize, ysize);
+        hputs(header, "IMSMOOTH", history);
     }
 
     if ((newhead = ShrinkFITSHeader(name, header, xfactor, yfactor, mean, bitpix)) == NULL)
@@ -95,24 +106,8 @@ void imresize(char *name, int resizeFactor, double ghwidth, int kernelSize)
         hputs(header, "IMRESIZE", history);
     }
 
-    if ((newimage = FiltFITS(header, image, filter, xsize, ysize, nlog)) == NULL)
-        fprintf(stderr, "Cannot filter image %s; file is unchanged.\n", name);
-    else {
-        free(image);
-        image = newimage;
-
-        /* Add IMSMOOTH keyword to say how image was changed */
-        if (hgets(header, "IMSMOOTH", 63, history))
-            hputs(header, "HISTORY", history);
-        sprintf(history, "Gaussian halfwidth %.2f pixels filtered over %d x %d pixels", ghwidth,
-                xsize, ysize);
-        hputs(header, "IMSMOOTH", history);
-    }
-
     fitswimage(newname, header, image);
-
     free(header);
-
     free(image);
 }
 }
