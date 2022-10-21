@@ -36,10 +36,12 @@
 #include <cstring>
 #include <utility>
 
-pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, std::string fn)
+pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
+                           const CubeSubset &cubeSubset)
     : ui(new Ui::pqWindowCube),
       FitsSource(fitsSource),
       FitsFileName(std::move(fn)),
+      cubeSubset(cubeSubset),
       currentSlice(-1),
       contourFilter(nullptr),
       contourFilter2D(nullptr)
@@ -82,6 +84,9 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, std::string fn)
         connect(lut, &QAction::triggered, this, [=]() { changeColorMap(name); });
     }
     ui->menuColorMap->addActions(lutGroup->actions());
+
+    // Handle Subset selection
+    setSubsetProperties(cubeSubset);
 
     createViews();
     showOutline();
@@ -322,6 +327,15 @@ void pqWindowCube::showSlice()
 void pqWindowCube::showStatusBarMessage(const std::string &msg)
 {
     ui->statusBar->showMessage(QString::fromStdString(msg));
+}
+
+void pqWindowCube::setSubsetProperties(const CubeSubset &subset)
+{
+    auto sourceProxy = FitsSource->getProxy();
+    vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Set(subset.readSubset);
+    vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.subset, 6);
+    vtkSMPropertyHelper(sourceProxy, "ReadStep").Set(subset.readSteps, 3);
+    sourceProxy->UpdateVTKObjects();
 }
 
 void pqWindowCube::updateVelocityText()

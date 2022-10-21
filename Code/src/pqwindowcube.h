@@ -1,6 +1,8 @@
 #ifndef PQWINDOWCUBE_H
 #define PQWINDOWCUBE_H
 
+#include "subsetselectordialog.h"
+
 #include <QMainWindow>
 #include <QMap>
 #include <QPointer>
@@ -24,7 +26,8 @@ class pqWindowCube : public QMainWindow
     using FitsHeaderMap = QMap<QString, QString>;
 
 public:
-    explicit pqWindowCube(pqPipelineSource *fitsSource, std::string fn);
+    explicit pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
+                          const CubeSubset &cubeSubset = CubeSubset());
     ~pqWindowCube() override;
 
 private slots:
@@ -60,6 +63,8 @@ private:
     pqPipelineSource *FitsSource;
     std::string FitsFileName;
 
+    CubeSubset cubeSubset;
+
     pqServer *server;
     vtkSMSessionProxyManager *serverProxyManager;
     pqObjectBuilder *builder;
@@ -84,6 +89,8 @@ private:
     int currentSlice;
 
     void showStatusBarMessage(const std::string &msg);
+
+    void setSubsetProperties(const CubeSubset &subset);
 
     void readInfoFromSource();
     void readHeaderFromSource();

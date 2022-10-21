@@ -11,6 +11,7 @@
 #include "sessionloader.h"
 #include "settingform.h"
 #include "singleton.h"
+#include "subsetselectordialog.h"
 #include "usertablewindow.h"
 #include "vialacteainitialquery.h"
 #include "vialacteastringdictwidget.h"
@@ -185,17 +186,25 @@ bool ViaLactea::connectToPVServer()
 
 void ViaLactea::onDataLoaded(pqPipelineSource *source, std::string fn)
 {
+    auto subsetSelector = new SubsetSelectorDialog(this);
+    subsetSelector->setAttribute(Qt::WA_DeleteOnClose);
+    connect(subsetSelector, &SubsetSelectorDialog::subsetSelected, this,
+            [this, source, fn](const CubeSubset &subset) {
+                if (this->originSource) {
+                    pqApplicationCore::instance()->getObjectBuilder()->destroy(this->originSource);
+                }
 
-    if (this->originSource) {
-        pqApplicationCore::instance()->getObjectBuilder()->destroy(this->originSource);
-    }
+                this->originSource = source;
 
-    this->originSource = source;
+                auto win = new pqWindowCube(this->originSource, fn, subset);
+                win->showMaximized();
+                win->raise();
+                win->activateWindow();
+            });
 
-    auto win = new pqWindowCube(this->originSource, fn);
-    win->showMaximized();
-    win->raise();
-    win->activateWindow();
+    subsetSelector->show();
+    subsetSelector->activateWindow();
+    subsetSelector->raise();
 }
 
 void ViaLactea::updateVLKBSetting()

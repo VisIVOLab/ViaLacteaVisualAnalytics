@@ -22,7 +22,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ParaView REQUIRED)
 find_package(CFITSIO REQUIRED)
-find_package(OpenMP REQUIRED)
+#find_package(OpenMP REQUIRED)
 find_package(Boost REQUIRED)
 find_package(CURL REQUIRED)
 
@@ -114,6 +114,7 @@ set(sources
         src/selectedsourcesform.cpp
         src/sessionloader.cpp
         src/settingform.cpp
+        src/subsetselectordialog.cpp
         src/treeitem.cpp
         src/treemodel.cpp
         src/usertablewindow.cpp
@@ -195,6 +196,7 @@ set(headers
         src/sessionloader.h
         src/settingform.h
         src/singleton.h
+        src/subsetselectordialog.h
         src/treeitem.h
         src/treemodel.h
         src/usertablewindow.h
@@ -250,6 +252,7 @@ set(ui_files
         ui/selectedsourcesform.ui
         ui/sessionloader.ui
         ui/settingform.ui
+        ui/subsetselectordialog.ui
         ui/usertablewindow.ui
         ui/vialactea.ui
         ui/vialactea_fileload.ui
