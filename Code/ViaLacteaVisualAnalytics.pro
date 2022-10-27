@@ -126,6 +126,7 @@ SOURCES += \
     src/libwcs/iget.c \
     src/libwcs/imhfile.c \
     src/libwcs/imio.c \
+    src/libwcs/imutil.c \
     src/libwcs/lin.c \
     src/libwcs/platepos.c \
     src/libwcs/proj.c \
@@ -163,14 +164,24 @@ SOURCES += \
     src/sfilterdialog.cpp \
     src/source.cpp \
     src/sourcewidget.cpp \
+    src/simcollapsedialog.cpp \
+    src/simcube/imresize.cpp \
+    src/simcube/simcube_projection-collapse/api-collapse.cpp \
+    src/simcube/simcube_projection-collapse/fits_simcube.cpp \
+    src/simcube/simcube_projection-collapse/image.cpp \
+    src/simcube/simcube_projection-collapse/projection.cpp \
+    src/simcube/simcube_projection-collapse/utils.cpp \
+    src/simcube/simcube_projection-galactic/api-galactic.cpp \
+    src/simcube/simcube_projection-galactic/fits_simimg.cpp \
+    src/simplacedialog.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
     src/usertablewindow.cpp \
     src/vialactea.cpp \
-    src/vialactea_fileload.cpp \
     src/vialacteainitialquery.cpp \
     src/vialacteasource.cpp \
     src/vialacteastringdictwidget.cpp \
+    src/vialactea_fileload.cpp \
     src/viewselectedsourcedataset.cpp \
     src/visivoimporterdesktop.cpp \
     src/visivoutilsdesktop.cpp \
@@ -186,8 +197,9 @@ SOURCES += \
     src/vtkextracthistogram.cpp \
     src/vtkfitsreader.cpp \
     src/vtkfitstoolswidget.cpp \
-    src/vtkfitstoolwidget_new.cpp \
     src/vtkfitstoolwidgetobject.cpp \
+    src/vtkfitstoolwidget_new.cpp \
+    src/vtkfitswriter.cpp \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
@@ -241,6 +253,15 @@ HEADERS  += \
     src/sessionloader.h \
     src/settingform.h \
     src/sfilterdialog.h \
+    src/simcollapsedialog.h \
+    src/simcube/imresize.h \
+    src/simcube/simcube_projection-collapse/fits_simcube.hpp \
+    src/simcube/simcube_projection-collapse/image.hpp \
+    src/simcube/simcube_projection-collapse/projection.hpp \
+    src/simcube/simcube_projection-collapse/utils.hpp \
+    src/simcube/simcube_projection-galactic/fits_simimg.hpp \
+    src/simcube/simcube_projection.hpp \
+    src/simplacedialog.h \
     src/singleton.h \
     src/source.h \
     src/sourcewidget.h \
@@ -248,10 +269,10 @@ HEADERS  += \
     src/treemodel.h \
     src/usertablewindow.h \
     src/vialactea.h \
-    src/vialactea_fileload.h \
     src/vialacteainitialquery.h \
     src/vialacteasource.h \
     src/vialacteastringdictwidget.h \
+    src/vialactea_fileload.h \
     src/viewselectedsourcedataset.h \
     src/visivoimporterdesktop.h \
     src/visivoutilsdesktop.h \
@@ -267,8 +288,9 @@ HEADERS  += \
     src/vtkextracthistogram.h \
     src/vtkfitsreader.h \
     src/vtkfitstoolswidget.h \
-    src/vtkfitstoolwidget_new.h \
     src/vtkfitstoolwidgetobject.h \
+    src/vtkfitstoolwidget_new.h \
+    src/vtkfitswriter.h \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
@@ -298,6 +320,8 @@ FORMS += \
     ui/settingform.ui \
     ui/sfilterdialog.ui \
     ui/sourcewidget.ui \
+    ui/simcollapsedialog.ui \
+    ui/simplacedialog.ui \
     ui/usertablewindow.ui \
     ui/vialactea.ui \
     ui/vialactea_fileload.ui \

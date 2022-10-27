@@ -17,7 +17,7 @@
 #include <QNetworkReply>
 #include <QSpinBox>
 
-const QString CaesarWindow::baseUrl = "http://caesar-api.neanias.eu/caesar/api/v1.0";
+const QString CaesarWindow::baseUrl = "https://caesar-api.neanias.eu/caesar/api/v1.0";
 
 CaesarWindow::CaesarWindow(QWidget *parent, const QString &imagePath)
     : QMainWindow(parent),

@@ -39,6 +39,7 @@ public:
 
     bool is3D;
     bool isMoment3D;
+    bool ctypeXY;
     void CalculateRMS();
     void CalculateMedia();
     void PrintDetails();

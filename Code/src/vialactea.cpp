@@ -423,6 +423,15 @@ void ViaLactea::on_localDCPushButton_clicked()
         return;
     }
 
+    // Check if the fits is a simcube
+    auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
+    fitsReader_dc->SetFileName(fn.toStdString());
+    if (fitsReader_dc->ctypeXY) {
+        qDebug() << Q_FUNC_INFO << fn << " CTYPEs are X-Y, treating it as a simulated  cube";
+        new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
+        return;
+    }
+
     bool doSearch = settings.value("vlkb.search", false).toBool();
 
     auto load = [fn, this](const QList<QMap<QString, QString>> &results =
@@ -464,6 +473,7 @@ void ViaLactea::on_localDCPushButton_clicked()
         }
 
         this->showMinimized();
+
     } else if (canImportToMasterWin(fn.toStdString())) {
         auto moment = vtkSmartPointer<vtkFitsReader>::New();
         moment->SetFileName(fn.toStdString());
@@ -471,11 +481,7 @@ void ViaLactea::on_localDCPushButton_clicked()
         moment->setMomentOrder(0);
         masterWin->addLayerImage(moment);
 
-        auto dc = vtkSmartPointer<vtkFitsReader>::New();
-        dc->SetFileName(fn.toStdString());
-        dc->is3D = true;
-        new vtkwindow_new(masterWin, dc, 1, masterWin);
-        this->showMinimized();
+        new vtkwindow_new(masterWin, fitsReader_dc, 1, masterWin);
     } else {
         QMessageBox::warning(this, QObject::tr("Import DC"),
                              QObject::tr("The regions do not overlap, the file cannot be "
