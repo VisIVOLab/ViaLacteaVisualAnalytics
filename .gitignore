@@ -2,3 +2,4 @@ Code/*.pro.user
 Code/includes.pri
 build-*
 **/.DS_Store
+Code/build/*
