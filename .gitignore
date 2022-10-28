@@ -1,4 +1,5 @@
 Code/*.pro.user
+Code/CMakeLists.txt.user
 Code/includes.pri
 build-*
 **/.DS_Store
