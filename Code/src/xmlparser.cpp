@@ -572,74 +572,40 @@ void xmlparser::parseBounds(QXmlStreamReader& xml,QMap<QString, QString> &datacu
 */
 void xmlparser::parseBounds(QXmlStreamReader &xml, QMap<QString, QString> &datacube_map)
 {
-
     qDebug() << "Leggo vertici";
-    if (xml.tokenType() != QXmlStreamReader::StartElement && xml.name() == "vertices") {
-        return;
-    }
 
-    xml.readNext();
-
-    while (!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == "SkyCoordSystem")) {
-        if (xml.tokenType() == QXmlStreamReader::StartElement) {
-            if (xml.name() == "P1") {
-                if (xml.tokenType() == QXmlStreamReader::StartElement) {
-
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("longitudeP1", xml.text().toString());
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("latitudeP1", xml.text().toString());
-                }
-            }
-            if (xml.name() == "P2") {
-                if (xml.tokenType() == QXmlStreamReader::StartElement) {
-
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("longitudeP2", xml.text().toString());
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("latitudeP2", xml.text().toString());
-                }
-            }
-            if (xml.name() == "P3") {
-                if (xml.tokenType() == QXmlStreamReader::StartElement) {
-
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("longitudeP3", xml.text().toString());
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("latitudeP3", xml.text().toString());
-                }
-            }
-            if (xml.name() == "P4") {
-                if (xml.tokenType() == QXmlStreamReader::StartElement) {
-
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("longitudeP4", xml.text().toString());
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("latitudeP4", xml.text().toString());
-                }
-            }
+    while (!(xml.name() == "SkyCoordSystem" && xml.isEndElement())) {
+        if (!xml.readNextStartElement()) {
+            continue;
         }
-        xml.readNext();
+
+        if (xml.name() == "P1") {
+            xml.readNextStartElement(); // start longitude
+            datacube_map.insert("longitudeP1", xml.readElementText());
+            xml.readNextStartElement(); // start latitude
+            datacube_map.insert("latitudeP1", xml.readElementText());
+        }
+
+        if (xml.name() == "P2") {
+            xml.readNextStartElement(); // start longitude
+            datacube_map.insert("longitudeP2", xml.readElementText());
+            xml.readNextStartElement(); // start latitude
+            datacube_map.insert("latitudeP2", xml.readElementText());
+        }
+
+        if (xml.name() == "P3") {
+            xml.readNextStartElement(); // start longitude
+            datacube_map.insert("longitudeP3", xml.readElementText());
+            xml.readNextStartElement(); // start latitude
+            datacube_map.insert("latitudeP3", xml.readElementText());
+        }
+
+        if (xml.name() == "P4") {
+            xml.readNextStartElement(); // start longitude
+            datacube_map.insert("longitudeP4", xml.readElementText());
+            xml.readNextStartElement(); // start latitude
+            datacube_map.insert("latitudeP4", xml.readElementText());
+        }
     }
 }
 
