@@ -60,14 +60,21 @@ void SettingForm::readSettingsFromFile()
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
     AuthWrapper *vlkbAuth;
     if (vlkbtype == "ia2") {
+        QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_URL_IA2).toString();
+        QString vlkbtableurl = settings.value("vlkbtableurl", ViaLactea::TAP_URL_IA2).toString();
+
         ui->ia2VLKB_radioButton->setChecked(true);
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_IA2);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_IA2);
+        ui->vlkbUrl_lineEdit->setText(vlkburl);
+        ui->tapUrl_lineEdit->setText(vlkbtableurl);
         vlkbAuth = m_ia2VlkbAuth;
     } else /* (vlkbtype == "neanias") */ {
+        QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_URL_NEANIAS).toString();
+        QString vlkbtableurl =
+                settings.value("vlkbtableurl", ViaLactea::TAP_URL_NEANIAS).toString();
+
         ui->neaniasVLKB_radioButton->setChecked(true);
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_NEANIAS);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_NEANIAS);
+        ui->vlkbUrl_lineEdit->setText(vlkburl);
+        ui->tapUrl_lineEdit->setText(vlkbtableurl);
         vlkbAuth = m_neaniasVlkbAuth;
     }
 

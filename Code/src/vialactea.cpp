@@ -148,18 +148,17 @@ void ViaLactea::quitApp()
 
 void ViaLactea::updateVLKBSetting()
 {
-    QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
+    QString vlkbtype = settings.value("vlkbtype", "").toString();
 
-    if (vlkbtype == "ia2") {
+    if (vlkbtype.isEmpty()) {
         qDebug() << "VLKB instance: IA2";
+        settings.setValue("vlkbtype", "ia2");
         settings.setValue("vlkburl", VLKB_URL_IA2);
         settings.setValue("vlkbtableurl", TAP_URL_IA2);
-    } else /*(vlkbtype == "neanias")*/ {
-        qDebug() << "VLKB instance: NEANIAS";
-        settings.setValue("vlkburl", VLKB_URL_NEANIAS);
-        settings.setValue("vlkbtableurl", TAP_URL_NEANIAS);
     }
+
     settings.sync();
+    qDebug() << "VLKB Instance:" << settings.value("vlkbtype");
 
     VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     stringDictWidget->buildDict();
