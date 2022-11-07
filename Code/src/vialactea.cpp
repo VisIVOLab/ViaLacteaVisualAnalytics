@@ -14,6 +14,7 @@
 #include "vialacteainitialquery.h"
 #include "vialacteastringdictwidget.h"
 #include "vlkbsimplequerycomposer.h"
+#include "vtkwindowcube.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -431,8 +432,26 @@ void ViaLactea::on_localDCPushButton_clicked()
         return;
     }
 
-    bool doSearch = settings.value("vlkb.search", false).toBool();
+    int maxSize = settings.value("downscaleSize", 1024).toInt();
+    int size = QFileInfo(fn).size() / (1024 * 1024);
 
+    vtkWindowCube *win;
+    if (maxSize <= 0 || size <= maxSize) {
+        win = new vtkWindowCube(nullptr, fn);
+    } else {
+        int ScaleFactor = ceil(cbrt(size / maxSize));
+        qDebug() << Q_FUNC_INFO << "ScaleFactor" << ScaleFactor;
+        win = new vtkWindowCube(nullptr, fn, ScaleFactor);
+    }
+
+    win->show();
+    win->activateWindow();
+    win->raise();
+    this->showMinimized();
+
+    /*
+     *
+    bool doSearch = settings.value("vlkb.search", false).toBool();
     auto load = [fn, this](const QList<QMap<QString, QString>> &results =
                                    QList<QMap<QString, QString>>()) {
         // Open a new window to visualize the momentmap
@@ -486,6 +505,7 @@ void ViaLactea::on_localDCPushButton_clicked()
                              QObject::tr("The regions do not overlap, the file cannot be "
                                          "imported in the current session."));
     }
+    */
 }
 
 void ViaLactea::on_actionExit_triggered()

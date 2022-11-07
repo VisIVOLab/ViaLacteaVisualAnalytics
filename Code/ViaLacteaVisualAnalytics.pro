@@ -5,7 +5,7 @@
 #-------------------------------------------------
 
 QT += core gui widgets network networkauth printsupport xml concurrent webenginewidgets
-CONFIG += c++11
+CONFIG += c++11 use_gold_linker
 
 #QMAKE_MAC_SDK = macosx10.15
 CONFIG += sdk_no_version_check
@@ -114,6 +114,7 @@ SOURCES += \
     src/fitsimagestatisiticinfo.cpp \
     src/higalselectedsources.cpp \
     src/histogram.cpp \
+    src/interactors/vtkinteractorstyleimagecustom.cpp \
     src/libwcs/cel.c \
     src/libwcs/dateutil.c \
     src/libwcs/distort.c \
@@ -196,6 +197,7 @@ SOURCES += \
     src/vtkellipse.cpp \
     src/vtkextracthistogram.cpp \
     src/vtkfitsreader.cpp \
+    src/vtkfitsreader2.cpp \
     src/vtkfitstoolswidget.cpp \
     src/vtkfitstoolwidgetobject.cpp \
     src/vtkfitstoolwidget_new.cpp \
@@ -203,7 +205,8 @@ SOURCES += \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
-    src/xmlparser.cpp
+    src/xmlparser.cpp \
+    src/vtkwindowcube.cpp
 
 
 HEADERS  += \
@@ -227,6 +230,7 @@ HEADERS  += \
     src/fitsimagestatisiticinfo.h \
     src/higalselectedsources.h \
     src/histogram.h \
+    src/interactors/vtkinteractorstyleimagecustom.h \
     src/libwcs/fitsfile.h \
     src/libwcs/wcs.h \
     src/loadingwidget.h \
@@ -287,6 +291,7 @@ HEADERS  += \
     src/vtkellipse.h \
     src/vtkextracthistogram.h \
     src/vtkfitsreader.h \
+    src/vtkfitsreader2.h \
     src/vtkfitstoolswidget.h \
     src/vtkfitstoolwidgetobject.h \
     src/vtkfitstoolwidget_new.h \
@@ -294,7 +299,8 @@ HEADERS  += \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
-    src/xmlparser.h
+    src/xmlparser.h \
+    src/vtkwindowcube.h
 
 
 FORMS += \
@@ -334,7 +340,8 @@ FORMS += \
     ui/vtkfitstoolswidget.ui \
     ui/vtkfitstoolwidget_new.ui \
     ui/vtktoolswidget.ui \
-    ui/vtkwindow_new.ui
+    ui/vtkwindow_new.ui \
+    ui/vtkwindowcube.ui
 
 
 RESOURCES += \

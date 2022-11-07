@@ -55,7 +55,7 @@ void vtkFitsReader::SetFileName(std::string name)
     filename = name;
     ReadHeader();
 
-    this->Modified();
+    // this->Modified();
 
     qDebug() << "SetFileName.vtkFitsReader";
 }
