@@ -115,6 +115,14 @@
 #include <QSignalMapper>
 #include <QtConcurrent>
 
+#include <vtkNamedColors.h>
+#include <vtkImageProbeFilter.h>
+#include <vtkTransformFilter.h>
+#include <vtkXYPlotActor.h>
+#include <vtkPlaneSource.h>
+#include <vtkSplineWidget.h>
+#include <vtkImagePlaneWidget.h>
+
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
 VTK_MODULE_INIT(vtkRenderingFreeType)
@@ -125,120 +133,120 @@ VTK_MODULE_INIT(vtkRenderingVolumeOpenGL2)
 
 class InteractorStyleFreeHandOn3DVisualization : public vtkInteractorStyleDrawPolygon
 {
-private:
-    vtkwindow_new *vtkwin;
-    vtkSmartPointer<vtkPolyData> Points;
-    vtkSmartPointer<vtkPolyData> Points_ori;
-    vtkSmartPointer<vtkActor> SelectedActor;
-    vtkSmartPointer<vtkPolyDataMapper> SelectedMapper;
+                                                            private:
+                                                            vtkwindow_new *vtkwin;
+vtkSmartPointer<vtkPolyData> Points;
+vtkSmartPointer<vtkPolyData> Points_ori;
+vtkSmartPointer<vtkActor> SelectedActor;
+vtkSmartPointer<vtkPolyDataMapper> SelectedMapper;
 
 public:
-    static InteractorStyleFreeHandOn3DVisualization *New();
-    vtkTypeMacro(InteractorStyleFreeHandOn3DVisualization, vtkInteractorStyleDrawPolygon);
+static InteractorStyleFreeHandOn3DVisualization *New();
+vtkTypeMacro(InteractorStyleFreeHandOn3DVisualization, vtkInteractorStyleDrawPolygon);
 
-    InteractorStyleFreeHandOn3DVisualization()
-    {
-        this->SelectedMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-        this->SelectedActor = vtkSmartPointer<vtkActor>::New();
-        this->SelectedActor->SetMapper(SelectedMapper);
-    }
+InteractorStyleFreeHandOn3DVisualization()
+{
+    this->SelectedMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    this->SelectedActor = vtkSmartPointer<vtkActor>::New();
+    this->SelectedActor->SetMapper(SelectedMapper);
+}
 
-    virtual void OnLeftButtonUp()
-    {
+virtual void OnLeftButtonUp()
+{
 
-        vtkInteractorStyleDrawPolygon::OnLeftButtonUp();
-        std::vector<vtkVector2i> points = this->GetPolygonPoints();
+    vtkInteractorStyleDrawPolygon::OnLeftButtonUp();
+    std::vector<vtkVector2i> points = this->GetPolygonPoints();
 
-        if (points.size() >= 3) {
-            vtkNew<vtkIntArray> polygonPointsArray;
-            polygonPointsArray->SetNumberOfComponents(2);
-            polygonPointsArray->SetNumberOfTuples(points.size());
-            for (unsigned int j = 0; j < points.size(); ++j) {
-                const vtkVector2i &v = points[j];
-                int pos[2] = { v[0], v[1] };
-                polygonPointsArray->SetTypedTuple(j, pos);
-            }
+    if (points.size() >= 3) {
+        vtkNew<vtkIntArray> polygonPointsArray;
+        polygonPointsArray->SetNumberOfComponents(2);
+        polygonPointsArray->SetNumberOfTuples(points.size());
+        for (unsigned int j = 0; j < points.size(); ++j) {
+            const vtkVector2i &v = points[j];
+            int pos[2] = { v[0], v[1] };
+            polygonPointsArray->SetTypedTuple(j, pos);
+        }
 
-            vtkNew<vtkHardwareSelector> hardSel;
-            hardSel->SetRenderer(
+        vtkNew<vtkHardwareSelector> hardSel;
+        hardSel->SetRenderer(
                     this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
-            int *wsize = this->GetInteractor()
-                                 ->GetRenderWindow()
-                                 ->GetRenderers()
-                                 ->GetFirstRenderer()
-                                 ->GetSize();
-            int *origin = this->GetInteractor()
-                                  ->GetRenderWindow()
-                                  ->GetRenderers()
-                                  ->GetFirstRenderer()
-                                  ->GetOrigin();
-            hardSel->SetArea(origin[0], origin[1], origin[0] + wsize[0] - 1,
-                             origin[1] + wsize[1] - 1);
-            hardSel->SetFieldAssociation(vtkDataObject::FIELD_ASSOCIATION_POINTS);
+        int *wsize = this->GetInteractor()
+                ->GetRenderWindow()
+                ->GetRenderers()
+                ->GetFirstRenderer()
+                ->GetSize();
+        int *origin = this->GetInteractor()
+                ->GetRenderWindow()
+                ->GetRenderers()
+                ->GetFirstRenderer()
+                ->GetOrigin();
+        hardSel->SetArea(origin[0], origin[1], origin[0] + wsize[0] - 1,
+                origin[1] + wsize[1] - 1);
+        hardSel->SetFieldAssociation(vtkDataObject::FIELD_ASSOCIATION_POINTS);
 
-            if (hardSel->CaptureBuffers()) {
+        if (hardSel->CaptureBuffers()) {
 
-                vtkSelection *psel = hardSel->GeneratePolygonSelection(
+            vtkSelection *psel = hardSel->GeneratePolygonSelection(
                         polygonPointsArray->GetPointer(0),
                         polygonPointsArray->GetNumberOfTuples() * 2);
-                hardSel->ClearBuffers();
+            hardSel->ClearBuffers();
 
-                vtkSmartPointer<vtkSelection> sel;
-                sel.TakeReference(psel);
+            vtkSmartPointer<vtkSelection> sel;
+            sel.TakeReference(psel);
 
-                vtkSmartPointer<vtkExtractSelection> extractSelection =
-                        vtkSmartPointer<vtkExtractSelection>::New();
+            vtkSmartPointer<vtkExtractSelection> extractSelection =
+                    vtkSmartPointer<vtkExtractSelection>::New();
 
-                extractSelection->SetInputData(this->Points);
+            extractSelection->SetInputData(this->Points);
 
-                extractSelection->SetInputData(1, sel);
+            extractSelection->SetInputData(1, sel);
 
-                extractSelection->Update();
+            extractSelection->Update();
 
-                // In selection
-                vtkSmartPointer<vtkUnstructuredGrid> selected =
-                        vtkSmartPointer<vtkUnstructuredGrid>::New();
-                selected->ShallowCopy(extractSelection->GetOutput());
+            // In selection
+            vtkSmartPointer<vtkUnstructuredGrid> selected =
+                    vtkSmartPointer<vtkUnstructuredGrid>::New();
+            selected->ShallowCopy(extractSelection->GetOutput());
 
-                std::cout << "There are " << selected->GetNumberOfPoints()
-                          << " points in the selection." << std::endl;
-                std::cout << "There are " << selected->GetNumberOfCells()
-                          << " cells in the selection." << std::endl;
+            std::cout << "There are " << selected->GetNumberOfPoints()
+                      << " points in the selection." << std::endl;
+            std::cout << "There are " << selected->GetNumberOfCells()
+                      << " cells in the selection." << std::endl;
 
-                vtkSmartPointer<vtkGeometryFilter> geometryFilter =
-                        vtkSmartPointer<vtkGeometryFilter>::New();
+            vtkSmartPointer<vtkGeometryFilter> geometryFilter =
+                    vtkSmartPointer<vtkGeometryFilter>::New();
 
-                geometryFilter->SetInputData(selected);
+            geometryFilter->SetInputData(selected);
 
-                geometryFilter->Update();
-                vtkPolyData *selected_poly = geometryFilter->GetOutput();
+            geometryFilter->Update();
+            vtkPolyData *selected_poly = geometryFilter->GetOutput();
 
-                this->SelectedMapper->SetInputData(selected_poly);
+            this->SelectedMapper->SetInputData(selected_poly);
 
-                this->SelectedMapper->ScalarVisibilityOff();
+            this->SelectedMapper->ScalarVisibilityOff();
 
-                double r = vtkMath::Random(0.0, 1.0);
-                double g = vtkMath::Random(0.0, 1.0);
-                double b = vtkMath::Random(0.0, 1.0);
+            double r = vtkMath::Random(0.0, 1.0);
+            double g = vtkMath::Random(0.0, 1.0);
+            double b = vtkMath::Random(0.0, 1.0);
 
-                // START
-                std::cout << "Selected " << selected->GetNumberOfPoints() << " points."
-                          << std::endl;
-                std::cout << "Selected " << selected->GetNumberOfCells() << " cells." << std::endl;
-                // END
+            // START
+            std::cout << "Selected " << selected->GetNumberOfPoints() << " points."
+                      << std::endl;
+            std::cout << "Selected " << selected->GetNumberOfCells() << " cells." << std::endl;
+            // END
 
-                this->SelectedActor->GetProperty()->SetColor(r, g, b); //(R,G,B)
-                this->SelectedActor->GetProperty()->SetPointSize(3);
-                this->GetInteractor()
-                        ->GetRenderWindow()
-                        ->GetRenderers()
-                        ->GetFirstRenderer()
-                        ->AddActor(SelectedActor);
-                this->GetInteractor()->GetRenderWindow()->Render();
-                this->HighlightProp(NULL);
+            this->SelectedActor->GetProperty()->SetColor(r, g, b); //(R,G,B)
+            this->SelectedActor->GetProperty()->SetPointSize(3);
+            this->GetInteractor()
+                    ->GetRenderWindow()
+                    ->GetRenderers()
+                    ->GetFirstRenderer()
+                    ->AddActor(SelectedActor);
+            this->GetInteractor()->GetRenderWindow()->Render();
+            this->HighlightProp(NULL);
 
-                /*
+            /*
                     if(selected->GetNumberOfPoints()>0)
                     {
                         this->CurrentRenderer->RemoveActor(vtkwin->selectedActor);
@@ -246,24 +254,24 @@ public:
                         vtkwin->setVtkInteractorStyle3DFreehand(selected_poly);
                     }
                 */
-            }
         }
     }
+}
 
-    void SetPoints(vtkSmartPointer<vtkPolyData> points)
-    {
-        this->Points = points;
-        this->Points_ori = points;
-    }
+void SetPoints(vtkSmartPointer<vtkPolyData> points)
+{
+    this->Points = points;
+    this->Points_ori = points;
+}
 
-    void setVtkWin(vtkwindow_new *w) { vtkwin = w; }
+void setVtkWin(vtkwindow_new *w) { vtkwin = w; }
 
-    virtual void PrintSelf(std::ostream &os, vtkIndent indent) { }
+virtual void PrintSelf(std::ostream &os, vtkIndent indent) { }
 
-    virtual void PrintHeader(ostream &os, vtkIndent indent) { }
+virtual void PrintHeader(ostream &os, vtkIndent indent) { }
 
-    virtual void PrintTrailer(std::ostream &os, vtkIndent indent) { }
-    virtual void CollectRevisions(std::ostream &os) { }
+virtual void PrintTrailer(std::ostream &os, vtkIndent indent) { }
+virtual void CollectRevisions(std::ostream &os) { }
 };
 vtkStandardNewMacro(InteractorStyleFreeHandOn3DVisualization);
 
@@ -400,10 +408,10 @@ public:
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
         coordinate->SetValue(this->GetInteractor()->GetEventPosition()[0],
-                             this->GetInteractor()->GetEventPosition()[1], 0);
+                this->GetInteractor()->GetEventPosition()[1], 0);
 
         double *world_coord = coordinate->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
         double *sky_coord = new double[2];
         double *sky_coord_gal = new double[2];
         double *sky_coord_fk5 = new double[2];
@@ -411,7 +419,7 @@ public:
         QString statusBarText = "";
         float *pixel;
         pixel = static_cast<float *>(vtkwin->getFitsImage()->GetOutput()->GetScalarPointer(
-                world_coord[0], world_coord[1], 0));
+                                         world_coord[0], world_coord[1], 0));
 
         statusBarText = "<value> ";
         if (pixel != NULL)
@@ -424,13 +432,13 @@ public:
 
         // WCS_GALACTIC = 3
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_gal,
-                            3);
+                3);
         statusBarText += " <galactic> GLON: " + QString::number(sky_coord_gal[0])
                 + " GLAT: " + QString::number(sky_coord_gal[1]);
 
         // WCS_J2000 = 1
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_fk5,
-                            1);
+                1);
         statusBarText += " <fk5> RA: " + QString::number(sky_coord_fk5[0])
                 + " DEC: " + QString::number(sky_coord_fk5[1]);
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord);
@@ -450,14 +458,14 @@ public:
         coordinate->SetValue(this->StartPosition[0], this->StartPosition[1], 0);
 
         double *world_start = coordinate->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         vtkSmartPointer<vtkCoordinate> coordinate_end = vtkSmartPointer<vtkCoordinate>::New();
         coordinate_end->SetCoordinateSystemToDisplay();
         coordinate_end->SetValue(this->EndPosition[0], this->EndPosition[1], 0);
 
         double *world_end = coordinate_end->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double w = world_end[0] - world_start[0];
         double h = world_end[1] - world_start[1];
@@ -484,7 +492,7 @@ public:
 
         // quifv
         foreach (el, vtkwin->getEllipseList())
-        // foreach( el, vtkwin->getFtEllipseList() )
+            // foreach( el, vtkwin->getFtEllipseList() )
         {
 
             if (el->isInsideRect(rect)) {
@@ -495,7 +503,7 @@ public:
                 QString name = vtkwin->getDesignation2fileMap().value(el->getSourceName());
 
                 int row = listWidget_list.value(name)->row(
-                        listWidget_list.value(name)->currentItem());
+                            listWidget_list.value(name)->currentItem());
 
                 listWidget_list.value(name)->insertItem(row, newItem);
                 empty = false;
@@ -570,14 +578,14 @@ public:
         coordinate_start->SetValue(this->startPosition[0], this->startPosition[1], 0);
 
         double *world_start = coordinate_start->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         vtkSmartPointer<vtkCoordinate> coordinate_end = vtkSmartPointer<vtkCoordinate>::New();
         coordinate_end->SetCoordinateSystemToDisplay();
         coordinate_end->SetValue(this->endPosition[0], this->endPosition[1], 0);
 
         double *world_end = coordinate_end->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         vtkSmartPointer<vtkLineSource> lineSource = vtkSmartPointer<vtkLineSource>::New();
 
@@ -729,10 +737,10 @@ public:
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
         coordinate->SetValue(this->GetInteractor()->GetEventPosition()[0],
-                             this->GetInteractor()->GetEventPosition()[1], 0);
+                this->GetInteractor()->GetEventPosition()[1], 0);
 
         double *world_coord = coordinate->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double *sky_coord = new double[2];
         double *sky_coord_gal = new double[2];
@@ -744,19 +752,19 @@ public:
             fits = vtkwin->getLayerListImages().at(0)->getFits();
 
             if (vtkwin->ui->listWidget->selectionModel()->selectedRows().count() != 0
-                && vtkwin->getLayerListImages()
-                                .at(vtkwin->ui->listWidget->selectionModel()
-                                            ->selectedRows()
-                                            .at(0)
-                                            .row())
-                                ->getType()
-                        == 0) {
+                    && vtkwin->getLayerListImages()
+                    .at(vtkwin->ui->listWidget->selectionModel()
+                        ->selectedRows()
+                        .at(0)
+                        .row())
+                    ->getType()
+                    == 0) {
                 fits = vtkwin->getLayerListImages()
-                               .at(vtkwin->ui->listWidget->selectionModel()
-                                           ->selectedRows()
-                                           .at(0)
-                                           .row())
-                               ->getFits();
+                        .at(vtkwin->ui->listWidget->selectionModel()
+                            ->selectedRows()
+                            .at(0)
+                            .row())
+                        ->getFits();
             }
         } else {
             fits = vtkwin->getFitsImage();
@@ -765,10 +773,10 @@ public:
         float *pixel;
         if (!isSlice)
             pixel = static_cast<float *>(
-                    fits->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], 0));
+                        fits->GetOutput()->GetScalarPointer(world_coord[0], world_coord[1], 0));
         else
             pixel = static_cast<float *>(fits->GetOutput()->GetScalarPointer(
-                    world_coord[0], world_coord[1], vtkwin->viewer->GetSlice()));
+                                             world_coord[0], world_coord[1], vtkwin->viewer->GetSlice()));
 
         statusBarText = "<value> ";
         if (pixel != NULL)
@@ -782,20 +790,20 @@ public:
         if (!fits->ctypeXY) {
             // WCS_GALACTIC = 3
             AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1],
-                                sky_coord_gal, 3);
+                    sky_coord_gal, 3);
 
             statusBarText += " <galactic> GLON: " + QString::number(sky_coord_gal[0])
                     + " GLAT: " + QString::number(sky_coord_gal[1]);
 
             // WCS_J2000 = 1
             AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1],
-                                sky_coord_fk5, 1);
+                    sky_coord_fk5, 1);
 
             statusBarText += " <fk5> RA: " + QString::number(sky_coord_fk5[0])
                     + " DEC: " + QString::number(sky_coord_fk5[1]);
 
             AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1],
-                                sky_coord);
+                    sky_coord);
             statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
                     + " DEC: " + QString::number(sky_coord[1]);
         }
@@ -941,20 +949,20 @@ public:
         coordinate->SetValue(this->StartPosition[0], this->StartPosition[1], 0);
 
         double *world_start = coordinate->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         vtkSmartPointer<vtkCoordinate> coordinate_end = vtkSmartPointer<vtkCoordinate>::New();
         coordinate_end->SetCoordinateSystemToDisplay();
         coordinate_end->SetValue(this->EndPosition[0], this->EndPosition[1], 0);
 
         double *world_end = coordinate_end->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double *coor_start = new double[2];
         double *coor_end = new double[2];
 
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_start[0], world_start[1], coor_start,
-                            3);
+                3);
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_end[0], world_end[1], coor_end, 3);
 
         vtkInteractorStyleRubberBand2D::OnLeftButtonUp();
@@ -1308,9 +1316,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     : QMainWindow(parent), ui(new Ui::vtkwindow_new)
 {
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
@@ -1592,7 +1600,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         // slice
         vtkPlanes *sliceE = vtkPlanes::New();
         sliceE->SetBounds(vis->GetOutput()->GetBounds()[0], vis->GetOutput()->GetBounds()[1],
-                          vis->GetOutput()->GetBounds()[2], vis->GetOutput()->GetBounds()[3], 0, 1);
+                vis->GetOutput()->GetBounds()[2], vis->GetOutput()->GetBounds()[3], 0, 1);
         vtkSmartPointer<vtkFrustumSource> frustumSource = vtkSmartPointer<vtkFrustumSource>::New();
         frustumSource->ShowLinesOff();
         frustumSource->SetPlanes(sliceE);
@@ -1984,7 +1992,7 @@ void vtkwindow_new::addBubble(VSTableDesktop *m_VisIVOTable)
         centroid_glon =
                 atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon_cen")][j].c_str());
         contour = QString::fromUtf8(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("contour")][j].c_str());
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("contour")][j].c_str());
 
         QStringList pieces = contour.split(",");
         QStringList fil_glon = pieces.at(0).split("_");
@@ -2089,20 +2097,20 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
         centroid_glon =
                 atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon")][j].c_str());
         contour = QString::fromUtf8(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("contour")][j].c_str());
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("contour")][j].c_str());
 
         branches_contour1d = QString::fromUtf8(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("branches_contour1d")][j]
-                        .c_str());
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("branches_contour1d")][j]
+                .c_str());
         branches_flagspine = QString::fromUtf8(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flagspine_branches")][j]
-                        .c_str());
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flagspine_branches")][j]
+                .c_str());
         branches_contour_new = QString::fromUtf8(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("branches_contour_new")][j]
-                        .c_str());
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("branches_contour_new")][j]
+                .c_str());
         branches_contour = QString::fromUtf8(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("branches_contour")][j]
-                        .c_str());
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("branches_contour")][j]
+                .c_str());
 
         QStringList pieces = contour.split(",");
         QStringList fil_glon = pieces.at(0).split("_");
@@ -2140,7 +2148,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
         vtkSmartPointer<vtkPolyLine> branches_contour_new_polyLine =
                 vtkSmartPointer<vtkPolyLine>::New();
         branches_contour_new_polyLine->GetPointIds()->SetNumberOfIds(
-                branches_contour_new_glat.size() - 1);
+                    branches_contour_new_glat.size() - 1);
 
         vtkSmartPointer<vtkPoints> branches_contour_points = vtkSmartPointer<vtkPoints>::New();
         vtkSmartPointer<vtkPolyLine> branches_contour_polyLine =
@@ -2334,7 +2342,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkCleanPolyData> branches_contour1d_cleanFilter =
             vtkSmartPointer<vtkCleanPolyData>::New();
     branches_contour1d_cleanFilter->SetInputConnection(
-            branches_contour1d_appendFilter->GetOutputPort());
+                branches_contour1d_appendFilter->GetOutputPort());
     branches_contour1d_cleanFilter->Update();
     vtkSmartPointer<vtkPolyDataMapper> branches_contour1d_mapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -2353,7 +2361,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkCleanPolyData> branches_contour_cleanFilter =
             vtkSmartPointer<vtkCleanPolyData>::New();
     branches_contour_cleanFilter->SetInputConnection(
-            branches_contour_appendFilter->GetOutputPort());
+                branches_contour_appendFilter->GetOutputPort());
     branches_contour_cleanFilter->Update();
     vtkSmartPointer<vtkPolyDataMapper> branches_contour_mapper =
             vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -2381,10 +2389,10 @@ void vtkwindow_new::addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> 
                 vtkSmartPointer<vtkAppendPolyData>::New();
 
         appendFilter2->AddInputData(vtkPolyData::SafeDownCast(
-                VisualizedEllipseSourcesList.value(name)->GetMapper()->GetInputAsDataSet()));
+                                        VisualizedEllipseSourcesList.value(name)->GetMapper()->GetInputAsDataSet()));
 
         appendFilter2->AddInputData(
-                vtkPolyData::SafeDownCast(actor->GetMapper()->GetInputAsDataSet()));
+                    vtkPolyData::SafeDownCast(actor->GetMapper()->GetInputAsDataSet()));
 
         // Remove any duplicate points.
         vtkSmartPointer<vtkCleanPolyData> cleanFilter2 = vtkSmartPointer<vtkCleanPolyData>::New();
@@ -2443,14 +2451,14 @@ void vtkwindow_new::addSources(VSTableDesktop *m_VisIVOTable)
         ra = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("GLON")][j].c_str());
         dec = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("GLAT")][j].c_str());
         sourceName = QString::fromStdString(
-                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("DESIGNATION")][j]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("DESIGNATION")][j]);
 
         if (AstroUtils().sky2xy(filenameWithPath, ra, dec, coord)) {
 
             ellipse_list.insert(sourceName,
                                 new vtkEllipse(semiMajorAxisLength, semiMinorAxisLength, angle,
                                                coord[0], coord[1], coord[2], 0, j, sourceName,
-                                               m_VisIVOTable));
+                    m_VisIVOTable));
 
             /*
         vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
@@ -2629,32 +2637,32 @@ void vtkwindow_new::drawPolygonRegions(const std::vector<DS9Region *> &polygons)
 
     std::for_each(polygons.begin(), polygons.end(),
                   [this, arcsec, &appendFilter](DS9Region *region) {
-                      auto polygon = dynamic_cast<DS9PolygonRegion *>(region);
-                      int cs = getDS9RegionCoordSystem(region);
+        auto polygon = dynamic_cast<DS9PolygonRegion *>(region);
+        int cs = getDS9RegionCoordSystem(region);
 
-                      auto points = vtkSmartPointer<vtkPoints>::New();
-                      auto cells = vtkSmartPointer<vtkCellArray>::New();
-                      cells->InsertNextCell(polygon->points.size() + 1);
+        auto points = vtkSmartPointer<vtkPoints>::New();
+        auto cells = vtkSmartPointer<vtkCellArray>::New();
+        cells->InsertNextCell(polygon->points.size() + 1);
 
-                      for (const auto &point : polygon->points) {
-                          double coords[3] = { point.first, point.second, arcsec };
+        for (const auto &point : polygon->points) {
+            double coords[3] = { point.first, point.second, arcsec };
 
-                          if (cs != WCS_XY) {
-                              AstroUtils::sky2xy_t(myfits->GetFileName(), point.first, point.second,
-                                                   cs, &coords[0], &coords[1]);
-                          }
+            if (cs != WCS_XY) {
+                AstroUtils::sky2xy_t(myfits->GetFileName(), point.first, point.second,
+                                     cs, &coords[0], &coords[1]);
+            }
 
-                          vtkIdType id = points->InsertNextPoint(coords);
-                          cells->InsertCellPoint(id);
-                      }
-                      cells->InsertCellPoint(0);
+            vtkIdType id = points->InsertNextPoint(coords);
+            cells->InsertCellPoint(id);
+        }
+        cells->InsertCellPoint(0);
 
-                      auto polyData = vtkSmartPointer<vtkPolyData>::New();
-                      polyData->SetPoints(points);
-                      polyData->SetLines(cells);
+        auto polyData = vtkSmartPointer<vtkPolyData>::New();
+        polyData->SetPoints(points);
+        polyData->SetLines(cells);
 
-                      appendFilter->AddInputData(polyData);
-                  });
+        appendFilter->AddInputData(polyData);
+    });
 
     auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
@@ -2684,7 +2692,7 @@ void vtkwindow_new::drawCircleRegions(const std::vector<DS9Region *> &circles)
 
         if (cs != WCS_XY) {
             AstroUtils::sky2xy_t(myfits->GetFileName(), circle->cx, circle->cy, cs, &center[0],
-                                 &center[1]);
+                    &center[1]);
             radius = radius / arcsec;
         }
 
@@ -2728,7 +2736,7 @@ void vtkwindow_new::drawBoxRegions(const std::vector<DS9Region *> &boxes)
 
         if (cs != WCS_XY) {
             AstroUtils::sky2xy_t(myfits->GetFileName(), box->cx, box->cy, cs, &center[0],
-                                 &center[1]);
+                    &center[1]);
             semiwidth = box->width / arcsec * 0.5;
             semiheight = box->height / arcsec * 0.5;
 
@@ -2794,55 +2802,55 @@ void vtkwindow_new::drawEllipseRegions(const std::vector<DS9Region *> &ellipses)
 
     std::for_each(ellipses.begin(), ellipses.end(),
                   [this, arcsec, &appendFilter](DS9Region *region) {
-                      auto ellipse = dynamic_cast<DS9EllipseRegion *>(region);
-                      int cs = getDS9RegionCoordSystem(region);
+        auto ellipse = dynamic_cast<DS9EllipseRegion *>(region);
+        int cs = getDS9RegionCoordSystem(region);
 
-                      double center[2] = { ellipse->cx, ellipse->cy };
-                      double semiMajorAxis = ellipse->a;
-                      double semiMinorAxis = ellipse->b;
-                      double angle = ellipse->theta;
+        double center[2] = { ellipse->cx, ellipse->cy };
+        double semiMajorAxis = ellipse->a;
+        double semiMinorAxis = ellipse->b;
+        double angle = ellipse->theta;
 
-                      if (cs != WCS_XY) {
-                          AstroUtils::sky2xy_t(myfits->GetFileName(), ellipse->cx, ellipse->cy, cs,
-                                               &center[0], &center[1]);
+        if (cs != WCS_XY) {
+            AstroUtils::sky2xy_t(myfits->GetFileName(), ellipse->cx, ellipse->cy, cs,
+                                 &center[0], &center[1]);
 
-                          semiMajorAxis = semiMajorAxis / arcsec;
-                          semiMinorAxis = semiMinorAxis / arcsec;
+            semiMajorAxis = semiMajorAxis / arcsec;
+            semiMinorAxis = semiMinorAxis / arcsec;
 
-                          double delta = 0;
-                          AstroUtils::getRotationAngle(myfits->GetFileName(), &delta, cs);
-                          angle += delta;
-                      }
+            double delta = 0;
+            AstroUtils::getRotationAngle(myfits->GetFileName(), &delta, cs);
+            angle += delta;
+        }
 
-                      auto points = vtkSmartPointer<vtkPoints>::New();
-                      auto cells = vtkSmartPointer<vtkCellArray>::New();
-                      cells->InsertNextCell(41);
-                      for (double i = 0; i < 2 * vtkMath::Pi(); i += vtkMath::Pi() / 20) {
-                          vtkIdType id = points->InsertNextPoint(semiMajorAxis * cos(i) + center[0],
-                                                                 semiMinorAxis * sin(i) + center[1],
-                                                                 arcsec);
-                          cells->InsertCellPoint(id);
-                      }
-                      cells->InsertCellPoint(0);
-                      cells->UpdateCellCount(points->GetNumberOfPoints() + 1);
+        auto points = vtkSmartPointer<vtkPoints>::New();
+        auto cells = vtkSmartPointer<vtkCellArray>::New();
+        cells->InsertNextCell(41);
+        for (double i = 0; i < 2 * vtkMath::Pi(); i += vtkMath::Pi() / 20) {
+            vtkIdType id = points->InsertNextPoint(semiMajorAxis * cos(i) + center[0],
+                    semiMinorAxis * sin(i) + center[1],
+                    arcsec);
+            cells->InsertCellPoint(id);
+        }
+        cells->InsertCellPoint(0);
+        cells->UpdateCellCount(points->GetNumberOfPoints() + 1);
 
-                      auto polyData = vtkSmartPointer<vtkPolyData>::New();
-                      polyData->SetPoints(points);
-                      polyData->SetLines(cells);
+        auto polyData = vtkSmartPointer<vtkPolyData>::New();
+        polyData->SetPoints(points);
+        polyData->SetLines(cells);
 
-                      auto transform = vtkSmartPointer<vtkTransform>::New();
-                      transform->PostMultiply();
-                      transform->Translate(-center[0], -center[1], -arcsec);
-                      transform->RotateZ(angle);
-                      transform->Translate(center[0], center[1], arcsec);
+        auto transform = vtkSmartPointer<vtkTransform>::New();
+        transform->PostMultiply();
+        transform->Translate(-center[0], -center[1], -arcsec);
+        transform->RotateZ(angle);
+        transform->Translate(center[0], center[1], arcsec);
 
-                      auto transformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
-                      transformFilter->SetInputData(polyData);
-                      transformFilter->SetTransform(transform);
-                      transformFilter->Update();
+        auto transformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        transformFilter->SetInputData(polyData);
+        transformFilter->SetTransform(transform);
+        transformFilter->Update();
 
-                      appendFilter->AddInputData(transformFilter->GetOutput());
-                  });
+        appendFilter->AddInputData(transformFilter->GetOutput());
+    });
 
     auto cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
     cleanFilter->SetInputConnection(appendFilter->GetOutputPort());
@@ -3091,12 +3099,12 @@ void vtkwindow_new::drawEllipse(QHash<QString, vtkEllipse *> ellipse, QString so
                 vtkSmartPointer<vtkAppendPolyData>::New();
 
         appendFilter2->AddInputData(
-                vtkPolyData::SafeDownCast(VisualizedEllipseSourcesList.value(ori_sourceFilename)
-                                                  ->GetMapper()
-                                                  ->GetInputAsDataSet()));
+                    vtkPolyData::SafeDownCast(VisualizedEllipseSourcesList.value(ori_sourceFilename)
+                                              ->GetMapper()
+                                              ->GetInputAsDataSet()));
 
         appendFilter2->AddInputData(
-                vtkPolyData::SafeDownCast(ellipseActor->GetMapper()->GetInputAsDataSet()));
+                    vtkPolyData::SafeDownCast(ellipseActor->GetMapper()->GetInputAsDataSet()));
 
         // Remove any duplicate points.
         vtkSmartPointer<vtkCleanPolyData> cleanFilter2 = vtkSmartPointer<vtkCleanPolyData>::New();
@@ -3209,13 +3217,13 @@ void vtkwindow_new::slot_clicked(vtkObject *, unsigned long, void *, void *)
     vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();
     coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],
-                         ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[1], 0);
+            ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[1], 0);
 
     double *world_coord = coordinate->GetComputedWorldValue(ui->qVTK1->renderWindow()
-                                                                    ->GetInteractor()
-                                                                    ->GetRenderWindow()
-                                                                    ->GetRenderers()
-                                                                    ->GetFirstRenderer());
+                                                            ->GetInteractor()
+                                                            ->GetRenderWindow()
+                                                            ->GetRenderers()
+                                                            ->GetFirstRenderer());
 
     vtkSmartPointer<vtkImageActorPointPlacer> pointPlacer =
             vtkSmartPointer<vtkImageActorPointPlacer>::New();
@@ -3243,10 +3251,10 @@ void vtkwindow_new::slot_clicked(vtkObject *, unsigned long, void *, void *)
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
         coordinate->SetValue(ui->qVTK1->interactor()->GetEventPosition()[0],
-                             ui->qVTK1->interactor()->GetEventPosition()[1], 0);
+                ui->qVTK1->interactor()->GetEventPosition()[1], 0);
 
         double *world_coord = coordinate->GetComputedWorldValue(
-                ui->qVTK1->interactor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+                    ui->qVTK1->interactor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double *sky_coord_gal = new double[2];
 
@@ -3254,7 +3262,7 @@ void vtkwindow_new::slot_clicked(vtkObject *, unsigned long, void *, void *)
 
         signalMapper->setMapping(viewDC,
                                  QString::number(sky_coord_gal[0]) + ";"
-                                         + QString::number(sky_coord_gal[1]));
+                + QString::number(sky_coord_gal[1]));
 
         connect(signalMapper, SIGNAL(mapped(QString)), this, SLOT(cutoutDatacube(QString)));
 
@@ -3305,72 +3313,72 @@ void vtkwindow_new::openFilterDialog()
 void vtkwindow_new::actionCollapseTriggered()
 {
     double *angles = ui->qVTK1->renderWindow()
-                             ->GetRenderers()
-                             ->GetFirstRenderer()
-                             ->GetActiveCamera()
-                             ->GetOrientation();
+            ->GetRenderers()
+            ->GetFirstRenderer()
+            ->GetActiveCamera()
+            ->GetOrientation();
 
     SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &SimCollapseDialog::dialogSubmitted, this,
             [this, angles](double scale, double lon, double lat, double distance, double sigma) {
-                QString inFile = QString::fromStdString(myfits->GetFileName());
-                QFileInfo inInfo(inFile);
-                QString outFile = inInfo.baseName() + "_collapsed_gal.fits";
-                outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
-                try {
-                    double coords[] { lon, lat };
+        QString inFile = QString::fromStdString(myfits->GetFileName());
+        QFileInfo inInfo(inFile);
+        QString outFile = inInfo.baseName() + "_collapsed_gal.fits";
+        outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
+        try {
+            double coords[] { lon, lat };
 
-                    simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(),
-                                                 angles, scale);
+            simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(),
+                                         angles, scale);
 
-                    double cdelt_gal_deg[2];
+            double cdelt_gal_deg[2];
 
-                    simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords,
-                                                   cdelt_gal_deg);
+            simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords,
+                                           cdelt_gal_deg);
 
-                    qDebug() << Q_FUNC_INFO << "cdelt_gal_deg" << cdelt_gal_deg[0]
-                             << cdelt_gal_deg[1];
+            qDebug() << Q_FUNC_INFO << "cdelt_gal_deg" << cdelt_gal_deg[0]
+                     << cdelt_gal_deg[1];
 
-                    if (sigma == 0.0) {
-                        qDebug() << Q_FUNC_INFO << "sigma == 0.0";
-                        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-                        fits->SetFileName(outFile.toStdString());
-                        auto win = new vtkwindow_new(this, fits);
-                        win->activateWindow();
-                        win->raise();
-                        return;
-                    }
+            if (sigma == 0.0) {
+                qDebug() << Q_FUNC_INFO << "sigma == 0.0";
+                auto fits = vtkSmartPointer<vtkFitsReader>::New();
+                fits->SetFileName(outFile.toStdString());
+                auto win = new vtkwindow_new(this, fits);
+                win->activateWindow();
+                win->raise();
+                return;
+            }
 
-                    qDebug() << Q_FUNC_INFO << "sigma != 0.0" << sigma;
-                    double cdelt2_new = (sigma * 2.355) / 3;
-                    if (cdelt2_new < cdelt_gal_deg[1]) {
-                        qDebug() << Q_FUNC_INFO << "cdelt2_new < cdelt2:" << cdelt2_new;
-                        QMessageBox::information(
-                                this, "Invalid value",
-                                "Invalid Sigma value.\nThe new CDELT would be "
-                                "lower than the current value.\nChange Sigma or set it to 0 to "
-                                "not rescale the image.");
-                        return;
-                    }
+            qDebug() << Q_FUNC_INFO << "sigma != 0.0" << sigma;
+            double cdelt2_new = (sigma * 2.355) / 3;
+            if (cdelt2_new < cdelt_gal_deg[1]) {
+                qDebug() << Q_FUNC_INFO << "cdelt2_new < cdelt2:" << cdelt2_new;
+                QMessageBox::information(
+                            this, "Invalid value",
+                            "Invalid Sigma value.\nThe new CDELT would be "
+                            "lower than the current value.\nChange Sigma or set it to 0 to "
+                            "not rescale the image.");
+                return;
+            }
 
-                    int resizeFactor = cdelt2_new / cdelt_gal_deg[1];
-                    qDebug() << Q_FUNC_INFO << "CDELT2_NEW:" << cdelt2_new
-                             << " - Resize Factor: " << resizeFactor;
+            int resizeFactor = cdelt2_new / cdelt_gal_deg[1];
+            qDebug() << Q_FUNC_INFO << "CDELT2_NEW:" << cdelt2_new
+                     << " - Resize Factor: " << resizeFactor;
 
-                    char outFileChar[outFile.size() + 1];
-                    strcpy(outFileChar, outFile.toStdString().c_str());
+            char outFileChar[outFile.size() + 1];
+            strcpy(outFileChar, outFile.toStdString().c_str());
 
-                    imresize(outFileChar, resizeFactor, sigma);
-                    auto fits = vtkSmartPointer<vtkFitsReader>::New();
-                    fits->SetFileName(outFile.toStdString());
-                    auto win = new vtkwindow_new(this, fits);
-                    win->activateWindow();
-                    win->raise();
-                } catch (const std::exception &e) {
-                    QMessageBox::critical(this, "Error", e.what());
-                }
-            });
+            imresize(outFileChar, resizeFactor, sigma);
+            auto fits = vtkSmartPointer<vtkFitsReader>::New();
+            fits->SetFileName(outFile.toStdString());
+            auto win = new vtkwindow_new(this, fits);
+            win->activateWindow();
+            win->raise();
+        } catch (const std::exception &e) {
+            QMessageBox::critical(this, "Error", e.what());
+        }
+    });
     dialog->setModal(true);
     dialog->show();
     dialog->raise();
@@ -3430,8 +3438,8 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale)
     int pos = 0;
 
     if (ui->listWidget->selectionModel()->selectedRows().count() != 0
-        && imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
-                == 0) {
+            && imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
+            == 0) {
         qDebug() << "inside";
         pos = ui->listWidget->selectionModel()->selectedRows().at(0).row();
     }
@@ -3515,7 +3523,7 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
 
             sourceName =
                     QString::fromStdString(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId(
-                            "DESIGNATION" + wavelen[i].toStdString())][j]);
+                        "DESIGNATION" + wavelen[i].toStdString())][j]);
             if (sourceName.compare("missing") != 0 && list->indexOf(sourceName) == -1) {
                 list->push_back(sourceName);
                 // finchè marco non mette la tabella
@@ -3535,19 +3543,19 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
                 {
                 */
                 semiMajorAxisLength = atof(m_VisIVOTable
-                                                   ->getTableData()[m_VisIVOTable->getColId(
-                                                           "FWHMA" + wavelen[i].toStdString())][j]
-                                                   .c_str())
+                                           ->getTableData()[m_VisIVOTable->getColId(
+                            "FWHMA" + wavelen[i].toStdString())][j]
+                        .c_str())
                         / 2;
                 semiMinorAxisLength = atof(m_VisIVOTable
-                                                   ->getTableData()[m_VisIVOTable->getColId(
-                                                           "FWHMB" + wavelen[i].toStdString())][j]
-                                                   .c_str())
+                                           ->getTableData()[m_VisIVOTable->getColId(
+                            "FWHMB" + wavelen[i].toStdString())][j]
+                        .c_str())
                         / 2;
                 angle = atof(m_VisIVOTable
-                                     ->getTableData()[m_VisIVOTable->getColId(
-                                             "PA" + wavelen[i].toStdString())][j]
-                                     .c_str());
+                             ->getTableData()[m_VisIVOTable->getColId(
+                            "PA" + wavelen[i].toStdString())][j]
+                        .c_str());
                 //  M_PI*semiMajorAxisLength*semiMinorAxisLength;
                 // qDebug()<<"\t\t index_ft: "<<index_ft <<" "<<old_index_ft ;
 
@@ -3569,20 +3577,20 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
 
                 // }
                 ra = atof(m_VisIVOTable
-                                  ->getTableData()[m_VisIVOTable->getColId(
-                                          "GLON" + wavelen[i].toStdString())][j]
-                                  .c_str());
+                          ->getTableData()[m_VisIVOTable->getColId(
+                            "GLON" + wavelen[i].toStdString())][j]
+                        .c_str());
                 dec = atof(m_VisIVOTable
-                                   ->getTableData()[m_VisIVOTable->getColId(
-                                           "GLAT" + wavelen[i].toStdString())][j]
-                                   .c_str());
+                           ->getTableData()[m_VisIVOTable->getColId(
+                            "GLAT" + wavelen[i].toStdString())][j]
+                        .c_str());
 
                 numidtree =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("numidtree")][j]
-                                     .c_str());
+                        .c_str());
                 numid_intree = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("numid_intree")][j]
-                                .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("numid_intree")][j]
+                        .c_str());
 
                 if (AstroUtils().sky2xy(filenameWithPath, ra, dec, coord)) {
 
@@ -3590,16 +3598,16 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
 
                     if (wavelen[i].compare("ft") == 0) {
                         ft_ellipse_list.insert(
-                                sourceName,
-                                new vtkEllipse(semiMajorAxisLength, semiMinorAxisLength, angle,
-                                               coord[0], coord[1], coord[2], 0, j, sourceName,
-                                               m_VisIVOTable, numidtree, numid_intree));
+                                    sourceName,
+                                    new vtkEllipse(semiMajorAxisLength, semiMinorAxisLength, angle,
+                                                   coord[0], coord[1], coord[2], 0, j, sourceName,
+                                m_VisIVOTable, numidtree, numid_intree));
                     } else
                         ellipse_list_local.insert(
-                                sourceName,
-                                new vtkEllipse(semiMajorAxisLength, semiMinorAxisLength, angle,
-                                               coord[0], coord[1], coord[2], 0, j, sourceName,
-                                               m_VisIVOTable, numidtree, numid_intree));
+                                    sourceName,
+                                    new vtkEllipse(semiMajorAxisLength, semiMinorAxisLength, angle,
+                                                   coord[0], coord[1], coord[2], 0, j, sourceName,
+                                m_VisIVOTable, numidtree, numid_intree));
                 }
             }
         }
@@ -3832,7 +3840,7 @@ void vtkwindow_new::setVtkInteractorStyleImageContour()
 
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->SetInteractorStyle(style);
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->SetRenderWindow(
-            ui->isocontourVtkWin->renderWindow());
+                ui->isocontourVtkWin->renderWindow());
     style->setVtkWin(this);
     style->setIsSlice();
     ui->isocontourVtkWin->setCursor(Qt::ArrowCursor);
@@ -3878,8 +3886,8 @@ void vtkwindow_new::setSkyRegionSelectorInteractorStyle()
 {
 
     ui->rectangularSelectionCS->setStyleSheet(
-            "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
-            "1px;width:100%;");
+                "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
+                "1px;width:100%;");
     //    ui->rectangularSelectionCS->setStyleSheet("");
 
     ui->bubblePushButton->setStyleSheet("");
@@ -4369,19 +4377,19 @@ void vtkwindow_new::on_tableWidget_doubleClicked(const QModelIndex &index)
     if (elementLayerList.at(index.row())->getType() != 0) {
         // Initial color
         double r = getVisualizedActorList()
-                           .value(ui->tableWidget->item(index.row(), 1)->text())
-                           ->GetProperty()
-                           ->GetColor()[0]
+                .value(ui->tableWidget->item(index.row(), 1)->text())
+                ->GetProperty()
+                ->GetColor()[0]
                 * 255;
         double g = getVisualizedActorList()
-                           .value(ui->tableWidget->item(index.row(), 1)->text())
-                           ->GetProperty()
-                           ->GetColor()[1]
+                .value(ui->tableWidget->item(index.row(), 1)->text())
+                ->GetProperty()
+                ->GetColor()[1]
                 * 255;
         double b = getVisualizedActorList()
-                           .value(ui->tableWidget->item(index.row(), 1)->text())
-                           ->GetProperty()
-                           ->GetColor()[2]
+                .value(ui->tableWidget->item(index.row(), 1)->text())
+                ->GetProperty()
+                ->GetColor()[2]
                 * 255;
 
         QColor color = QColorDialog::getColor(QColor(r, g, b), this);
@@ -4407,8 +4415,8 @@ void vtkwindow_new::on_tableWidget_doubleClicked(const QModelIndex &index)
 void vtkwindow_new::on_fil_rectPushButton_clicked()
 {
     ui->fil_rectPushButton->setStyleSheet(
-            "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
-            "1px;");
+                "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
+                "1px;");
     ui->rectangularSelectionCS->setStyleSheet("");
     ui->tdRectPushButton->setStyleSheet("");
     ui->bubblePushButton->setStyleSheet("");
@@ -4693,8 +4701,8 @@ void vtkwindow_new::on_logRadioButton_toggled(bool checked)
 void vtkwindow_new::on_tdRectPushButton_clicked()
 {
     ui->tdRectPushButton->setStyleSheet(
-            "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
-            "1px;");
+                "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
+                "1px;");
     ui->fil_rectPushButton->setStyleSheet("");
     ui->rectangularSelectionCS->setStyleSheet("");
     ui->bubblePushButton->setStyleSheet("");
@@ -4787,7 +4795,7 @@ void vtkwindow_new::goContour()
     currentContourActor->GetProperty()->SetLineWidth(1);
     ui->contourCheckBox->setChecked(true);
     ui->isocontourVtkWin->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor2D(
-            currentContourActor);
+                currentContourActor);
     ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
 
     if (myParentVtkWindow != 0 && !myfits->ctypeXY) {
@@ -4796,7 +4804,7 @@ void vtkwindow_new::goContour()
         AstroUtils().xy2sky(myfits->GetFileName(), 0, 0, sky_coord_gal, 3);
         double *coord = new double[3];
         AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0],
-                            sky_coord_gal[1], coord);
+                sky_coord_gal[1], coord);
 
         double angle = 0;
         double x1 = coord[0];
@@ -4804,7 +4812,7 @@ void vtkwindow_new::goContour()
 
         AstroUtils().xy2sky(myfits->GetFileName(), 0, 100, sky_coord_gal, 3);
         AstroUtils().sky2xy(myParentVtkWindow->myfits->GetFileName(), sky_coord_gal[0],
-                            sky_coord_gal[1], coord);
+                sky_coord_gal[1], coord);
 
         if (x1 != coord[0]) {
             double m = fabs((coord[1] - y1) / (coord[0] - x1));
@@ -4917,9 +4925,9 @@ void vtkwindow_new::on_glyphActivateCheckBox_clicked(bool checked)
     //    glyphLineEdit;
 
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
 
     int maxpoint = settings.value("glyphmax", "2147483647").toString().toInt();
@@ -5024,7 +5032,7 @@ void vtkwindow_new::drawGlyphs(int index)
     }
 
     polyData->GetPointData()->SetScalars(
-            pp->getPolyData()->GetPointData()->GetScalars("scaleGlyph"));
+                pp->getPolyData()->GetPointData()->GetScalars("scaleGlyph"));
     if (ui->lut3dActivateCheckBox->isChecked()) {
         qDebug() << "Color Scalar " << QString::fromStdString(color_scalar);
         vtkSmartPointer<vtkDataArray> data =
@@ -5035,7 +5043,7 @@ void vtkwindow_new::drawGlyphs(int index)
             qDebug() << range[0] << " " << range[1];
         }
         polyData->GetPointData()->AddArray(
-                pp->getPolyData()->GetPointData()->GetArray(color_scalar.c_str()));
+                    pp->getPolyData()->GetPointData()->GetArray(color_scalar.c_str()));
         pp->getPolyData()->GetPointData()->RemoveArray(color_scalar.c_str());
     }
 
@@ -5200,8 +5208,8 @@ void vtkwindow_new::on_horizontalSlider_valueChanged(int value)
     // Se non è selezionata un immagine nella tabella in basso a dx cambio il
     // settaggio dell'immagine base
     if (ui->listWidget->selectionModel()->selectedRows().count() != 0
-        && imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
-                == 0) {
+            && imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
+            == 0) {
         pos = ui->listWidget->selectionModel()->selectedRows().at(0).row();
         //  pos=
         //  imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row()
@@ -5373,7 +5381,7 @@ void vtkwindow_new::drawRectangleFootprint(double points[8])
 
     polydata->InsertNextCell(VTK_LINE, 8,
                              connectivity); // Connects the first and fourth point
-                                            // we inserted into a line
+    // we inserted into a line
 
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputData(polydata);
@@ -5406,14 +5414,14 @@ bool vtkwindow_new::eventFilter(QObject *object, QEvent *event)
 void vtkwindow_new::on_listWidget_clicked(const QModelIndex &index)
 {
     if (ui->listWidget->selectionModel()->selectedRows().count() != 0
-        && imgLayerList.at(index.row())->getType() == 0) {
+            && imgLayerList.at(index.row())->getType() == 0) {
         int row = ui->listWidget->selectionModel()->selectedRows().at(0).row();
         imageStack->SetActiveLayer(row);
         ui->horizontalSlider->setValue(
-                vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))
-                        ->GetProperty()
-                        ->GetOpacity()
-                * 100.0);
+                    vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))
+                    ->GetProperty()
+                    ->GetOpacity()
+                    * 100.0);
         ui->lutComboBox->setCurrentText(imgLayerList.at(row)->getLutType());
         auto radioBtn = imgLayerList.at(row)->getLutScale() == "Linear" ? ui->linearadioButton
                                                                         : ui->logRadioButton;
@@ -5580,8 +5588,8 @@ void vtkwindow_new::sendImageTo(QString id)
 void vtkwindow_new::on_bubblePushButton_clicked()
 {
     ui->bubblePushButton->setStyleSheet(
-            "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
-            "1px;");
+                "background-color: rgb(0, 0, 250);border-radius: 3px; border-width: "
+                "1px;");
     ui->rectangularSelectionCS->setStyleSheet("");
     ui->tdRectPushButton->setStyleSheet("");
     ui->fil_rectPushButton->setStyleSheet("");
@@ -5666,6 +5674,114 @@ void vtkwindow_new::on_actionCAESAR_triggered()
     caesar->show();
     caesar->activateWindow();
     caesar->raise();
+}
+
+void vtkwindow_new::on_actionProfile_triggered()
+{
+    vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
+    coordinate->SetCoordinateSystemToDisplay();
+    coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],
+            ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[1], 0);
+    double *world_coord = coordinate->GetComputedWorldValue(
+                ui->qVTK1->renderWindow()->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+
+    vtkImageData* data = myfits->GetOutput();
+    double* range = data->GetPointData()->GetScalars()->GetRange();
+
+     qDebug()<<"profile <image> X: " + QString::number(int(world_coord[0]))
+             + " Y: " + QString::number(int(world_coord[1]))+" range: "+QString::number(range[0])+" "+ QString::number(range[1])+ " "+double(myfits->GetNaxes(0)) ;
+
+    qDebug()<<myfits->GetNaxes(0);
+    qDebug()<<myfits->GetNaxes(1);
+
+    // Create two points, P0 and P1
+    double p0_x[3] = {1.0, world_coord[1], 1};
+    double p1_x[3] = {double(myfits->GetNaxes(0)), world_coord[1], 1};
+
+    // Create two points, P0 and P1
+    double p0_y[3] = {world_coord[0], 1.0, 0.0};
+    double p1_y[3] = {world_coord[0], double(myfits->GetNaxes(1)), 0.0};
+
+    vtkNew<vtkLineSource> lineSource_x;
+    lineSource_x->SetPoint1(p0_x);
+    lineSource_x->SetPoint2(p1_x);
+    lineSource_x->SetResolution(100);
+    lineSource_x->Update();
+    qDebug()<<lineSource_x->GetOutput()->GetBounds()[0]<<" "<<lineSource_x->GetOutput()->GetBounds()[1];
+    qDebug()<<data->GetBounds()[0]<<" "<<data->GetBounds()[1];
+
+    //qDebug()<<lineSource_x->
+
+    vtkNew<vtkLineSource> lineSource_y;
+    lineSource_y->SetPoint1(p0_y);
+    lineSource_y->SetPoint2(p1_y);
+
+    vtkNew<vtkNamedColors> colors;
+
+    vtkNew<vtkPolyDataMapper> mapper_x;
+    mapper_x->SetInputConnection(lineSource_x->GetOutputPort());
+    vtkNew<vtkActor> actor_x;
+    actor_x->SetMapper(mapper_x);
+    actor_x->GetProperty()->SetLineWidth(1);
+    actor_x->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
+
+    vtkNew<vtkPolyDataMapper> mapper_y;
+    mapper_y->SetInputConnection(lineSource_y->GetOutputPort());
+    vtkNew<vtkActor> actor_y;
+    actor_y->SetMapper(mapper_y);
+    actor_y->GetProperty()->SetLineWidth(1);
+    actor_y->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
+
+    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+    renderer->AddActor(actor_x);
+    renderer->AddActor(actor_y);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+
+
+
+
+
+
+    vtkNew<vtkImageProbeFilter> probe2;
+    probe2->SetInputConnection(lineSource_x->GetOutputPort());
+    probe2->SetSourceConnection(myfits->GetOutputPort());
+    probe2->Update();
+    qDebug()<< probe2->GetOutput()->GetNumberOfPoints();
+
+
+
+
+      vtkSmartPointer<vtkXYPlotActor> profile = vtkSmartPointer<vtkXYPlotActor>::New();
+     profile->AddDataSetInputConnection(probe2->GetOutputPort());
+     profile->GetPositionCoordinate()->SetValue(0.05, 0.05, 0);
+     profile->GetPosition2Coordinate()->SetValue(0.95, 0.95, 0);
+    profile->SetXValuesToNormalizedArcLength();
+
+     /*profile->SetNumberOfXLabels(6);
+     profile->SetTitle("Profile Data ");
+     profile->SetXTitle("s");
+     profile->SetYTitle("I(s)");
+     */
+    profile->SetXRange(0, myfits->GetNaxes(0));
+
+     profile->SetYRange(range[0], range[1]);
+     /*
+      * profile->GetProperty()->SetColor(0, 0, 0);
+     profile->GetProperty()->SetLineWidth(2);
+     profile->SetLabelFormat("%g");
+     vtkTextProperty* tprop = profile->GetTitleTextProperty();
+     tprop->SetColor(0.02, 0.06, 0.62);
+     tprop->SetFontFamilyToArial();
+     profile->SetAxisTitleTextProperty(tprop);
+     profile->SetAxisLabelTextProperty(tprop);
+     profile->SetTitleTextProperty(tprop);
+*/
+    renderer->AddActor(profile);
+
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+
+
+
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)
@@ -5769,9 +5885,9 @@ void vtkwindow_new::setImageLayers(const QJsonArray &layers, const QDir &session
         auto listItem = ui->listWidget->currentItem();
         listItem->setText(layer["text"].toString(filename));
         changeFitsScale(layer["lutType"].toString("Gray").toStdString(),
-                        layer["lutScale"].toString("Log").toStdString());
+                layer["lutScale"].toString("Log").toStdString());
         vtkImageSlice::SafeDownCast(
-                imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
+                    imageStack->GetImages()->GetItemAsObject(ui->listWidget->row(listItem)))
                 ->GetProperty()
                 ->SetOpacity(layer["opacity"].toInt(99) / 100.0);
         listItem->setCheckState(layer["show"].toBool(false) ? Qt::Checked : Qt::Unchecked);
@@ -5802,8 +5918,8 @@ void vtkwindow_new::setTableItemInfo(const QString &text, const bool &enabled, c
         auto ellipseActor = getVisualizedActorList().value(text);
         ellipseActor->GetProperty()->SetColor(color[0], color[1], color[2]);
         cb->setStyleSheet("background-color: rgb(" + QString::number(color[0] * 255) + ","
-                          + QString::number(color[1] * 255) + " ," + QString::number(color[2] * 255)
-                          + ")");
+                + QString::number(color[1] * 255) + " ," + QString::number(color[2] * 255)
+                + ")");
         if (enabled) {
             cb->setChecked(true);
             ellipseActor->VisibilityOn();
@@ -5957,7 +6073,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
         if (!dst.startsWith(sessionFolder.absolutePath())) {
             sessionFolder.mkdir(subfolder);
             dst = sessionFolder.absoluteFilePath(
-                    subfolder.append(QDir::separator()).append(file.fileName()));
+                        subfolder.append(QDir::separator()).append(file.fileName()));
             QFile::copy(src, dst);
         }
         return dst;
@@ -5987,8 +6103,8 @@ void vtkwindow_new::on_actionSave_session_triggered()
         layer["lutScale"] = img->getLutScale().isEmpty() ? "Log" : img->getLutScale();
         layer["opacity"] =
                 vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(row))
-                        ->GetProperty()
-                        ->GetOpacity()
+                ->GetProperty()
+                ->GetOpacity()
                 * 100;
         layer["show"] = listItem->checkState() == Qt::Checked;
         layer["enabled"] = true;

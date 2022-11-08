@@ -436,6 +436,7 @@ private slots:
     void on_actionBottom_triggered();
     void on_actionLeft_triggered();
     void on_actionCAESAR_triggered();
+    void on_actionProfile_triggered();
     void on_actionSave_session_triggered();
 };
 
