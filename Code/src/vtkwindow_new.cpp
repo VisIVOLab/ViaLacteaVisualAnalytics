@@ -3652,7 +3652,7 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
 void vtkwindow_new::createInfoWindow()
 {
 
-    info = new FitsImageStatisiticInfo(this);
+    // info = new FitsImageStatisiticInfo(this);
 }
 
 void vtkwindow_new::setSelectedActor(vtkSmartPointer<vtkActor> sel)
@@ -3774,11 +3774,12 @@ void vtkwindow_new::setCuttingPlaneValue(int arg1)
 
 void vtkwindow_new::on_actionInfo_triggered()
 {
+    /*
     if (fitsViewer) {
-
         info->setFilename();
         info->show();
     }
+    */
 }
 
 void vtkwindow_new::on_actionTools_triggered()

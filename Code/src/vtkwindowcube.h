@@ -3,6 +3,7 @@
 
 // #include "vtkwindowimage.h"
 
+#include <QDockWidget>
 #include <QMainWindow>
 #include <QMap>
 #include <QPointer>
@@ -15,6 +16,8 @@ class vtkFitsReader2;
 class vtkFlyingEdges3D;
 class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
+
+class FitsImageStatisiticInfo;
 
 namespace Ui {
 class vtkWindowCube;
@@ -54,12 +57,16 @@ private slots:
     void on_actionCalculate_order_0_triggered();
     void on_actionCalculate_order_1_triggered();
 
+    void on_actionShowStats_triggered();
+
 private:
     Ui::vtkWindowCube *ui;
     QString filepath;
     int ScaleFactor;
     // QPointer<vtkWindowImage> parentWindow;
     vtkSmartPointer<vtkFitsReader2> readerSlice;
+    FitsImageStatisiticInfo *fitsStatsWidget;
+    QPointer<QDockWidget> dock;
 
     FitsHeaderMap fitsHeader;
 

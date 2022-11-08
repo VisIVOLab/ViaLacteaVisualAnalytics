@@ -4,6 +4,7 @@
 #include "interactors/vtkinteractorstyleimagecustom.h"
 
 #include "astroutils.h"
+#include "fitsimagestatisiticinfo.h"
 #include "luteditor.h"
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
@@ -81,9 +82,6 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
     ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
-    ui->minCubeText->setText(QString::number(rangeCube[0], 'f', 4));
-    ui->maxCubeText->setText(QString::number(rangeCube[1], 'f', 4));
-    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
 
     // Outline
     auto outlineFilter = vtkSmartPointer<vtkOutlineFilter>::New();
@@ -157,10 +155,12 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     readerSlice->SetSlice(0);
     readerSlice->Update();
 
+    // Create FITS Stats Widget
+    fitsStatsWidget = new FitsImageStatisiticInfo(readerCube, readerSlice, this);
+    on_actionShowStats_triggered();
+
     float rangeSlice[2];
     readerSlice->GetValueRange(rangeSlice);
-    ui->minSliceText->setText(QString::number(rangeSlice[0], 'f', 4));
-    ui->maxSliceText->setText(QString::number(rangeSlice[1], 'f', 4));
 
     auto renWinSlice = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
@@ -268,8 +268,6 @@ void vtkWindowCube::updateSliceDatacube()
 
     float range[2];
     readerSlice->GetValueRange(range);
-    ui->minSliceText->setText(QString::number(range[0], 'f', 4));
-    ui->maxSliceText->setText(QString::number(range[1], 'f', 4));
 
     auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(range[0], range[1]);
@@ -280,6 +278,8 @@ void vtkWindowCube::updateSliceDatacube()
     sliceViewer->GetRenderer()->ResetCamera();
     sliceViewer->Render();
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+
+    fitsStatsWidget->updateSliceStats();
 }
 
 void vtkWindowCube::updateVelocityText()
@@ -525,4 +525,17 @@ void vtkWindowCube::on_actionCalculate_order_0_triggered()
 void vtkWindowCube::on_actionCalculate_order_1_triggered()
 {
     // calculateAndShowMomentMap(1);
+}
+
+void vtkWindowCube::on_actionShowStats_triggered()
+{
+    if (!dock) {
+        dock = new QDockWidget(this);
+        dock->setWidget(fitsStatsWidget);
+        dock->setAllowedAreas(Qt::RightDockWidgetArea);
+        dock->setFloating(true);
+    }
+
+    dock->show();
+    // dock->raise();
 }

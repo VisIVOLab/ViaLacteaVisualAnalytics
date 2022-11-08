@@ -1,15 +1,21 @@
 #include "fitsimagestatisiticinfo.h"
 #include "ui_fitsimagestatisiticinfo.h"
-#include <QDebug>
 
-FitsImageStatisiticInfo::FitsImageStatisiticInfo(vtkwindow_new *v, QWidget *parent)
-    : QWidget(parent), ui(new Ui::FitsImageStatisiticInfo)
+FitsImageStatisiticInfo::FitsImageStatisiticInfo(vtkSmartPointer<vtkFitsReader2> readerCube,
+                                                 vtkSmartPointer<vtkFitsReader2> readerSlice,
+                                                 QWidget *parent)
+    : QWidget(parent),
+      ui(new Ui::FitsImageStatisiticInfo),
+      readerCube(readerCube),
+      readerSlice(readerSlice)
 {
     ui->setupUi(this);
+    ui->textCubeMin->setText(QString::number(readerCube->GetValueRange()[0], 'f', 4));
+    ui->textCubeMax->setText(QString::number(readerCube->GetValueRange()[1], 'f', 4));
+    ui->textCubeMean->setText(QString::number(readerCube->GetMean(), 'f', 4));
+    ui->textCubeRMS->setText(QString::number(readerCube->GetRMS(), 'f', 4));
 
-    vtkwin = v;
-
-    qDebug() << vtkwin->getWindowName();
+    updateSliceStats();
 }
 
 FitsImageStatisiticInfo::~FitsImageStatisiticInfo()
@@ -17,31 +23,13 @@ FitsImageStatisiticInfo::~FitsImageStatisiticInfo()
     delete ui;
 }
 
-void FitsImageStatisiticInfo::setFilename()
+void FitsImageStatisiticInfo::updateSliceStats()
 {
-    ui->filenameLabel->setText(vtkwin->getWindowName());
-}
+    if (!readerSlice)
+        return;
 
-void FitsImageStatisiticInfo::setGalaptic(double l, double b)
-{
-    ui->lGalapticLabel->setText(QString::number(l));
-    ui->bGalapticLabel->setText(QString::number(b));
-}
-
-void FitsImageStatisiticInfo::setEcliptic(double lat, double lon)
-{
-    ui->latEclipticLabel->setText(QString::number(lat));
-    ui->longEclipticLabel->setText(QString::number(lon));
-}
-
-void FitsImageStatisiticInfo::setFk5(double ra, double dec)
-{
-    ui->raFk5Label->setText(QString::number(ra));
-    ui->decFk5Label->setText(QString::number(dec));
-}
-
-void FitsImageStatisiticInfo::setImage(double x, double y)
-{
-    ui->xLabel->setText(QString::number(x));
-    ui->yLabel->setText(QString::number(y));
+    ui->textSliceMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
+    ui->textSliceMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
+    ui->textSliceMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
+    ui->textSliceRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
 }
