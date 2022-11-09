@@ -14,9 +14,10 @@ class ProfileWindow : public QWidget
 public:
     explicit ProfileWindow(QWidget *parent = nullptr);
     ~ProfileWindow();
+     Ui::ProfileWindow *ui;
 
 private:
-    Ui::ProfileWindow *ui;
+
 };
 
 #endif // PROFILEWINDOW_H

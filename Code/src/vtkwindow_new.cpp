@@ -117,11 +117,11 @@
 
 #include <vtkNamedColors.h>
 #include <vtkImageProbeFilter.h>
-#include <vtkTransformFilter.h>
 #include <vtkXYPlotActor.h>
-#include <vtkPlaneSource.h>
-#include <vtkSplineWidget.h>
-#include <vtkImagePlaneWidget.h>
+
+#include "profilewindow.h"
+#include "ui_profilewindow.h"
+
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
@@ -5678,6 +5678,9 @@ void vtkwindow_new::on_actionCAESAR_triggered()
 
 void vtkwindow_new::on_actionProfile_triggered()
 {
+    auto win = new ProfileWindow();
+    win->show();
+
     vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();
     coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],
@@ -5688,15 +5691,9 @@ void vtkwindow_new::on_actionProfile_triggered()
     vtkImageData* data = myfits->GetOutput();
     double* range = data->GetPointData()->GetScalars()->GetRange();
 
-     qDebug()<<"profile <image> X: " + QString::number(int(world_coord[0]))
-             + " Y: " + QString::number(int(world_coord[1]))+" range: "+QString::number(range[0])+" "+ QString::number(range[1])+ " "+double(myfits->GetNaxes(0)) ;
-
-    qDebug()<<myfits->GetNaxes(0);
-    qDebug()<<myfits->GetNaxes(1);
-
     // Create two points, P0 and P1
-    double p0_x[3] = {1.0, world_coord[1], 1};
-    double p1_x[3] = {double(myfits->GetNaxes(0)), world_coord[1], 1};
+    double p0_x[3] = {1, world_coord[1], 0};
+    double p1_x[3] = {double(myfits->GetNaxes(0)), world_coord[1], 0};
 
     // Create two points, P0 and P1
     double p0_y[3] = {world_coord[0], 1.0, 0.0};
@@ -5705,16 +5702,14 @@ void vtkwindow_new::on_actionProfile_triggered()
     vtkNew<vtkLineSource> lineSource_x;
     lineSource_x->SetPoint1(p0_x);
     lineSource_x->SetPoint2(p1_x);
-    lineSource_x->SetResolution(100);
+    lineSource_x->SetResolution(double(myfits->GetNaxes(0))-1);
     lineSource_x->Update();
-    qDebug()<<lineSource_x->GetOutput()->GetBounds()[0]<<" "<<lineSource_x->GetOutput()->GetBounds()[1];
-    qDebug()<<data->GetBounds()[0]<<" "<<data->GetBounds()[1];
-
-    //qDebug()<<lineSource_x->
 
     vtkNew<vtkLineSource> lineSource_y;
     lineSource_y->SetPoint1(p0_y);
     lineSource_y->SetPoint2(p1_y);
+    lineSource_y->SetResolution(double(myfits->GetNaxes(1))-1);
+    lineSource_y->Update();
 
     vtkNew<vtkNamedColors> colors;
 
@@ -5737,49 +5732,52 @@ void vtkwindow_new::on_actionProfile_triggered()
     renderer->AddActor(actor_y);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
+    vtkNew<vtkImageProbeFilter> probe_x;
+    probe_x->SetInputConnection(lineSource_x->GetOutputPort());
+    probe_x->SetSourceData(myfits->GetOutput());
+    probe_x->Update();
+
+    vtkSmartPointer<vtkXYPlotActor> profile_x = vtkSmartPointer<vtkXYPlotActor>::New();
+    profile_x->AddDataSetInputConnection(probe_x->GetOutputPort());
+    profile_x->GetPositionCoordinate()->SetValue(0.05, 0.05, 0);
+    profile_x->GetPosition2Coordinate()->SetValue(0.95, 0.95, 0);
+    profile_x->SetXValuesToIndex();
+    profile_x->SetXRange(0, myfits->GetNaxes(0));
+    profile_x->SetTitle("X Profile");
+    profile_x->SetXTitle("X Coordinate");
+    profile_x->SetYTitle("Value (MJy/sr)");
+    profile_x->SetYTitlePositionToVCenter();
+    vtkTextProperty* tprop = profile_x->GetTitleTextProperty();
+    tprop->SetFontFamilyToArial();
+    profile_x->SetLabelFormat("%g");
+    profile_x->SetAxisTitleTextProperty(tprop);
+
+    vtkNew<vtkImageProbeFilter> probe_y;
+    probe_y->SetInputConnection(lineSource_y->GetOutputPort());
+    probe_y->SetSourceData(myfits->GetOutput());
+    probe_y->Update();
+
+    vtkSmartPointer<vtkXYPlotActor> profile_y = vtkSmartPointer<vtkXYPlotActor>::New();
+    profile_y->AddDataSetInputConnection(probe_y->GetOutputPort());
+    profile_y->GetPositionCoordinate()->SetValue(0.05, 0.05, 0);
+    profile_y->GetPosition2Coordinate()->SetValue(0.95, 0.95, 0);
+    profile_y->SetXValuesToIndex();
+    profile_y->SetXRange(0, myfits->GetNaxes(1));
+    profile_y->SetTitle("Y Profile");
+    profile_y->SetXTitle("Y Coordinate");
+    profile_y->SetYTitle("Value (MJy/sr)");
+    profile_y->SetYTitlePositionToVCenter();
+    tprop = profile_y->GetTitleTextProperty();
+    tprop->SetFontFamilyToArial();
+    profile_y->SetLabelFormat("%g");
+    profile_y->SetAxisTitleTextProperty(tprop);
 
 
+    win->ui->xPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_x);
+    win->ui->xPlot->renderWindow()->GetInteractor()->Render();
 
-
-
-    vtkNew<vtkImageProbeFilter> probe2;
-    probe2->SetInputConnection(lineSource_x->GetOutputPort());
-    probe2->SetSourceConnection(myfits->GetOutputPort());
-    probe2->Update();
-    qDebug()<< probe2->GetOutput()->GetNumberOfPoints();
-
-
-
-
-      vtkSmartPointer<vtkXYPlotActor> profile = vtkSmartPointer<vtkXYPlotActor>::New();
-     profile->AddDataSetInputConnection(probe2->GetOutputPort());
-     profile->GetPositionCoordinate()->SetValue(0.05, 0.05, 0);
-     profile->GetPosition2Coordinate()->SetValue(0.95, 0.95, 0);
-    profile->SetXValuesToNormalizedArcLength();
-
-     /*profile->SetNumberOfXLabels(6);
-     profile->SetTitle("Profile Data ");
-     profile->SetXTitle("s");
-     profile->SetYTitle("I(s)");
-     */
-    profile->SetXRange(0, myfits->GetNaxes(0));
-
-     profile->SetYRange(range[0], range[1]);
-     /*
-      * profile->GetProperty()->SetColor(0, 0, 0);
-     profile->GetProperty()->SetLineWidth(2);
-     profile->SetLabelFormat("%g");
-     vtkTextProperty* tprop = profile->GetTitleTextProperty();
-     tprop->SetColor(0.02, 0.06, 0.62);
-     tprop->SetFontFamilyToArial();
-     profile->SetAxisTitleTextProperty(tprop);
-     profile->SetAxisLabelTextProperty(tprop);
-     profile->SetTitleTextProperty(tprop);
-*/
-    renderer->AddActor(profile);
-
-    ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    win->ui->yPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_y);
+    win->ui->yPlot->renderWindow()->GetInteractor()->Render();
 
 
 }
