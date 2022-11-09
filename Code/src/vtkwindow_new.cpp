@@ -5745,7 +5745,7 @@ void vtkwindow_new::on_actionProfile_triggered()
     profile_x->SetXRange(0, myfits->GetNaxes(0));
     profile_x->SetTitle("X Profile");
     profile_x->SetXTitle("X Coordinate");
-    profile_x->SetYTitle("Value (MJy/sr)");
+    profile_x->SetYTitle("Value ("+myfits->getBunit().toLocal8Bit()+")");
     profile_x->SetYTitlePositionToVCenter();
     vtkTextProperty* tprop = profile_x->GetTitleTextProperty();
     tprop->SetFontFamilyToArial();
@@ -5765,20 +5765,18 @@ void vtkwindow_new::on_actionProfile_triggered()
     profile_y->SetXRange(0, myfits->GetNaxes(1));
     profile_y->SetTitle("Y Profile");
     profile_y->SetXTitle("Y Coordinate");
-    profile_y->SetYTitle("Value (MJy/sr)");
+    profile_y->SetYTitle("Value ("+myfits->getBunit().toLocal8Bit()+")");
     profile_y->SetYTitlePositionToVCenter();
     tprop = profile_y->GetTitleTextProperty();
     tprop->SetFontFamilyToArial();
     profile_y->SetLabelFormat("%g");
     profile_y->SetAxisTitleTextProperty(tprop);
 
-
     win->ui->xPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_x);
     win->ui->xPlot->renderWindow()->GetInteractor()->Render();
 
     win->ui->yPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_y);
     win->ui->yPlot->renderWindow()->GetInteractor()->Render();
-
 
 }
 
