@@ -17,7 +17,7 @@ public:
      Ui::ProfileWindow *ui;
 
 private:
-
+    void closeEvent(QCloseEvent *bar);
 };
 
 #endif // PROFILEWINDOW_H
