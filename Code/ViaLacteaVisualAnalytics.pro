@@ -203,7 +203,8 @@ SOURCES += \
     src/vtklegendscaleactor.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
-    src/xmlparser.cpp
+    src/xmlparser.cpp \
+    src/profilewindow.cpp
 
 
 HEADERS  += \
@@ -294,7 +295,8 @@ HEADERS  += \
     src/vtklegendscaleactor.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
-    src/xmlparser.h
+    src/xmlparser.h \
+    src/profilewindow.h
 
 
 FORMS += \
@@ -334,7 +336,8 @@ FORMS += \
     ui/vtkfitstoolswidget.ui \
     ui/vtkfitstoolwidget_new.ui \
     ui/vtktoolswidget.ui \
-    ui/vtkwindow_new.ui
+    ui/vtkwindow_new.ui \
+    ui/profilewindow.ui
 
 
 RESOURCES += \
