@@ -5751,6 +5751,8 @@ void vtkwindow_new::on_actionProfile_triggered()
     tprop->SetFontFamilyToArial();
     profile_x->SetLabelFormat("%g");
     profile_x->SetAxisTitleTextProperty(tprop);
+    profile_x->SetShowReferenceXLine(true);
+    profile_x->SetReferenceXValue(world_coord[0]);
 
     vtkNew<vtkImageProbeFilter> probe_y;
     probe_y->SetInputConnection(lineSource_y->GetOutputPort());
@@ -5771,6 +5773,8 @@ void vtkwindow_new::on_actionProfile_triggered()
     tprop->SetFontFamilyToArial();
     profile_y->SetLabelFormat("%g");
     profile_y->SetAxisTitleTextProperty(tprop);
+    profile_y->SetShowReferenceXLine(true);
+    profile_y->SetReferenceXValue(world_coord[1]);
 
     win->ui->xPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_x);
     win->ui->xPlot->renderWindow()->GetInteractor()->Render();
