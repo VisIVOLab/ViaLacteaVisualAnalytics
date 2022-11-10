@@ -316,8 +316,11 @@ void SEDVisualizerPlot::sectionClicked(int index)
         ui->histogramPlot->yAxis->setRange(0, values.size());
 
         ui->histogramPlot->xAxis->setLabel(title);
-        ui->histogramPlot->yAxis->setAutoTickStep(false);
-        ui->histogramPlot->yAxis->setTickStep(1);
+
+        QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
+        ui->histogramPlot->yAxis->setTicker(fixedTicker);
+        fixedTicker->setTickStep(1.0); // tick step shall be 1.0
+
         ui->histogramPlot->addPlottable(bars1);
         ui->histogramPlot->replot();
     } else {
