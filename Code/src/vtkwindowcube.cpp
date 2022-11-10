@@ -9,6 +9,7 @@
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
 #include "vtklegendscaleactor.h"
+#include "vtkwindow_new.h"
 
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
@@ -392,6 +393,13 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     //        parentWindow->addLayerImage(moment);
     //        parentWindow->raise();
     //    }
+
+    auto moment = vtkSmartPointer<vtkFitsReader>::New();
+    moment->SetFileName(filepath.toStdString());
+    moment->isMoment3D = true;
+    moment->setMomentOrder(order);
+    auto win = new vtkwindow_new(nullptr, moment);
+    win->raise();
 }
 
 void vtkWindowCube::resetCamera()
@@ -519,12 +527,12 @@ void vtkWindowCube::on_upperBoundText_editingFinished()
 
 void vtkWindowCube::on_actionCalculate_order_0_triggered()
 {
-    // calculateAndShowMomentMap(0);
+    calculateAndShowMomentMap(0);
 }
 
 void vtkWindowCube::on_actionCalculate_order_1_triggered()
 {
-    // calculateAndShowMomentMap(1);
+    calculateAndShowMomentMap(1);
 }
 
 void vtkWindowCube::on_actionShowStats_triggered()
