@@ -389,8 +389,8 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
                        node->getAngle(), node->getArcpix());
 
         cp->setNode(node);
-        ui->customPlot->addItem(cp);
-        // connect(ui->customPlot,SIGNAL(mousePress(QMouseEvent*)),cp,SLOT(onMousePress(QMouseEvent*)));
+        //removed qcp 2
+        //ui->customPlot->addItem(cp);
 
         visualnode_hash.insert(node->getDesignation(), cp);
 
@@ -1020,8 +1020,8 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
         cp->setLat(0);
         cp->setLon(0);
         points.push_back(cp);
-        // cp->setParent(graph);
-        ui->customPlot->addItem(cp);
+        //removed qcp 2
+        //ui->customPlot->addItem(cp);
     }
 
     // qDebug()<<"x:\n"<<x;
@@ -1129,7 +1129,8 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
         cp->setErrorFlux(err_flux_sum);
         cp->setNode(tmp_node);
         collapsedGraphPoints.push_back(cp);
-        ui->customPlot->addItem(cp);
+        //removed qcp 2
+        //ui->customPlot->addItem(cp);
 
         cnt++;
     }
