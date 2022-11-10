@@ -491,8 +491,10 @@ void SEDVisualizerPlot::selectionChanged()
     if (multiSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be
                           // selected.
         // //qDebug()<<"selected graph count "<<ui->customPlot->selectedGraphs().count();
-        for (int i = 0; i < ui->customPlot->graphCount(); ++i)
-            ui->customPlot->graph(i)->setSelected(false);
+//        for (int i = 0; i < ui->customPlot->graphCount(); ++i)
+//            ui->customPlot->graph(i)->setSelected(false);
+        ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(0,0)));//graph(i)->setSelected(true);
+
     }
 }
 
@@ -508,7 +510,7 @@ void SEDVisualizerPlot::mousePress()
         // //qDebug()<<"pre - # selzionato: " <<ui->customPlot->selectedGraphs().count();
 
         for (int i = 0; i < ui->customPlot->graphCount(); ++i)
-            ui->customPlot->graph(i)->setSelected(true);
+            ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(i-1,i)));//graph(i)->setSelected(true);
 
         ui->customPlot->replot();
 
