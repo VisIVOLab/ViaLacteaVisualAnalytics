@@ -50,7 +50,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setScaleLogBase(10);
 
     ui->customPlot->plotLayout()->insertRow(0);
-    ui->customPlot->plotLayout()->addElement(0, 0, new QCPPlotTitle(ui->customPlot, "SED"));
+    ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));
 
     ui->customPlot->xAxis->setLabel("Wavelength [" + QString::fromUtf8("\u00b5") + "m]");
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
@@ -98,8 +98,8 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
             SLOT(setRange(QCPRange)));
 
     // connect some interaction slots:
-    connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPPlotTitle *)), this,
-            SLOT(titleDoubleClick(QMouseEvent *, QCPPlotTitle *)));
+    connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
+            SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
@@ -441,7 +441,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
     }
 }
 
-void SEDVisualizerPlot::titleDoubleClick(QMouseEvent *event, QCPPlotTitle *title)
+void SEDVisualizerPlot::titleDoubleClick(QMouseEvent *event, QCPTextElement *title)
 {
     Q_UNUSED(event)
     // Set the plot title by double clicking on it
