@@ -435,6 +435,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         errorBars->setData(y_err);
         errorBars->setDataPlottable(ui->customPlot->graph());
         errorBars->setPen(QPen(QColor(180,180,180)));
+        errorBars->setSelectable(QCP::stNone);
 
         ui->customPlot->graph()->setPen(QPen(Qt::black));
         ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
