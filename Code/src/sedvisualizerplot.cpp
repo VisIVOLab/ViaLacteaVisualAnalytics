@@ -431,7 +431,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
 
         ui->customPlot->graph()->setPen(QPen(Qt::black));
-        ui->customPlot->graph()->setSelectedPen(QPen(Qt::red));
+        ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
         ui->customPlot->graph()->setAntialiased(true);
         ui->customPlot->graph()->setErrorType(QCPGraph::etBoth);
     }
