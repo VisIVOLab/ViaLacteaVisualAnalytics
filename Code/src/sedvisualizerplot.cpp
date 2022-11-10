@@ -320,8 +320,8 @@ void SEDVisualizerPlot::sectionClicked(int index)
         QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
         ui->histogramPlot->yAxis->setTicker(fixedTicker);
         fixedTicker->setTickStep(1.0); // tick step shall be 1.0
-
-        ui->histogramPlot->addPlottable(bars1);
+        //removed qcp 2
+        //ui->histogramPlot->addPlottable(bars1);
         ui->histogramPlot->replot();
     } else {
         QMessageBox msgBox;
