@@ -428,6 +428,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         ui->customPlot->addGraph();
         ui->customPlot->graph()->setData(x, y);
         ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
+        ui->customPlot->graph()->setSelectable(QCP::stNone);
 
         QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
         errorBars->removeFromLegend();
@@ -440,6 +441,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         ui->customPlot->graph()->setPen(QPen(Qt::black));
         ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
         ui->customPlot->graph()->setAntialiased(true);
+
     }
 }
 
@@ -582,8 +584,11 @@ void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
                 ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
     } else // general context menu on graphs requested
     {
-        if (ui->customPlot->selectedGraphs().size() > 0)
-            menu->addAction("Remove selected connection", this, SLOT(removeSelectedGraph()));
+        //FV removed, since we don't need to remove connections
+       /*
+        * if (ui->customPlot->selectedGraphs().size() > 0)
+        *    menu->addAction("Remove selected connection", this, SLOT(removeSelectedGraph()));
+        */
     }
 
     menu->popup(ui->customPlot->mapToGlobal(pos));
