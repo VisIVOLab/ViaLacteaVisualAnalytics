@@ -426,15 +426,19 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         y_err[1] = node->getChild().values()[i]->getErrFlux();
 
         ui->customPlot->addGraph();
-
-       // ui->customPlot->graph()->setDataValueError(x, y, y_err);
         ui->customPlot->graph()->setData(x, y);
         ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
+
+        QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+        errorBars->removeFromLegend();
+        errorBars->setAntialiased(true);
+        errorBars->setData(y_err);
+        errorBars->setDataPlottable(ui->customPlot->graph());
+        errorBars->setPen(QPen(QColor(180,180,180)));
 
         ui->customPlot->graph()->setPen(QPen(Qt::black));
         ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
         ui->customPlot->graph()->setAntialiased(true);
-        //ui->customPlot->graph()->setErrorType(QCPGraph::etBoth);
     }
 }
 
