@@ -427,13 +427,14 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
 
         ui->customPlot->addGraph();
 
-        ui->customPlot->graph()->setDataValueError(x, y, y_err);
+       // ui->customPlot->graph()->setDataValueError(x, y, y_err);
+        ui->customPlot->graph()->setData(x, y);
         ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
 
         ui->customPlot->graph()->setPen(QPen(Qt::black));
         ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
         ui->customPlot->graph()->setAntialiased(true);
-        ui->customPlot->graph()->setErrorType(QCPGraph::etBoth);
+        //ui->customPlot->graph()->setErrorType(QCPGraph::etBoth);
     }
 }
 
