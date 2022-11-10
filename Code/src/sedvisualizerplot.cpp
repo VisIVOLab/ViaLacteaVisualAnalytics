@@ -1157,7 +1157,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
-
+    ui->customPlot->graph()->setSelectable(QCP::stNone);
     ui->customPlot->replot();
 
     // qDebug()<<sed_list.count();
