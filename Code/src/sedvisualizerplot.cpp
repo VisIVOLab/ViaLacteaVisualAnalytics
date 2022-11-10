@@ -42,12 +42,14 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QAction *addFitAction = new QAction("Add this fit", ui->resultsTableWidget);
     ui->resultsTableWidget->addAction(addFitAction);
     connect(addFitAction, SIGNAL(triggered()), this, SLOT(addNewTheoreticalFit()));
+    QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
+    logTicker->setLogBase(10);
 
     ui->customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
-    ui->customPlot->yAxis->setScaleLogBase(10);
+    ui->customPlot->yAxis->setTicker(logTicker);
 
     ui->customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
-    ui->customPlot->xAxis->setScaleLogBase(10);
+    ui->customPlot->xAxis->setTicker(logTicker);
 
     ui->customPlot->plotLayout()->insertRow(0);
     ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));
@@ -312,16 +314,7 @@ void SEDVisualizerPlot::sectionClicked(int index)
         bars1->setData(x1, y1);
         ui->histogramPlot->xAxis->setRange(min, max);
         ui->histogramPlot->yAxis->setRange(0, values.size());
-        // if(index==1||index==3){
-        // ui->histogramPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
-        // ui->histogramPlot->xAxis->setScaleLogBase(10);
 
-        //}else{
-        //    ui->histogramPlot->xAxis->setScaleType(QCPAxis::stLinear);
-        //}
-        // ui->histogramPlot->plotLayout()->insertRow(0);
-        // ui->histogramPlot->plotLayout()->addElement(0, 0, new QCPTextElement(customPlot, title,
-        // QFont("sans", 12, QFont::Bold)));
         ui->histogramPlot->xAxis->setLabel(title);
         ui->histogramPlot->yAxis->setAutoTickStep(false);
         ui->histogramPlot->yAxis->setTickStep(1);
