@@ -5688,9 +5688,6 @@ void vtkwindow_new::on_actionProfile_triggered()
     double *world_coord = coordinate->GetComputedWorldValue(
                 ui->qVTK1->renderWindow()->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
-    vtkImageData* data = myfits->GetOutput();
-    double* range = data->GetPointData()->GetScalars()->GetRange();
-
     // Create two points, P0 and P1
     double p0_x[3] = {1, world_coord[1], 0};
     double p1_x[3] = {double(myfits->GetNaxes(0)), world_coord[1], 0};
@@ -5745,7 +5742,6 @@ void vtkwindow_new::on_actionProfile_triggered()
     for (int i = 0; i < xp_x_array.size(); ++i) {
         xp_x_array[i]=i;
         xp_y_array[i]=x_data[i];
-        qDebug()<<i<<" "<<xp_x_array[i]<< " "<<xp_y_array[i];
     }
 
     double min = *std::min_element(xp_y_array.begin(), xp_y_array.end());
@@ -5803,8 +5799,6 @@ void vtkwindow_new::on_actionProfile_triggered()
     line->point1->setCoords(world_coord[1], 0);  // location of point 1 in plot coordinate
     line->point2->setCoords(world_coord[1], 1);  // location of point 2 in plot coordinate
     win->ui->yPlotQt->replot();
-
-
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)
