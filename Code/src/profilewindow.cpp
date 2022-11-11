@@ -32,5 +32,7 @@ void ProfileWindow::closeEvent (QCloseEvent *event)
     vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(vtkwin->actor_y);
     vtkwin->actor_y->Delete();
     vtkwin->actor_x->Delete();
+    vtkwin->ui->qVTK1->update();
     vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+
 }
