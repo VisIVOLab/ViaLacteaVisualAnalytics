@@ -99,7 +99,9 @@ void LutCustomize::plotHistogram()
     ui->histogramWidget->graph(0)->setData(x, y);
     if (vtkwin->getSelectedScale() == "Log") {
         ui->histogramWidget->xAxis->setScaleType(QCPAxis::stLogarithmic);
-        ui->histogramWidget->xAxis->setScaleLogBase(10);
+        QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
+        logTicker->setLogBase(10);
+        ui->histogramWidget->xAxis->setTicker(logTicker);
     }
     // give the axes some labels:
     // ui->histogramWidget->xAxis->setTickLabels(false);
@@ -138,8 +140,9 @@ void LutCustomize::drawLine(double from, double to)
     toLine->start->setCoords(to, 0);
     toLine->end->setCoords(to, y_range[1]);
 
-    ui->histogramWidget->addItem(fromLine);
-    ui->histogramWidget->addItem(toLine);
+    //removed qcp 2
+    //ui->histogramWidget->addItem(fromLine);
+    //ui->histogramWidget->addItem(toLine);
 
     ui->histogramWidget->replot();
 }
