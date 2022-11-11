@@ -2,7 +2,8 @@
 #define PROFILEWINDOW_H
 
 #include <QWidget>
-#include "vtkwindow_new.h"
+
+class vtkwindow_new;
 
 namespace Ui {
 class ProfileWindow;
@@ -18,7 +19,7 @@ public:
      Ui::ProfileWindow *ui;
 
 private:
-    void closeEvent(QCloseEvent *bar);
+    void closeEvent(QCloseEvent *event);
     vtkwindow_new *vtkwin;
 
 };

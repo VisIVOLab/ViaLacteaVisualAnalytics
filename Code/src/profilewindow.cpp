@@ -1,12 +1,11 @@
 #include "profilewindow.h"
 #include "ui_profilewindow.h"
-#include "vtkGenericOpenGLRenderWindow.h"
-#include "vtkRenderer.h"
-#include <QCloseEvent>
-#include <QDebug>
-#include "ui_vtkwindow_new.h"
-#include <vtkRendererCollection.h>
 
+#include "vtkwindow_new.h"
+#include "ui_vtkwindow_new.h"
+
+#include <vtkRendererCollection.h>
+#include <vtkRenderer.h>
 
 ProfileWindow::ProfileWindow(vtkwindow_new *v, QWidget *parent) :
     QWidget(parent),
@@ -17,7 +16,6 @@ ProfileWindow::ProfileWindow(vtkwindow_new *v, QWidget *parent) :
 
     vtkwin=v;
     this->setWindowTitle("1D Profile");
-
 }
 
 ProfileWindow::~ProfileWindow()
@@ -25,14 +23,10 @@ ProfileWindow::~ProfileWindow()
     delete ui;
 }
 
-void ProfileWindow::closeEvent (QCloseEvent *event)
+void ProfileWindow::closeEvent(QCloseEvent *event)
 {
-    vtkwin->profileMode=false;
     vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(vtkwin->actor_x);
     vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(vtkwin->actor_y);
-    vtkwin->actor_y->Delete();
-    vtkwin->actor_x->Delete();
-    vtkwin->ui->qVTK1->update();
     vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
-
+    QWidget::closeEvent(event);
 }

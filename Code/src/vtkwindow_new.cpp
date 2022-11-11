@@ -928,16 +928,28 @@ public:
 
     virtual void OnLeftButtonDown()
     {
-        if ( vtkwin->profileMode)
+        if (vtkwin->profileMode)
         {
-            vtkwin->profileMode=false;
+            vtkwin->profileMode = false;
             vtkwin->createProfile(world_coord[0], world_coord[1]);
+            return;
         }
+
+        vtkInteractorStyleImage::OnLeftButtonDown();
     }
+
     virtual void OnRightButtonDown()
     {
-        if ( vtkwin->profileMode)
-             vtkwin->profileMode=false;
+        if (vtkwin->profileMode) {
+            vtkwin->profileMode = false;
+            auto renderer = vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+            renderer->RemoveActor(vtkwin->actor_x);
+            renderer->RemoveActor(vtkwin->actor_y);
+            vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+            return;
+        }
+
+        vtkInteractorStyleImage::OnRightButtonDown();
     }
 
     virtual void OnChar()
@@ -5828,6 +5840,7 @@ void vtkwindow_new::on_actionProfile_triggered()
 {
     profileMode=true;
 
+
     vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();
     coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],
@@ -5862,14 +5875,17 @@ void vtkwindow_new::on_actionProfile_triggered()
         vtkNew<vtkNamedColors> colors;
         vtkNew<vtkPolyDataMapper> mapper_x;
         mapper_x->SetInputConnection(lineSource_x->GetOutputPort());
-        vtkNew<vtkActor> actor_x;
+
+        if (!actor_x)
+            actor_x = vtkSmartPointer<vtkActor>::New();
         actor_x->SetMapper(mapper_x);
         actor_x->GetProperty()->SetLineWidth(1);
         actor_x->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
 
         vtkNew<vtkPolyDataMapper> mapper_y;
         mapper_y->SetInputConnection(lineSource_y->GetOutputPort());
-        vtkNew<vtkActor> actor_y;
+        if (!actor_y)
+            actor_y = vtkSmartPointer<vtkActor>::New();
         actor_y->SetMapper(mapper_y);
         actor_y->GetProperty()->SetLineWidth(1);
         actor_y->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
@@ -5879,6 +5895,7 @@ void vtkwindow_new::on_actionProfile_triggered()
         renderer->AddActor(actor_y);
         ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
+
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)
