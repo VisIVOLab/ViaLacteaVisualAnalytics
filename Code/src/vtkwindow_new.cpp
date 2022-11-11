@@ -928,6 +928,8 @@ public:
 
     virtual void OnLeftButtonDown()
     {
+        vtkInteractorStyleImage::OnLeftButtonDown();
+
         if ( vtkwin->profileMode)
         {
             vtkwin->profileMode=false;
