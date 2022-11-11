@@ -928,7 +928,7 @@ public:
 
     virtual void OnLeftButtonDown()
     {
-        if (vtkwin->profileMode)
+        if ( vtkwin->profileMode)
         {
             vtkwin->profileMode = false;
             vtkwin->createProfile(world_coord[0], world_coord[1]);
