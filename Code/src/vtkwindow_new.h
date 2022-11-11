@@ -193,6 +193,12 @@ public:
 
     void setVtkInteractorEditSource(
             const QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>> &source);
+    bool profileMode;
+    vtkSmartPointer<vtkLineSource> lineSource_x;
+    vtkSmartPointer<vtkLineSource> lineSource_y;
+    void createProfile(double ref_x, double ref_y);
+    vtkSmartPointer<vtkActor> actor_x;
+    vtkSmartPointer<vtkActor> actor_y;
 
 signals:
     void speciesChanged();

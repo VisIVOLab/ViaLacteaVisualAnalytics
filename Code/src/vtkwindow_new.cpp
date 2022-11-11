@@ -560,7 +560,6 @@ public:
 
     virtual void OnLeftButtonDown()
     {
-
         vtkwin->removeActor(lineActor);
         startPosition[0] = this->Interactor->GetEventPosition()[0];
         startPosition[1] = this->Interactor->GetEventPosition()[1];
@@ -708,6 +707,7 @@ class myVtkInteractorStyleImage : public vtkInteractorStyleImage
 private:
     vtkwindow_new *vtkwin;
     bool isSlice = false;
+    double *world_coord;
 
 public:
     static myVtkInteractorStyleImage *New();
@@ -739,7 +739,7 @@ public:
         coordinate->SetValue(this->GetInteractor()->GetEventPosition()[0],
                 this->GetInteractor()->GetEventPosition()[1], 0);
 
-        double *world_coord = coordinate->GetComputedWorldValue(
+        world_coord = coordinate->GetComputedWorldValue(
                     this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double *sky_coord = new double[2];
@@ -870,6 +870,74 @@ public:
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
     */
+        if (vtkwin->profileMode)
+        {
+            if(world_coord[0]>0 && world_coord[1]>0 && world_coord[0]<= fits->GetNaxes(0) && world_coord[1]<=fits->GetNaxes(1))
+            {
+                double p0_x[3] = {1, world_coord[1], 0};
+                double p1_x[3] = {double(fits->GetNaxes(0)), world_coord[1], 0};
+
+                // Create two points, P0 and P1
+                double p0_y[3] = {world_coord[0], 1.0, 0.0};
+                double p1_y[3] = {world_coord[0], double(fits->GetNaxes(1)), 0.0};
+
+                if (!vtkwin->lineSource_x)
+                    vtkwin->lineSource_x=vtkSmartPointer<vtkLineSource>::New();
+                vtkwin->lineSource_x->SetPoint1(p0_x);
+                vtkwin->lineSource_x->SetPoint2(p1_x);
+                vtkwin->lineSource_x->SetResolution(double(fits->GetNaxes(0))-1);
+                vtkwin->lineSource_x->Update();
+
+
+                if (!vtkwin->lineSource_y)
+                    vtkwin->lineSource_y=vtkSmartPointer<vtkLineSource>::New();
+
+                vtkwin->lineSource_y->SetPoint1(p0_y);
+                vtkwin->lineSource_y->SetPoint2(p1_y);
+                vtkwin->lineSource_y->SetResolution(double(fits->GetNaxes(1))-1);
+                vtkwin->lineSource_y->Update();
+
+                vtkNew<vtkNamedColors> colors;
+                vtkNew<vtkPolyDataMapper> mapper_x;
+                mapper_x->SetInputConnection(vtkwin->lineSource_x->GetOutputPort());
+
+                if (!vtkwin->actor_x)
+                    vtkwin->actor_x=vtkSmartPointer<vtkActor>::New();
+
+                vtkwin->actor_x->SetMapper(mapper_x);
+                vtkwin->actor_x->GetProperty()->SetLineWidth(1);
+                vtkwin->actor_x->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
+
+                vtkNew<vtkPolyDataMapper> mapper_y;
+                mapper_y->SetInputConnection(vtkwin->lineSource_y->GetOutputPort());
+
+                if (!vtkwin->actor_y)
+                    vtkwin->actor_y=vtkSmartPointer<vtkActor>::New();
+
+                vtkwin->actor_y->SetMapper(mapper_y);
+                vtkwin->actor_y->GetProperty()->SetLineWidth(1);
+                vtkwin->actor_y->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
+
+                auto renderer = vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+                renderer->AddActor(vtkwin->actor_x);
+                renderer->AddActor(vtkwin->actor_y);
+                vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+            }
+        }
+    }
+
+    virtual void OnLeftButtonDown()
+    {
+        if ( vtkwin->profileMode)
+        {
+            vtkwin->profileMode=false;
+            vtkwin->createProfile(world_coord[0], world_coord[1]);
+        }
+    }
+    virtual void OnRightButtonDown()
+    {
+        if ( vtkwin->profileMode)
+             vtkwin->profileMode=false;
     }
 
     virtual void OnChar()
@@ -1337,6 +1405,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     imageObject->setTransition(vis->getTransition());
 
     selected_scale = "Log";
+    profileMode=false;
 
     switch (b) {
     case 0: {
@@ -5676,58 +5745,10 @@ void vtkwindow_new::on_actionCAESAR_triggered()
     caesar->raise();
 }
 
-void vtkwindow_new::on_actionProfile_triggered()
+void vtkwindow_new::createProfile(double ref_x, double ref_y)
 {
-    auto win = new ProfileWindow();
+    auto win = new ProfileWindow(this);
     win->show();
-
-    vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
-    coordinate->SetCoordinateSystemToDisplay();
-    coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],
-            ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[1], 0);
-    double *world_coord = coordinate->GetComputedWorldValue(
-                ui->qVTK1->renderWindow()->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
-
-    // Create two points, P0 and P1
-    double p0_x[3] = {1, world_coord[1], 0};
-    double p1_x[3] = {double(myfits->GetNaxes(0)), world_coord[1], 0};
-
-    // Create two points, P0 and P1
-    double p0_y[3] = {world_coord[0], 1.0, 0.0};
-    double p1_y[3] = {world_coord[0], double(myfits->GetNaxes(1)), 0.0};
-
-    vtkNew<vtkLineSource> lineSource_x;
-    lineSource_x->SetPoint1(p0_x);
-    lineSource_x->SetPoint2(p1_x);
-    lineSource_x->SetResolution(double(myfits->GetNaxes(0))-1);
-    lineSource_x->Update();
-
-    vtkNew<vtkLineSource> lineSource_y;
-    lineSource_y->SetPoint1(p0_y);
-    lineSource_y->SetPoint2(p1_y);
-    lineSource_y->SetResolution(double(myfits->GetNaxes(1))-1);
-    lineSource_y->Update();
-
-    vtkNew<vtkNamedColors> colors;
-
-    vtkNew<vtkPolyDataMapper> mapper_x;
-    mapper_x->SetInputConnection(lineSource_x->GetOutputPort());
-    vtkNew<vtkActor> actor_x;
-    actor_x->SetMapper(mapper_x);
-    actor_x->GetProperty()->SetLineWidth(1);
-    actor_x->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
-
-    vtkNew<vtkPolyDataMapper> mapper_y;
-    mapper_y->SetInputConnection(lineSource_y->GetOutputPort());
-    vtkNew<vtkActor> actor_y;
-    actor_y->SetMapper(mapper_y);
-    actor_y->GetProperty()->SetLineWidth(1);
-    actor_y->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
-
-    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
-    renderer->AddActor(actor_x);
-    renderer->AddActor(actor_y);
-    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
     vtkNew<vtkImageProbeFilter> probe_x;
     probe_x->SetInputConnection(lineSource_x->GetOutputPort());
@@ -5758,11 +5779,11 @@ void vtkwindow_new::on_actionProfile_triggered()
     win->ui->xPlotQt->xAxis->setRange(0, myfits->GetNaxes(0));
     win->ui->xPlotQt->yAxis->setRange(min, max);
     win->ui->xPlotQt->addGraph();
-   // win->ui->xPlotQt->graph()->setPen(QPen(Qt::red)); // line color red for second graph
+    // win->ui->xPlotQt->graph()->setPen(QPen(Qt::red)); // line color red for second graph
     QCPItemStraightLine *line = new QCPItemStraightLine(win->ui->xPlotQt);
     line->setPen(QPen(Qt::red));
-    line->point1->setCoords(world_coord[0], 0);  // location of point 1 in plot coordinate
-    line->point2->setCoords(world_coord[0], 1);  // location of point 2 in plot coordinate
+    line->point1->setCoords(ref_x, 0);  // location of point 1 in plot coordinate
+    line->point2->setCoords(ref_x, 1);  // location of point 2 in plot coordinate
     win->ui->xPlotQt->replot();
 
     vtkNew<vtkImageProbeFilter> probe_y;
@@ -5798,9 +5819,66 @@ void vtkwindow_new::on_actionProfile_triggered()
     win->ui->yPlotQt->addGraph();
     line = new QCPItemStraightLine(win->ui->yPlotQt);
     line->setPen(QPen(Qt::red));
-    line->point1->setCoords(world_coord[1], 0);  // location of point 1 in plot coordinate
-    line->point2->setCoords(world_coord[1], 1);  // location of point 2 in plot coordinate
+    line->point1->setCoords(ref_y, 0);  // location of point 1 in plot coordinate
+    line->point2->setCoords(ref_y, 1);  // location of point 2 in plot coordinate
     win->ui->yPlotQt->replot();
+}
+
+void vtkwindow_new::on_actionProfile_triggered()
+{
+    profileMode=true;
+
+    vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
+    coordinate->SetCoordinateSystemToDisplay();
+    coordinate->SetValue(ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[0],
+            ui->qVTK1->renderWindow()->GetInteractor()->GetEventPosition()[1], 0);
+    double *world_coord = coordinate->GetComputedWorldValue(
+                ui->qVTK1->renderWindow()->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+
+    if(world_coord[0]>0 && world_coord[1]>0 && world_coord[0]<= myfits->GetNaxes(0) && world_coord[1]<= myfits->GetNaxes(1))
+    {
+        // Create two points, P0 and P1
+        double p0_x[3] = {1, world_coord[1], 0};
+        double p1_x[3] = {double(myfits->GetNaxes(0)), world_coord[1], 0};
+
+        // Create two points, P0 and P1
+        double p0_y[3] = {world_coord[0], 1.0, 0.0};
+        double p1_y[3] = {world_coord[0], double(myfits->GetNaxes(1)), 0.0};
+
+        if (!lineSource_x)
+            lineSource_x=vtkSmartPointer<vtkLineSource>::New();
+        lineSource_x->SetPoint1(p0_x);
+        lineSource_x->SetPoint2(p1_x);
+        lineSource_x->SetResolution(double(myfits->GetNaxes(0))-1);
+        lineSource_x->Update();
+
+        if (!lineSource_y)
+            lineSource_y=vtkSmartPointer<vtkLineSource>::New();
+        lineSource_y->SetPoint1(p0_y);
+        lineSource_y->SetPoint2(p1_y);
+        lineSource_y->SetResolution(double(myfits->GetNaxes(1))-1);
+        lineSource_y->Update();
+
+        vtkNew<vtkNamedColors> colors;
+        vtkNew<vtkPolyDataMapper> mapper_x;
+        mapper_x->SetInputConnection(lineSource_x->GetOutputPort());
+        vtkNew<vtkActor> actor_x;
+        actor_x->SetMapper(mapper_x);
+        actor_x->GetProperty()->SetLineWidth(1);
+        actor_x->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
+
+        vtkNew<vtkPolyDataMapper> mapper_y;
+        mapper_y->SetInputConnection(lineSource_y->GetOutputPort());
+        vtkNew<vtkActor> actor_y;
+        actor_y->SetMapper(mapper_y);
+        actor_y->GetProperty()->SetLineWidth(1);
+        actor_y->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
+
+        auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+        renderer->AddActor(actor_x);
+        renderer->AddActor(actor_y);
+        ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    }
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)
