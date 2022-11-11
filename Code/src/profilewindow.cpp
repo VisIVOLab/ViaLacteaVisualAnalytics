@@ -15,19 +15,6 @@ ProfileWindow::ProfileWindow(QWidget *parent) :
 
     this->setWindowTitle("1D Profile");
 
-    auto renWin_x = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-    ui->xPlot->setRenderWindow(renWin_x);
-    auto interactor_x = renWin_x->GetInteractor();
-    auto m_Ren0 = vtkSmartPointer<vtkRenderer>::New();
-    m_Ren0->SetBackground(0.21, 0.23, 0.25);
-    renWin_x->AddRenderer(m_Ren0);
-
-    auto renWin_y = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-    ui->yPlot->setRenderWindow(renWin_y);
-    auto interactor_y = renWin_y->GetInteractor();
-    auto m_Ren1 = vtkSmartPointer<vtkRenderer>::New();
-    m_Ren1->SetBackground(0.21, 0.23, 0.25);
-    renWin_y->AddRenderer(m_Ren1);
 }
 
 ProfileWindow::~ProfileWindow()

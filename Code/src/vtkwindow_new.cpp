@@ -117,7 +117,7 @@
 
 #include <vtkNamedColors.h>
 #include <vtkImageProbeFilter.h>
-#include <vtkXYPlotActor.h>
+#include "qcustomplot.h"
 
 #include "profilewindow.h"
 #include "ui_profilewindow.h"
@@ -5737,50 +5737,73 @@ void vtkwindow_new::on_actionProfile_triggered()
     probe_x->SetSourceData(myfits->GetOutput());
     probe_x->Update();
 
-    vtkSmartPointer<vtkXYPlotActor> profile_x = vtkSmartPointer<vtkXYPlotActor>::New();
-    profile_x->AddDataSetInputConnection(probe_x->GetOutputPort());
-    profile_x->GetPositionCoordinate()->SetValue(0.05, 0.05, 0);
-    profile_x->GetPosition2Coordinate()->SetValue(0.95, 0.95, 0);
-    profile_x->SetXValuesToIndex();
-    profile_x->SetXRange(0, myfits->GetNaxes(0));
-    profile_x->SetTitle("X Profile");
-    profile_x->SetXTitle("X Coordinate");
-    profile_x->SetYTitle("Value ("+myfits->getBunit().toLocal8Bit()+")");
-    profile_x->SetYTitlePositionToVCenter();
-    vtkTextProperty* tprop = profile_x->GetTitleTextProperty();
-    tprop->SetFontFamilyToArial();
-    profile_x->SetLabelFormat("%g");
-    profile_x->SetAxisTitleTextProperty(tprop);
-    profile_x->SetShowReferenceXLine(true);
-    profile_x->SetReferenceXValue(world_coord[0]);
+    float *x_data=static_cast<float *>(vtkFloatArray::SafeDownCast(probe_x->GetOutput()->GetPointData()->GetAbstractArray(0))->GetVoidPointer(0));
+    int count = probe_x->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
+
+    QVector<double> xp_y_array(count);
+    QVector<double> xp_x_array(count);
+    for (int i = 0; i < xp_x_array.size(); ++i) {
+        xp_x_array[i]=i;
+        xp_y_array[i]=x_data[i];
+        qDebug()<<i<<" "<<xp_x_array[i]<< " "<<xp_y_array[i];
+    }
+
+    double min = *std::min_element(xp_y_array.begin(), xp_y_array.end());
+    double max = *std::max_element(xp_y_array.begin(), xp_y_array.end());
+
+    win->ui->xPlotQt->addGraph();
+    win->ui->xPlotQt->graph()->setData(xp_x_array,xp_y_array);
+    // give the axes some labels:
+    win->ui->xPlotQt->plotLayout()->insertRow(0);
+    win->ui->xPlotQt->plotLayout()->addElement(0,0, new QCPTextElement(win->ui->xPlotQt,"X Profile"));
+    win->ui->xPlotQt->xAxis->setLabel("X Coordinate");
+    win->ui->xPlotQt->yAxis->setLabel("Value ("+myfits->getBunit().toLocal8Bit()+")");
+    // set axes ranges, so we see all data:
+    win->ui->xPlotQt->xAxis->setRange(0, myfits->GetNaxes(0));
+    win->ui->xPlotQt->yAxis->setRange(min, max);
+    win->ui->xPlotQt->addGraph();
+   // win->ui->xPlotQt->graph()->setPen(QPen(Qt::red)); // line color red for second graph
+    QCPItemStraightLine *line = new QCPItemStraightLine(win->ui->xPlotQt);
+    line->setPen(QPen(Qt::red));
+    line->point1->setCoords(world_coord[0], 0);  // location of point 1 in plot coordinate
+    line->point2->setCoords(world_coord[0], 1);  // location of point 2 in plot coordinate
+    win->ui->xPlotQt->replot();
 
     vtkNew<vtkImageProbeFilter> probe_y;
     probe_y->SetInputConnection(lineSource_y->GetOutputPort());
     probe_y->SetSourceData(myfits->GetOutput());
     probe_y->Update();
 
-    vtkSmartPointer<vtkXYPlotActor> profile_y = vtkSmartPointer<vtkXYPlotActor>::New();
-    profile_y->AddDataSetInputConnection(probe_y->GetOutputPort());
-    profile_y->GetPositionCoordinate()->SetValue(0.05, 0.05, 0);
-    profile_y->GetPosition2Coordinate()->SetValue(0.95, 0.95, 0);
-    profile_y->SetXValuesToIndex();
-    profile_y->SetXRange(0, myfits->GetNaxes(1));
-    profile_y->SetTitle("Y Profile");
-    profile_y->SetXTitle("Y Coordinate");
-    profile_y->SetYTitle("Value ("+myfits->getBunit().toLocal8Bit()+")");
-    profile_y->SetYTitlePositionToVCenter();
-    tprop = profile_y->GetTitleTextProperty();
-    tprop->SetFontFamilyToArial();
-    profile_y->SetLabelFormat("%g");
-    profile_y->SetAxisTitleTextProperty(tprop);
-    profile_y->SetShowReferenceXLine(true);
-    profile_y->SetReferenceXValue(world_coord[1]);
+    float *y_data=static_cast<float *>(vtkFloatArray::SafeDownCast(probe_y->GetOutput()->GetPointData()->GetAbstractArray(0))->GetVoidPointer(0));
+    count = probe_y->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
 
-    win->ui->xPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_x);
-    win->ui->xPlot->renderWindow()->GetInteractor()->Render();
+    QVector<double> yp_y_array(count);
+    QVector<double> yp_x_array(count);
+    for (int i = 0; i < yp_x_array.size(); ++i) {
+        yp_x_array[i]=i;
+        yp_y_array[i]=y_data[i];
+    }
 
-    win->ui->yPlot->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(profile_y);
-    win->ui->yPlot->renderWindow()->GetInteractor()->Render();
+    min = *std::min_element(yp_y_array.begin(), yp_y_array.end());
+    max = *std::max_element(yp_y_array.begin(), yp_y_array.end());
+
+    win->ui->yPlotQt->addGraph();
+    win->ui->yPlotQt->graph()->setData(yp_x_array,yp_y_array);
+    // give the axes some labels:
+    win->ui->yPlotQt->plotLayout()->insertRow(0);
+    win->ui->yPlotQt->plotLayout()->addElement(0,0, new QCPTextElement(win->ui->yPlotQt,"Y Profile"));
+    win->ui->yPlotQt->xAxis->setLabel("X Coordinate");
+    win->ui->yPlotQt->yAxis->setLabel("Value ("+myfits->getBunit().toLocal8Bit()+")");
+    // set axes ranges, so we see all data:
+    win->ui->yPlotQt->xAxis->setRange(0, myfits->GetNaxes(1));
+    win->ui->yPlotQt->yAxis->setRange(min, max);
+    win->ui->yPlotQt->addGraph();
+    line = new QCPItemStraightLine(win->ui->yPlotQt);
+    line->setPen(QPen(Qt::red));
+    line->point1->setCoords(world_coord[1], 0);  // location of point 1 in plot coordinate
+    line->point2->setCoords(world_coord[1], 1);  // location of point 2 in plot coordinate
+    win->ui->yPlotQt->replot();
+
 
 }
 

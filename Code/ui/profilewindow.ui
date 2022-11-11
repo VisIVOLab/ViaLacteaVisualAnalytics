@@ -17,9 +17,9 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QVTKOpenGLNativeWidget" name="xPlot" native="true">
+      <widget class="QCustomPlot" name="xPlotQt" native="true">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -27,7 +27,10 @@
       </widget>
      </item>
      <item>
-      <widget class="QVTKOpenGLNativeWidget" name="yPlot" native="true">
+      <widget class="QCustomPlot" name="yPlotQt" native="true">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
@@ -42,9 +45,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QVTKOpenGLNativeWidget</class>
+   <class>QCustomPlot</class>
    <extends>QWidget</extends>
-   <header>QVTKOpenGLNativeWidget.h</header>
+   <header>src/qcustomplot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
