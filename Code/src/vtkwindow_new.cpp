@@ -5783,6 +5783,8 @@ void vtkwindow_new::on_actionProfile_triggered()
     min = *std::min_element(yp_y_array.begin(), yp_y_array.end());
     max = *std::max_element(yp_y_array.begin(), yp_y_array.end());
 
+    win->ui->yPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+    win->ui->xPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
     win->ui->yPlotQt->addGraph();
     win->ui->yPlotQt->graph()->setData(yp_x_array,yp_y_array);
     // give the axes some labels:
