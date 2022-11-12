@@ -43,6 +43,9 @@
 #include "vtkSmartPointer.h"
 #include "vtkSphereSource.h"
 
+#include "profilewindow.h"
+#include "qcustomplot.h"
+
 #include <QGestureEvent>
 #include <QListWidgetItem>
 #include <QMainWindow>
@@ -194,6 +197,8 @@ public:
     void setVtkInteractorEditSource(
             const QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>> &source);
     bool profileMode;
+    bool liveUpdateProfile;
+    ProfileWindow *profileWin;
     vtkSmartPointer<vtkLineSource> lineSource_x;
     vtkSmartPointer<vtkLineSource> lineSource_y;
     void createProfile(double ref_x, double ref_y);
@@ -295,6 +300,10 @@ private:
     bool getContoursInfo(int &level, double &lowerBound, double &upperBound);
     void setContoursInfo(const int &level, const double &lowerBound, const double &upperBound,
                          const bool &enabled);
+    QVector<double> xp_y_array;
+    QVector<double> xp_x_array;
+    QVector<double> yp_y_array;
+    QVector<double> yp_x_array;
 
 public slots:
     // void updateCoords(vtkObject*);

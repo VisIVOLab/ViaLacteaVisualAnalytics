@@ -30,3 +30,12 @@ void ProfileWindow::closeEvent(QCloseEvent *event)
     vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
     QWidget::closeEvent(event);
 }
+
+void ProfileWindow::on_liveUpdate_stateChanged(int arg1)
+{
+    if(arg1==0)
+        vtkwin->liveUpdateProfile=false;
+    else
+        vtkwin->liveUpdateProfile=true;
+}
+

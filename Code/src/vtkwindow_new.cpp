@@ -876,7 +876,7 @@ public:
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
     */
-        if (vtkwin->profileMode)
+        if (vtkwin->profileMode ||vtkwin->liveUpdateProfile)
         {
             if(world_coord[0]>0 && world_coord[1]>0 && world_coord[0]<= fits->GetNaxes(0) && world_coord[1]<=fits->GetNaxes(1))
             {
@@ -936,12 +936,20 @@ public:
                 renderer->AddActor(vtkwin->actor_x);
                 renderer->AddActor(vtkwin->actor_y);
                 vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+                if (vtkwin->liveUpdateProfile)
+                    vtkwin->createProfile( p0_y[0], p0_x[1]);
             }
         }
     }
 
     virtual void OnLeftButtonDown()
     {
+        if (vtkwin->liveUpdateProfile)
+        {
+            vtkwin->liveUpdateProfile=false;
+            vtkwin->profileWin->ui->liveUpdate->setChecked(false);
+        }
+
         if ( vtkwin->profileMode)
         {
             vtkwin->profileMode = false;
@@ -1432,6 +1440,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
     selected_scale = "Log";
     profileMode=false;
+    liveUpdateProfile=false;
 
     switch (b) {
     case 0: {
@@ -5773,20 +5782,43 @@ void vtkwindow_new::on_actionCAESAR_triggered()
 
 void vtkwindow_new::createProfile(double ref_x, double ref_y)
 {
-    qDebug()<<ref_x<<" "<<ref_y;
-    auto win = new ProfileWindow(this);
-    win->show();
-
     vtkNew<vtkImageProbeFilter> probe_x;
     probe_x->SetInputConnection(lineSource_x->GetOutputPort());
     probe_x->SetSourceData(myfits->GetOutput());
     probe_x->Update();
-
     float *x_data=static_cast<float *>(vtkFloatArray::SafeDownCast(probe_x->GetOutput()->GetPointData()->GetAbstractArray(0))->GetVoidPointer(0));
     int count = probe_x->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
 
-    QVector<double> xp_y_array(count);
-    QVector<double> xp_x_array(count);
+    vtkNew<vtkImageProbeFilter> probe_y;
+    probe_y->SetInputConnection(lineSource_y->GetOutputPort());
+    probe_y->SetSourceData(myfits->GetOutput());
+    probe_y->Update();
+    float *y_data=static_cast<float *>(vtkFloatArray::SafeDownCast(probe_y->GetOutput()->GetPointData()->GetAbstractArray(0))->GetVoidPointer(0));
+    count = probe_y->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
+
+    if (!profileWin)
+    {
+        profileWin=new ProfileWindow(this);
+        profileWin ->show();
+        xp_y_array = QVector<double>(count);
+        xp_x_array = QVector<double>(count);
+        yp_y_array = QVector<double>(count);
+        yp_x_array = QVector<double>(count);
+        profileWin->ui->xPlotQt->addGraph();
+        profileWin->ui->xPlotQt->plotLayout()->insertRow(0);
+        profileWin->ui->xPlotQt->plotLayout()->addElement(0,0, new QCPTextElement(profileWin->ui->xPlotQt,"X Profile"));
+        profileWin->ui->xPlotQt->xAxis->setLabel("X Coordinate");
+        profileWin->ui->xPlotQt->yAxis->setLabel("Value ("+myfits->getBunit().toLocal8Bit()+")");
+
+        profileWin->ui->yPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+        profileWin->ui->xPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+        profileWin->ui->yPlotQt->addGraph();
+        profileWin->ui->yPlotQt->plotLayout()->insertRow(0);
+        profileWin->ui->yPlotQt->plotLayout()->addElement(0,0, new QCPTextElement(profileWin->ui->yPlotQt,"Y Profile"));
+        profileWin->ui->yPlotQt->xAxis->setLabel("X Coordinate");
+        profileWin->ui->yPlotQt->yAxis->setLabel("Value ("+myfits->getBunit().toLocal8Bit()+")");
+    }
+
     for (int i = 0; i < xp_x_array.size(); ++i) {
         xp_x_array[i]=i;
         xp_y_array[i]=x_data[i];
@@ -5794,35 +5826,16 @@ void vtkwindow_new::createProfile(double ref_x, double ref_y)
 
     double min = *std::min_element(xp_y_array.begin(), xp_y_array.end());
     double max = *std::max_element(xp_y_array.begin(), xp_y_array.end());
+    profileWin->ui->xPlotQt->xAxis->setRange(0, myfits->GetNaxes(0));
+    profileWin->ui->xPlotQt->yAxis->setRange(min, max);
 
-    win->ui->xPlotQt->addGraph();
-    win->ui->xPlotQt->graph()->setData(xp_x_array,xp_y_array);
-    // give the axes some labels:
-    win->ui->xPlotQt->plotLayout()->insertRow(0);
-    win->ui->xPlotQt->plotLayout()->addElement(0,0, new QCPTextElement(win->ui->xPlotQt,"X Profile"));
-    win->ui->xPlotQt->xAxis->setLabel("X Coordinate");
-    win->ui->xPlotQt->yAxis->setLabel("Value ("+myfits->getBunit().toLocal8Bit()+")");
-    // set axes ranges, so we see all data:
-    win->ui->xPlotQt->xAxis->setRange(0, myfits->GetNaxes(0));
-    win->ui->xPlotQt->yAxis->setRange(min, max);
-    win->ui->xPlotQt->addGraph();
-    // win->ui->xPlotQt->graph()->setPen(QPen(Qt::red)); // line color red for second graph
-    QCPItemStraightLine *line = new QCPItemStraightLine(win->ui->xPlotQt);
+    profileWin->ui->xPlotQt->graph(0)->setData(xp_x_array,xp_y_array);
+    profileWin->ui->xPlotQt->clearItems();
+    QCPItemStraightLine *line = new QCPItemStraightLine(profileWin->ui->xPlotQt);
     line->setPen(QPen(Qt::red));
     line->point1->setCoords(ref_x, 0);  // location of point 1 in plot coordinate
     line->point2->setCoords(ref_x, 1);  // location of point 2 in plot coordinate
-    win->ui->xPlotQt->replot();
 
-    vtkNew<vtkImageProbeFilter> probe_y;
-    probe_y->SetInputConnection(lineSource_y->GetOutputPort());
-    probe_y->SetSourceData(myfits->GetOutput());
-    probe_y->Update();
-
-    float *y_data=static_cast<float *>(vtkFloatArray::SafeDownCast(probe_y->GetOutput()->GetPointData()->GetAbstractArray(0))->GetVoidPointer(0));
-    count = probe_y->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
-
-    QVector<double> yp_y_array(count);
-    QVector<double> yp_x_array(count);
     for (int i = 0; i < yp_x_array.size(); ++i) {
         yp_x_array[i]=i;
         yp_y_array[i]=y_data[i];
@@ -5831,30 +5844,23 @@ void vtkwindow_new::createProfile(double ref_x, double ref_y)
     min = *std::min_element(yp_y_array.begin(), yp_y_array.end());
     max = *std::max_element(yp_y_array.begin(), yp_y_array.end());
 
-    win->ui->yPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
-    win->ui->xPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
-    win->ui->yPlotQt->addGraph();
-    win->ui->yPlotQt->graph()->setData(yp_x_array,yp_y_array);
-    // give the axes some labels:
-    win->ui->yPlotQt->plotLayout()->insertRow(0);
-    win->ui->yPlotQt->plotLayout()->addElement(0,0, new QCPTextElement(win->ui->yPlotQt,"Y Profile"));
-    win->ui->yPlotQt->xAxis->setLabel("X Coordinate");
-    win->ui->yPlotQt->yAxis->setLabel("Value ("+myfits->getBunit().toLocal8Bit()+")");
-    // set axes ranges, so we see all data:
-    win->ui->yPlotQt->xAxis->setRange(0, myfits->GetNaxes(1));
-    win->ui->yPlotQt->yAxis->setRange(min, max);
-    win->ui->yPlotQt->addGraph();
-    line = new QCPItemStraightLine(win->ui->yPlotQt);
+    profileWin->ui->yPlotQt->graph(0)->setData(yp_x_array,yp_y_array);
+    profileWin->ui->yPlotQt->xAxis->setRange(0, myfits->GetNaxes(1));
+    profileWin->ui->yPlotQt->yAxis->setRange(min, max);
+    profileWin->ui->yPlotQt->clearItems();
+
+    line = new QCPItemStraightLine(profileWin->ui->yPlotQt);
     line->setPen(QPen(Qt::red));
-    line->point1->setCoords(ref_y, 0);  // location of point 1 in plot coordinate
-    line->point2->setCoords(ref_y, 1);  // location of point 2 in plot coordinate
-    win->ui->yPlotQt->replot();
+    line->point1->setCoords(ref_y, 0);
+    line->point2->setCoords(ref_y, 1);
+
+    profileWin->ui->xPlotQt->replot();
+    profileWin->ui->yPlotQt->replot();
 }
 
 void vtkwindow_new::on_actionProfile_triggered()
 {
     profileMode=true;
-
 
     vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
     coordinate->SetCoordinateSystemToDisplay();

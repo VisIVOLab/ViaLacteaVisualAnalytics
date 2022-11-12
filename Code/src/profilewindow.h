@@ -18,6 +18,9 @@ public:
     ~ProfileWindow();
      Ui::ProfileWindow *ui;
 
+private slots:
+     void on_liveUpdate_stateChanged(int arg1);
+
 private:
     void closeEvent(QCloseEvent *event);
     vtkwindow_new *vtkwin;
