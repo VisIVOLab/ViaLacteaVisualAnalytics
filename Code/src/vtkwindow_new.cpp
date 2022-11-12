@@ -936,7 +936,6 @@ public:
                 renderer->AddActor(vtkwin->actor_x);
                 renderer->AddActor(vtkwin->actor_y);
                 vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
-                qDebug()<<"move "<<world_coord[0]<<" "<<world_coord[1];
             }
         }
     }
@@ -945,8 +944,6 @@ public:
     {
         if ( vtkwin->profileMode)
         {
-            qDebug()<<p0_y[0]<<" "<<p0_x[1];
-
             vtkwin->profileMode = false;
             vtkwin->createProfile( p0_y[0], p0_x[1]);
             return;
