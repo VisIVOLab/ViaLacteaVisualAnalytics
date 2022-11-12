@@ -91,6 +91,8 @@ public:
     QString getTransition() { return transition; };
     QString getSurvey() { return survey; };
     int getMomentOrder();
+    QString getBunit() { return bUnit; };
+
 
     void setSpecies(QString s) { species = s; };
     void setTransition(QString s) { transition = s; };
@@ -116,6 +118,7 @@ protected:
     double rms = 0;
     long npix = 0;
     long naxes[3];
+    QString bUnit;
 
     float **minmaxslice;
 
