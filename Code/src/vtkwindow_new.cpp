@@ -707,12 +707,18 @@ class myVtkInteractorStyleImage : public vtkInteractorStyleImage
 private:
     vtkwindow_new *vtkwin;
     bool isSlice = false;
-    double *world_coord;
+
+    double p0_x[3];
+    double p1_x[3];
+    double p0_y[3];
+    double p1_y[3];
 
 public:
     static myVtkInteractorStyleImage *New();
 
-    void setVtkWin(vtkwindow_new *w) { vtkwin = w; }
+    void setVtkWin(vtkwindow_new *w) {
+        vtkwin = w;
+    }
 
     void setIsSlice() { isSlice = true; }
 
@@ -739,7 +745,7 @@ public:
         coordinate->SetValue(this->GetInteractor()->GetEventPosition()[0],
                 this->GetInteractor()->GetEventPosition()[1], 0);
 
-        world_coord = coordinate->GetComputedWorldValue(
+        double *world_coord = coordinate->GetComputedWorldValue(
                     this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
         double *sky_coord = new double[2];
@@ -874,12 +880,21 @@ public:
         {
             if(world_coord[0]>0 && world_coord[1]>0 && world_coord[0]<= fits->GetNaxes(0) && world_coord[1]<=fits->GetNaxes(1))
             {
-                double p0_x[3] = {1, world_coord[1], 0};
-                double p1_x[3] = {double(fits->GetNaxes(0)), world_coord[1], 0};
+                p0_x[0] =1;
+                p0_x[1] =world_coord[1];
+                p0_x[2] =0;
 
-                // Create two points, P0 and P1
-                double p0_y[3] = {world_coord[0], 1.0, 0.0};
-                double p1_y[3] = {world_coord[0], double(fits->GetNaxes(1)), 0.0};
+                p1_x[0] =double(fits->GetNaxes(0));
+                p1_x[1] =world_coord[1];
+                p1_x[2] =0;
+
+                p0_y[0] =world_coord[0];
+                p0_y[1] =1.0;
+                p0_y[2] =0.0;
+
+                p1_y[0] =world_coord[0];
+                p1_y[1] =double(fits->GetNaxes(1));
+                p1_y[2] =0;
 
                 if (!vtkwin->lineSource_x)
                     vtkwin->lineSource_x=vtkSmartPointer<vtkLineSource>::New();
@@ -887,7 +902,6 @@ public:
                 vtkwin->lineSource_x->SetPoint2(p1_x);
                 vtkwin->lineSource_x->SetResolution(double(fits->GetNaxes(0))-1);
                 vtkwin->lineSource_x->Update();
-
 
                 if (!vtkwin->lineSource_y)
                     vtkwin->lineSource_y=vtkSmartPointer<vtkLineSource>::New();
@@ -922,6 +936,7 @@ public:
                 renderer->AddActor(vtkwin->actor_x);
                 renderer->AddActor(vtkwin->actor_y);
                 vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+                qDebug()<<"move "<<world_coord[0]<<" "<<world_coord[1];
             }
         }
     }
@@ -930,8 +945,10 @@ public:
     {
         if ( vtkwin->profileMode)
         {
+            qDebug()<<p0_y[0]<<" "<<p0_x[1];
+
             vtkwin->profileMode = false;
-            vtkwin->createProfile(world_coord[0], world_coord[1]);
+            vtkwin->createProfile( p0_y[0], p0_x[1]);
             return;
         }
 
@@ -5759,6 +5776,7 @@ void vtkwindow_new::on_actionCAESAR_triggered()
 
 void vtkwindow_new::createProfile(double ref_x, double ref_y)
 {
+    qDebug()<<ref_x<<" "<<ref_y;
     auto win = new ProfileWindow(this);
     win->show();
 
