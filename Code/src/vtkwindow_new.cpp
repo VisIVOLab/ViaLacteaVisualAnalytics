@@ -1442,9 +1442,52 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     profileMode=false;
     liveUpdateProfile=false;
 
+    ui->setupUi(this);
+
+#define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
+#define WCS_B1950	2	/* B1950(FK4) right ascension and declination */
+#define WCS_GALACTIC	3	/* Galactic longitude and latitude */
+#define WCS_ECLIPTIC	4	/* Ecliptic longitude and latitude */
+#define WCS_ALTAZ	5	/* Azimuth and altitude/elevation */
+#define WCS_LINEAR	6	/* Linear with optional units */
+#define WCS_NPOLE	7	/* Longitude and north polar angle */
+#define WCS_SPA		8	/* Longitude and south polar angle */
+#define WCS_PLANET	9	/* Longitude and latitude on planet */
+#define WCS_XY		10	/* X-Y Cartesian coordinates */
+#define WCS_ICRS	11	/* ICRS right ascension and declination */
+
+    auto wcsGroup = new QActionGroup(this);
+    auto wcsItem = new QAction("Galactic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsItem->setChecked(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_GALACTIC) ; });
+
+    wcsItem = new QAction("FK5", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_J2000) ; });
+
+    wcsItem = new QAction("FK4", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_B1950) ; });
+
+    wcsItem = new QAction("Ecliptic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC) ; });
+
+    wcsItem = new QAction("ICRS", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ICRS) ; });
+
+    ui->menuWCS->addActions(wcsGroup->actions());
+
     switch (b) {
     case 0: {
-        ui->setupUi(this);
+        // ui->setupUi(this);
 
         this->setWindowTitle(myfits->GetFileName().c_str());
         this->isDatacube = false;
@@ -1594,9 +1637,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         imageStack->AddImage(imageSliceBase);
 
         if (!myfits->ctypeXY) {
-            auto legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+            legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
             legendScaleActorImage->LegendVisibilityOff();
             legendScaleActorImage->setFitsFile(myfits);
+            legendScaleActorImage->setWCS(3);
             m_Ren1->AddActor(legendScaleActorImage);
         }
 
@@ -1621,7 +1665,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->min = vis->GetMin();
         this->naxis3 = vis->GetNaxes(2);
 
-        ui->setupUi(this);
+        //ui->setupUi(this);
         ui->menuTools->menuAction()->setVisible(false);
         ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
@@ -1650,6 +1694,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->lut3dGroupBox->hide();
         ui->glyphGroupBox->hide();
         ui->filterGroupBox->hide();
+
+        ui->menuWCS->hide();
 
         if (myfits->ctypeXY) {
             // Replace moment with a collapse option
@@ -1787,9 +1833,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
 
         if (!myfits->ctypeXY) {
-            auto legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+            legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
             legendScaleActorImage->LegendVisibilityOff();
             legendScaleActorImage->setFitsFile(myfits);
+            legendScaleActorImage->setWCS(3);
             m_Ren2->AddActor(legendScaleActorImage);
         }
 
@@ -1808,7 +1855,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         isDatacube = true;
         vis->is3D = true;
         vis->GetOutput();
-        ui->setupUi(this);
+        //ui->setupUi(this);
         this->setWindowName("Datacubes slices visualization");
         contourWin = new contour();
 
@@ -1845,6 +1892,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->lineEdit_transition->setEnabled(false);
         ui->selectionGroupBox->hide();
         ui->filterGroupBox->hide();
+        ui->menuWCS->hide();
 
         naxis3 = vis->GetNaxes(2);
 
@@ -4269,21 +4317,27 @@ void vtkwindow_new::showGrid(bool checked)
 {
     pp->activateGrid(checked);
 }
-
 void vtkwindow_new::changeWCS(bool galaptic)
 {
-
     if (galaptic) {
         vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
         transform->RotateY(180);
         vtkAxes->SetUserTransform(transform);
-    } else {
+    }
+    //ecliptic?
+    else {
         vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
         transform->RotateY(-180);
         transform->RotateZ(-23.5);
         vtkAxes->SetUserTransform(transform);
     }
     update();
+}
+
+void vtkwindow_new::changeWCS_clicked(int wcs)
+{
+    legendScaleActorImage->setWCS(wcs);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
 void vtkwindow_new::plotSlice(vtkSmartPointer<vtkFitsReader> visvis, int arg1) { }
