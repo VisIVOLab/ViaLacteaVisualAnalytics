@@ -11,8 +11,6 @@ LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::LutCustomize)
 {
     ui->setupUi(this);
-    // this->setWindowFlags(Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
-
     vtkwin = v;
 
     setRange();
@@ -43,57 +41,39 @@ void LutCustomize::setRange()
 
     ui->fromValue->setText(QString::number(vtkwin->pp->actualFrom));
     ui->toValue->setText(QString::number(vtkwin->pp->actualTo));
-    /*
-   // drawLine(vtkwin->pp->actualFrom,vtkwin->pp->actualTo);
-    ui->fromValue->setText( QString::number( range[0] ) );
-    ui->toValue->setText( QString::number( range[1] ) );
-*/
 }
 
 void LutCustomize::plotHistogram()
 {
-    qDebug() << "plotHistogram";
     vtkwin->pp->getPolyData()
             ->GetPointData()
             ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
             ->GetRange(range);
-    qDebug() << "get range";
     vtkSmartPointer<vtkExtractHistogram> extraction = vtkSmartPointer<vtkExtractHistogram>::New();
     extraction->SetInputData(vtkwin->pp->getPolyData());
     extraction->UseCustomBinRangesOn();
     extraction->SetBinCount(vtkwin->vispoint->getOrigin()->getbinNumber());
     extraction->SetCustomBinRanges(range);
     extraction->Update();
-    qDebug() << "set extraction";
     vtkTable *const histogram = extraction->GetOutput();
-    qDebug() << "create histogram";
     vtkDoubleArray *const bin_extents =
             vtkDoubleArray::SafeDownCast(histogram->GetRowData()->GetArray("bin_extents"));
     vtkIntArray *const bin_values =
             vtkIntArray::SafeDownCast(histogram->GetRowData()->GetArray((int)1));
-    qDebug() << "create bin " << QString::number(bin_extents->GetSize()) << " "
-             << QString::number(bin_values->GetSize());
     y_range = new double[2];
     bin_values->GetRange(y_range);
-    qDebug() << "set range";
     QVector<double> x(vtkwin->vispoint->getOrigin()->getbinNumber());
     QVector<double> y(vtkwin->vispoint->getOrigin()->getbinNumber());
-    qDebug() << "set x y " << QString::number(x.size()) << " " << QString::number(y.size());
     vtkIdType nPoints = bin_extents->GetDataSize();
-    qDebug() << "nPoints " << QString::number(nPoints);
     int cnt = 0;
     for (vtkIdType i = 0; i < nPoints; ++i) {
         qDebug() << "i " << QString::number(i);
         qDebug() << QString::number(bin_extents->GetValue(i));
-        // x[cnt]=bin_extents->GetValue(i);
         x.push_back(bin_extents->GetValue(i));
         qDebug() << QString::number(bin_values->GetValue(i));
-        // y[cnt]=bin_values->GetValue(i);
         y.push_back(bin_values->GetValue(i));
         cnt++;
     }
-    qDebug() << "calculated histogram";
-
     // create graph and assign data to it:
     ui->histogramWidget->addGraph();
     ui->histogramWidget->graph(0)->setData(x, y);
@@ -103,10 +83,8 @@ void LutCustomize::plotHistogram()
         logTicker->setLogBase(10);
         ui->histogramWidget->xAxis->setTicker(logTicker);
     }
-    // give the axes some labels:
-    // ui->histogramWidget->xAxis->setTickLabels(false);
-    ui->histogramWidget->yAxis->setTickLabels(false);
 
+    ui->histogramWidget->yAxis->setTickLabels(false);
     // set axes ranges, so we see all data:
     ui->histogramWidget->xAxis->setRange(range[0], range[1]);
     ui->histogramWidget->yAxis->setRange(y_range[0], y_range[1]);
@@ -115,7 +93,6 @@ void LutCustomize::plotHistogram()
 
 void LutCustomize::drawLine(double from, double to)
 {
-
     if (fromLine != 0 && toLine != 0) {
 
         ui->histogramWidget->removeItem(fromLine);
@@ -180,7 +157,6 @@ void LutCustomize::on_okPushButton_clicked()
     vtkwin->pp->setLookupTable(ui->fromValue->text().toDouble(), ui->toValue->text().toDouble());
     // ES
     if (vtkwin->ui->glyphShapeComboBox->isEnabled()) {
-        qDebug() << "Re draw glyph";
         vtkwin->getGlyphActor()->GetMapper()->SetLookupTable(vtkwin->pp->getLookupTable());
         vtkwin->getGlyphActor()->GetMapper()->SetScalarRange(
                 vtkwin->pp->getLookupTable()->GetRange());
