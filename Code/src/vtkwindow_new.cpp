@@ -1793,13 +1793,30 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->AddActor(outlineA);
         m_Ren1->AddActor(shellA);
         m_Ren1->AddActor(sliceA);
-
+        /*
         if (!myfits->ctypeXY) {
             auto legendScaleActor3d = vtkSmartPointer<vtkLegendScaleActor>::New();
             legendScaleActor3d->LegendVisibilityOff();
             legendScaleActor3d->setFitsFile(myfits);
             m_Ren1->AddActor(legendScaleActor3d);
         }
+*/
+        legendScaleActorImage  = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScaleActorImage->LegendVisibilityOff();
+        legendScaleActorImage->setFitsFile(myfits);
+        if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)
+        {
+            legendScaleActorImage->setWCS(3);
+            ui->menuWCS->actions().at(1)->setChecked(true);
+        }
+        else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive)==0)
+        {
+            legendScaleActorImage->setWCS(1);
+            ui->menuWCS->actions().at(2)->setChecked(true);
+        }
+
+        m_Ren1->AddActor(legendScaleActorImage);
+
 
         // Start isocontourVtkWin (right)
         auto renWin2 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
@@ -1834,21 +1851,22 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->cuttingPlane_Slider->setRange(1, vis->GetNaxes(2));
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
 
-        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
-        legendScaleActorImage->LegendVisibilityOff();
-        legendScaleActorImage->setFitsFile(myfits);
+
+        legendScale3DActor  = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScale3DActor->LegendVisibilityOff();
+        legendScale3DActor->setFitsFile(myfits);
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)
         {
-            legendScaleActorImage->setWCS(3);
+            legendScale3DActor->setWCS(3);
             ui->menuWCS->actions().at(1)->setChecked(true);
         }
         else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive)==0)
         {
-            legendScaleActorImage->setWCS(1);
+            legendScale3DActor->setWCS(1);
             ui->menuWCS->actions().at(2)->setChecked(true);
         }
 
-        m_Ren2->AddActor(legendScaleActorImage);
+        m_Ren2->AddActor(legendScale3DActor);
 
 
         this->setWindowName("Datacube visualization");
@@ -1859,7 +1877,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         break;
     }
     case 2: {
-        qDebug() << "case 2";
 
         vis->CalculateRMS();
 
@@ -2014,8 +2031,6 @@ int vtkwindow_new::getCuttingPlaneValue()
 
 void vtkwindow_new::on_cuttingPlane_Slider_valueChanged(int value)
 {
-
-    qDebug() << "slide: " << value;
     setSliceDatacube(value - 1);
 
     QString velocityUnit;
@@ -2079,9 +2094,7 @@ void vtkwindow_new::on_cameraBack_clicked()
 
 void vtkwindow_new::setCameraAzimuth(double az)
 {
-
     resetCamera();
-    //    pp->getRenderer()->GetActiveCamera()->Azimuth(az);
     m_Ren1->GetActiveCamera()->Azimuth(az);
 
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
@@ -4349,6 +4362,11 @@ void vtkwindow_new::changeWCS_clicked(int wcs)
 {
     legendScaleActorImage->setWCS(wcs);
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    if(ui->isocontourVtkWin->isVisible())
+    {
+        legendScale3DActor->setWCS(wcs);
+        ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
+    }
 }
 
 void vtkwindow_new::plotSlice(vtkSmartPointer<vtkFitsReader> visvis, int arg1) { }

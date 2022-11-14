@@ -306,6 +306,7 @@ private:
     QVector<double> yp_y_array;
     QVector<double> yp_x_array;
     vtkSmartPointer<vtkLegendScaleActor> legendScaleActorImage;
+    vtkSmartPointer<vtkLegendScaleActor> legendScale3DActor;
 
 public slots:
     // void updateCoords(vtkObject*);
