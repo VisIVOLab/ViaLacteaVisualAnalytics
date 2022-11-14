@@ -57,6 +57,9 @@ void SettingForm::readSettingsFromFile()
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
 
+    int maxSize = settings.value("downscaleSize", 1024).toInt();
+    ui->textDownscaleSize->setText(QString::number(maxSize));
+
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
     AuthWrapper *vlkbAuth;
     if (vlkbtype == "ia2") {
@@ -149,6 +152,7 @@ void SettingForm::on_OkPushButton_clicked()
     settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
+    settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
     if (ui->ia2VLKB_radioButton->isChecked())
         settings.setValue("vlkbtype", "ia2");
     else
