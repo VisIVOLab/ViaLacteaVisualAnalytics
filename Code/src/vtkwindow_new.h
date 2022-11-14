@@ -199,7 +199,7 @@ public:
             const QPair<vtkSmartPointer<vtkPoints>, vtkSmartPointer<vtkLODActor>> &source);
     bool profileMode;
     bool liveUpdateProfile;
-    ProfileWindow *profileWin;
+    QPointer<ProfileWindow> profileWin;
     vtkSmartPointer<vtkLineSource> lineSource_x;
     vtkSmartPointer<vtkLineSource> lineSource_y;
     void createProfile(double ref_x, double ref_y);
