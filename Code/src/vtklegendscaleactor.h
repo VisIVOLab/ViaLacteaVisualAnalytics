@@ -206,6 +206,11 @@ protected:
 
     vtkTimeStamp BuildTime;
 
+    vtkActor2D * xLabel;
+    vtkTextMapper *xLabelMapper;
+    vtkActor2D * yLabel;
+    vtkTextMapper *yLabelMapper;
+
 private:
     vtkLegendScaleActor(const vtkLegendScaleActor &); // Not implemented
     void operator=(const vtkLegendScaleActor &); // Not implemented
