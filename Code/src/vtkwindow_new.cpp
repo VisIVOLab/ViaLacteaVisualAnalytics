@@ -415,6 +415,7 @@ public:
         double *sky_coord = new double[2];
         double *sky_coord_gal = new double[2];
         double *sky_coord_fk5 = new double[2];
+        double *sky_coord_icrs = new double[2];
 
         QString statusBarText = "";
         float *pixel;
@@ -444,6 +445,10 @@ public:
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord);
         statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
                 + " DEC: " + QString::number(sky_coord[1]);
+
+        AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_icrs,11);
+        statusBarText += " <ICRS> RA: " + QString::number(sky_coord_icrs[0])
+                + " DEC: " + QString::number(sky_coord_icrs[1]);
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
         vtkInteractorStyleRubberBand2D::OnMouseMove();
@@ -751,6 +756,7 @@ public:
         double *sky_coord = new double[2];
         double *sky_coord_gal = new double[2];
         double *sky_coord_fk5 = new double[2];
+        double *sky_coord_icrs = new double[2];
 
         QString statusBarText = "";
         vtkSmartPointer<vtkFitsReader> fits;
@@ -812,6 +818,10 @@ public:
                     sky_coord);
             statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
                     + " DEC: " + QString::number(sky_coord[1]);
+
+            AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_icrs,11);
+            statusBarText += " <ICRS> RA: " + QString::number(sky_coord_icrs[0])
+                    + " DEC: " + QString::number(sky_coord_icrs[1]);
         }
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
@@ -1695,7 +1705,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->glyphGroupBox->hide();
         ui->filterGroupBox->hide();
 
-        ui->menuWCS->hide();
+        ui->menuWCS->menuAction()->setVisible(false);
 
         if (myfits->ctypeXY) {
             // Replace moment with a collapse option
@@ -1892,7 +1902,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->lineEdit_transition->setEnabled(false);
         ui->selectionGroupBox->hide();
         ui->filterGroupBox->hide();
-        ui->menuWCS->hide();
+        ui->menuWCS->menuAction()->setVisible(false);
 
         naxis3 = vis->GetNaxes(2);
 
