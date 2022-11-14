@@ -5,7 +5,7 @@
 #-------------------------------------------------
 
 QT += core gui widgets network networkauth printsupport xml concurrent webenginewidgets
-CONFIG += c++11 use_gold_linker
+CONFIG += c++11
 
 #QMAKE_MAC_SDK = macosx10.15
 CONFIG += sdk_no_version_check
@@ -206,7 +206,8 @@ SOURCES += \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
     src/xmlparser.cpp \
-    src/vtkwindowcube.cpp
+    src/vtkwindowcube.cpp \
+    src/profilewindow.cpp
 
 
 HEADERS  += \
@@ -300,7 +301,8 @@ HEADERS  += \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
     src/xmlparser.h \
-    src/vtkwindowcube.h
+    src/vtkwindowcube.h \
+    src/profilewindow.h
 
 
 FORMS += \
@@ -341,7 +343,8 @@ FORMS += \
     ui/vtkfitstoolwidget_new.ui \
     ui/vtktoolswidget.ui \
     ui/vtkwindow_new.ui \
-    ui/vtkwindowcube.ui
+    ui/vtkwindowcube.ui \
+    ui/profilewindow.ui
 
 
 RESOURCES += \

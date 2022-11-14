@@ -479,6 +479,8 @@ void vtkFitsReader::ReadHeader()
     char naxis1[80];
     char naxis2[80];
     char naxis3[80];
+    char bunit[80];
+
 
     crval1[0] = '\0';
     crval2[0] = '\0';
@@ -489,6 +491,7 @@ void vtkFitsReader::ReadHeader()
     cdelt1[0] = '\0';
     cdelt2[0] = '\0';
     cdelt3[0] = '\0';
+    bunit[0] = '\0';
 
     QString val1, val2, val3, pix1, pix2, pix3, delt1, delt2, delt3, nax1, nax2, nax3;
 
@@ -526,9 +529,6 @@ void vtkFitsReader::ReadHeader()
                     strcpy(yStr, first + 1);
                 if (card[5] == '3')
                     strcpy(zStr, first + 1);
-
-                qDebug() << "xStr: " << xStr;
-                qDebug() << "yStr: " << yStr;
             }
 
             if (!strncmp(card, "OBJECT", 6)) {
@@ -543,9 +543,6 @@ void vtkFitsReader::ReadHeader()
                 char *first = strchr(card, '=');
                 char *last = strrchr(card, '=');
                 *last = '\0';
-
-                // char *last = strrchr(card, '/');
-                //*last = '\0';
 
                 if (card[5] == '1') {
                     strcpy(crval1, first + 1);
@@ -615,6 +612,14 @@ void vtkFitsReader::ReadHeader()
                     strcpy(cdelt3, pch);
                 }
             }
+
+            if (!strncmp(card, "BUNIT", 5)) {
+                cerr << card << endl;
+                char *first = strchr(card, '\'');
+                char *last = strrchr(card, '\'');
+                *last = '\0';
+                strcpy(bunit, first + 1);
+            }
         }
     }
 
@@ -627,6 +632,7 @@ void vtkFitsReader::ReadHeader()
     delt1 = cdelt1;
     delt2 = cdelt2;
     delt3 = cdelt3;
+    bUnit = bunit;
 
     crval[0] = val1.toDouble(); // problema
     crval[1] = val2.toDouble();

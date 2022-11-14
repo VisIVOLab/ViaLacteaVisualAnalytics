@@ -24,9 +24,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
 
     // QString m_sSettingsFile = QApplication::applicationDirPath()+"/setting.ini";
     QString m_sSettingsFile = QDir::homePath()
-                                      .append(QDir::separator())
-                                      .append("VisIVODesktopTemp")
-                                      .append("/setting.ini");
+            .append(QDir::separator())
+            .append("VisIVODesktopTemp")
+            .append("/setting.ini");
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
 
@@ -42,15 +42,17 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QAction *addFitAction = new QAction("Add this fit", ui->resultsTableWidget);
     ui->resultsTableWidget->addAction(addFitAction);
     connect(addFitAction, SIGNAL(triggered()), this, SLOT(addNewTheoreticalFit()));
+    QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
+    logTicker->setLogBase(10);
 
     ui->customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
-    ui->customPlot->yAxis->setScaleLogBase(10);
+    ui->customPlot->yAxis->setTicker(logTicker);
 
     ui->customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
-    ui->customPlot->xAxis->setScaleLogBase(10);
+    ui->customPlot->xAxis->setTicker(logTicker);
 
     ui->customPlot->plotLayout()->insertRow(0);
-    ui->customPlot->plotLayout()->addElement(0, 0, new QCPPlotTitle(ui->customPlot, "SED"));
+    ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));
 
     ui->customPlot->xAxis->setLabel("Wavelength [" + QString::fromUtf8("\u00b5") + "m]");
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
@@ -98,8 +100,8 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
             SLOT(setRange(QCPRange)));
 
     // connect some interaction slots:
-    connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPPlotTitle *)), this,
-            SLOT(titleDoubleClick(QMouseEvent *, QCPPlotTitle *)));
+    connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
+            SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
@@ -212,8 +214,8 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     // Save QList<SED *> s to a file to be loaded later on
 
     QFile sedFile(QDir::homePath()
-                          .append(QDir::separator())
-                          .append("VisIVODesktopTemp/tmp_download/SEDList.dat"));
+                  .append(QDir::separator())
+                  .append("VisIVODesktopTemp/tmp_download/SEDList.dat"));
     if (!sedFile.exists()) {
         sedFile.open(QIODevice::WriteOnly);
         QDataStream out(&sedFile);
@@ -312,20 +314,14 @@ void SEDVisualizerPlot::sectionClicked(int index)
         bars1->setData(x1, y1);
         ui->histogramPlot->xAxis->setRange(min, max);
         ui->histogramPlot->yAxis->setRange(0, values.size());
-        // if(index==1||index==3){
-        // ui->histogramPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
-        // ui->histogramPlot->xAxis->setScaleLogBase(10);
 
-        //}else{
-        //    ui->histogramPlot->xAxis->setScaleType(QCPAxis::stLinear);
-        //}
-        // ui->histogramPlot->plotLayout()->insertRow(0);
-        // ui->histogramPlot->plotLayout()->addElement(0, 0, new QCPTextElement(customPlot, title,
-        // QFont("sans", 12, QFont::Bold)));
         ui->histogramPlot->xAxis->setLabel(title);
-        ui->histogramPlot->yAxis->setAutoTickStep(false);
-        ui->histogramPlot->yAxis->setTickStep(1);
-        ui->histogramPlot->addPlottable(bars1);
+
+        QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
+        ui->histogramPlot->yAxis->setTicker(fixedTicker);
+        fixedTicker->setTickStep(1.0); // tick step shall be 1.0
+        //removed qcp 2
+        //ui->histogramPlot->addPlottable(bars1);
         ui->histogramPlot->replot();
     } else {
         QMessageBox msgBox;
@@ -362,20 +358,20 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
 
             if (vtkwin->getDesignation2fileMap().values(node->getDesignation()).length() > 0) {
                 double r = vtkwin->getEllipseActorList()
-                                   .value(vtkwin->getDesignation2fileMap().value(
-                                           node->getDesignation()))
-                                   ->GetProperty()
-                                   ->GetColor()[0];
+                        .value(vtkwin->getDesignation2fileMap().value(
+                                   node->getDesignation()))
+                        ->GetProperty()
+                        ->GetColor()[0];
                 double g = vtkwin->getEllipseActorList()
-                                   .value(vtkwin->getDesignation2fileMap().value(
-                                           node->getDesignation()))
-                                   ->GetProperty()
-                                   ->GetColor()[1];
+                        .value(vtkwin->getDesignation2fileMap().value(
+                                   node->getDesignation()))
+                        ->GetProperty()
+                        ->GetColor()[1];
                 double b = vtkwin->getEllipseActorList()
-                                   .value(vtkwin->getDesignation2fileMap().value(
-                                           node->getDesignation()))
-                                   ->GetProperty()
-                                   ->GetColor()[2];
+                        .value(vtkwin->getDesignation2fileMap().value(
+                                   node->getDesignation()))
+                        ->GetProperty()
+                        ->GetColor()[2];
 
                 cp->setColor(QColor(r * 255, g * 255, b * 255));
             }
@@ -393,8 +389,8 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
                        node->getAngle(), node->getArcpix());
 
         cp->setNode(node);
-        ui->customPlot->addItem(cp);
-        // connect(ui->customPlot,SIGNAL(mousePress(QMouseEvent*)),cp,SLOT(onMousePress(QMouseEvent*)));
+        //removed qcp 2
+        //ui->customPlot->addItem(cp);
 
         visualnode_hash.insert(node->getDesignation(), cp);
 
@@ -430,18 +426,26 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         y_err[1] = node->getChild().values()[i]->getErrFlux();
 
         ui->customPlot->addGraph();
-
-        ui->customPlot->graph()->setDataValueError(x, y, y_err);
+        ui->customPlot->graph()->setData(x, y);
         ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
+        ui->customPlot->graph()->setSelectable(QCP::stNone);
+
+        QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+        errorBars->removeFromLegend();
+        errorBars->setAntialiased(true);
+        errorBars->setData(y_err);
+        errorBars->setDataPlottable(ui->customPlot->graph());
+        errorBars->setPen(QPen(QColor(180,180,180)));
+        errorBars->setSelectable(QCP::stNone);
 
         ui->customPlot->graph()->setPen(QPen(Qt::black));
-        ui->customPlot->graph()->setSelectedPen(QPen(Qt::red));
+        ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
         ui->customPlot->graph()->setAntialiased(true);
-        ui->customPlot->graph()->setErrorType(QCPGraph::etBoth);
+
     }
 }
 
-void SEDVisualizerPlot::titleDoubleClick(QMouseEvent *event, QCPPlotTitle *title)
+void SEDVisualizerPlot::titleDoubleClick(QMouseEvent *event, QCPTextElement *title)
 {
     Q_UNUSED(event)
     // Set the plot title by double clicking on it
@@ -458,7 +462,7 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
 {
     // Set an axis label by double clicking on it
     if (part == QCPAxis::spAxisLabel) // only react when the actual axis label is clicked, not tick
-                                      // label or axis backbone
+        // label or axis backbone
     {
         bool ok;
         QString newLabel =
@@ -476,7 +480,7 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
     // Rename a graph by double clicking on its legend item
     Q_UNUSED(legend)
     if (item) // only react if item was clicked (user could have clicked on border padding of legend
-              // where there is no item, then item is 0)
+        // where there is no item, then item is 0)
     {
         QCPPlottableLegendItem *plItem = qobject_cast<QCPPlottableLegendItem *>(item);
         bool ok;
@@ -493,10 +497,12 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 void SEDVisualizerPlot::selectionChanged()
 {
     if (multiSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be
-                          // selected.
+        // selected.
         // //qDebug()<<"selected graph count "<<ui->customPlot->selectedGraphs().count();
-        for (int i = 0; i < ui->customPlot->graphCount(); ++i)
-            ui->customPlot->graph(i)->setSelected(false);
+        //        for (int i = 0; i < ui->customPlot->graphCount(); ++i)
+        //            ui->customPlot->graph(i)->setSelected(false);
+        ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(0,0)));//graph(i)->setSelected(true);
+
     }
 }
 
@@ -512,7 +518,7 @@ void SEDVisualizerPlot::mousePress()
         // //qDebug()<<"pre - # selzionato: " <<ui->customPlot->selectedGraphs().count();
 
         for (int i = 0; i < ui->customPlot->graphCount(); ++i)
-            ui->customPlot->graph(i)->setSelected(true);
+            ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(i-1,i)));//graph(i)->setSelected(true);
 
         ui->customPlot->replot();
 
@@ -578,8 +584,11 @@ void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
                 ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
     } else // general context menu on graphs requested
     {
-        if (ui->customPlot->selectedGraphs().size() > 0)
-            menu->addAction("Remove selected connection", this, SLOT(removeSelectedGraph()));
+        //FV removed, since we don't need to remove connections
+        /*
+        * if (ui->customPlot->selectedGraphs().size() > 0)
+        *    menu->addAction("Remove selected connection", this, SLOT(removeSelectedGraph()));
+        */
     }
 
     menu->popup(ui->customPlot->mapToGlobal(pos));
@@ -796,10 +805,10 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
         for (int j = 0; j < columnNames.length(); j++) {
             if (resultsOutputColumn.value(columnNames.at(j)) != -1) {
                 ui->resultsTableWidget->setItem(
-                        i, j,
-                        new QTableWidgetItem(QString(
-                                line_list_string.at(resultsOutputColumn.value(columnNames.at(j)))
-                                        .simplified())));
+                            i, j,
+                            new QTableWidgetItem(QString(
+                                                     line_list_string.at(resultsOutputColumn.value(columnNames.at(j)))
+                                                     .simplified())));
             }
         }
     }
@@ -895,10 +904,10 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
         for (int j = 0; j < columnNames.length(); j++) {
             if (resultsOutputColumn.value(columnNames.at(j)) != -1) {
                 ui->resultsTableWidget->setItem(
-                        i, j,
-                        new QTableWidgetItem(QString(
-                                line_list_string.at(resultsOutputColumn.value(columnNames.at(j)))
-                                        .simplified())));
+                            i, j,
+                            new QTableWidgetItem(QString(
+                                                     line_list_string.at(resultsOutputColumn.value(columnNames.at(j)))
+                                                     .simplified())));
             }
         }
     }
@@ -913,11 +922,11 @@ void SEDVisualizerPlot::loadSedFitThin(QString filename)
     ui->resultsTableWidget->setColumnCount(6);
     ui->resultsTableWidget->setRowCount(0);
     ui->resultsTableWidget->setHorizontalHeaderLabels(QStringList() << "fmass"
-                                                                    << "dmass"
-                                                                    << "ftemp"
-                                                                    << "dtemp"
-                                                                    << "fbeta"
-                                                                    << "lum");
+                                                      << "dmass"
+                                                      << "ftemp"
+                                                      << "dtemp"
+                                                      << "fbeta"
+                                                      << "lum");
     ui->resultsTableWidget->insertRow(0);
 
     QFile filepar(filename);
@@ -946,14 +955,14 @@ void SEDVisualizerPlot::loadSedFitThick(QString filename)
     ui->resultsTableWidget->setColumnCount(9);
     ui->resultsTableWidget->setRowCount(0);
     ui->resultsTableWidget->setHorizontalHeaderLabels(QStringList() << "mass"
-                                                                    << "dmass"
-                                                                    << "ftemp"
-                                                                    << "dtemp"
-                                                                    << "fbeta"
-                                                                    << "fl0"
-                                                                    << "dlam0"
-                                                                    << "sizesec"
-                                                                    << "lum");
+                                                      << "dmass"
+                                                      << "ftemp"
+                                                      << "dtemp"
+                                                      << "fbeta"
+                                                      << "fl0"
+                                                      << "dlam0"
+                                                      << "sizesec"
+                                                      << "lum");
     ui->resultsTableWidget->insertRow(0);
     QFile filepar(filename);
     if (!filepar.open(QIODevice::ReadOnly)) {
@@ -976,9 +985,9 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
 {
     // qDebug()<<"color set model fit : " << color;
     QFile modelFile(QDir::homePath()
-                            .append(QDir::separator())
-                            .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                                    + "_sedfit_model.dat"));
+                    .append(QDir::separator())
+                    .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                            + "_sedfit_model.dat"));
     if (!modelFile.exists()) {
         modelFile.open(QIODevice::WriteOnly);
         QDataStream out(&modelFile);
@@ -1024,8 +1033,8 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
         cp->setLat(0);
         cp->setLon(0);
         points.push_back(cp);
-        // cp->setParent(graph);
-        ui->customPlot->addItem(cp);
+        //removed qcp 2
+        //ui->customPlot->addItem(cp);
     }
 
     // qDebug()<<"x:\n"<<x;
@@ -1061,7 +1070,7 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
 void SEDVisualizerPlot::on_actionScreenshot_triggered()
 {
     QPixmap qPixMap = QPixmap::grabWidget(
-            this); // *this* is window pointer, the snippet     is in the mainwindow.cpp file
+                this); // *this* is window pointer, the snippet     is in the mainwindow.cpp file
 
     QImage qImage = qPixMap.toImage();
 
@@ -1133,13 +1142,8 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
         cp->setErrorFlux(err_flux_sum);
         cp->setNode(tmp_node);
         collapsedGraphPoints.push_back(cp);
-        ui->customPlot->addItem(cp);
-
         cnt++;
     }
-
-    // qDebug()<<"x:\n"<<x;
-    // qDebug()<<"y:\n"<<y;
 
     coll_sed->setRootNode(tmp_node);
 
@@ -1147,12 +1151,9 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
-
+    ui->customPlot->graph()->setSelectable(QCP::stNone);
     ui->customPlot->replot();
-
-    // qDebug()<<sed_list.count();
     sed_list.insert(0, coll_sed);
-    // qDebug()<<sed_list.count();
 }
 
 /// Currently disabled
@@ -1161,19 +1162,12 @@ void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
     sedFitInputFflag = "]";
     sedFitInputF = "]";
     sedFitInputW = "]";
-
     sedFitInputErrF = "]";
-
     sedFitInput.clear();
-
     bool validFit = false;
 
-    //  if(multiSelectMOD){
     validFit = prepareSelectedInputForSedFit();
-    /*}else{
-        validFit=prepareInputForSedFit(sed_list.at(0)->getRootNode());
-    }
-*/
+
     if (validFit) {
         sedFitInputF = "[" + sedFitInputF;
         sedFitInputW = "[" + sedFitInputW;
@@ -1196,28 +1190,16 @@ void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
         connect(process, SIGNAL(readyReadStandardError()), this, SLOT(onReadyReadStdOutput()));
         connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(onReadyReadStdOutput()));
         connect(process, SIGNAL(finished(int)), this, SLOT(finishedTheoreticalLocaleFit()));
-
-        // process->start (idlPath+" -e
-        // \"sedpar=vialactea_tap_sedfit_v7("+sedFitInputW+","+sedFitInputF+","+sedFitInputErrF+","+sedFitInputFflag+","+ui->distTheoLineEdit->text()+","+ui->prefilterLineEdit->text()+",sed_weights=["+ui->mid_irLineEdit->text()+","+ui->far_irLineEdit->text()+","+ui->submmLineEdit->text()+"],use_wave="+sedFitInputW+",outdir='"+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED))+"_',delta_chi2="+ui->delta_chi2_lineEdit->text()+")\"
-        // ");
     }
 }
 
 void SEDVisualizerPlot::finishedTheoreticalLocaleFit()
 {
-    /*
-    QString output(process.readAll());
-    //qDebug()<<output;
-    outputSedLog=output;
-
-    ui->outputTextBrowser->setText(output);
-  */
     readSedFitOutput(QDir::homePath()
-                             .append(QDir::separator())
-                             .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                                     + "_sedfit_output.dat"));
+                     .append(QDir::separator())
+                     .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                             + "_sedfit_output.dat"));
 
-    // addNewSEDCheckBox("Theoretical Fit");
     this->setFocus();
     this->activateWindow();
 }
@@ -1228,13 +1210,13 @@ void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
 
     dir.rename("sedfit_output.dat",
                QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_sedfit_output.dat"));
+               .append(QDir::separator())
+               .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                       + "_sedfit_output.dat"));
     readSedFitOutput(QDir::homePath()
-                             .append(QDir::separator())
-                             .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                                     + "_sedfit_output.dat"));
+                     .append(QDir::separator())
+                     .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                             + "_sedfit_output.dat"));
 
     this->setFocus();
     this->activateWindow();
@@ -1242,7 +1224,6 @@ void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
 
 void SEDVisualizerPlot::onReadyReadStdOutput()
 {
-    //  process.setReadChannel(QProcess::readAllStandardError());
     QTextStream stream(process);
     while (!stream.atEnd()) {
         QString line = stream.readLine();
@@ -1254,7 +1235,6 @@ void SEDVisualizerPlot::onReadyReadStdOutput()
 // Add a new sed checkbox to the group of SED
 void SEDVisualizerPlot::addNewSEDCheckBox(QString label, int nSED)
 {
-    // qDebug()<<"Adding new SED Check Box "+QString::number(nSED);
     QSignalMapper *mapper = new QSignalMapper(this);
     ui->generatedSedBox->setVisible(true);
     QCheckBox *newSed = new QCheckBox(label + " " + QString::number(nSED + 1));
@@ -1263,13 +1243,11 @@ void SEDVisualizerPlot::addNewSEDCheckBox(QString label, int nSED)
     mapper->setMapping(newSed, nSED);
     connect(mapper, SIGNAL(mapped(int)), this, SLOT(on_SEDCheckboxClicked(int)));
     ui->generatedSedBox->layout()->addWidget(newSed);
-    // nSED++;
 }
 
 // Add a new sed checkbox to the group of SED
 void SEDVisualizerPlot::addNewSEDCheckBox(QString label)
 {
-    // qDebug()<<"Adding new SED Check Box "+QString::number(nSED);
     QSignalMapper *mapper = new QSignalMapper(this);
     ui->generatedSedBox->setVisible(true);
     QCheckBox *newSed = new QCheckBox(QString::number(nSED + 1) + ":" + label);
@@ -1288,28 +1266,19 @@ void SEDVisualizerPlot::on_SEDCheckboxClicked(int sedN)
     qDebug() << "sedGraphs.size() " << QString::number(sedGraphs.size());
     QCPGraph *graph = sedGraphs.at(sedN);
     if (graph->visible()) {
-        // qDebug()<<"Remove Graph "<<sedGraphPoints.contains(sedN);
         graph->setVisible(false);
-        // temporaryGraph->setVisible(false);
-        // qDebug()<<"graph visibility "<<graph->visible();
         if (sedGraphPoints.contains(sedN)) {
             QList<SEDPlotPointCustom *> points = sedGraphPoints.value(sedN);
             for (int i = 0; i < points.size(); ++i) {
                 SEDPlotPointCustom *cp;
                 cp = points.at(i);
                 cp->setVisible(false);
-                // qDebug()<<"points visibility "<<cp->visible();
             }
         }
-        //        ui->customPlot->removePlottable(graph);
         ui->resultsTableWidget->clearContents();
         ui->resultsTableWidget->setRowCount(0);
     } else {
-        ////qDebug()<<"Add Graph";
-        // ui->customPlot->addGraph();
-        // ui->customPlot->graph();
         graph->setVisible(true);
-        // qDebug()<<"graph visibility "<<graph->visible();
         if (sedGraphPoints.contains(sedN)) { // This is a theoretical SED fit
             QList<SEDPlotPointCustom *> points = sedGraphPoints.value(sedN);
             for (int i = 0; i < points.size(); ++i) {
@@ -1318,21 +1287,21 @@ void SEDVisualizerPlot::on_SEDCheckboxClicked(int sedN)
                 cp->setVisible(true);
             }
             loadSedFitOutput(QDir::homePath()
-                                     .append(QDir::separator())
-                                     .append("VisIVODesktopTemp/tmp_download/SED"
-                                             + QString::number(sedN) + "_sedfit_output.dat"));
+                             .append(QDir::separator())
+                             .append("VisIVODesktopTemp/tmp_download/SED"
+                                     + QString::number(sedN) + "_sedfit_output.dat"));
         } else { // This is a Thin or Thick SED fit
             QString label = plottedSedLabels.at(sedN);
             if (label.contains("Thick")) {
                 loadSedFitThick(QDir::homePath()
-                                        .append(QDir::separator())
-                                        .append("VisIVODesktopTemp/tmp_download/SED"
-                                                + QString::number(sedN) + "_thickfile.csv.par"));
+                                .append(QDir::separator())
+                                .append("VisIVODesktopTemp/tmp_download/SED"
+                                        + QString::number(sedN) + "_thickfile.csv.par"));
             } else {
                 loadSedFitThin(QDir::homePath()
-                                       .append(QDir::separator())
-                                       .append("VisIVODesktopTemp/tmp_download/SED"
-                                               + QString::number(sedN) + "_thinfile.csv.par"));
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp/tmp_download/SED"
+                                       + QString::number(sedN) + "_thinfile.csv.par"));
             }
         }
     }
@@ -1341,32 +1310,22 @@ void SEDVisualizerPlot::on_SEDCheckboxClicked(int sedN)
 
 void SEDVisualizerPlot::on_ThinLocalFit_triggered()
 {
-
     sedFitInputF = "]";
     sedFitInputErrF = "]";
     sedFitInputW = "]";
 
     sedFitInput.clear();
-    /*  if(multiSelectMOD){
-        prepareSelectedInputForSedFit();
-    }else{
-        prepareInputForSedFit(sed_list.at(0)->getRootNode());
-    }
-    */
     bool validFit = false;
 
     validFit = prepareSelectedInputForSedFit();
 
     if (validFit) {
-
         sedFitInputF = "[" + sedFitInputF;
         sedFitInputErrF = "[" + sedFitInputErrF;
         sedFitInputW = "[" + sedFitInputW;
 
         QString f = sedFitInputW.mid(1, sedFitInputW.length() - 2);
-
         QStringList wave = f.split(",");
-
         QSignalMapper *mapper = new QSignalMapper(this);
 
         sd_thin = new SedFitGrid_thin(this);
@@ -1374,9 +1333,7 @@ void SEDVisualizerPlot::on_ThinLocalFit_triggered()
         sedFitInputUlimitString = "[";
 
         for (int i = 0; i < wave.length(); i++) {
-            // qDebug()<<wave.at(i);
             sedFitInputUlimit.insert(i, "0");
-
             sedFitInputUlimitString += "0";
             if (i < wave.size() - 1)
                 sedFitInputUlimitString += ",";
@@ -1399,8 +1356,6 @@ void SEDVisualizerPlot::on_ThinLocalFit_triggered()
         sedFitInputUlimitString += "]";
         connect(mapper, SIGNAL(mapped(int)), this, SLOT(checkboxClicked(int)));
 
-        // qDebug()<<sedFitInputUlimitString;
-
         sd_thin->show();
 
         connect(sd_thin->ui->pushButton, SIGNAL(clicked()), this, SLOT(doThinLocalFit()));
@@ -1409,10 +1364,8 @@ void SEDVisualizerPlot::on_ThinLocalFit_triggered()
 
 void SEDVisualizerPlot::checkboxClicked(int cb)
 {
-
     sedFitInputUlimit[cb].compare("0") == 0 ? sedFitInputUlimit[cb] = "1"
-                                            : sedFitInputUlimit[cb] = "0";
-
+            : sedFitInputUlimit[cb] = "0";
     sedFitInputUlimitString = "[";
 
     for (int i = 0; i < sedFitInputUlimit.size(); i++) {
@@ -1447,9 +1400,9 @@ void SEDVisualizerPlot::doThinLocalFit()
             + sd_thin->ui->srefWavelengthLineEdit->text() + "]";
 
     QString outputFile = QDir::homePath()
-                                 .append(QDir::separator())
-                                 .append("VisIVODesktopTemp/tmp_download/SED"
-                                         + QString::number(nSED) + "_thinfile.csv");
+            .append(QDir::separator())
+            .append("VisIVODesktopTemp/tmp_download/SED"
+                    + QString::number(nSED) + "_thinfile.csv");
 
     QDir dir(QApplication::applicationDirPath());
 
@@ -1465,7 +1418,6 @@ void SEDVisualizerPlot::doThinLocalFit()
 void SEDVisualizerPlot::doThinRemoteFit()
 {
     sd_thin->close();
-
     ui->outputTextBrowser->setText("");
 
     process = new QProcess();
@@ -1489,17 +1441,12 @@ void SEDVisualizerPlot::doThinRemoteFit()
 
     qDebug() << " java -jar " << QApplication::applicationDirPath().append("/vsh-ws-client.jar")
              << " \"sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-                    + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text()
-                    + "," + srefRange
-                    + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
-                    + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'";
+                + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text()
+                + "," + srefRange
+                + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
+                + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'";
 
     process->setWorkingDirectory(QApplication::applicationDirPath());
-
-    // qDebug()<<"DIR: "<<process->workingDirectory();
-    // qDebug() << "App path : " << qApp->applicationDirPath();
-    // qDebug()<<"QDir::currentPath() :"<<QDir::currentPath() ;
-
     process->start("java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
                    + " \"sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF
                    + "," + mrange + "," + trange + "," + brange + ","
@@ -1507,23 +1454,21 @@ void SEDVisualizerPlot::doThinRemoteFit()
                    + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
                    + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\" ");
     qDebug() << "sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-                    + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text()
-                    + "," + srefRange
-                    + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
-                    + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\"";
+                + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text()
+                + "," + srefRange
+                + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
+                + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\"";
 
     ui->outputTextBrowser->append(
-            "java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
-            + " \"sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-            + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text() + ","
-            + srefRange
-            + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
-            + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\" ");
+                "java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
+                + " \"sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF + ","
+                + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text() + ","
+                + srefRange
+                + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
+                + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\" ");
     ui->outputTextBrowser->append("\nDIR: " + process->workingDirectory());
     ui->outputTextBrowser->append("\nApp path : " + qApp->applicationDirPath());
     ui->outputTextBrowser->append("\nQDir::currentPath() :" + QDir::currentPath());
-
-    // process.waitForFinished(); // sets current thread to sleep and waits for process end
 }
 
 void SEDVisualizerPlot::doThickRemoteFit()
@@ -1564,20 +1509,20 @@ void SEDVisualizerPlot::doThickRemoteFit()
                    + ",printfile= 'sedfit_output.dat'\" ");
 
     qDebug() << "sedfitgrid_engine_thick_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-                    + sd_thick->ui->sizeLineEdit->text() + "," + trange + " ," + brange + " ,"
-                    + l0range + ", " + sfactrange + "," + sd_thick->ui->distLineEdit->text() + ","
-                    + srefRange
-                    + ",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="
-                    + sedFitInputErrF + ",ulimit=" + sedFitInputUlimitString
-                    + ",printfile= 'sedfit_output.dat'\" ";
+                + sd_thick->ui->sizeLineEdit->text() + "," + trange + " ," + brange + " ,"
+                + l0range + ", " + sfactrange + "," + sd_thick->ui->distLineEdit->text() + ","
+                + srefRange
+                + ",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="
+                + sedFitInputErrF + ",ulimit=" + sedFitInputUlimitString
+                + ",printfile= 'sedfit_output.dat'\" ";
 }
 
 void SEDVisualizerPlot::finishedThinLocalFit()
 {
     bool res = readThinFit(QDir::homePath()
-                                   .append(QDir::separator())
-                                   .append("VisIVODesktopTemp/tmp_download/SED"
-                                           + QString::number(nSED) + "_thinfile.csv"));
+                           .append(QDir::separator())
+                           .append("VisIVODesktopTemp/tmp_download/SED"
+                                   + QString::number(nSED) + "_thinfile.csv"));
     if (res)
         addNewSEDCheckBox("Thin Fit");
     else
@@ -1588,8 +1533,6 @@ bool SEDVisualizerPlot::readThinFit(QString resultPath)
 {
     QFile file(resultPath);
     if (!file.open(QIODevice::ReadOnly)) {
-        // qDebug() << file.errorString();
-        // qDebug() << "ERRORE Disegno FIT";
         return false;
     }
 
@@ -1612,17 +1555,15 @@ bool SEDVisualizerPlot::readThinFit(QString resultPath)
     ui->resultsTableWidget->setColumnCount(6);
     ui->resultsTableWidget->setRowCount(0);
     ui->resultsTableWidget->setHorizontalHeaderLabels(QStringList() << "fmass"
-                                                                    << "dmass"
-                                                                    << "ftemp"
-                                                                    << "dtemp"
-                                                                    << "fbeta"
-                                                                    << "lum");
+                                                      << "dmass"
+                                                      << "ftemp"
+                                                      << "dtemp"
+                                                      << "fbeta"
+                                                      << "lum");
     ui->resultsTableWidget->insertRow(0);
 
     QFile filepar(resultPath + ".par");
     if (!filepar.open(QIODevice::ReadOnly)) {
-        // qDebug() << file.errorString();
-        // qDebug() << "ERRORE Parametri";
         return false;
     }
     QString line = filepar.readLine();
@@ -1640,8 +1581,6 @@ bool SEDVisualizerPlot::readThickFit(QString resultPath)
 {
     QFile file(resultPath);
     if (!file.open(QIODevice::ReadOnly)) {
-        // qDebug() << file.errorString();
-        // qDebug() << "ERRORE Disegno FIT";
         return false;
     }
 
@@ -1649,7 +1588,6 @@ bool SEDVisualizerPlot::readThickFit(QString resultPath)
 
     while (!file.atEnd()) {
         QByteArray line = file.readLine();
-
         x.append(line.split(',').first().simplified().toDouble());
         y.append(line.split(',').last().simplified().toDouble());
     }
@@ -1664,18 +1602,17 @@ bool SEDVisualizerPlot::readThickFit(QString resultPath)
     ui->resultsTableWidget->setColumnCount(9);
     ui->resultsTableWidget->setRowCount(0);
     ui->resultsTableWidget->setHorizontalHeaderLabels(QStringList() << "mass"
-                                                                    << "dmass"
-                                                                    << "ftemp"
-                                                                    << "dtemp"
-                                                                    << "fbeta"
-                                                                    << "fl0"
-                                                                    << "dlam0"
-                                                                    << "sizesec"
-                                                                    << "lum");
+                                                      << "dmass"
+                                                      << "ftemp"
+                                                      << "dtemp"
+                                                      << "fbeta"
+                                                      << "fl0"
+                                                      << "dlam0"
+                                                      << "sizesec"
+                                                      << "lum");
     ui->resultsTableWidget->insertRow(0);
     QFile filepar(resultPath + ".par");
     if (!filepar.open(QIODevice::ReadOnly)) {
-        // qDebug() << filepar.errorString();
         return false;
     }
     QString line = filepar.readLine();
@@ -1717,9 +1654,9 @@ void SEDVisualizerPlot::doThickLocalFit()
             + sd_thick->ui->srefWavelengthLineEdit->text() + "]";
 
     QString outputFile = QDir::homePath()
-                                 .append(QDir::separator())
-                                 .append("VisIVODesktopTemp/tmp_download/SED"
-                                         + QString::number(nSED) + "_thickfile.csv");
+            .append(QDir::separator())
+            .append("VisIVODesktopTemp/tmp_download/SED"
+                    + QString::number(nSED) + "_thickfile.csv");
 
     QDir dir(QApplication::applicationDirPath());
 
@@ -1740,22 +1677,18 @@ void SEDVisualizerPlot::finishedThinRemoteFit()
 
     dir.rename("sedfit_output.dat",
                QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_thinfile.csv"));
+               .append(QDir::separator())
+               .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                       + "_thinfile.csv"));
     dir.rename("sedfit_output.dat.par",
                QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_thinfile.csv.par"));
-
-    // readSedFitOutput(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/SED"+QString::number(nSED)+"_sedfit_output.dat"));
-
+               .append(QDir::separator())
+               .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                       + "_thinfile.csv.par"));
     bool res = readThickFit(QDir::homePath()
-                                    .append(QDir::separator())
-                                    .append("VisIVODesktopTemp/tmp_download/SED"
-                                            + QString::number(nSED) + "_thinfile.csv"));
-
+                            .append(QDir::separator())
+                            .append("VisIVODesktopTemp/tmp_download/SED"
+                                    + QString::number(nSED) + "_thinfile.csv"));
     if (res)
         addNewSEDCheckBox("Thin Fit");
     else
@@ -1769,19 +1702,19 @@ void SEDVisualizerPlot::finishedThickRemoteFit()
 
     dir.rename("sedfit_output.dat",
                QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_thickfile.csv"));
+               .append(QDir::separator())
+               .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                       + "_thickfile.csv"));
     dir.rename("sedfit_output.dat.par",
                QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_thickfile.csv.par"));
+               .append(QDir::separator())
+               .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
+                       + "_thickfile.csv.par"));
 
     bool res = readThickFit(QDir::homePath()
-                                    .append(QDir::separator())
-                                    .append("VisIVODesktopTemp/tmp_download/SED"
-                                            + QString::number(nSED) + "_thickfile.csv"));
+                            .append(QDir::separator())
+                            .append("VisIVODesktopTemp/tmp_download/SED"
+                                    + QString::number(nSED) + "_thickfile.csv"));
 
     if (res)
         addNewSEDCheckBox("Thick Fit");
@@ -1793,9 +1726,9 @@ void SEDVisualizerPlot::finishedThickLocalFit()
 {
 
     bool res = readThickFit(QDir::homePath()
-                                    .append(QDir::separator())
-                                    .append("VisIVODesktopTemp/tmp_download/SED"
-                                            + QString::number(nSED) + "_thickfile.csv"));
+                            .append(QDir::separator())
+                            .append("VisIVODesktopTemp/tmp_download/SED"
+                                    + QString::number(nSED) + "_thickfile.csv"));
     if (res)
         addNewSEDCheckBox("Thick Fit");
     else
@@ -1807,17 +1740,8 @@ void SEDVisualizerPlot::on_ThickLocalFit_triggered()
     sedFitInputF = "]";
     sedFitInputErrF = "]";
     sedFitInputW = "]";
-
     sedFitInput.clear();
-    /*  if(multiSelectMOD){
-        prepareSelectedInputForSedFit();
-    }else{
-        prepareInputForSedFit(sed_list.at(0)->getRootNode());
-    }
-    */
-
     bool validFit = false;
-
     validFit = prepareSelectedInputForSedFit();
 
     if (validFit) {
@@ -1826,14 +1750,8 @@ void SEDVisualizerPlot::on_ThickLocalFit_triggered()
         sedFitInputErrF = "[" + sedFitInputErrF;
         sedFitInputW = "[" + sedFitInputW;
 
-        // qDebug() << "f: " <<sedFitInputF;
-        // qDebug() << "e_f: " <<sedFitInputErrF;
-        // qDebug() << "w: " <<sedFitInputW;
-
         QString f = sedFitInputW.mid(1, sedFitInputW.length() - 2);
-
         QStringList wave = f.split(",");
-
         QSignalMapper *mapper = new QSignalMapper(this);
 
         sd_thick = new SedFitgrid_thick(this);
@@ -1842,9 +1760,7 @@ void SEDVisualizerPlot::on_ThickLocalFit_triggered()
         sedFitInputUlimitString = "[";
 
         for (int i = 0; i < wave.length(); i++) {
-            // qDebug()<<wave.at(i);
             sedFitInputUlimit.insert(i, "0");
-
             sedFitInputUlimitString += "0";
             if (i < wave.size() - 1)
                 sedFitInputUlimitString += ",";
@@ -1876,8 +1792,6 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
                                           QString sedFitInputErrF, QString sedFitInputFflag,
                                           QMap<double, double> sedFitInput)
 {
-    // qDebug()<<"Sono it thread executeRemoteCall"<<QThread::currentThread();
-
     QString filename = "sed_fit/execute.bin";
     QFile file(filename);
 
@@ -1886,62 +1800,29 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
         stream.reset();
         stream << "#!/bin/bash" << endl;
         stream << "unzip scripts.zip" << endl;
-        // stream <<"/usr/local/bin/idl -e
-        // \"sedpar=vialactea_tap_sedfit("+sedFitInputW+","+sedFitInputF+","+sedFitInputFflag+",1000.,0.2,sed_weights=[1.,1.,1.],use_wave="+QString::number(sedFitInput.keys()[0])+")\""
-        // << endl;
         stream << "/usr/local/bin/idl -e \"sedpar=vialactea_tap_sedfit_v3(" + sedFitInputW + ","
-                        + sedFitInputF + "," + sedFitInputErrF + "," + sedFitInputFflag
-                        + ",2000.,0.8,sed_weights=[1.,1.,1.],use_wave=" + sedFitInputW
-                        + ")\" &> log.dat"
+                  + sedFitInputF + "," + sedFitInputErrF + "," + sedFitInputFflag
+                  + ",2000.,0.8,sed_weights=[1.,1.,1.],use_wave=" + sedFitInputW
+                  + ")\" &> log.dat"
                << endl;
         stream << "zip output.zip *dat" << endl;
     }
-
-    // qDebug()<<"/usr/local/bin/idl -e
-    // \"sedpar=vialactea_tap_sedfit_v3("+sedFitInputW+","+sedFitInputF+","+sedFitInputErrF+","+sedFitInputFflag+",2000.,0.8,sed_weights=[1.,1.,1.],use_wave="+sedFitInputW+")\"
-    // &> log.dat"<< endl;
 
     QProcess process_zip;
     process_zip.start("zip -j sed_fit/inputs.zip sed_fit/scripts.zip sed_fit/execute.bin ");
     process_zip.waitForFinished(); // sets current thread to sleep and waits for process end
 
-    // curl -k -F m=submit -F pass=hp39A11  -F wfdesc=@workflow.xml -F inputzip=@inputs.zip -F
-    // portmapping=@portmapping.txt -F certs=@certs.zip
-    // http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet
     QProcess process;
     process.start("curl -k -F m=submit -F pass=hp39A11  -F wfdesc=@sed_fit/workflow.xml -F "
                   "inputzip=@sed_fit/inputs.zip -F portmapping=@sed_fit/portmapping.txt -F "
                   "certs=@sed_fit/certs.zip "
                   "http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
-    // qDebug()<<"curl -k -F m=submit -F pass=hp39A11  -F wfdesc=@sed_fit/workflow.xml -F
-    // inputzip=@sed_fit/inputs.zip -F portmapping=@sed_fit/portmapping.txt -F
-    // certs=@sed_fit/certs.zip http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet";
+
     process.waitForFinished(); // sets current thread to sleep and waits for process end
     QString output(process.readAll());
-    // qDebug()<<output.simplified();
 
-    /*
-    QString output_status="";
-
-    QProcess process_status;
-    //output_status.compare("finished")!=0 ||
-
-    while (output_status.compare("finished")!=0)
-    {
-        process_status.start ("curl -k -F m=info -F pass=hp39A11 -F ID="+output.simplified()+"
-    http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
-        process_status.waitForFinished(); // sets current thread to sleep and waits for process end
-        output_status= process_status.readAll().simplified();
-        //qDebug()<<output_status;
-        if(output_status.compare("error")==0){
-            return;
-        }
-    }
-    */
-    // extern bool checkIDRemoteCall(QString id);
     QString id = output.simplified();
     QFuture<bool> future = QtConcurrent::run(checkIDRemoteCall, id);
-    //    future.waitForFinished();
     bool finished = future.result();
     if (finished) {
 
@@ -1952,52 +1833,29 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
         process_download
                 .waitForFinished(); // sets current thread to sleep and waits for process end
         QString output_download(process_download.readAll());
-        // qDebug()<<output_download.simplified();
-
         QProcess process_unzip;
-        // process_unzip.start ("unzip ""sed_fit/output.zip");
         process_unzip.start("unzip sed_fit/output.zip -d "
                             + QDir::homePath()
-                                      .append(QDir::separator())
-                                      .append("VisIVODesktopTemp/tmp_download/"));
+                            .append(QDir::separator())
+                            .append("VisIVODesktopTemp/tmp_download/"));
         process_unzip.waitForFinished(); // sets current thread to sleep and waits for process end
         QString output_unzip(process_unzip.readAll());
-        // qDebug()<<output_unzip.simplified();
-
         QStringList pieces = output_unzip.split(" ");
-        // qDebug()<<pieces[pieces.length()-3];
         QString path = pieces[pieces.length() - 3];
 
         path.replace(path.indexOf("guse.jsdl"), path.size(), QLatin1String("output.zip"));
-        // qDebug() << path;
-
-        // qDebug()<<"---- "<<"unzip "+path+" -d
-        // "+QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/");
         QProcess process_unzip_2;
         process_unzip_2.start("unzip " + path + " -d "
                               + QDir::homePath()
-                                        .append(QDir::separator())
-                                        .append("VisIVODesktopTemp/tmp_download/"));
+                              .append(QDir::separator())
+                              .append("VisIVODesktopTemp/tmp_download/"));
         process_unzip_2.waitForFinished(); // sets current thread to sleep and waits for process end
         QString output_unzip_2(process_unzip_2.readAll());
-        // qDebug()<<output_unzip_2.simplified();
-
-        //    readSedFitOutput(QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/sedfit_output.dat"));
-
-        //    QFile file_log(
-        //    QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download/log.dat"));
-        //    if (!file_log.open(QFile::ReadOnly | QFile::Text)) return;
-        //    QTextStream in(&file_log);
-        //    outputSedLog=in.readAll();
-        //    ui->outputTextBrowser->setText(outputSedLog);
-        //    //qDebug()<<"****LOG***"<<outputSedLog;
     }
 }
 
 bool SEDVisualizerPlot::checkIDRemoteCall(QString id)
 {
-
-    // qDebug()<<"Sono it thread "<<QThread::currentThread();
     QString output_status = "";
 
     QProcess process_status;
@@ -2007,7 +1865,6 @@ bool SEDVisualizerPlot::checkIDRemoteCall(QString id)
                              + " http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
         process_status.waitForFinished(); // sets current thread to sleep and waits for process end
         output_status = process_status.readAll().simplified();
-        ////qDebug()<<output_status;
         if (output_status.compare("error") == 0) {
             return false;
         }
@@ -2017,25 +1874,15 @@ bool SEDVisualizerPlot::checkIDRemoteCall(QString id)
 
 void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
 {
-
     bool validFit = false;
 
     sedFitInputFflag = "]";
     sedFitInputF = "]";
     sedFitInputW = "]";
-
     sedFitInputErrF = "]";
-
     sedFitInput.clear();
 
-    // if(multiSelectMOD){
     validFit = prepareSelectedInputForSedFit();
-    // }
-    /* else{
-        validFit=prepareInputForSedFit(sed_list.at(0)->getRootNode());
-    }
-    */
-
     if (validFit) {
         sedFitInputF = "[" + sedFitInputF;
         sedFitInputW = "[" + sedFitInputW;
@@ -2050,17 +1897,8 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
         loading->setFocus();
 
         ui->outputTextBrowser->setText("");
-
         process = new QProcess();
-
         process->setProcessChannelMode(QProcess::MergedChannels);
-
-        // qDebug()<<"sedFitInputErrF: "<<sedFitInputErrF;
-
-        // qDebug()<<" java -jar
-        // "<<QApplication::applicationDirPath().append("/vsh-ws-client.jar")<<"
-        // \"sedpar=vialactea_tap_sedfit_v7("+sedFitInputW+","+sedFitInputF+","+sedFitInputErrF+","+sedFitInputFflag+","+ui->distTheoLineEdit->text()+","+ui->prefilterLineEdit->text()+",sed_weights=["+ui->mid_irLineEdit->text()+","+ui->far_irLineEdit->text()+","+ui->submmLineEdit->text()+"],use_wave="+sedFitInputW+",outdir='./',delta_chi2="+ui->delta_chi2_lineEdit->text()+")\"
-        // ";
 
         connect(process, SIGNAL(readyReadStandardError()), this, SLOT(onReadyReadStdOutput()));
         connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(onReadyReadStdOutput()));
@@ -2068,39 +1906,37 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
 
         process->setWorkingDirectory(QApplication::applicationDirPath());
         process->start(
-                "java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
-                + " \"sedpar=vialactea_tap_sedfit_v7(" + sedFitInputW + "," + sedFitInputF + ","
-                + sedFitInputErrF + "," + sedFitInputFflag + "," + ui->distTheoLineEdit->text()
-                + "," + ui->prefilterLineEdit->text() + ",sed_weights=["
-                + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
-                + ui->submmLineEdit->text() + "],use_wave=" + sedFitInputW
-                + ",outdir='./',delta_chi2=" + ui->delta_chi2_lineEdit->text() + ")\" ");
+                    "java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
+                    + " \"sedpar=vialactea_tap_sedfit_v7(" + sedFitInputW + "," + sedFitInputF + ","
+                    + sedFitInputErrF + "," + sedFitInputFflag + "," + ui->distTheoLineEdit->text()
+                    + "," + ui->prefilterLineEdit->text() + ",sed_weights=["
+                    + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
+                    + ui->submmLineEdit->text() + "],use_wave=" + sedFitInputW
+                    + ",outdir='./',delta_chi2=" + ui->delta_chi2_lineEdit->text() + ")\" ");
 
         qDebug() << "vialactea_tap_sedfit_v7(" + sedFitInputW + "," + sedFitInputF + ","
-                        + sedFitInputErrF + "," + sedFitInputFflag + ","
-                        + ui->distTheoLineEdit->text() + "," + ui->prefilterLineEdit->text()
-                        + ",sed_weights=[" + ui->mid_irLineEdit->text() + ","
-                        + ui->far_irLineEdit->text() + "," + ui->submmLineEdit->text()
-                        + "],use_wave=" + sedFitInputW
-                        + ",outdir='./',delta_chi2=" + ui->delta_chi2_lineEdit->text() + ")\" ";
+                    + sedFitInputErrF + "," + sedFitInputFflag + ","
+                    + ui->distTheoLineEdit->text() + "," + ui->prefilterLineEdit->text()
+                    + ",sed_weights=[" + ui->mid_irLineEdit->text() + ","
+                    + ui->far_irLineEdit->text() + "," + ui->submmLineEdit->text()
+                    + "],use_wave=" + sedFitInputW
+                    + ",outdir='./',delta_chi2=" + ui->delta_chi2_lineEdit->text() + ")\" ";
     }
 }
 
 void SEDVisualizerPlot::handleFinished()
 {
-    // qDebug()<<"handleFinished";
     readSedFitOutput(QDir::homePath()
-                             .append(QDir::separator())
-                             .append("VisIVODesktopTemp/tmp_download/sedfit_output.dat"));
+                     .append(QDir::separator())
+                     .append("VisIVODesktopTemp/tmp_download/sedfit_output.dat"));
     QFile file_log(QDir::homePath()
-                           .append(QDir::separator())
-                           .append("VisIVODesktopTemp/tmp_download/log.dat"));
+                   .append(QDir::separator())
+                   .append("VisIVODesktopTemp/tmp_download/log.dat"));
     if (!file_log.open(QFile::ReadOnly | QFile::Text))
         return;
     QTextStream in(&file_log);
     outputSedLog = in.readAll();
     ui->outputTextBrowser->setText(outputSedLog);
-    // qDebug()<<"****LOG***"<<outputSedLog;
     loading->close();
     addNewSEDCheckBox("Theoretical Fit");
 }
@@ -2128,32 +1964,22 @@ void SEDVisualizerPlot::on_logRadioButton_toggled(bool checked)
         ui->outputTextBrowser->setText(outputSedResults);
         ui->resultsTableWidget->show();
         ui->outputTextBrowser->hide();
-        // ui->resultsTableWidget->setColumnCount(2);
-        // ui->resultsTableWidget->setRowCount(2);
-        // ui->resultsTableWidget->setItem(0, 1, new QTableWidgetItem("Hello"));
     }
 }
 
 void SEDVisualizerPlot::on_clearAllButton_clicked()
 {
-    // qDebug()<<"Graphs size "<<sedGraphs.size();
     int size = sedGraphs.size();
     for (int i = 0; i < size; ++i) {
         QCPGraph *qcp;
         qcp = sedGraphs.at(i);
         ui->customPlot->removeGraph(qcp);
-        // sedGraphs.removeAt(i);
     }
     // TODO: To check if items are removed from memory!
     sedGraphs.clear();
-    // qDebug()<<"Graphs size "<<sedGraphs.size();
-    //
-    // qDebug()<<"Graph Points size "<<sedGraphPoints.size();
     QMap<int, QList<SEDPlotPointCustom *>>::iterator iter;
     for (iter = sedGraphPoints.begin(); iter != sedGraphPoints.end(); ++iter) {
-        // qDebug()<<"Processing Graph: "<<iter.key();
         QList<SEDPlotPointCustom *> points = sedGraphPoints.value(iter.key());
-        // qDebug()<<"Points size: "<<points.size();
         for (int i = 0; i < points.size(); ++i) {
             SEDPlotPointCustom *cp;
             cp = points.at(i);
@@ -2177,20 +2003,16 @@ void SEDVisualizerPlot::on_clearAllButton_clicked()
     temporaryMOD = false;
     doubleClicked = false;
     temporaryRow = 0;
-
     QLayoutItem *item;
 
     // the key point here is that the layout items are stored inside the layout in a stack
     while ((item = ui->generatedSedBox->layout()->takeAt(1)) != 0) {
         if (item->widget()) {
-            // if(item->widget()->metaObject()->className()=="QCheckBox"){
             ui->generatedSedBox->layout()->removeWidget(item->widget());
             delete item->widget();
-            //}
         }
         delete item;
     }
-    // removeAllGraphs();
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setRowCount(0);
     ui->outputTextBrowser->setText("");
@@ -2200,13 +2022,11 @@ void SEDVisualizerPlot::on_clearAllButton_clicked()
     filters << "SED*";
     tmp_download.setNameFilters(filters);
     QStringList dirList = tmp_download.entryList();
-    // qDebug()<<"Dir size "<<dirList.size();
+
     for (int i = 0; i < dirList.size(); i++) {
-        // qDebug()<<dirList.at(i);
         QFile sedFile(QDir::homePath() + "/VisIVODesktopTemp/tmp_download/" + dirList.at(i));
         sedFile.remove();
     }
-    // tmp_download.removeRecursively();
     plottedSedLabels.clear();
 }
 
@@ -2224,7 +2044,6 @@ void SEDVisualizerPlot::on_normalRadioButton_toggled(bool selectNormal)
         multiSelectMOD = true;
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
     }
-    // qDebug()<<"multiSelectMOD: "<<multiSelectMOD;
 }
 
 void SEDVisualizerPlot::on_actionSave_triggered()
@@ -2235,26 +2054,18 @@ void SEDVisualizerPlot::on_actionSave_triggered()
     filters << "SED*";
     tmp_download.setNameFilters(filters);
     QStringList dirList = tmp_download.entryList();
-    // qDebug()<<"Dir size "<<dirList.size();
     QString sedZipPath = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/SED.zip";
     for (int i = 0; i < dirList.size(); i++) {
         QString sedPath = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/" + dirList.at(i);
         process_zip.start("zip -j " + sedZipPath + " " + sedPath);
-        // qDebug()<<"zip -j "+sedZipPath+" "+sedPath;
         process_zip.waitForFinished(); // sets current thread to sleep and waits for process end
         QString output_zip(process_zip.readAll());
-        // qDebug()<<output_zip.simplified();
-
-        // FolderCompressor *fc=new FolderCompressor();
-        // fc->compressFolder(QDir::homePath()+"/VisIVODesktopTemp/tmp_download/"+dirList.at(i),
-        // sedZipPath);
     }
 
     QString fileName =
             QFileDialog::getSaveFileName(this, tr("Save SED fits"), QDir::homePath(), tr("*.zip"));
     if (!fileName.endsWith(".zip", Qt::CaseInsensitive))
         fileName.append(".zip");
-    // qDebug()<<"Path: "<<fileName;
     QFile::copy(sedZipPath, fileName);
 }
 
@@ -2267,28 +2078,21 @@ void SEDVisualizerPlot::on_actionLoad_triggered()
     QProcess process_unzip;
     process_unzip.start("unzip " + sedZipPath + " -d " + QDir::homePath()
                         + "/VisIVODesktopTemp/tmp_download");
-    // qDebug()<<"unzip "+sedZipPath+" -d "+QDir::homePath()+"/VisIVODesktopTemp/tmp_download";
     process_unzip.waitForFinished(); // sets current thread to sleep and waits for process end
     QString output_unzip(process_unzip.readAll());
-    // qDebug()<<output_unzip.simplified();
-
     QDir tmp_download(QDir::homePath() + "/VisIVODesktopTemp/tmp_download");
     QStringList filters;
     filters << "SED*";
     tmp_download.setNameFilters(filters);
     QStringList dirList = tmp_download.entryList();
-    // qDebug()<<"Dir size "<<dirList.size();
+
     for (int i = 0; i < dirList.size(); i++) {
         QString sedPath = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/" + dirList.at(i);
         QString sedNumber = dirList.at(i).mid(3, 1); // substring after "SED";
-        // qDebug()<<"SED Number "<<sedNumber;
         bool ok;
         int value = sedNumber.toInt(&ok);
         if (ok) { // is an integer
             if (sedPath.endsWith("sedfit_model.dat")) {
-                // qDebug()<<"sedGraphs.size() before : "<<sedGraphs.size();
-                // qDebug()<<"sedGraphPoints.size() before : "<<sedGraphPoints.size();
-                // qDebug()<<"Drawing "+sedPath;
                 addNewSEDCheckBox("Theoretical Fit");
                 QFile file(sedPath);
                 file.open(QIODevice::ReadOnly);
@@ -2301,18 +2105,12 @@ void SEDVisualizerPlot::on_actionLoad_triggered()
                 loadSedFitOutput(sedPath);
             }
             if (sedPath.endsWith("thinfile.csv")) {
-                // qDebug()<<"sedGraphs.size() before : "<<sedGraphs.size();
-                // qDebug()<<"Drawing "+sedPath;
                 readThinFit(sedPath);
                 addNewSEDCheckBox("Thin Fit");
-                // qDebug()<<"sedGraphs.size() after : "<<sedGraphs.size();
             }
             if (sedPath.endsWith("thickfile.csv")) {
-                // qDebug()<<"sedGraphs.size() before : "<<sedGraphs.size();
-                // qDebug()<<"Drawing "+sedPath;
                 readThinFit(sedPath);
                 addNewSEDCheckBox("Thick Fit");
-                // qDebug()<<"sedGraphs.size() after : "<<sedGraphs.size();
             }
         }
     }
@@ -2323,18 +2121,13 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
     for (int i = 0; i < dirList.size(); i++) {
         QString sedPath = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/" + dirList.at(i);
         QString sedNumber = dirList.at(i).mid(3, 1); // substring after "SED";
-        // qDebug()<<"SED Number "<<sedNumber;
         bool ok;
         int value = sedNumber.toInt(&ok);
         if (ok) { // is an integer
             if (sedPath.endsWith("sedfit_model.dat")) {
-                // qDebug()<<"sedGraphs.size() before : "<<sedGraphs.size();
-                // qDebug()<<"sedGraphPoints.size() before : "<<sedGraphPoints.size();
-                // qDebug()<<"Drawing "+sedPath;
                 QString sedOutput = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/SED"
                         + QString::number(value) + "_sedfit_output.dat";
                 loadSedFitOutput(sedOutput);
-                // addNewSEDCheckBox("Theoretical Fit");
                 QFile file(sedPath);
                 file.open(QIODevice::ReadOnly);
                 QDataStream in(&file); // read the data serialized from the file
@@ -2342,22 +2135,13 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
                 in >> headerAndValueList; // extract data
                 setModelFitValue(headerAndValueList, Qt::blue);
             }
-            /*if(sedPath.endsWith("sedfit_output.dat")){
-                loadSedFitOutput(sedPath);
-            }*/
-            if (sedPath.endsWith("thinfile.csv")) {
-                // qDebug()<<"sedGraphs.size() before : "<<sedGraphs.size();
-                // qDebug()<<"Drawing "+sedPath;
-                readThinFit(sedPath);
+
+            if (sedPath.endsWith("thinfile.csv")) {                readThinFit(sedPath);
                 addNewSEDCheckBox("Thin Fit");
-                // qDebug()<<"sedGraphs.size() after : "<<sedGraphs.size();
             }
             if (sedPath.endsWith("thickfile.csv")) {
-                // qDebug()<<"sedGraphs.size() before : "<<sedGraphs.size();
-                // qDebug()<<"Drawing "+sedPath;
                 readThinFit(sedPath);
                 addNewSEDCheckBox("Thick Fit");
-                // qDebug()<<"sedGraphs.size() after : "<<sedGraphs.size();
             }
         }
     }
@@ -2368,14 +2152,12 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
     if (checked) {
         this->on_actionCollapse_triggered();
     } else {
-        // qDebug()<<"Return previous state";
         QPen pen;
         pen.setStyle(Qt::SolidLine);
         pen.setColor(Qt::black);
         for (int i = 0; i < originalGraphs.size(); i++) {
             originalGraphs.at(i)->setPen(pen);
         }
-        // originalGraphs.clear();
         ui->customPlot->removeGraph(collapsedGraph);
         for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
             SEDPlotPointCustom *cp;
@@ -2401,25 +2183,20 @@ void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
         }
         ui->customPlot->replot();
     }
-    // qDebug()<<"multiSelectMOD: "<<multiSelectMOD;
 }
 
 void SEDVisualizerPlot::addNewTheoreticalFit()
 {
     QModelIndex index = ui->resultsTableWidget->selectionModel()->selectedIndexes().first();
-    // qDebug()<<"Clicked Menu ";
     doubleClicked = true;
     temporaryMOD = false;
-    // qDebug()<<"Double Cliked Row "+QString::number(index.row());
     int id = ui->resultsTableWidget->item(index.row(), 0)->text().toInt();
-    // qDebug()<<"Selected id "+QString::number(id);
     if (index.row() == 0) {
         // Do nothing on the first row which is already drawn by default
     } else {
 
         QString query =
                 "SELECT * FROM vlkb_compactsources.sed_models where id=" + QString::number(id);
-        // qDebug()<<"query: " << query;
         new VLKBQuery(query, vtkwin, "model", this, Qt::cyan);
         if (temporaryRow != 0) {
             ui->customPlot->removeGraph(temporaryGraph);
@@ -2440,13 +2217,10 @@ void SEDVisualizerPlot::on_resultsTableWidget_clicked(const QModelIndex &index)
 {
     if (!doubleClicked) {
         temporaryMOD = true;
-        // qDebug()<<"Cliked Row "+QString::number(index.row());
         int id = ui->resultsTableWidget->item(index.row(), 0)->text().toInt();
-        // qDebug()<<"Selected id "+QString::number(id);
         if (index.row() == 0) {
             // Do nothing on the first row which is already drawn by default
             // if a temporary graph was shown delete it
-            // qDebug()<<temporaryGraphPoints.size();
             if (temporaryGraphPoints.size() != 0) {
                 ui->customPlot->removeGraph(temporaryGraph);
                 for (int i = 0; i < temporaryGraphPoints.size(); ++i) {
@@ -2471,7 +2245,6 @@ void SEDVisualizerPlot::on_resultsTableWidget_clicked(const QModelIndex &index)
 
             QString query =
                     "SELECT * FROM vlkb_compactsources.sed_models where id=" + QString::number(id);
-            // qDebug()<<"query: " << query;
             new VLKBQuery(query, vtkwin, "model", this, Qt::lightGray);
             temporaryRow = index.row();
         }
@@ -2489,12 +2262,6 @@ void SEDVisualizerPlot::on_theoreticalPushButton_clicked()
 
 void SEDVisualizerPlot::on_theorConfirmPushButton_clicked()
 {
-    /*
-    if(false)
-        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("Could not execute SED fit
-    with less than 2 points selected.\n\rPlease select more points and try again."));
-*/
-
     on_TheoreticalRemoteFit_triggered();
 }
 
@@ -2510,14 +2277,8 @@ void SEDVisualizerPlot::on_ThinRemore_triggered()
     sedFitInputF = "]";
     sedFitInputErrF = "]";
     sedFitInputW = "]";
-
     sedFitInput.clear();
-    /*  if(multiSelectMOD){
-        prepareSelectedInputForSedFit();
-    }else{
-        prepareInputForSedFit(sed_list.at(0)->getRootNode());
-    }
-    */
+
     bool validFit = false;
 
     validFit = prepareSelectedInputForSedFit();
@@ -2539,7 +2300,6 @@ void SEDVisualizerPlot::on_ThinRemore_triggered()
         sedFitInputUlimitString = "[";
 
         for (int i = 0; i < wave.length(); i++) {
-            // qDebug()<<wave.at(i);
             sedFitInputUlimit.insert(i, "0");
 
             sedFitInputUlimitString += "0";
@@ -2563,11 +2323,7 @@ void SEDVisualizerPlot::on_ThinRemore_triggered()
         }
         sedFitInputUlimitString += "]";
         connect(mapper, SIGNAL(mapped(int)), this, SLOT(checkboxClicked(int)));
-
-        // qDebug()<<sedFitInputUlimitString;
-
         sd_thin->show();
-
         connect(sd_thin->ui->pushButton, SIGNAL(clicked()), this, SLOT(doThinRemoteFit()));
     }
 }
@@ -2577,15 +2333,8 @@ void SEDVisualizerPlot::on_ThickRemote_triggered()
     sedFitInputF = "]";
     sedFitInputErrF = "]";
     sedFitInputW = "]";
-
     sedFitInput.clear();
-    /*
-    if(multiSelectMOD){
-        prepareSelectedInputForSedFit();
-    }else{
-        prepareInputForSedFit(sed_list.at(0)->getRootNode());
-    }
-*/
+
     bool validFit = true;
 
     validFit = prepareSelectedInputForSedFit();
@@ -2596,23 +2345,15 @@ void SEDVisualizerPlot::on_ThickRemote_triggered()
         sedFitInputErrF = "[" + sedFitInputErrF;
         sedFitInputW = "[" + sedFitInputW;
 
-        // qDebug() << "f: " <<sedFitInputF;
-        // qDebug() << "e_f: " <<sedFitInputErrF;
-        // qDebug() << "w: " <<sedFitInputW;
-
         QString f = sedFitInputW.mid(1, sedFitInputW.length() - 2);
-
         QStringList wave = f.split(",");
-
         QSignalMapper *mapper = new QSignalMapper(this);
 
         sd_thick = new SedFitgrid_thick(this);
         sd_thick->ui->distLineEdit->setText(ui->distTheoLineEdit->text());
-
         sedFitInputUlimitString = "[";
 
         for (int i = 0; i < wave.length(); i++) {
-            // qDebug()<<wave.at(i);
             sedFitInputUlimit.insert(i, "0");
 
             sedFitInputUlimitString += "0";
