@@ -16,7 +16,7 @@ class vtkFitsReader2;
 class vtkFlyingEdges3D;
 class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
-
+class vtkwindow_new;
 class FitsImageStatisiticInfo;
 
 namespace Ui {
@@ -63,7 +63,8 @@ private:
     Ui::vtkWindowCube *ui;
     QString filepath;
     int ScaleFactor;
-    // QPointer<vtkWindowImage> parentWindow;
+    QPointer<vtkwindow_new> parentWindow;
+    vtkSmartPointer<vtkFitsReader2> readerCube;
     vtkSmartPointer<vtkFitsReader2> readerSlice;
     FitsImageStatisiticInfo *fitsStatsWidget;
     QPointer<QDockWidget> dock;

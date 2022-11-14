@@ -47,7 +47,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
       ui(new Ui::vtkWindowCube),
       filepath(filepath),
       ScaleFactor(ScaleFactor),
-      // parentWindow(qobject_cast<vtkWindowImage *>(parent)),
+      parentWindow(qobject_cast<vtkwindow_new *>(parent)),
       currentSlice(0),
       velocityUnit(velocityUnit)
 {
@@ -57,7 +57,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     readFitsHeader();
 
-    vtkNew<vtkFitsReader2> readerCube;
+    readerCube= vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
     readerCube->SetScaleFactor(ScaleFactor);
     readerCube->Update();
@@ -190,8 +190,8 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     // Added to renderers when the contour checkbox is checked
     contoursActor = vtkSmartPointer<vtkLODActor>::New();
     contoursActor->GetProperty()->SetLineWidth(1);
-    // contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
-    // contoursActorForParent->GetProperty()->SetLineWidth(1);
+    contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
+    contoursActorForParent->GetProperty()->SetLineWidth(1);
 
     auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorSlice->LegendVisibilityOff();
@@ -209,9 +209,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
 vtkWindowCube::~vtkWindowCube()
 {
-    //    if (parentWindow) {
-    //        parentWindow->removeActorFromRenderer(contoursActorForParent);
-    //    }
+    if (parentWindow) {
+        parentWindow->removeActor(contoursActorForParent);
+    }
 
     delete ui;
 }
@@ -281,6 +281,11 @@ void vtkWindowCube::updateSliceDatacube()
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
 
     fitsStatsWidget->updateSliceStats();
+
+    if (parentWindow && ui->contourCheckBox->isChecked()) {
+        removeContours();
+        showContours();
+    }
 }
 
 void vtkWindowCube::updateVelocityText()
@@ -326,21 +331,20 @@ void vtkWindowCube::showContours()
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 
-    /*
     if (parentWindow) {
         double sky_coord_gal[2];
-        AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 0, sky_coord_gal, WCS_GALACTIC);
+        AstroUtils::xy2sky(filepath.toStdString(), 0, 0, sky_coord_gal, WCS_GALACTIC);
 
         double coord[3];
-        AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
+        AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
                            sky_coord_gal[1], coord);
 
         double angle = 0;
         double x1 = coord[0];
         double y1 = coord[1];
 
-        AstroUtils::xy2sky(fitsReader->GetFileName(), 0, 100, sky_coord_gal, WCS_GALACTIC);
-        AstroUtils::sky2xy(parentWindow->getFitsReader()->GetFileName(), sky_coord_gal[0],
+        AstroUtils::xy2sky(filepath.toStdString(), 0, 100, sky_coord_gal, WCS_GALACTIC);
+        AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
                            sky_coord_gal[1], coord);
 
         if (x1 != coord[0]) {
@@ -349,10 +353,10 @@ void vtkWindowCube::showContours()
         }
 
         double bounds[6];
-        fitsReader->GetOutput()->GetBounds(bounds);
+        readerCube->GetBounds(bounds);
 
-        double scaledPixel = AstroUtils::arcsecPixel(fitsReader->GetFileName())
-                / AstroUtils::arcsecPixel(parentWindow->getFitsReader()->GetFileName());
+        double scaledPixel = AstroUtils::arcsecPixel(filepath.toStdString())
+                / AstroUtils::arcsecPixel(parentWindow->getFitsImage()->GetFileName());
 
         auto transform = vtkSmartPointer<vtkTransform>::New();
         transform->Translate(0, 0, -1 * sliceViewer->GetSlice());
@@ -363,14 +367,14 @@ void vtkWindowCube::showContours()
         auto mapperForParent = vtkSmartPointer<vtkPolyDataMapper>::New();
         mapperForParent->ShallowCopy(mapper);
 
-        contoursActorForParent->ShallowCopy(contoursActor);
+        contoursActorForParent = vtkSmartPointer<vtkActor>::New();
         contoursActorForParent->SetMapper(mapperForParent);
         contoursActorForParent->SetScale(scaledPixel, scaledPixel, 1);
-        contoursActorForParent->SetPosition(x1, y1, 1);
         contoursActorForParent->SetUserTransform(transform);
-        parentWindow->addActorToRenderer(contoursActorForParent);
+        contoursActorForParent->SetPosition(x1, y1, 1);
+        parentWindow->addActor(contoursActorForParent);
+        parentWindow->updateScene();
     }
-    */
 }
 
 void vtkWindowCube::removeContours()
@@ -378,28 +382,26 @@ void vtkWindowCube::removeContours()
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 
-    //    if (parentWindow) {
-    //        parentWindow->removeActorFromRenderer(contoursActorForParent);
-    //    }
+    if (parentWindow) {
+        parentWindow->removeActor(contoursActorForParent);
+    }
 }
 
 void vtkWindowCube::calculateAndShowMomentMap(int order)
 {
-    //    if (parentWindow) {
-    //        auto moment = vtkSmartPointer<vtkFitsReader>::New();
-    //        moment->SetFileName(fitsReader->GetFileName());
-    //        moment->isMoment3D = true;
-    //        moment->setMomentOrder(order);
-    //        parentWindow->addLayerImage(moment);
-    //        parentWindow->raise();
-    //    }
-
     auto moment = vtkSmartPointer<vtkFitsReader>::New();
     moment->SetFileName(filepath.toStdString());
     moment->isMoment3D = true;
     moment->setMomentOrder(order);
-    auto win = new vtkwindow_new(nullptr, moment);
-    win->raise();
+
+    if (parentWindow) {
+        parentWindow->addLayerImage(moment);
+    } else {
+        parentWindow = new vtkwindow_new(nullptr, moment);
+    }
+
+    parentWindow->show();
+    parentWindow->raise();
 }
 
 void vtkWindowCube::resetCamera()
@@ -545,5 +547,4 @@ void vtkWindowCube::on_actionShowStats_triggered()
     }
 
     dock->show();
-    // dock->raise();
 }

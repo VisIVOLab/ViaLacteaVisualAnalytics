@@ -432,18 +432,12 @@ void ViaLactea::on_localDCPushButton_clicked()
         return;
     }
 
-    int maxSize = settings.value("downscaleSize", 1024).toInt();
-    int size = QFileInfo(fn).size() / (1024 * 1024);
+    long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024 * 1024;
+    long size = QFileInfo(fn).size();
+    int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
+    qDebug() << Q_FUNC_INFO << "ScaleFactor" << ScaleFactor;
 
-    vtkWindowCube *win;
-    if (maxSize <= 0 || size <= maxSize) {
-        win = new vtkWindowCube(nullptr, fn);
-    } else {
-        int ScaleFactor = ceil(cbrt(size / maxSize));
-        qDebug() << Q_FUNC_INFO << "ScaleFactor" << ScaleFactor;
-        win = new vtkWindowCube(nullptr, fn, ScaleFactor);
-    }
-
+    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
     win->show();
     win->activateWindow();
     win->raise();
