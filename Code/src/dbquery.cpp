@@ -28,47 +28,44 @@ dbquery::dbquery(QWidget *parent) : QDialog(parent), ui(new Ui::dbquery)
     loading = new LoadingWidget();
 
     QStringList list_surveys = (QStringList() << "CHAMP"
-                                              << "HOPS"
-                                              << "FCRAO_GRS"
-                                              << "MALT90"
-                                              << "THRUMMS"
-                                              << "NANTEN"
-                                              << "OGS"
-                                              << "JCMT-HARP"
-                                              << "VGPS"
-                                              << "CGPS");
+                                << "HOPS"
+                                << "FCRAO_GRS"
+                                << "MALT90"
+                                << "THRUMMS"
+                                << "NANTEN"
+                                << "OGS"
+                                << "JCMT-HARP"
+                                << "VGPS"
+                                << "CGPS");
     QStringList list_species = (QStringList() << "12CO"
-                                              << "13CO"
-                                              << "C18O"
-                                              << "CN"
-                                              << "H2O"
-                                              << "HCN"
-                                              << "HNC"
-                                              << "HCO+"
-                                              << "N2H+"
-                                              << "NH3"
-                                              << "HI");
+                                << "13CO"
+                                << "C18O"
+                                << "CN"
+                                << "H2O"
+                                << "HCN"
+                                << "HNC"
+                                << "HCO+"
+                                << "N2H+"
+                                << "NH3"
+                                << "HI");
     QStringList list_transitions = (QStringList() << "1-0"
-                                                  << "1(1)0a-1(1)0s"
-                                                  << "1(23)-0(12)"
-                                                  << "2(2)0a-2(2)0s"
-                                                  << "3-2"
-                                                  << "6(1,6)-5(2,3)"
-                                                  << "21CM");
+                                    << "1(1)0a-1(1)0s"
+                                    << "1(23)-0(12)"
+                                    << "2(2)0a-2(2)0s"
+                                    << "3-2"
+                                    << "6(1,6)-5(2,3)"
+                                    << "21CM");
 
     ui->comboBox_surveys->addItems(list_surveys);
     ui->comboBox_species->addItems(list_species);
     ui->comboBox_transitions->addItems(list_transitions);
 
-    // nam = new QNetworkAccessManager(this);
-
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
-
     parser = new xmlparser();
 }
 
@@ -81,9 +78,9 @@ dbquery::~dbquery()
 void dbquery::finishedSlot(QNetworkReply *reply)
 {
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
 
@@ -98,25 +95,20 @@ void dbquery::finishedSlot(QNetworkReply *reply)
 
     if (reply->error() == QNetworkReply::NoError) {
         QXmlStreamReader xml(reply);
-
         QString url = reply->request().url().toString();
-
         QString subString1 = url.mid(0, 62); //
 
         // first query (l,b,r,v_l, v_u) xml result -> looking for a PUBLISHER ID
         if (url.contains("vlkb_search")) {
             parser->parseXML(xml, string);
-
             if (string.compare("NULL") != 0) {
                 loading->setText("Datacube found");
-
                 QUrl url2(vlkbUrl + "/vlkb_cutout?pubdid=" + string + "&l=" + ui->lineEdit_l->text()
                           + "&b=" + ui->lineEdit_b->text() + "&r=" + ui->lineEdit_b->text()
                           + "&vl=" + ui->lineEdit_vl->text() + "&vu=" + ui->lineEdit_vu->text()
                           + "&nullvals");
 
                 QNetworkRequest request(url2);
-
                 auto auth = settings.value("vlkbtype", "ia2") == "ia2"
                         ? &IA2VlkbAuth::Instance()
                         : &NeaniasVlkbAuth::Instance();
@@ -139,10 +131,7 @@ void dbquery::finishedSlot(QNetworkReply *reply)
                 DownloadManager *manager = new DownloadManager();
                 QString urlString = string.trimmed();
                 QUrl url3(urlString);
-
-                // segnale tra due oggetti:
                 connect(manager, SIGNAL(downloadCompleted()), this, SLOT(on_download_completed()));
-
                 file = manager->doDownload(url3);
                 loading->loadingEnded();
                 loading->hide();
@@ -151,8 +140,8 @@ void dbquery::finishedSlot(QNetworkReply *reply)
 
             } else {
                 QMessageBox::critical(
-                        NULL, QObject::tr("Error"),
-                        QObject::tr("Inconsistent data (PubDID vs Region only partially overlap)"));
+                            NULL, QObject::tr("Error"),
+                            QObject::tr("Inconsistent data (PubDID vs Region only partially overlap)"));
                 loading->loadingEnded();
                 loading->hide();
             }
@@ -215,30 +204,25 @@ void dbquery::enableAllItems(QComboBox *comboBox, int nItems)
 {
 
     QVariant v(1 | 32);
-    // qDebug()<<"enabling All: "<<nItems;
     QModelIndex index;
     for (int i = 0; i < nItems; i++) {
         index = comboBox->model()->index(i, 0);
         comboBox->model()->setData(index, v, Qt::UserRole - 1);
     }
-    // comboBox->setCurrentIndex(0);
 }
 
 void dbquery::disableItems(QComboBox *comboBox, int nItem, int *indexes, int size)
 {
     QVariant v(0);
-    // qDebug()<<"Disabling: "<<nItem<<" items";
     QModelIndex index;
     for (int i = 0; i < nItem; i++) {
         index = comboBox->model()->index(indexes[i], 0);
         comboBox->model()->setData(index, v, Qt::UserRole - 1);
     }
-    // comboBox->setCurrentIndex(5);
 }
 
 void dbquery::on_comboBox_surveys_activated(const QString &arg1)
 {
-
     if (arg1 == "CHAMP") {
         // meno il 7
         int indexes_species[10] = { 0, 1, 2, 3, 4, 5, 6, 8, 9, 10 };
@@ -253,11 +237,9 @@ void dbquery::on_comboBox_surveys_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        //        ui->comboBox_transitions->setCurrentIndex(0);
     }
 
     else if (arg1 == "HOPS") {
-
         // meno 4 e 9
         int indexes_species[9] = { 0, 1, 2, 3, 5, 6, 7, 8, 10 };
         int nItems_species = 9;
@@ -271,30 +253,23 @@ void dbquery::on_comboBox_surveys_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        //      ui->comboBox_transitions->setCurrentIndex(1);
-
     } else if (arg1 == "FCRAO_GRS") {
-
         // meno 1
         int indexes_species[10] = { 0, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(1);
         // tranne 0
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
     } else if (arg1 == "MALT90") {
-
         // meno 5 6 7 8
         int indexes_species[7] = { 0, 1, 2, 3, 4, 9, 10 };
         int nItems_species = 7;
         this->enableAllItems(ui->comboBox_species, n_species);
-        // this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
         ui->comboBox_species->setCurrentIndex(5);
         // tranne 0
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
@@ -302,14 +277,12 @@ void dbquery::on_comboBox_surveys_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
     } else if (arg1 == "THRUMMS") {
         // meno 0 1 2 3
         int indexes_species[7] = { 4, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 7;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(0);
         // tranne 0 e 2
         int indexes_transition[5] = { 1, 3, 4, 5, 6 };
         int nItems_transition = 5;
@@ -330,75 +303,62 @@ void dbquery::on_comboBox_surveys_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
     } else if (arg1 == "OGS") {
         // meno 0 1
         int indexes_species[9] = { 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 9;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(0);
         // tranne 0
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "JCMT-HARP") {
         // meno 0
         int indexes_species[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(0);
         // tranne 4
         int indexes_transition[6] = { 0, 1, 2, 3, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(4);
     }
-
     else if (arg1 == "VGPS") {
         // meno 10
         int indexes_species[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(10);
         // tranne 6
         int indexes_transition[6] = { 0, 1, 2, 3, 4, 5 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(6);
     } else if (arg1 == "CGPS") {
         // meno 10
         int indexes_species[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(10);
         // tranne 6 di 7
         int indexes_transition[6] = { 0, 1, 2, 3, 4, 5 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(6);
     }
-
     this->enableAllItems(ui->comboBox_surveys, n_surveys);
 }
 
 void dbquery::on_comboBox_species_activated(const QString &arg1)
 {
     if (arg1 == "12CO") {
-
         // tranne 4,5,6,7 di 8
         int indexes_surveys[6] = { 0, 1, 2, 3, 8, 9 };
         int nItems_surveys = 6;
@@ -412,14 +372,12 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
     } else if (arg1 == "13CO") {
         // tranne 2,4,6 di 8
         int indexes_surveys[7] = { 0, 1, 3, 5, 7, 8, 9 };
         int nItems_surveys = 7;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(2);
 
         // meno il 0 di 6
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
@@ -427,16 +385,12 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "C18O") {
-
         // tranne 4 di 8
         int indexes_surveys[9] = { 0, 1, 2, 3, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(4);
 
         // meno il 0 di 6
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
@@ -444,15 +398,12 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "CN") {
         // tranne 4 di 8
         int indexes_surveys[9] = { 0, 1, 2, 3, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(4);
 
         // meno il 2 di 6
         int indexes_transition[6] = { 0, 1, 3, 4, 5, 6 };
@@ -460,15 +411,12 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(2);
-
     } else if (arg1 == "H2O") {
         // tranne 1 di 8
         int indexes_surveys[9] = { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(1);
 
         // meno il 5 di 6
         int indexes_transition[6] = { 0, 1, 2, 3, 4, 6 };
@@ -476,8 +424,6 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(5);
-
     } else if (arg1 == "HCN") {
 
         // tranne 3 di 8
@@ -485,32 +431,24 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(3);
-
         // meno il 0 di 6
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "HNC") {
         // tranne 3 di 8
         int indexes_surveys[9] = { 0, 1, 2, 4, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(3);
-
         // meno il 0 di 6
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "HCO+") {
 
         // tranne 0,3 di 8
@@ -518,47 +456,36 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
         int nItems_surveys = 8;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(0);
-
         // meno il 0 di 6
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "N2H+") {
         // tranne 3 di 8
         int indexes_surveys[9] = { 0, 1, 2, 4, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(3);
-
         // meno il 0 di 6
         int indexes_transition[6] = { 1, 2, 3, 4, 5, 6 };
         int nItems_transition = 6;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(0);
-
     } else if (arg1 == "NH3") {
         // tranne 1 di 8
         int indexes_surveys[9] = { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(1);
-
         // meno il 1,3 di 6
         int indexes_transition[5] = { 0, 2, 4, 5, 6 };
         int nItems_transition = 5;
         this->enableAllItems(ui->comboBox_transitions, n_transitions);
         this->disableItems(ui->comboBox_transitions, nItems_transition, indexes_transition,
                            n_transitions);
-        // ui->comboBox_transitions->setCurrentIndex(1);
     }
     this->enableAllItems(ui->comboBox_species, n_species);
 }
@@ -566,17 +493,12 @@ void dbquery::on_comboBox_species_activated(const QString &arg1)
 void dbquery::on_comboBox_transitions_activated(const QString &arg1)
 {
     if (arg1 == "1-0")
-    /*   n_surveys=10; //+2
-n_species=11; //+1
-n_transitions=7; //+1*/
     {
         // tranne 0,2,3,4,5,6,7 di 8
         int indexes_surveys[3] = { 1, 8, 9 };
         int nItems_surveys = 3;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(0);
-
         // meno il 0,1,2,5,6,7,8 di 10
         int indexes_species[4] = { 3, 4, 9, 10 };
         int nItems_species = 4;
@@ -589,29 +511,22 @@ n_transitions=7; //+1*/
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(1);
-
         // meno il 9 di 10
         int indexes_species[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(9);
     } else if (arg1 == "1(23)-0(12)") {
         // tranne 4 di 8
         int indexes_surveys[9] = { 0, 1, 2, 3, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(4);
-
         // meno il 3 di 10
         int indexes_species[10] = { 0, 1, 2, 4, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(3);
-
     } else if (arg1 == "2(2)0a-2(2)0s") {
         // tranne 1 di 8
         int indexes_surveys[9] = { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -624,46 +539,38 @@ n_transitions=7; //+1*/
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(9);
-
     } else if (arg1 == "3-2") {
         // tranne 7 di 8
         int indexes_surveys[9] = { 0, 1, 2, 3, 4, 5, 6, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(7);
         // meno il 0 di 10
         int indexes_species[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(0);
-
     } else if (arg1 == "6(1,6)-5(2,3)") {
         // tranne 1 di 8
         int indexes_surveys[9] = { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
         int nItems_surveys = 9;
         this->enableAllItems(ui->comboBox_surveys, n_surveys);
         this->disableItems(ui->comboBox_surveys, nItems_surveys, indexes_surveys, n_surveys);
-        // ui->comboBox_surveys->setCurrentIndex(1);
         // meno il 4 di 10
         int indexes_species[10] = { 0, 1, 2, 3, 5, 6, 7, 8, 9, 10 };
         int nItems_species = 10;
         this->enableAllItems(ui->comboBox_species, n_species);
         this->disableItems(ui->comboBox_species, nItems_species, indexes_species, n_species);
-        // ui->comboBox_species->setCurrentIndex(4);
     }
-
     this->enableAllItems(ui->comboBox_transitions, n_transitions);
 }
 
 void dbquery::on_queryPushButton_clicked()
 {
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
     ui->lineEdit_l->setReadOnly(true);
     ui->lineEdit_b->setReadOnly(true);
@@ -687,13 +594,10 @@ void dbquery::on_queryPushButton_clicked()
     QObject::connect(nam, SIGNAL(finished(QNetworkReply *)), this,
                      SLOT(finishedSlot(QNetworkReply *)));
 
-    // QUrl url
-    // ("http://vialactea:secret@palantir19.oats.inaf.it:8080/libjnifitsdb-0.15.0/vlkb_search?l="+ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
     QUrl url(vlkbUrl + "/vlkb_search?l=" + ui->lineEdit_l->text() + "&b=" + ui->lineEdit_b->text()
              + "&r=" + ui->lineEdit_r->text() + "&vl=" + ui->lineEdit_vl->text()
              + "&vu=" + ui->lineEdit_vu->text());
 
-    // QNetworkReply* reply = nam->get(QNetworkRequest(url));
     QNetworkRequest request(url);
     auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
                                                            : &NeaniasVlkbAuth::Instance();
@@ -711,9 +615,9 @@ void dbquery::on_queryPushButton_clicked()
 void dbquery::on_pushButton_map_clicked()
 {
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
     loading = new LoadingWidget();
     loading->init();
@@ -725,11 +629,7 @@ void dbquery::on_pushButton_map_clicked()
     nam = new QNetworkAccessManager(this);
     QObject::connect(nam, SIGNAL(finished(QNetworkReply *)), this,
                      SLOT(finishedSlot2(QNetworkReply *)));
-    /*
-    QUrl url
-    ("http://vialactea:secret@palantir19.oats.inaf.it:8080/libjnifitsdb-0.15.0/vlkb_search?l="+ui->lineEdit_l->text()+
-              "&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+"&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
-  */
+
     QUrl url(vlkbUrl + "/vlkb_search?l=" + ui->lineEdit_l->text() + "&b=" + ui->lineEdit_b->text()
              + "&r=" + ui->lineEdit_r->text() + "&vl=" + ui->lineEdit_vl->text()
              + "&vu=" + ui->lineEdit_vu->text());
@@ -744,9 +644,9 @@ void dbquery::on_pushButton_map_clicked()
 void dbquery::handleButton(int i)
 {
     QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
+                       .append(QDir::separator())
+                       .append("VisIVODesktopTemp")
+                       .append("/setting.ini"),
                        QSettings::NativeFormat);
     loading = new LoadingWidget();
     loading->init();
@@ -762,15 +662,10 @@ void dbquery::handleButton(int i)
                      SLOT(finishedSlot(QNetworkReply *)));
 
     QUrl url(vlkbUrl + "/vlkb_cutout?pubdid=" + datacube["PublisherDID"]
-             + "&l=" + ui->lineEdit_l->text() + "&b=" + ui->lineEdit_b->text()
-             + "&r=" + ui->lineEdit_r->text() + "&vl=" + ui->lineEdit_vl->text()
-             + "&vu=" + ui->lineEdit_vu->text() + "&nullvals");
-    /*
- QUrl url
- ("http://vialactea:secret@palantir19.oats.inaf.it:8080/libjnifitsdb-0.14.2/vlkb_cutout?pubdid="+datacube["PublisherDID"]+"&l="
- +ui->lineEdit_l->text()+"&b="+ui->lineEdit_b->text()+"&r="+ui->lineEdit_r->text()+
- "&vl="+ui->lineEdit_vl->text()+"&vu="+ui->lineEdit_vu->text());
-*/
+            + "&l=" + ui->lineEdit_l->text() + "&b=" + ui->lineEdit_b->text()
+            + "&r=" + ui->lineEdit_r->text() + "&vl=" + ui->lineEdit_vl->text()
+            + "&vu=" + ui->lineEdit_vu->text() + "&nullvals");
+
     QNetworkRequest request(url);
     auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
                                                            : &NeaniasVlkbAuth::Instance();
@@ -783,7 +678,6 @@ void dbquery::addDatacubesToUI(QList<QMap<QString, QString>> &datacubes)
 
     /* Create the data model */
     // 1. give it some headers
-
     datacubes_list = datacubes;
 
     int i = 0;
@@ -834,7 +728,6 @@ void dbquery::addDatacubesToUI(QList<QMap<QString, QString>> &datacubes)
             ui->datacube_tableWidget->setCellWidget(i, 3, p_button);
         }
         i++;
-
         z++;
     }
 }
@@ -843,14 +736,9 @@ void dbquery::on_horizontalSlider_sliderMoved(int position)
 {
 
     double mov = vtkwin->min + (double)position / 20. * vtkwin->max - vtkwin->min;
-    // int mov= static_cast<int> (vtkwin->min) + static_cast<int>(position/50) %
-    // static_cast<int>(vtkwin->max-vtkwin->min);
-
     vtkwin->shellE->SetValue(0, mov);
     vtkwin->update();
     vtkwin->showNormal();
-    // shellE->SetValue(1, position);
-    // renWin->Render();
 }
 
 void dbquery::setVtkWindow(vtkwindow_new *v)
@@ -860,7 +748,6 @@ void dbquery::setVtkWindow(vtkwindow_new *v)
 
 void dbquery::on_vtkwindow_button_clicked()
 {
-    // vtkwin=new vtkwindow(this);
 }
 
 void dbquery::on_spinBox_valueChanged(int arg1)
@@ -872,7 +759,6 @@ void dbquery::on_spinBox_valueChanged(int arg1)
 
 void dbquery::on_download_completed()
 {
-
     vtkFitsReader *fitsReader = vtkFitsReader::New();
     fitsReader->is3D = true;
     QString currentPath = QDir::currentPath() + "/" + downloadedFile;
@@ -882,18 +768,4 @@ void dbquery::on_download_completed()
     fitsReader->Update();
 
     vtkwin = new vtkwindow_new(this, fitsReader, 1);
-
-    /*
-    vtkwin->setSurvey(survey);
-    vtkwin->setSpecies(species);
-    vtkwin->setTransition(transition);
-    vtkwin->vtkcontourwindow->survey=survey;
-    vtkwin->vtkcontourwindow->species=species;
-    vtkwin->vtkcontourwindow->transition=transition;
-  */
-
-    // vtkcontourwindow=new vtkwindow(this, fitsReader, 2);
-
-    // ui->horizontalSlider->setMaximum(fitsReader->GetSigma()*10);
-    // ui->horizontalSlider->setMinimum(3*fitsReader->GetSigma());
 }
