@@ -92,6 +92,7 @@ public:
     QString getSurvey() { return survey; };
     int getMomentOrder();
     QString getBunit() { return bUnit; };
+    QString getCtype1() { return ctype1; };
 
 
     void setSpecies(QString s) { species = s; };
@@ -119,6 +120,7 @@ protected:
     long npix = 0;
     long naxes[3];
     QString bUnit;
+    QString ctype1;
 
     float **minmaxslice;
 

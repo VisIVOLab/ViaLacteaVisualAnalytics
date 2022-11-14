@@ -415,7 +415,6 @@ public:
         double *sky_coord = new double[2];
         double *sky_coord_gal = new double[2];
         double *sky_coord_fk5 = new double[2];
-        double *sky_coord_icrs = new double[2];
 
         QString statusBarText = "";
         float *pixel;
@@ -445,10 +444,6 @@ public:
         AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord);
         statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
                 + " DEC: " + QString::number(sky_coord[1]);
-
-        AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_icrs,11);
-        statusBarText += " <ICRS> RA: " + QString::number(sky_coord_icrs[0])
-                + " DEC: " + QString::number(sky_coord_icrs[1]);
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
         vtkInteractorStyleRubberBand2D::OnMouseMove();
@@ -756,7 +751,6 @@ public:
         double *sky_coord = new double[2];
         double *sky_coord_gal = new double[2];
         double *sky_coord_fk5 = new double[2];
-        double *sky_coord_icrs = new double[2];
 
         QString statusBarText = "";
         vtkSmartPointer<vtkFitsReader> fits;
@@ -819,9 +813,6 @@ public:
             statusBarText += " <ecliptic> RA: " + QString::number(sky_coord[0])
                     + " DEC: " + QString::number(sky_coord[1]);
 
-            AstroUtils().xy2sky(vtkwin->filenameWithPath, world_coord[0], world_coord[1], sky_coord_icrs,11);
-            statusBarText += " <ICRS> RA: " + QString::number(sky_coord_icrs[0])
-                    + " DEC: " + QString::number(sky_coord_icrs[1]);
         }
 
         vtkwin->ui->statusbar->showMessage(statusBarText);
@@ -1488,11 +1479,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC) ; });
 
-    wcsItem = new QAction("ICRS", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ICRS) ; });
-
     ui->menuWCS->addActions(wcsGroup->actions());
 
     switch (b) {
@@ -1646,13 +1632,22 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         imageStack = vtkSmartPointer<vtkImageStack>::New();
         imageStack->AddImage(imageSliceBase);
 
-        if (!myfits->ctypeXY) {
-            legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
-            legendScaleActorImage->LegendVisibilityOff();
-            legendScaleActorImage->setFitsFile(myfits);
+        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScaleActorImage->LegendVisibilityOff();
+        legendScaleActorImage->setFitsFile(myfits);
+        if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)
+        {
             legendScaleActorImage->setWCS(3);
-            m_Ren1->AddActor(legendScaleActorImage);
+            ui->menuWCS->actions().at(1)->setChecked(true);
         }
+        else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive)==0)
+        {
+            legendScaleActorImage->setWCS(1);
+            ui->menuWCS->actions().at(2)->setChecked(true);
+        }
+
+        m_Ren1->AddActor(legendScaleActorImage);
+
 
         m_Ren1->AddViewProp(imageStack);
         m_Ren1->ResetCamera();
@@ -1685,7 +1680,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->listWidget->hide();
         ui->compactSourcesGroupBox->hide();
         ui->datacubeGroupBox->hide();
-        ;
         ui->toolsGroupBox->hide();
         ui->filamentsGroupBox->hide();
         ui->bubbleGroupBox->hide();
@@ -1704,8 +1698,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->lut3dGroupBox->hide();
         ui->glyphGroupBox->hide();
         ui->filterGroupBox->hide();
-
-        ui->menuWCS->menuAction()->setVisible(false);
 
         if (myfits->ctypeXY) {
             // Replace moment with a collapse option
@@ -1842,13 +1834,22 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->cuttingPlane_Slider->setRange(1, vis->GetNaxes(2));
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
 
-        if (!myfits->ctypeXY) {
-            legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
-            legendScaleActorImage->LegendVisibilityOff();
-            legendScaleActorImage->setFitsFile(myfits);
+        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScaleActorImage->LegendVisibilityOff();
+        legendScaleActorImage->setFitsFile(myfits);
+        if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)
+        {
             legendScaleActorImage->setWCS(3);
-            m_Ren2->AddActor(legendScaleActorImage);
+            ui->menuWCS->actions().at(1)->setChecked(true);
         }
+        else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive)==0)
+        {
+            legendScaleActorImage->setWCS(1);
+            ui->menuWCS->actions().at(2)->setChecked(true);
+        }
+
+        m_Ren2->AddActor(legendScaleActorImage);
+
 
         this->setWindowName("Datacube visualization");
         showMaximized();

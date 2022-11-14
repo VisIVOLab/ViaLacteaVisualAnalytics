@@ -481,7 +481,6 @@ void vtkFitsReader::ReadHeader()
     char naxis3[80];
     char bunit[80];
 
-
     crval1[0] = '\0';
     crval2[0] = '\0';
     crval3[0] = '\0';
@@ -633,6 +632,7 @@ void vtkFitsReader::ReadHeader()
     delt2 = cdelt2;
     delt3 = cdelt3;
     bUnit = bunit;
+    ctype1 = xStr;
 
     crval[0] = val1.toDouble(); // problema
     crval[1] = val2.toDouble();
