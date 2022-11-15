@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QSettings>
@@ -12,11 +13,13 @@
 #include <QUrlQuery>
 #include <QXmlStreamReader>
 
+#include "astroutils.h"
 #include "authkeys.h"
 #include "authwrapper.h"
 #include "downloadmanager.h"
 #include "mainwindow.h"
 #include "singleton.h"
+#include "vtkwindowcube.h"
 #include "vialactea.h"
 
 VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
@@ -537,11 +540,26 @@ void VialacteaInitialQuery::on_download_completed()
             vl->setMasterWin(win);
         }
     } else {
-        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-        fits->SetFileName(currentPath.toStdString());
-        fits->is3D = true;
+        //auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        //fits->SetFileName(currentPath.toStdString());
+        //fits->is3D = true;
 
         myCallingVtkWindow->setSelectedCubeVelocityUnit(velocityUnit);
-        new vtkwindow_new(myCallingVtkWindow, fits, 1, myCallingVtkWindow);
+        //new vtkwindow_new(myCallingVtkWindow, fits, 1, myCallingVtkWindow);
+        QSettings settings(QDir::homePath()
+                                   .append(QDir::separator())
+                                   .append("VisIVODesktopTemp")
+                                   .append("/setting.ini"),
+                           QSettings::NativeFormat);
+
+        long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024 * 1024;
+        long size = QFileInfo(currentPath).size();
+        int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
+        qDebug() << Q_FUNC_INFO << "ScaleFactor" << ScaleFactor;
+
+        auto win = new vtkWindowCube(myCallingVtkWindow, currentPath, ScaleFactor, velocityUnit);
+        win->show();
+        win->raise();
+        win->activateWindow();
     }
 }

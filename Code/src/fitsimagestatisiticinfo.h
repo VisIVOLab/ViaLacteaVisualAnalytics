@@ -1,9 +1,11 @@
 #ifndef FITSIMAGESTATISITICINFO_H
 #define FITSIMAGESTATISITICINFO_H
 
+#include "vtkfitsreader2.h"
+
 #include <QWidget>
 
-#include "vtkwindow_new.h"
+#include <vtkSmartPointer.h>
 
 namespace Ui {
 class FitsImageStatisiticInfo;
@@ -14,17 +16,17 @@ class FitsImageStatisiticInfo : public QWidget
     Q_OBJECT
 
 public:
-    explicit FitsImageStatisiticInfo(vtkwindow_new *v, QWidget *parent = 0);
+    explicit FitsImageStatisiticInfo(vtkSmartPointer<vtkFitsReader2> readerCube,
+                                     vtkSmartPointer<vtkFitsReader2> readerSlice,
+                                     QWidget *parent = 0);
     ~FitsImageStatisiticInfo();
-    void setGalaptic(double l, double b);
-    void setEcliptic(double lat, double lon);
-    void setFk5(double ra, double dec);
-    void setImage(double x, double y);
-    void setFilename();
+
+    void updateSliceStats();
 
 private:
     Ui::FitsImageStatisiticInfo *ui;
-    vtkwindow_new *vtkwin;
+    vtkSmartPointer<vtkFitsReader2> readerCube;
+    vtkSmartPointer<vtkFitsReader2> readerSlice;
 };
 
 #endif // FITSIMAGESTATISITICINFO_H

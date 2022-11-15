@@ -35,7 +35,6 @@ vtkFitsReader::vtkFitsReader()
     this->is3D = false;
     this->isMoment3D = false;
     this->ctypeXY = false;
-
 }
 
 //----------------------------------------------------------------------------
@@ -49,20 +48,13 @@ void vtkFitsReader::SetFileName(std::string name)
     }
     filename = name;
     ReadHeader();
-    this->Modified();
 }
 //----------------------------------------------------------------------------
-void vtkFitsReader::PrintSelf(ostream &os, vtkIndent indent)
-{
-}
+void vtkFitsReader::PrintSelf(ostream &os, vtkIndent indent) { }
 
-void vtkFitsReader::PrintHeader(ostream &os, vtkIndent indent)
-{
-}
+void vtkFitsReader::PrintHeader(ostream &os, vtkIndent indent) { }
 
-void vtkFitsReader::PrintTrailer(std::ostream &os, vtkIndent indent)
-{
-}
+void vtkFitsReader::PrintTrailer(std::ostream &os, vtkIndent indent) { }
 
 //----------------------------------------------------------------------------
 vtkStructuredPoints *vtkFitsReader::GetOutput()
@@ -200,7 +192,7 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                 QString ytrim(this->yStr);
                 bool swapped = false;
                 if (xtrim.split("-")[0].toLower().compare("glat") == 0
-                        && ytrim.split("-")[0].toLower().compare("glon") == 0) {
+                    && ytrim.split("-")[0].toLower().compare("glon") == 0) {
                     output->SetDimensions(naxes[1], naxes[0], naxes[2]);
                 } else
                     output->SetDimensions(naxes[0], naxes[1], naxes[2]);

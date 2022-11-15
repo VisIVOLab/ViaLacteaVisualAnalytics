@@ -14,6 +14,7 @@
 #include "vialacteainitialquery.h"
 #include "vialacteastringdictwidget.h"
 #include "vlkbsimplequerycomposer.h"
+#include "vtkwindowcube.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -51,7 +52,7 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     // Cleanup previous run tmp
     QDir dir_tmp(
-                QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download"));
+            QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download"));
     foreach (QString dirFile, dir_tmp.entryList()) {
         dir_tmp.remove(dirFile);
     }
@@ -127,8 +128,8 @@ void ViaLactea::on_queryPushButton_clicked()
 {
     if (masterWin != nullptr) {
         QMessageBox::information(
-                    this, QObject::tr(""),
-                    QObject::tr(
+                this, QObject::tr(""),
+                QObject::tr(
                         "A session is already open. Close the session window to start a new one."));
         return;
     }
@@ -242,8 +243,8 @@ void ViaLactea::on_radiumLineEdit_textChanged(const QString &arg1)
 void ViaLactea::queryButtonStatusOnOff()
 {
     if (ui->glatLineEdit->text() != "" && ui->glonLineEdit->text() != ""
-            && (ui->radiumLineEdit->text() != ""
-                || (ui->dlLineEdit->text() != "" && ui->dbLineEdit->text() != "")))
+        && (ui->radiumLineEdit->text() != ""
+            || (ui->dlLineEdit->text() != "" && ui->dbLineEdit->text() != "")))
         ui->queryPushButton->setEnabled(true);
     else
         ui->queryPushButton->setEnabled(false);
@@ -269,11 +270,11 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
             VialacteaInitialQuery *vq = new VialacteaInitialQuery;
             connect(vq, &VialacteaInitialQuery::searchDone,
                     [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
-                auto win = new vtkwindow_new(this, fits);
-                win->setDbElements(results);
-                setMasterWin(win);
-                vq->deleteLater();
-            });
+                        auto win = new vtkwindow_new(this, fits);
+                        win->setDbElements(results);
+                        setMasterWin(win);
+                        vq->deleteLater();
+                    });
 
             vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
         } else {
@@ -380,7 +381,7 @@ void ViaLactea::on_localDCPushButton_clicked()
 
     bool doSearch = settings.value("vlkb.search", false).toBool();
     auto load = [fn, this](const QList<QMap<QString, QString>> &results =
-            QList<QMap<QString, QString>>()) {
+                                   QList<QMap<QString, QString>>()) {
         // Open a new window to visualize the momentmap
         auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
         fitsReader_moment->SetFileName(fn.toStdString());
@@ -409,9 +410,9 @@ void ViaLactea::on_localDCPushButton_clicked()
             VialacteaInitialQuery *vq = new VialacteaInitialQuery;
             connect(vq, &VialacteaInitialQuery::searchDone,
                     [vq, fn, load](QList<QMap<QString, QString>> results) {
-                load(results);
-                vq->deleteLater();
-            });
+                        load(results);
+                        vq->deleteLater();
+                    });
             vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
         } else {
             load();
@@ -432,6 +433,7 @@ void ViaLactea::on_localDCPushButton_clicked()
                              QObject::tr("The regions do not overlap, the file cannot be "
                                          "imported in the current session."));
     }
+    * /
 }
 
 void ViaLactea::on_actionExit_triggered()
@@ -495,8 +497,8 @@ void ViaLactea::on_actionLoad_SED_2_triggered()
     QStringList dirList = tmp_download.entryList();
 
     QFile sedFile(QDir::homePath()
-                  .append(QDir::separator())
-                  .append("/VisIVODesktopTemp/tmp_download/SEDList.dat"));
+                          .append(QDir::separator())
+                          .append("/VisIVODesktopTemp/tmp_download/SEDList.dat"));
     sedFile.open(QIODevice::ReadOnly);
     QDataStream in(&sedFile); // read the data serialized from the file
     QList<SED *> sed_list2;

@@ -279,7 +279,12 @@ int vtkLegendScaleActor::RenderOverlay(vtkViewport *viewport)
 
 void vtkLegendScaleActor::setFitsFile(vtkSmartPointer<vtkFitsReader> fits)
 {
-    myfits = fits;
+    fitsPath = fits->GetFileName();
+}
+
+void vtkLegendScaleActor::setFitsFile(const std::string &fitspath)
+{
+    fitsPath = fitspath;
 }
 
 //----------------------------------------------------------------------
@@ -337,10 +342,10 @@ void vtkLegendScaleActor::BuildRepresentation(vtkViewport *viewport)
             double *xL = this->RightAxis->GetPositionCoordinate()->GetComputedWorldValue(viewport);
             double *xR = this->RightAxis->GetPosition2Coordinate()->GetComputedWorldValue(viewport);
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xR[1], xL[1], sky_coord_gal, 3);
+            AstroUtils().xy2sky(fitsPath, xR[1], xL[1], sky_coord_gal, 3);
             lo = sky_coord_gal[1];
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xL[1], xR[1], sky_coord_gal, 3);
+            AstroUtils().xy2sky(fitsPath, xL[1], xR[1], sky_coord_gal, 3);
             up = sky_coord_gal[1];
 
             this->RightAxis->SetRange(lo, up);
@@ -355,10 +360,10 @@ void vtkLegendScaleActor::BuildRepresentation(vtkViewport *viewport)
             xL = this->BottomAxis->GetPositionCoordinate()->GetComputedWorldValue(viewport);
             xR = this->BottomAxis->GetPosition2Coordinate()->GetComputedWorldValue(viewport);
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xL[0], xR[0], sky_coord_gal, 3);
+            AstroUtils().xy2sky(fitsPath, xL[0], xR[0], sky_coord_gal, 3);
             lo = sky_coord_gal[0];
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xR[0], xL[0], sky_coord_gal, 3);
+            AstroUtils().xy2sky(fitsPath, xR[0], xL[0], sky_coord_gal, 3);
             up = sky_coord_gal[0];
 
             this->BottomAxis->SetRange(lo, up);

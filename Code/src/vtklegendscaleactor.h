@@ -57,6 +57,7 @@ public:
     // Instantiate the class.
     static vtkLegendScaleActor *New();
     void setFitsFile(vtkSmartPointer<vtkFitsReader> fits);
+    void setFitsFile(const std::string &fitspath);
 
     // Description:
     // Standard methods for the class.
@@ -208,7 +209,7 @@ protected:
 private:
     vtkLegendScaleActor(const vtkLegendScaleActor &); // Not implemented
     void operator=(const vtkLegendScaleActor &); // Not implemented
-    vtkSmartPointer<vtkFitsReader> myfits;
+    std::string fitsPath;
 };
 
 #endif
