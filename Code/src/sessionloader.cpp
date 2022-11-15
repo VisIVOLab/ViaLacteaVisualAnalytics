@@ -47,7 +47,6 @@ SessionLoader::SessionLoader(QWidget *parent, const QString &sessionFilepath)
     }
 
     datacubes = root["datacubes"].toArray();
-
     initTable();
 }
 
@@ -72,7 +71,6 @@ void SessionLoader::setOriginLayer()
         setFitsRowColor(index);
     }
     overlapFailures.clear();
-
     setFitsRowBold(originLayerIdx, false);
     setFitsRowBold(newIdx, true);
     originLayerIdx = newIdx;
@@ -136,7 +134,6 @@ void SessionLoader::initTable()
         ui->tableFits->setItem(row, 1, new QTableWidgetItem(type));
         ui->tableFits->setItem(row, 2, new QTableWidgetItem(fits));
     }
-
     setFitsRowBold(originLayerIdx, true);
 }
 
@@ -146,21 +143,16 @@ bool SessionLoader::testOverlaps()
         setFitsRowColor(index);
     }
     overlapFailures.clear();
-
     bool ok = true;
-
     auto origin = layers.at(originLayerIdx).toObject();
     auto originFits = sessionRootFolder.absoluteFilePath(origin["fits"].toString());
-
     for (int i = 0; i < ui->tableFits->rowCount(); ++i) {
         if (i == originLayerIdx) {
             continue;
         }
-
         if (ui->tableFits->item(i, 0)->checkState() == Qt::Unchecked) {
             continue;
         }
-
         QString fits;
         if (i < layers.count()) {
             fits = layers.at(i).toObject()["fits"].toString();
@@ -178,7 +170,6 @@ bool SessionLoader::testOverlaps()
     foreach (auto &&index, overlapFailures) {
         setFitsRowColor(index, Qt::red);
     }
-
     return ok;
 }
 
@@ -197,7 +188,6 @@ void SessionLoader::on_btnLoad_clicked()
                              "Remove them or change the origin layer (right click).");
         return;
     }
-
     for (int i = 0; i < ui->tableFits->rowCount(); ++i) {
         auto enabled = (ui->tableFits->item(i, 0)->checkState() == Qt::Checked);
         if (i < layers.count()) {
@@ -243,13 +233,13 @@ void SessionLoader::on_btnLoad_clicked()
         vq->setParent(this);
         connect(vq, &VialacteaInitialQuery::searchDone, this,
                 [this, vl, fitsReader](QList<QMap<QString, QString>> results) {
-                    auto win = new vtkwindow_new(vl, fitsReader);
-                    win->setDbElements(results);
-                    win->loadSession(sessionFilepath, sessionRootFolder);
-                    vl->setMasterWin(win);
-                    vl->showMinimized();
-                    this->close();
-                });
+            auto win = new vtkwindow_new(vl, fitsReader);
+            win->setDbElements(results);
+            win->loadSession(sessionFilepath, sessionRootFolder);
+            vl->setMasterWin(win);
+            vl->showMinimized();
+            this->close();
+        });
         vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
     } else {
         auto win = new vtkwindow_new(vl, fitsReader);

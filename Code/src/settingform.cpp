@@ -13,7 +13,6 @@
 SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
 {
     setAttribute(Qt::WA_DeleteOnClose);
-
     ui->setupUi(this);
     ui->groupBox_4->hide();
     ui->vlkbLogoutButton->hide();
@@ -33,10 +32,9 @@ SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new 
     connect(m_caesarAuth, &AuthWrapper::logged_out, this, &SettingForm::caesar_loggedout);
 
     m_settingsFile = QDir::homePath()
-                             .append(QDir::separator())
-                             .append("VisIVODesktopTemp")
-                             .append("/setting.ini");
-
+            .append(QDir::separator())
+            .append("VisIVODesktopTemp")
+            .append("/setting.ini");
     readSettingsFromFile();
 }
 
@@ -48,7 +46,6 @@ SettingForm::~SettingForm()
 void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
-
     m_termsAccepted = settings.value("termsaccepted", false).toBool();
 
     QString tilePath = settings.value("tilepath", "").toString();
@@ -92,7 +89,7 @@ void SettingForm::readSettingsFromFile()
     }
 
     ui->urlLineEdit->setText(
-            settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
+                settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
 
     if (m_caesarAuth->isAuthenticated()) {
         caesar_loggedin();
@@ -136,7 +133,6 @@ void SettingForm::caesar_loggedout()
 void SettingForm::on_TilePushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
-
     if (!fn.isEmpty()) {
         ui->TileLineEdit->setText(fn);
     }
@@ -145,7 +141,6 @@ void SettingForm::on_TilePushButton_clicked()
 void SettingForm::on_OkPushButton_clicked()
 {
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
-
     settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
@@ -153,8 +148,6 @@ void SettingForm::on_OkPushButton_clicked()
         settings.setValue("vlkbtype", "ia2");
     else
         settings.setValue("vlkbtype", "neanias");
-
-    //  settings.setValue("workdir",  ui->lineEdit_2->text());
 
     settings.setValue("vlkb.search", ui->checkSearchOnImport->isChecked());
     settings.setValue("vlkburl", ui->vlkbUrl_lineEdit->text());
@@ -176,7 +169,6 @@ void SettingForm::on_pushButton_clicked()
 
 void SettingForm::on_checkBox_clicked(bool checked)
 {
-    qDebug() << "checked: " << checked;
 }
 
 void SettingForm::on_ia2VLKB_radioButton_toggled(bool checked)
@@ -197,10 +189,7 @@ void SettingForm::on_workdirButton_clicked()
 {
     QString fn = QFileDialog::getExistingDirectory(this, tr("Open Directory"), "~",
                                                    QFileDialog::ShowDirsOnly
-                                                           | QFileDialog::DontResolveSymlinks);
-
-    // QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
-
+                                                   | QFileDialog::DontResolveSymlinks);
     if (!fn.isEmpty()) {
         ui->lineEdit_2->setText(fn);
     }
@@ -230,7 +219,7 @@ void SettingForm::on_vlkbLoginButton_clicked()
     if (vlkbAuth == m_neaniasVlkbAuth && !m_termsAccepted) {
         auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and "
                             "the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
-                            .arg(m_privacyPolicyUrl, m_termsOfUseUrl);
+                .arg(m_privacyPolicyUrl, m_termsOfUseUrl);
 
         QMessageBox msgBox(this);
         msgBox.setIcon(QMessageBox::Question);
