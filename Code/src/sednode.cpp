@@ -53,7 +53,6 @@ void SEDNode::setEllipse(double smin, double smax, double a, double ar)
 
 QDataStream &operator<<(QDataStream &out, SEDNode *node)
 {
-    qDebug() << "printing SEDNode";
     out << node->getDesignation();
     qDebug() << node->getDesignation();
     out << node->getWavelength();
@@ -66,7 +65,6 @@ QDataStream &operator<<(QDataStream &out, SEDNode *node)
 
 QDataStream &operator>>(QDataStream &in, SEDNode *node)
 {
-    qDebug() << "reading SEDNode";
     QString d;
     int w;
     double f, ef;
@@ -78,14 +76,11 @@ QDataStream &operator>>(QDataStream &in, SEDNode *node)
     in >> lat;
     in >> lon;
 
-    // node=new SEDNode();
     node->setDesignation(d);
     node->setWavelength(w);
     node->setFlux(f);
     node->setErrFlux(ef);
     node->setSky(lon, lat);
     qDebug() << node->getDesignation();
-    // in >> node->getWavelength();
-    // in >> node->getFlux();
     return in;
 }
