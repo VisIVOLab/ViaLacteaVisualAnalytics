@@ -39,8 +39,6 @@
 #include <boost/algorithm/string.hpp>
 
 const unsigned long long int VSTableDesktop::MAX_NUMBER_TO_SKIP = 1000000000;
-// const unsigned int VSTable::MAX_NUMBER_ROW_REQUEST = 2147483647;
-// const unsigned int VSTable::MAX_NUMBER_TO_SKIP = 250000000;
 const unsigned long long int VSTableDesktop::MAX_NUMBER_ROW_REQUEST = 250000000;
 
 VSTableDesktop::VSTableDesktop()
@@ -73,10 +71,8 @@ VSTableDesktop::VSTableDesktop(std::string locator, std::string name /*= ""*/,
     m_endiannes = "unknown";
     m_type = "unknown";
     m_tableExist = false;
-
     m_nCols = 0;
     m_nRows = 0;
-
     m_isVolume = false;
 
     for (int i = 0; i < 3; ++i) {
@@ -106,7 +102,6 @@ VSTableDesktop::VSTableDesktop(std::string locator, std::string name /*= ""*/,
         m_binNumber = 1000;
 
     // allocating data structures
-
     try {
         m_histogramArray = new int *[m_nCols];
         m_histogramValueArray = new float *[m_nCols];
@@ -128,38 +123,6 @@ VSTableDesktop::VSTableDesktop(std::string locator, std::string name /*= ""*/,
         if (m_histogramArray[i] == NULL)
             qDebug() << "int * m_histogramArray allocation:  out of memory";
     }
-    /*
-    //Moved in ReadStatistic()
-    try{
-        m_rangeArray = new float*[m_nCols];
-    }
-    catch(std::bad_alloc & e)
-    {
-        m_rangeArray=NULL;
-    }
-    if(m_rangeArray==NULL)
-        qDebug() << "float ** m_rangeArray allocation:  out of memory";
-    for(int i=0; i<m_nCols; ++i)
-    {
-        try{
-            m_rangeArray[i]=new float[3];
-        }
-        catch(std::bad_alloc & e)
-        {
-            m_rangeArray[i]=NULL;
-        }
-        if (m_rangeArray[i]==NULL)
-            qDebug() << "float * m_rangeArray allocation:  out of memory";
-    }
-    */
-    //
-    // Once instantiated you  can access the data structure
-    // by using  m_histogramArray[ColNumber][value]
-    //
-    // and by using  min =  m_rangeArray[ColNumber][0]
-    //               max =  m_rangeArray[ColNumber][1]
-    //
-    //  If enabled some problems appear ! please investigate on
 
     if (statistic) {
         statisticsOk = readStatistics();
@@ -185,7 +148,6 @@ bool VSTableDesktop::setEndiannes(std::string endiannes)
     }
 
     m_endiannes = "unknown";
-
     return false;
 }
 
@@ -202,7 +164,6 @@ bool VSTableDesktop::setType(std::string type)
     }
 
     m_type = "unknown";
-
     return false;
 }
 
@@ -229,7 +190,6 @@ void VSTableDesktop::setCellSize(float xCellSize, float yCellSize, float zCellSi
     m_cellSize[0] = xCellSize;
     m_cellSize[1] = yCellSize;
     m_cellSize[2] = zCellSize;
-
     return;
 }
 
@@ -247,7 +207,6 @@ void VSTableDesktop::setCellNumber(unsigned int xCellNumber, unsigned int yCellN
     m_cellNumber[0] = xCellNumber;
     m_cellNumber[1] = yCellNumber;
     m_cellNumber[2] = zCellNumber;
-
     return;
 }
 
@@ -262,7 +221,6 @@ bool VSTableDesktop::readHeader()
         return false;
 
     // reads the number of cols and rows
-
     std::string dummy;
     std::string type;
     std::string endiannes;
@@ -278,47 +236,38 @@ bool VSTableDesktop::readHeader()
         exit(1);
     }
     inHeader >> nCols;
-
     std::string tmp = "";
-
     getline(inHeader, tmp); // to remove the carrige return character  (\r) from the last line
     getline(inHeader, tmp);
-
     std::stringstream sstmp(tmp);
-
     sstmp >> m_nRows;
 
     if (!(sstmp.eof())) {
         m_isVolume = true;
-
         sstmp >> m_cellNumber[0];
         sstmp >> m_cellNumber[1];
         sstmp >> m_cellNumber[2];
-
         sstmp >> m_cellSize[0];
         sstmp >> m_cellSize[1];
         sstmp >> m_cellSize[2];
     }
 
     inHeader >> endiannes;
-
     setType(type);
     setEndiannes(endiannes);
 
     m_colVector.clear();
-
     std::string name = "";
 
     for (i = 0; i < nCols; ++i) {
         inHeader >> name;
-
         addCol(name);
     }
 
     inHeader.close();
     if ((m_colVector.size() != nCols)
-        || (m_cellNumber[0] > 0
-            && m_cellNumber[0] * m_cellNumber[1] * m_cellNumber[2] != m_nRows)) {
+            || (m_cellNumber[0] > 0
+                && m_cellNumber[0] * m_cellNumber[1] * m_cellNumber[2] != m_nRows)) {
         m_nCols = 0;
         m_colVector.clear();
 
@@ -329,18 +278,14 @@ bool VSTableDesktop::readHeader()
 
 void VSTableDesktop::printSelf()
 {
-    // VisIVOMetadata::printSelf();
-
     std::clog << "Locator: " << m_locator << std::endl;
     std::clog << "Columns: " << m_nCols << std::endl;
     std::clog << "Rows: " << m_nRows << std::endl;
     std::clog << "Type: " << m_type << std::endl;
     std::clog << "Endiannes: " << m_endiannes << std::endl;
-
     std::clog << "Column names:" << std::endl;
 
     unsigned int size = m_colVector.size();
-
     for (unsigned int i = 0; i < size; ++i)
         std::clog << m_colVector[i] << std::endl;
 
@@ -370,11 +315,9 @@ int VSTableDesktop::getColId(std::string name)
     unsigned int size = m_colVector.size();
 
     for (unsigned int i = 0; i < size; ++i) {
-        // if(m_colVector[i] == name)
         if (boost::iequals(m_colVector[i], name))
             return i;
     }
-
     return -1;
 }
 
@@ -431,7 +374,6 @@ bool VSTableDesktop::createTable(float **fArray)
         return false;
 
     for (unsigned int j = 0; j < m_nCols; j++) {
-        // std::ios::off_type indexOffset;
         unsigned long long int totNumberToWrite;
         unsigned long long int nWrite;
         float *fPointer = &fArray[j][0];
@@ -540,10 +482,6 @@ int VSTableDesktop::getColumnString(unsigned int *colList, unsigned int nOfCol,
         std::cerr << "Cannot open binary file" << m_locator << std::endl;
         return -2;
     }
-
-    std::ios::off_type indexOffset;
-    unsigned long long int totNumberToSkip;
-    unsigned long long int nSkip;
     unsigned int column;
     int nLoad;
 
@@ -576,7 +514,6 @@ int VSTableDesktop::getColumnString(unsigned int *colList, unsigned int nOfCol,
             std::string line8;
             fileInput >> line8;
             matrix[j][i] = line8;
-            // qDebug()<<QString::fromStdString(line8);
         }
     }
 
@@ -602,9 +539,6 @@ int VSTableDesktop::getColumnStringToFloat(unsigned int *colList, unsigned int n
         return -2;
     }
 
-    std::ios::off_type indexOffset;
-    unsigned long long int totNumberToSkip;
-    unsigned long long int nSkip;
     unsigned int column;
     int nLoad;
     int length = 32;
@@ -639,7 +573,6 @@ int VSTableDesktop::getColumnStringToFloat(unsigned int *colList, unsigned int n
         }
         fArray[j] = tmp;
     }
-    qDebug() << "end";
 
     return 0;
 }
@@ -720,7 +653,7 @@ int VSTableDesktop::getColumn(unsigned int *colList, unsigned int nOfCol,
 #endif
 
     if ((endianism == "big" && m_endiannes == "little")
-        || (endianism == "little" && m_endiannes == "big")) {
+            || (endianism == "little" && m_endiannes == "big")) {
         std::cerr << "Warning: endianism swap executed on table " << m_locator << std::endl;
         for (unsigned int j = 0; j < nOfCol; j++)
             for (int k = 0; k < nLoad; k++)
@@ -844,7 +777,7 @@ int VSTableDesktop::getColumnList(unsigned int *colList, unsigned int nOfCol,
 #endif
 
     if ((endianism == "big" && m_endiannes == "little")
-        || (endianism == "little" && m_endiannes == "big")) {
+            || (endianism == "little" && m_endiannes == "big")) {
         std::cerr << "Warning: endianism swap executed on table " << m_locator << std::endl;
         for (unsigned int k = 0; k < nOfCol; k++)
             for (unsigned long long int j = 0; j < nOfEle; j++)
@@ -1052,7 +985,6 @@ QVector<double> VSTableDesktop::getHistogram(unsigned int i)
     QVector<double> val(m_binNumber);
     for (int j = 0; j < m_binNumber; j++) {
         val[j] = m_histogramArray[i][j];
-        //  qDebug()<<"get Hist--- "<<j<<"="<<val[j];
     }
 
     return val;
@@ -1064,7 +996,6 @@ QVector<double> VSTableDesktop::getHistogramValue(unsigned int i)
     QVector<double> val(m_binNumber);
     for (int j = 0; j < m_binNumber; j++) {
         val[j] = m_histogramValueArray[i][j];
-        // qDebug()<<"getValue--- "<<j<<"="<<val[j];
     }
 
     return val;
@@ -1131,8 +1062,6 @@ bool VSTableDesktop::readStatistics()
         qDebug()<<"colonna: "<<i <<" m_rangeArray "<<m_rangeArray[i][0]<<" "<<m_rangeArray[i][1];
 
        // this->m_rangeArray[i][2]=hist_max;
-
-
     }
     */
     return true;
