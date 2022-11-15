@@ -116,11 +116,6 @@ void LutCustomize::drawLine(double from, double to)
 
     toLine->start->setCoords(to, 0);
     toLine->end->setCoords(to, y_range[1]);
-
-    //removed qcp 2
-    //ui->histogramWidget->addItem(fromLine);
-    //ui->histogramWidget->addItem(toLine);
-
     ui->histogramWidget->replot();
 }
 
