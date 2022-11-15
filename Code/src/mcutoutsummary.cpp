@@ -310,7 +310,6 @@ void MCutoutSummary::parseXmlResponse(QNetworkReply *body)
         }
     };
     // End sub-parsers
-
     responseContents.clear();
     QXmlStreamReader xml(body);
     while (!xml.atEnd()) {
@@ -376,7 +375,6 @@ void MCutoutSummary::on_btnSendRequest_clicked()
         if (path.isEmpty()) {
             return;
         }
-
         downloadArchive(path);
     }
 }

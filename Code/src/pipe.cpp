@@ -65,8 +65,6 @@ void Pipe::constructVTK(vtkwindow_new *v)
 {
     m_lut = vtkLookupTable::New();
     vtkwin = v;
-    // m_pRenderer     = vtkRenderer::New();
-    //  m_pRenderWindow = vtkRenderWindow::New();
     m_pRenderer = vtkwin->m_Ren1;
     m_pRenderWindow = vtkwin->renwin;
 }
@@ -290,10 +288,7 @@ void Pipe::saveImageAsPng(int num)
 
 void Pipe::setCamera()
 {
-
     m_camera = m_pRenderer->GetActiveCamera();
-
-    // m_camera->SetFocalPoint(0,0,0);
     m_camera->Azimuth(0.0);
     m_camera->Elevation(0.0);
     m_camera->Zoom(1);
@@ -304,11 +299,8 @@ void Pipe::setCamera()
 void Pipe::setBoundingBox(vtkDataObject *data)
 {
 
-    qDebug() << "setBoundingBox";
-
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 
-    // qui
     points->InsertNextPoint(-15000, -10000, -200 * scalingFactors);
     points->InsertNextPoint(15000, -10000, -200 * scalingFactors);
     points->InsertNextPoint(-15000, 25000, -200 * scalingFactors);
@@ -342,12 +334,10 @@ void Pipe::setBoundingBox(vtkDataObject *data)
 
     bool showBox = true;
     vtkOutlineCornerFilter *corner = vtkOutlineCornerFilter::New();
-    // corner->SetInputData(data);
     corner->SetInputData(polygonPolyData);
     corner->ReleaseDataFlagOn();
 
     vtkPolyDataMapper *outlineMapper = vtkPolyDataMapper::New();
-    //   outlineMapper->SetInput ( corner->GetOutput() );
     outlineMapper->SetInputConnection(corner->GetOutputPort());
 
     vtkProperty *outlineProperty = vtkProperty::New();
@@ -360,7 +350,6 @@ void Pipe::setBoundingBox(vtkDataObject *data)
     outlineProperty->SetRepresentationToWireframe();
     outlineProperty->SetInterpolationToFlat();
 
-    // vtkLODActor* outlineActor = vtkLODActor::New();
     outlineActor = vtkLODActor::New();
     outlineActor->SetMapper(outlineMapper);
     outlineActor->SetProperty(outlineProperty);
@@ -377,8 +366,6 @@ void Pipe::setBoundingBox(vtkDataObject *data)
         outlineProperty->Delete();
     if (corner != 0)
         corner->Delete();
-
-    qDebug() << "setBoundingBox - end";
 }
 
 /*
@@ -429,10 +416,7 @@ void Pipe::setBoundingBox ( vtkDataObject *data )
 
 void Pipe::colorBar(bool showColorBar)
 {
-
     if (scalarBar != 0) {
-
-        // scalarBar->Delete();
         m_pRenderer->RemoveActor(scalarBar);
     }
 
@@ -446,11 +430,6 @@ void Pipe::colorBar(bool showColorBar)
     scalarBar->SetLookupTable(m_lut);
     m_pRenderer->AddActor(scalarBar);
     scalarBar->SetVisibility(showColorBar);
-
-    /*
-    if (scalarBar!=0)
-        scalarBar->Delete();
-*/
 }
 
 void Pipe::setAxes(vtkDataSet *data, double *bounds)
@@ -494,39 +473,23 @@ void Pipe::setAxes(vtkDataSet *data, double *bounds)
     polygonPolyData->SetPolys(polygons);
 
     axesActor = vtkCubeAxesActor2D::New();
-
-    // axesActor->SetInputData ( data );
     axesActor->SetInputData(polygonPolyData);
-
     axesActor->UseRangesOn();
-
-    // FUNZIONANTI
-    // axesActor->SetBounds ( bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5]);
-    // axesActor->SetRanges (  bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5] );
-
     axesActor->SetBounds(-15000, 15000, -10000, 25000, -200 * scalingFactors, 200 * scalingFactors);
     axesActor->SetRanges(-15000, 15000, -10000, 25000, -200, 200);
-
     axesActor->SetNumberOfLabels(6);
-
     axesActor->SetViewProp(NULL);
     axesActor->SetScaling(0);
     axesActor->SetPickable(0);
     axesActor->SetCamera(m_pRenderer->GetActiveCamera());
     axesActor->SetCornerOffset(0.1);
-
-    // axesActor->SetLabelFormat ( "%6.5g" );
-
     axesActor->SetLabelFormat("%3.3g");
-
     axesActor->SetInertia(100);
     axesActor->SetFlyModeToOuterEdges();
     axesActor->SetVisibility(true);
-
     axesActor->SetXLabel(vtkwin->vispoint->getX().toUtf8().constData());
     axesActor->SetYLabel(vtkwin->vispoint->getY().toUtf8().constData());
     axesActor->SetZLabel(vtkwin->vispoint->getZ().toUtf8().constData());
-
     axesActor->Modified();
 
     m_pRenderer->AddActor2D(axesActor);
