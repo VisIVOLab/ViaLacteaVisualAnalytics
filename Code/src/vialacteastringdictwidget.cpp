@@ -41,21 +41,17 @@ void VialacteaStringDictWidget::buildDict()
             SLOT(availReplyFinished(QNetworkReply *)));
 
     QNetworkRequest request(QUrl(settings.value("vlkbtableurl", "").toString() + "/availability"));
-    //    QNetworkRequest request(QUrl("http://ia2-vialactea.oats.inaf.it/vlkb/availability"));
-
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("text/html; charset=utf-8"));
 
     auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
                                                            : &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(request);
-
     manager->get(request);
 }
 
 void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
 {
-
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
@@ -102,8 +98,6 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
             SLOT(queryReplyFinishedTapSchemaTables(QNetworkReply *)));
 
     QString url = settings.value("vlkbtableurl", "").toString() + "/sync";
-    // QString url = "http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync";
-
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
@@ -119,13 +113,9 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
 {
 
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-
     QString query = "SELECT * FROM TAP_SCHEMA.columns";
-
     manager = new QNetworkAccessManager(this);
-
     QByteArray postData;
-
     postData.append("REQUEST=doQuery&");
     postData.append("VERSION=1.0&");
     postData.append("LANG=ADQL&");
@@ -140,9 +130,6 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
             SLOT(queryReplyFinishedTapSchemaColumns(QNetworkReply *)));
 
     QString url = settings.value("vlkbtableurl", "").toString() + "/sync";
-    // QString url = "http://ia2-vialactea.oats.inaf.it:8080/vlkb/sync";
-
-    qDebug() << url;
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
@@ -150,7 +137,6 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
                                                            : &NeaniasVlkbAuth::Instance();
     auth->putAccessToken(request);
-
     manager->post(request, postData);
 }
 
@@ -193,7 +179,6 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
                     if (col == "utype")
                         utype = i;
                 }
-
                 QString line_data;
                 while (!reply->atEnd()) {
                     line_data = QString::fromLatin1(reply->readLine().data());
@@ -203,7 +188,6 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
                     tableDescStringDict.insert(list2[table_name],
                                                list2[description].remove(QRegExp("[\n\t\r]")));
                 }
-                // qDebug() << "TAP_TABLE: " << tableDescStringDict.size();
             }
         }
         /* Clean up. */
@@ -263,7 +247,6 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
                     colDescStringDict.insert(list2[table_name] + "." + list2[column_name],
                                              list2[description].remove(QRegExp("[\n\t\r]")));
                 }
-                // qDebug() << "TAP_COLUMN: " << colDescStringDict.size();
             }
         }
         reply->deleteLater();
@@ -286,7 +269,6 @@ void VialacteaStringDictWidget::onAuthenticationRequestSlot(QNetworkReply *aRepl
                                                             QAuthenticator *aAuthenticator)
 {
     Q_UNUSED(aReply);
-    qDebug() << "TAP auth";
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
         aAuthenticator->setUser(IA2_TAP_USER);
