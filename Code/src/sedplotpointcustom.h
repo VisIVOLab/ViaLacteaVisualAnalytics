@@ -48,16 +48,9 @@ signals:
     void stoppedMoving();
 
 public slots:
-    void move(double x, double y, bool signalNeeded = true);
-    void movePx(double x, double y);
-    void setActive(bool isActive);
     void setPos(double x, double y);
 
 private slots:
-    void onMouseMove(QMouseEvent *event);
-    void stopMoving();
-    void moveToWantedPos();
-    void onShiftStateChanged(bool shiftPressed);
     void selected(bool s);
     bool selected();
     void onMousePress(QMouseEvent *event);
