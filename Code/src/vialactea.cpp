@@ -51,42 +51,12 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     // Cleanup previous run tmp
     QDir dir_tmp(
-            QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download"));
+                QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download"));
     foreach (QString dirFile, dir_tmp.entryList()) {
         dir_tmp.remove(dirFile);
     }
 
     updateVLKBSetting();
-
-    /*
-    if (settings.value("vlkbtype", "ia2").toString() == "neanias") {
-        // The user has to login through SSO to continue or change access method
-        QMessageBox *msgBox = new QMessageBox(this);
-        msgBox->setIcon(QMessageBox::Question);
-        msgBox->setWindowTitle("Login required");
-        msgBox->setInformativeText(
-                "You have selected private access to VLKB using NEANIAS SSO.\n\nSign in to "
-                "continue using this private access or change access method in the Settings.");
-        msgBox->addButton("Login", QMessageBox::AcceptRole);
-        msgBox->addButton("Open settings", QMessageBox::DestructiveRole);
-        msgBox->show();
-        connect(msgBox, &QMessageBox::buttonClicked, [=](QAbstractButton *button) {
-            QMessageBox::ButtonRole btn = msgBox->buttonRole(button);
-            if (btn == QMessageBox::AcceptRole) {
-                // Open NEANIAS login page
-                AuthWrapper *auth = &NeaniasVlkbAuth::Instance();
-                connect(auth, &AuthWrapper::authenticated,
-                        &Singleton<VialacteaStringDictWidget>::Instance(),
-                        &VialacteaStringDictWidget::buildDict);
-                auth->grant();
-            } else {
-                // Open settings window
-                on_actionSettings_triggered();
-            }
-            msgBox->deleteLater();
-        });
-    }
-    */
 
     if (settings.value("online", true) == true) {
         tilePath = settings.value("onlinetilepath", ONLINE_TILE_PATH).toString();
@@ -105,13 +75,6 @@ ViaLactea::ViaLactea(QWidget *parent)
     QWebChannel *channel = new QWebChannel(this);
     channel->registerObject("webobj", webobj);
     ui->webView->page()->setWebChannel(channel);
-
-    // QObject::connect(this, SIGNAL(destroyed()), qApp, SLOT(quit()));
-
-    // VialacteaStringDictWidget *stringDictWidget =
-    // &Singleton<VialacteaStringDictWidget>::Instance(); stringDictWidget->buildDict();
-
-    qDebug() << "----------tilePath: " << tilePath;
 
     mapSurvey.insert(0, QPair<QString, QString>("MIPSGAL", "24 um"));
     mapSurvey.insert(1, QPair<QString, QString>("GLIMPSE I", "8.0 um"));
@@ -143,7 +106,6 @@ void ViaLactea::quitApp()
     QWebEnginePage *p = ui->webView->page();
     p->disconnect(ui->webView);
     delete p;
-    std::cout << "Deleted" << std::endl;
 }
 
 void ViaLactea::updateVLKBSetting()
@@ -151,15 +113,12 @@ void ViaLactea::updateVLKBSetting()
     QString vlkbtype = settings.value("vlkbtype", "").toString();
 
     if (vlkbtype.isEmpty()) {
-        qDebug() << "VLKB instance: IA2";
         settings.setValue("vlkbtype", "ia2");
         settings.setValue("vlkburl", VLKB_URL_IA2);
         settings.setValue("vlkbtableurl", TAP_URL_IA2);
     }
 
     settings.sync();
-    qDebug() << "VLKB Instance:" << settings.value("vlkbtype");
-
     VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     stringDictWidget->buildDict();
 }
@@ -168,8 +127,8 @@ void ViaLactea::on_queryPushButton_clicked()
 {
     if (masterWin != nullptr) {
         QMessageBox::information(
-                this, QObject::tr(""),
-                QObject::tr(
+                    this, QObject::tr(""),
+                    QObject::tr(
                         "A session is already open. Close the session window to start a new one."));
         return;
     }
@@ -194,18 +153,14 @@ void ViaLactea::on_queryPushButton_clicked()
     }
 
     QList<QPair<QString, QString>> selectedSurvey;
-
     QList<QCheckBox *> allButtons = ui->surveySelectorGroupBox->findChildren<QCheckBox *>();
     for (int i = 0; i < allButtons.size(); ++i) {
-        qDebug() << "i: " << i << " " << allButtons.at(i);
-
         if (allButtons.at(i)->isChecked()) {
 
             selectedSurvey.append(mapSurvey.value(i));
         }
     }
 
-    // connettere la banda selezionata
     vq->setSpecies("Continuum");
     vq->setSurveyname(selectedSurvey.at(0).first);
     vq->setTransition(selectedSurvey.at(0).second);
@@ -287,8 +242,8 @@ void ViaLactea::on_radiumLineEdit_textChanged(const QString &arg1)
 void ViaLactea::queryButtonStatusOnOff()
 {
     if (ui->glatLineEdit->text() != "" && ui->glonLineEdit->text() != ""
-        && (ui->radiumLineEdit->text() != ""
-            || (ui->dlLineEdit->text() != "" && ui->dbLineEdit->text() != "")))
+            && (ui->radiumLineEdit->text() != ""
+                || (ui->dlLineEdit->text() != "" && ui->dbLineEdit->text() != "")))
         ui->queryPushButton->setEnabled(true);
     else
         ui->queryPushButton->setEnabled(false);
@@ -298,16 +253,11 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(),
                                               "Fits images (*.fits)");
-
     if (fn.isEmpty()) {
         return;
     }
-
     bool doSearch = settings.value("vlkb.search", false).toBool();
-
     if (masterWin == nullptr) {
-        // First import
-
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(fn.toStdString());
 
@@ -319,11 +269,11 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
             VialacteaInitialQuery *vq = new VialacteaInitialQuery;
             connect(vq, &VialacteaInitialQuery::searchDone,
                     [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
-                        auto win = new vtkwindow_new(this, fits);
-                        win->setDbElements(results);
-                        setMasterWin(win);
-                        vq->deleteLater();
-                    });
+                auto win = new vtkwindow_new(this, fits);
+                win->setDbElements(results);
+                setMasterWin(win);
+                vq->deleteLater();
+            });
 
             vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
         } else {
@@ -334,7 +284,6 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
         this->showMinimized();
     } else if (canImportToMasterWin(fn.toStdString())) {
         // An image is already open and we can add this image as a layer
-
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(fn.toStdString());
         masterWin->addLayerImage(fits);
@@ -342,7 +291,6 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
         this->showMinimized();
     } else {
         // An image is already open and we can NOT add this image as a layer
-
         QMessageBox::warning(this, QObject::tr("Import image"),
                              QObject::tr("The regions do not overlap, the file cannot be "
                                          "imported in the current session."));
@@ -426,15 +374,13 @@ void ViaLactea::on_localDCPushButton_clicked()
     auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader_dc->SetFileName(fn.toStdString());
     if (fitsReader_dc->ctypeXY) {
-        qDebug() << Q_FUNC_INFO << fn << " CTYPEs are X-Y, treating it as a simulated  cube";
         new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
         return;
     }
 
     bool doSearch = settings.value("vlkb.search", false).toBool();
-
     auto load = [fn, this](const QList<QMap<QString, QString>> &results =
-                                   QList<QMap<QString, QString>>()) {
+            QList<QMap<QString, QString>>()) {
         // Open a new window to visualize the momentmap
         auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
         fitsReader_moment->SetFileName(fn.toStdString());
@@ -463,9 +409,9 @@ void ViaLactea::on_localDCPushButton_clicked()
             VialacteaInitialQuery *vq = new VialacteaInitialQuery;
             connect(vq, &VialacteaInitialQuery::searchDone,
                     [vq, fn, load](QList<QMap<QString, QString>> results) {
-                        load(results);
-                        vq->deleteLater();
-                    });
+                load(results);
+                vq->deleteLater();
+            });
             vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
         } else {
             load();
@@ -490,8 +436,6 @@ void ViaLactea::on_localDCPushButton_clicked()
 
 void ViaLactea::on_actionExit_triggered()
 {
-    // QCoreApplication::exit(0);
-
     this->close();
 }
 
@@ -500,12 +444,10 @@ void ViaLactea::closeEvent(QCloseEvent *event)
     if (masterWin != nullptr && !masterWin->isSessionSaved()) {
         // Prompt to save the session
         if (!masterWin->confirmSaveAndExit()) {
-            // Cancel button was clicked, therefore do not close
             event->ignore();
             return;
         }
     }
-
     ui->webView->page()->deleteLater();
     QApplication::quit();
 }
@@ -553,18 +495,12 @@ void ViaLactea::on_actionLoad_SED_2_triggered()
     QStringList dirList = tmp_download.entryList();
 
     QFile sedFile(QDir::homePath()
-                          .append(QDir::separator())
-                          .append("/VisIVODesktopTemp/tmp_download/SEDList.dat"));
+                  .append(QDir::separator())
+                  .append("/VisIVODesktopTemp/tmp_download/SEDList.dat"));
     sedFile.open(QIODevice::ReadOnly);
     QDataStream in(&sedFile); // read the data serialized from the file
     QList<SED *> sed_list2;
     in >> sed_list2;
-    /*
-    foreach(SED* sed, sed_list2){
-        qDebug()<<"SED Designation";
-        qDebug()<<sed->getRootNode()->getDesignation();
-    }
-*/
 
     ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
     SEDVisualizerPlot *sedv = new SEDVisualizerPlot(sed_list2, 0, vialactealWin);
@@ -614,7 +550,6 @@ void ViaLactea::on_actionLoad_session_triggered()
     QString fn = QDir(rootPath).absoluteFilePath("session.json");
     if (!QFile::exists(fn)) {
         // Scan the folder for fits files and create the session file on-the-fly
-
         QStringList fits;
         QDir rootDir(rootPath);
         sessionScan(rootPath, rootDir, fits);
