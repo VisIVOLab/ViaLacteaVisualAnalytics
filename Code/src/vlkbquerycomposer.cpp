@@ -215,12 +215,6 @@ void VLKBQueryComposer::queryReplyFinished(QNetworkReply *reply)
                                                                    : &NeaniasVlkbAuth::Instance();
             auth->putAccessToken(req);
             manager->get(req);
-        } else {
-            QByteArray bytes = reply->readAll();
-            QFile file("/Users/fxbio6600/test_out.txt");
-            file.open(QIODevice::WriteOnly);
-            file.write(bytes);
-            file.close();
         }
         /* Clean up. */
         reply->deleteLater();
