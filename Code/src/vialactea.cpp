@@ -433,7 +433,6 @@ void ViaLactea::on_localDCPushButton_clicked()
                              QObject::tr("The regions do not overlap, the file cannot be "
                                          "imported in the current session."));
     }
-    * /
 }
 
 void ViaLactea::on_actionExit_triggered()
