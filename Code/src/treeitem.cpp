@@ -192,7 +192,6 @@ bool TreeItem::setVTP(vtkLODActor *pActor)
     return true;
 }
 
-// bool TreeItem::setFITSIMG(vtkImageActor *pActor)
 bool TreeItem::setFITSIMG(vtkSmartPointer<vtkFitsReader> fitsReader)
 {
 
@@ -211,7 +210,6 @@ VisPoint *TreeItem::getVisualObject()
     return m_visualObject;
 }
 
-// vtkImageActor *TreeItem::getFITSIMG()
 vtkSmartPointer<vtkFitsReader> TreeItem::getFITSIMG()
 {
 
