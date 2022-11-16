@@ -163,6 +163,7 @@ private:
     double initSlice;
     int momentOrder = 0;
     vtkFloatArray *CalculateMoment(int order);
+    std::string fitsPath;
 };
 
 #endif

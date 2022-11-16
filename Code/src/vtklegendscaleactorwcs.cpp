@@ -301,15 +301,11 @@ int vtkLegendScaleActorWCS::RenderOverlay(vtkViewport *viewport)
     return renderedSomething;
 }
 
-void vtkLegendScaleActorWCS::setFitsFile(vtkSmartPointer<vtkFitsReader> fits)
+void vtkLegendScaleActorWCS::setFitsFile(std::string fitsPath)
 {
-    fitsPath = fits->GetFileName();
+    myfits = fitsPath;
 }
 
-void vtkLegendScaleActor::setFitsFile(const std::string &fitspath)
-{
-    fitsPath = fitspath;
-}
 
 void vtkLegendScaleActorWCS::setWCS(int wcs)
 {
@@ -330,38 +326,38 @@ void vtkLegendScaleActorWCS::setWCS(int wcs)
 void vtkLegendScaleActorWCS::BuildRepresentation(vtkViewport *viewport)
 {
     if (1) // it's probably best just to rerender every time
-           //    if ( this->GetMTime() > this->BuildTime ||
-           //         (this->Renderer && this->Renderer->GetVTKWindow() &&
-           //          this->Renderer->GetVTKWindow()->GetMTime() > this->BuildTime) )
+        //    if ( this->GetMTime() > this->BuildTime ||
+        //         (this->Renderer && this->Renderer->GetVTKWindow() &&
+        //          this->Renderer->GetVTKWindow()->GetMTime() > this->BuildTime) )
     {
         // Specify the locations of the axes.
         int *size = viewport->GetSize();
 
         this->RightAxis->GetPositionCoordinate()->SetValue(
-                size[0] - this->RightBorderOffset,
+                    size[0] - this->RightBorderOffset,
                 this->CornerOffsetFactor * this->BottomBorderOffset, 0.0);
         this->RightAxis->GetPosition2Coordinate()->SetValue(
-                size[0] - this->RightBorderOffset,
+                    size[0] - this->RightBorderOffset,
                 size[1] - this->CornerOffsetFactor * this->TopBorderOffset, 0.0);
         this->TopAxis->GetPositionCoordinate()->SetValue(
-                size[0] - this->CornerOffsetFactor * this->RightBorderOffset,
+                    size[0] - this->CornerOffsetFactor * this->RightBorderOffset,
                 size[1] - this->TopBorderOffset, 0.0);
         this->TopAxis->GetPosition2Coordinate()->SetValue(this->CornerOffsetFactor
-                                                                  * this->LeftBorderOffset,
+                                                          * this->LeftBorderOffset,
                                                           size[1] - this->TopBorderOffset, 0.0);
 
         this->LeftAxis->GetPositionCoordinate()->SetValue(
-                this->LeftBorderOffset, size[1] - this->CornerOffsetFactor * this->TopBorderOffset,
+                    this->LeftBorderOffset, size[1] - this->CornerOffsetFactor * this->TopBorderOffset,
                 0.0);
         this->LeftAxis->GetPosition2Coordinate()->SetValue(
-                this->LeftBorderOffset, this->CornerOffsetFactor * this->BottomBorderOffset, 0.0);
+                    this->LeftBorderOffset, this->CornerOffsetFactor * this->BottomBorderOffset, 0.0);
 
         // if (this->LegendVisibility) {
         this->BottomAxis->GetPositionCoordinate()->SetValue(this->CornerOffsetFactor
-                                                                    * this->LeftBorderOffset,
+                                                            * this->LeftBorderOffset,
                                                             2 * this->BottomBorderOffset, 0.0);
         this->BottomAxis->GetPosition2Coordinate()->SetValue(
-                size[0] - this->CornerOffsetFactor * this->RightBorderOffset,
+                    size[0] - this->CornerOffsetFactor * this->RightBorderOffset,
                 2 * this->BottomBorderOffset, 0.0);
         /* } else {
             this->BottomAxis->GetPositionCoordinate()->SetValue(this->CornerOffsetFactor
@@ -381,10 +377,10 @@ void vtkLegendScaleActorWCS::BuildRepresentation(vtkViewport *viewport)
             double *xL = this->RightAxis->GetPositionCoordinate()->GetComputedWorldValue(viewport);
             double *xR = this->RightAxis->GetPosition2Coordinate()->GetComputedWorldValue(viewport);
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xR[1], xL[1], sky_coord, wcs);
+            AstroUtils().xy2sky(myfits, xR[1], xL[1], sky_coord, wcs);
             lo = sky_coord[1];
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xL[1], xR[1], sky_coord, wcs);
+            AstroUtils().xy2sky(myfits, xL[1], xR[1], sky_coord, wcs);
             up = sky_coord[1];
 
             this->RightAxis->SetRange(lo, up);
@@ -399,10 +395,10 @@ void vtkLegendScaleActorWCS::BuildRepresentation(vtkViewport *viewport)
             xL = this->BottomAxis->GetPositionCoordinate()->GetComputedWorldValue(viewport);
             xR = this->BottomAxis->GetPosition2Coordinate()->GetComputedWorldValue(viewport);
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xL[0], xR[0], sky_coord, wcs);
+            AstroUtils().xy2sky(myfits, xL[0], xR[0], sky_coord, wcs);
             lo = sky_coord[0];
 
-            AstroUtils().xy2sky(myfits->GetFileName(), xR[0], xL[0], sky_coord, wcs);
+            AstroUtils().xy2sky(myfits, xR[0], xL[0], sky_coord, wcs);
             up = sky_coord[0];
 
             this->BottomAxis->SetRange(lo, up);
@@ -491,7 +487,7 @@ void vtkLegendScaleActorWCS::BuildRepresentation(vtkViewport *viewport)
 void vtkLegendScaleActorWCS::AllAnnotationsOn()
 {
     if (this->RightAxisVisibility && this->TopAxisVisibility && this->LeftAxisVisibility
-        && this->BottomAxisVisibility && this->LegendVisibility) {
+            && this->BottomAxisVisibility && this->LegendVisibility) {
         return;
     }
 
@@ -508,7 +504,7 @@ void vtkLegendScaleActorWCS::AllAnnotationsOn()
 void vtkLegendScaleActorWCS::AllAnnotationsOff()
 {
     if (!this->RightAxisVisibility && !this->TopAxisVisibility && !this->LeftAxisVisibility
-        && !this->BottomAxisVisibility && !this->LegendVisibility) {
+            && !this->BottomAxisVisibility && !this->LegendVisibility) {
         return;
     }
 
@@ -525,7 +521,7 @@ void vtkLegendScaleActorWCS::AllAnnotationsOff()
 void vtkLegendScaleActorWCS::AllAxesOn()
 {
     if (this->RightAxisVisibility && this->TopAxisVisibility && this->LeftAxisVisibility
-        && this->BottomAxisVisibility) {
+            && this->BottomAxisVisibility) {
         return;
     }
 
@@ -541,7 +537,7 @@ void vtkLegendScaleActorWCS::AllAxesOn()
 void vtkLegendScaleActorWCS::AllAxesOff()
 {
     if (!this->RightAxisVisibility && !this->TopAxisVisibility && !this->LeftAxisVisibility
-        && !this->BottomAxisVisibility) {
+            && !this->BottomAxisVisibility) {
         return;
     }
 
@@ -552,13 +548,13 @@ void vtkLegendScaleActorWCS::AllAxesOff()
     this->BottomAxisVisibility = 0;
     this->Modified();
 }
-
+/*
 os << indent << "Label Mode: ";
 if (this->LabelMode == DISTANCE) {
     os << "Distance\n";
 } else // if ( this->LabelMode == DISTANCE )
 {
-    os << "XY_Coordinates\n";
+os << "XY_Coordinates\n";
 }
 
 os << indent << "Right Axis Visibility: " << (this->RightAxisVisibility ? "On\n" : "Off\n");
@@ -577,43 +573,44 @@ os << indent << "Legend Title Property: ";
 if (this->LegendTitleProperty) {
     os << this->LegendTitleProperty << "\n";
 } else {
-    os << "(none)\n";
+os << "(none)\n";
 }
 os << indent << "Legend Label Property: ";
 if (this->LegendLabelProperty) {
     os << this->LegendLabelProperty << "\n";
 } else {
-    os << "(none)\n";
+os << "(none)\n";
 }
 
 os << indent << "Right Axis: ";
 if (this->RightAxis) {
     os << this->RightAxis << "\n";
 } else {
-    os << "(none)\n";
+os << "(none)\n";
 }
 os << indent << "Top Axis: ";
 if (this->TopAxis) {
     os << this->TopAxis << "\n";
 } else {
-    os << "(none)\n";
+os << "(none)\n";
 }
 os << indent << "Left Axis: ";
 if (this->LeftAxis) {
     os << this->LeftAxis << "\n";
 } else {
-    os << "(none)\n";
+os << "(none)\n";
 }
 os << indent << "Bottom Axis: ";
 if (this->BottomAxis) {
     os << this->BottomAxis << "\n";
 } else {
-    os << "(none)\n";
+os << "(none)\n";
 }
 }
-
+*/
 //----------------------------------------------------------------------------
-* / void vtkLegendScaleActorWCS::PrintSelf(ostream &os, vtkIndent indent)
+
+void vtkLegendScaleActorWCS::PrintSelf(ostream &os, vtkIndent indent)
 {
     // this->Superclass::PrintSelf(os, indent);
 }

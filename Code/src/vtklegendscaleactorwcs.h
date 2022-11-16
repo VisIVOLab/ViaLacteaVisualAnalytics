@@ -36,6 +36,7 @@
 
 #include "vtkCoordinate.h" // For vtkViewportCoordinateMacro
 #include "vtkfitsreader.h"
+#include "vtkfitsreader2.h"
 #include "vtkImageActor.h"
 #include "vtkProp.h"
 #include "vtkRenderingAnnotationModule.h" // For export macro
@@ -56,7 +57,7 @@ public:
     // Description:
     // Instantiate the class.
     static vtkLegendScaleActorWCS *New();
-    void setFitsFile(vtkSmartPointer<vtkFitsReader> fits);
+    void setFitsFile(std::string fits);
     void setWCS(int wcs);
 
     // Description:
@@ -214,9 +215,8 @@ protected:
 private:
     vtkLegendScaleActorWCS(const vtkLegendScaleActorWCS &); // Not implemented
     void operator=(const vtkLegendScaleActorWCS &); // Not implemented
-    vtkSmartPointer<vtkFitsReader> myfits;
     int wcs;
-
+    std::string myfits;
 };
 
 #endif

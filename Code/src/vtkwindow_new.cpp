@@ -1263,7 +1263,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
         legendScaleActorImage->LegendVisibilityOff();
-        legendScaleActorImage->setFitsFile(myfits);
+        legendScaleActorImage->setFitsFile(myfits->GetFileName());
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
             legendScaleActorImage->setWCS(3);
             ui->menuWCS->actions().at(1)->setChecked(true);
@@ -1414,7 +1414,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 */
         legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
         legendScaleActorImage->LegendVisibilityOff();
-        legendScaleActorImage->setFitsFile(myfits);
+        legendScaleActorImage->setFitsFile(myfits->GetFileName());
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
             legendScaleActorImage->setWCS(3);
             ui->menuWCS->actions().at(1)->setChecked(true);
@@ -1453,7 +1453,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         legendScale3DActor = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
         legendScale3DActor->LegendVisibilityOff();
-        legendScale3DActor->setFitsFile(myfits);
+        legendScale3DActor->setFitsFile(myfits->GetFileName());
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
             legendScale3DActor->setWCS(3);
             ui->menuWCS->actions().at(1)->setChecked(true);
