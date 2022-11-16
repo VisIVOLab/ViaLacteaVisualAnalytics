@@ -38,14 +38,7 @@
 #include <QThread>
 #include <QTreeView>
 //#include "vosamp.h"
-//#include "visivofilterdesktop.h"
 
-/*
-extern "C" {
-#include "visivo.h"
-}
-
-*/
 #include "vtkwindow_new.h"
 
 /*
@@ -59,9 +52,6 @@ extern "C" {
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
-
-    // m_RenderingWindow = NULL;
-    //  QWidget::setWindowIcon(QIcon( ":/icons/VisIVODesktop.icns" ));
     ui->setupUi(this);
     createModel();
     ui->treeView->setModel(m_VisIVOTreeModel);
@@ -71,8 +61,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QObject::connect(ui->actionImportVoTable, SIGNAL(triggered()), this, SLOT(importVoTable()));
     QObject::connect(ui->actionImportBinary, SIGNAL(triggered()), this, SLOT(importBinary()));
     QObject::connect(ui->actionVTK_ImageData, SIGNAL(triggered()), this, SLOT(importVTI()));
-    // QObject::connect(ui->actionVTK_PolyData, SIGNAL(TreeModeltriggered()), this,
-    // SLOT(importVTP()));
+
     QDir::home().mkdir("VisIVODesktopTemp");
     QDir tmp_download(QDir::homePath() + "/VisIVODesktopTemp/tmp_download");
     qDebug() << QDir::homePath() + "/VisIVODesktopTemp/tmp_download";
@@ -89,9 +78,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->importerGroupBox->hide();
     ui->filterGroupBox->hide();
     hideAllFilterParameter();
-
-    // ui->addIdentifierParameterGroupBox->hide();
-    // ui->appendParameterGroupBox->hide();
 
     ui->volumeGroupBox->hide();
     on_actionVialactea_triggered();
@@ -128,8 +114,6 @@ void MainWindow::importAscii()
 
 void MainWindow::genericImport(int t)
 {
-    int errorCode;
-
     fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
     if (fileName.compare("") != 0) {
         type = t;
@@ -176,16 +160,13 @@ void MainWindow::importAscii(QString fileName, QString wavelen, bool higal, bool
         VI = new VisIVOImporterDesktop("ascii", fileName, m_VisIVOTreeModel);
         VI->setBm(bm);
         VI->setVtkWin(v);
-        //        ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
-        //        ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-        // ui->tabWidget->setCurrentWidget(ui->tabOpParameters);
+
         VI->doImport(wavelen, true);
     }
 }
 
 void MainWindow::importCSV(QString fileName)
 {
-
     // It Checks for an empty filename
     if (fileName.isEmpty())
         return;
@@ -196,7 +177,6 @@ void MainWindow::importCSV(QString fileName)
 
 void MainWindow::importVOTable(QString fileName)
 {
-
     // It Checks for an empty filename
     if (fileName.isEmpty())
         return;
@@ -207,45 +187,16 @@ void MainWindow::importVOTable(QString fileName)
 
 void MainWindow::importVoTable()
 {
-
     genericImport(2);
-
-    /*
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
-    // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("votable",fileName,m_VisIVOTreeModel);
-    VI->doImport();
-    ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
-    ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    //ui->treeView->update();
-    */
 }
 
 void MainWindow::importBinary()
 {
-
     genericImport(3);
-
-    /*Browse and choose the filename*/
-    /*
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
-    // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-
-
-    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("binary",fileName,m_VisIVOTreeModel);
-    VI->doImport();
-
-    ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
-    ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    //ui->treeView->update();
-    */
 }
 
 void MainWindow::importBinaryTable(QString fileName)
 {
-
     // It Checks for an empty filename
     if (fileName.isEmpty())
         return;
@@ -266,7 +217,6 @@ void MainWindow::importVTI()
 
     ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
     ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    // ui->treeView->update();
     //  Check if the importing is OK
     if (VI->getStatus())
         return;
@@ -285,7 +235,6 @@ void MainWindow::importVTP()
 
     ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
     ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    // ui->treeView->update();
     //  Check if the importing is OK
     if (VI->getStatus())
         return;
@@ -299,13 +248,10 @@ void MainWindow::on_actionDatacube_triggered()
     if (fileName.isEmpty())
         return;
     importFitsImage(fileName);
-
-    // IMPORT DATACUBE
 }
 
 void MainWindow::on_actionImportFitsImage_triggered()
 {
-
     QString fileName = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("(*.*)"));
     // It Checks for an empty filename
     if (fileName.isEmpty())
@@ -318,7 +264,6 @@ void MainWindow::importFitsImage(QString filename, QList<QMap<QString, QString>>
                                  QString l, QString b, QString r, QString db, QString dl,
                                  bool layer)
 {
-
     VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("FITSIMG", filename, m_VisIVOTreeModel);
     VI->doImport();
 
@@ -358,18 +303,13 @@ TreeModel *MainWindow::getTreeModel()
 
 void MainWindow::viewSetting()
 {
-
-    qDebug() << "***pre.setCurrentWidget.viewSetting().MainWindow";
     ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
-    qDebug() << "***post.setCurrentWidget.viewSetting().MainWindow";
-
     // Retrieve the first index among the selected indexes
     QModelIndexList list = ui->treeView->selectionModel()->selectedIndexes();
 
     // Don't use an empty list (with no selected items)
     // Hide the tabViewSettings widget
     if (list.isEmpty()) {
-        // qDebug() << "MainWindow::viewSetting: No selected items";
         ui->tabViewSettings->hide();
         return;
     }
@@ -377,8 +317,6 @@ void MainWindow::viewSetting()
     QModelIndex selectedItemIndex = list[0];
 
     TreeItem::TreeItemType type = m_VisIVOTreeModel->getType(selectedItemIndex);
-
-    // a TreeModel Object can return a table both for PointTable and VisualObject objects
     m_Table = m_VisIVOTreeModel->getTable(selectedItemIndex);
 
     // Don't use an invalid table
@@ -556,7 +494,6 @@ void MainWindow::viewSettingOk()
     unsigned int numberOfFields;
     numberOfFields = m_Table->getNumberOfColumns();
     if (numberOfFields < 3) {
-        qDebug() << "numberOfFields < 3";
         return;
     }
     QString name = QString(m_Table->getName().c_str());
@@ -586,9 +523,6 @@ void MainWindow::viewSettingOk()
         m_VisPointsObject->setVectorY(ui->YVectorsComboBox->currentText());
         m_VisPointsObject->setVectorZ(ui->ZVectorsComboBox->currentText());
 
-        // bisogna espandere prima un elemento perchè lo slot expand(QModelIndex) fallisce
-        // mentre lo slot expandall() cancella tutta la vista dell'albero
-        // indagare please....
         ui->treeView->expand(selectedItemIndex);
         QModelIndex parentIndex = selectedItemIndex;
 
@@ -605,42 +539,22 @@ void MainWindow::viewSettingOk()
                                        QIcon(":/icons/VBT_CLOUD.bmp"));
             m_VisIVOTreeModel->setData(m_VisIVOTreeModel->index(rows, 1, parentIndex),
                                        "VisualObject");
-            // Set tabObjectTree as Current tab
-            // ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
         }
         if (m_VisPointsObject->isOriginSpecified()) {
             ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
             m_OldRenderingWindow = new vtkwindow_new(this, m_VisPointsObject);
-            /*
-            // We will open a single Rendering Window
-            if (m_RenderingWindow == NULL)
-            {
-                m_OldRenderingWindow = new vtkwindow(this, m_VisPointsObject);
-            }
-            else
-            {
-                m_RenderingWindow->update(m_VisIVOTreeModel);
-            }
-            */
         }
     }
-    /*
-QModelIndexList lista = m_VisIVOTreeModel->getActiveViewList();
-int numberOfVisualObject = lista.count();
-int b=numberOfVisualObject;
-*/
 }
 
 void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool layer)
 {
-    qDebug() << "itemSelected";
     // Retrieve the first index among the selected indexes
     QModelIndexList list = ui->treeView->selectionModel()->selectedIndexes();
 
     // Don't use an empty list (with no selected items)
     // Hide the tabViewSettings widget
     if (list.isEmpty()) {
-        // qDebug() << "MainWindow::viewSetting: No selected items";
         ui->tabViewSettings->hide();
         return;
     }
@@ -649,10 +563,7 @@ void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool l
     TreeItem::TreeItemType type = m_VisIVOTreeModel->getType(selectedItemIndex);
 
     if (type == TreeItem::FITSIMAGE) {
-        qDebug() << "mainwindow::itemSelected layer: " << layer;
         if (layer) {
-            qDebug() << "*******++ " << survey << " " << species << " " << transition;
-
             myCallingVtkWindow->addLayerImage(m_VisIVOTreeModel->getFITSIMG(selectedItemIndex),
                                               survey, species, transition);
         } else {
@@ -661,9 +572,6 @@ void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool l
             fitsreader->setSurvey(survey);
             fitsreader->setSpecies(species);
             fitsreader->setTransition(transition);
-
-            qDebug() << "*******++ " << survey << " " << species << " " << transition;
-
             m_OldRenderingWindow =
                     new vtkwindow_new(this, m_VisIVOTreeModel->getFITSIMG(selectedItemIndex));
 
@@ -685,7 +593,6 @@ void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool l
                 m_OldRenderingWindow->downloadStartingLayers(selectedSurvey);
             }
         }
-
     }
     // IF IS NOT FITS IMAGE
     else {
@@ -807,34 +714,17 @@ void MainWindow::on_actionOperation_queue_triggered()
 void MainWindow::on_actionHi_Gal_triggered()
 {
 
-    // HiGal *higalWin = &Singleton<HiGal>::Instance();
-    // higalWin->show();
 }
 
 void MainWindow::on_actionVialactea_triggered()
 {
     ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
-    //   vialactealWin->showMaximized();
-
     vialactealWin->show();
 }
 
 void MainWindow::on_actionCsv_triggered()
 {
-
     genericImport(1);
-
-    /*Browse and choose the filename*/
-    /*
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Import a file"), "", tr("(*.*)"));
-    // It Checks for an empty filename
-    if (fileName.isEmpty()) return;
-    VisIVOImporterDesktop *VI = new VisIVOImporterDesktop("csv",fileName,m_VisIVOTreeModel);
-    VI->doImport();
-    ui->tabWidget->setCurrentWidget(ui->tabViewSettings);
-    ui->tabWidget->setCurrentWidget(ui->tabObjectTree);
-    //ui->treeView->update();
-    */
 }
 
 void MainWindow::on_actionTEST_DC3D_triggered()
@@ -847,17 +737,11 @@ void MainWindow::importFitsDC(QString fileName)
     vtkSmartPointer<vtkFitsReader> fitsReader = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader->is3D = true;
     fitsReader->SetFileName(fileName.toStdString());
-    // fitsReader->GetOutput();
-
-    // TEST
-    // new vtkwindow(this,fitsReader,1);
     new vtkwindow_new(this, fitsReader, 1, myCallingVtkWindow);
 }
 
 void MainWindow::closeEvent(QCloseEvent *)
 {
-    qDebug() << "close";
-
     // vosamp *samp = &Singleton<vosamp>::Instance();
     // samp->unregister();
 
@@ -1123,7 +1007,6 @@ void MainWindow::on_selectFilterComboBox_currentIndexChanged(int index)
 
 void MainWindow::hideAllFilterParameter()
 {
-
     ui->addIdentifierParameterGroupBox->hide();
     ui->appendParameterGroupBox->hide();
 }

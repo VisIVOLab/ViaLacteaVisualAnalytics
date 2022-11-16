@@ -16,24 +16,18 @@
 SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::SEDVisualizerPlot)
 {
-    ////qDebug()<<"SEDVisualizerPlot created";
     ui->setupUi(this);
-
     ui->theorGroupBox->hide();
     ui->greyBodyGroupBox->hide();
 
-    // QString m_sSettingsFile = QApplication::applicationDirPath()+"/setting.ini";
     QString m_sSettingsFile = QDir::homePath()
             .append(QDir::separator())
             .append("VisIVODesktopTemp")
             .append("/setting.ini");
-
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
                                     | QCP::iSelectLegend | QCP::iSelectPlottables
                                     | QCP::iMultiSelect | QCP::iSelectItems);
-
     sed_list = s;
     vtkwin = v;
 
@@ -47,73 +41,42 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
 
     ui->customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
     ui->customPlot->yAxis->setTicker(logTicker);
-
     ui->customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
     ui->customPlot->xAxis->setTicker(logTicker);
-
     ui->customPlot->plotLayout()->insertRow(0);
     ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));
-
     ui->customPlot->xAxis->setLabel("Wavelength [" + QString::fromUtf8("\u00b5") + "m]");
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
 
     minWavelen = std::numeric_limits<int>::max();
-    ;
     maxWavelen = std::numeric_limits<int>::min();
-
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
     QString name;
-
-    // drawNode(s.at(0)->getRootNode());
-
     for (sedCount = 0; sedCount < s.count(); sedCount++) {
-        // qDebug()<<"SEDVisualizerPlot drawing sed "<<QString::number(sedCount);
         sed = s.at(sedCount);
         drawNode(sed->getRootNode());
     }
-
     double x_deltaRange = (maxWavelen - minWavelen) * 0.02;
     double y_deltaRange = (maxFlux - minFlux) * 0.02;
-
-    // ui->customPlot->xAxis->setRange(minWavelen-x_deltaRange, maxWavelen+x_deltaRange);
-    // ui->customPlot->yAxis->setRange(minFlux-y_deltaRange, maxFlux+y_deltaRange);
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
-
-    // qDebug()<<"Wavelen: "<<maxWavelen-minWavelen<<" "<<x_deltaRange;
-    // qDebug()<<"Flux: "<<maxFlux-minFlux<<" "<<y_deltaRange;
-
-    // connect slot that ties some axis selections together (especially opposite axes):
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
-    // connect slots that takes care that when an axis is selected, only that direction can be
-    // dragged and zoomed:
     connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent *)), this, SLOT(mousePress()));
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
     connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent *)), this, SLOT(mouseRelease()));
-
-    // make bottom and left axes transfer their ranges to top and right axes:
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
             SLOT(setRange(QCPRange)));
-
-    // connect some interaction slots:
     connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
             SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
-    //    connect(ui->customPlot,
-    //    SIGNAL(legendDoubleClick(QCPLegend*,QCPAbstractLegendItem*,QMouseEvent*)), this,
-    //    SLOT(legendDoubleClick(QCPLegend*,QCPAbstractLegendItem*)));
-
-    // connect slot that shows a message in the status bar when a graph is clicked:
     connect(ui->customPlot, SIGNAL(plottableClick(QCPAbstractPlottable *, QMouseEvent *)), this,
             SLOT(graphClicked(QCPAbstractPlottable *)));
-
-    // setup policy and connect slot for context menu popup:
     ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this,
             SLOT(contextMenuRequest(QPoint)));
@@ -201,7 +164,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     resultsOutputColumn.insert("bol11", -1);
     resultsOutputColumn.insert("CHI2", -1);
     resultsOutputColumn.insert("DIST", -1);
-
     ui->generatedSedBox->setHidden(true);
     nSED = 0;
     multiSelectMOD = false;
@@ -210,9 +172,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     temporaryRow = 0;
     this->setFocus();
     this->activateWindow();
-
-    // Save QList<SED *> s to a file to be loaded later on
-
     QFile sedFile(QDir::homePath()
                   .append(QDir::separator())
                   .append("VisIVODesktopTemp/tmp_download/SEDList.dat"));
@@ -256,13 +215,10 @@ void SEDVisualizerPlot::sectionClicked(int index)
 {
     if (index >= 1 && index <= 4) {
         ui->histogramPlot->clearPlottables();
-        // qDebug() << "Clicked Index "<<index;
         QVector<double> values = sedFitValues.value(index + 1);
         double min, max, bin_width;
         QString title;
         if (index == 1) { // clump_mass
-            // min=10;
-            // max=200000;
             min = 1;
             max = 5.3;
             bin_width = 0.1;
@@ -306,9 +262,6 @@ void SEDVisualizerPlot::sectionClicked(int index)
         for (int i = 1; i < bin_count; ++i) {
             x1[i] = x1[i - 1] + bin_width;
         }
-
-        // qDebug()<<x1.size();
-
         QCPBars *bars1 = new QCPBars(ui->histogramPlot->xAxis, ui->histogramPlot->yAxis);
         bars1->setWidth(bin_width);
         bars1->setData(x1, y1);
@@ -320,8 +273,6 @@ void SEDVisualizerPlot::sectionClicked(int index)
         QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
         ui->histogramPlot->yAxis->setTicker(fixedTicker);
         fixedTicker->setTickStep(1.0); // tick step shall be 1.0
-        //removed qcp 2
-        //ui->histogramPlot->addPlottable(bars1);
         ui->histogramPlot->replot();
     } else {
         QMessageBox msgBox;
@@ -332,26 +283,19 @@ void SEDVisualizerPlot::sectionClicked(int index)
 
 QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
 {
-    // qDebug()<< "reading SED list";
     int count;
     in >> count;
-    // qDebug()<< "SED list size : "<<QString::number(count);
     for (int i = 0; i < count; i++) {
         SED *sed = new SED();
         in >> sed;
         sedlist.push_back(sed);
     }
-    // qDebug()<< "SED list size : "<<QString::number(sedlist.count());
     return in;
 }
 
 void SEDVisualizerPlot::drawNode(SEDNode *node)
 {
-
-    // qDebug()<<"drawNode "<<node->getDesignation()<< " esiste
-    // "<<visualnode_hash.contains(node->getDesignation());
     if (!visualnode_hash.contains(node->getDesignation())) {
-        ////qDebug()<<"drawNode inside if";
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
 
         if (vtkwin != 0) {
@@ -389,11 +333,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
                        node->getAngle(), node->getArcpix());
 
         cp->setNode(node);
-        //removed qcp 2
-        //ui->customPlot->addItem(cp);
-
         visualnode_hash.insert(node->getDesignation(), cp);
-
         if (node->getWavelength() > maxWavelen)
             maxWavelen = node->getWavelength();
         if (node->getWavelength() < minWavelen)
@@ -404,20 +344,13 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         if (node->getFlux() < minFlux) {
             minFlux = node->getFlux();
         }
-
         all_sed_node.insert(node->getWavelength(), node);
     }
-
-    // //qDebug()<<"drawNode outside if";
-
     QVector<double> x(2), y(2), y_err(2);
 
     x[0] = node->getWavelength();
     y[0] = node->getFlux();
     y_err[0] = node->getErrFlux();
-
-    // //qDebug()<<"drawNode child count "<<QString::number(node->getChild().count());
-
     for (int i = 0; i < node->getChild().count(); i++) {
         drawNode(node->getChild().values()[i]);
 
@@ -437,7 +370,6 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         errorBars->setDataPlottable(ui->customPlot->graph());
         errorBars->setPen(QPen(QColor(180,180,180)));
         errorBars->setSelectable(QCP::stNone);
-
         ui->customPlot->graph()->setPen(QPen(Qt::black));
         ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
         ui->customPlot->graph()->setAntialiased(true);
@@ -462,7 +394,6 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
 {
     // Set an axis label by double clicking on it
     if (part == QCPAxis::spAxisLabel) // only react when the actual axis label is clicked, not tick
-        // label or axis backbone
     {
         bool ok;
         QString newLabel =
@@ -479,8 +410,7 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 {
     // Rename a graph by double clicking on its legend item
     Q_UNUSED(legend)
-    if (item) // only react if item was clicked (user could have clicked on border padding of legend
-        // where there is no item, then item is 0)
+    if (item) // only react if item was clicked (user could have clicked on border padding of legend where there is no item, then item is 0)
     {
         QCPPlottableLegendItem *plItem = qobject_cast<QCPPlottableLegendItem *>(item);
         bool ok;
@@ -496,13 +426,8 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 
 void SEDVisualizerPlot::selectionChanged()
 {
-    if (multiSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be
-        // selected.
-        // //qDebug()<<"selected graph count "<<ui->customPlot->selectedGraphs().count();
-        //        for (int i = 0; i < ui->customPlot->graphCount(); ++i)
-        //            ui->customPlot->graph(i)->setSelected(false);
+    if (multiSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be selected.
         ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(0,0)));//graph(i)->setSelected(true);
-
     }
 }
 
@@ -512,23 +437,14 @@ void SEDVisualizerPlot::mousePress()
 {
     if (multiSelectMOD) {
         QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-        ////qDebug()<<"Selected Items : "<<list_items.size();
     } else {
-
-        // //qDebug()<<"pre - # selzionato: " <<ui->customPlot->selectedGraphs().count();
-
         for (int i = 0; i < ui->customPlot->graphCount(); ++i)
             ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(i-1,i)));//graph(i)->setSelected(true);
-
         ui->customPlot->replot();
-
-        // //qDebug()<<"post - # selzionato: " <<ui->customPlot->selectedGraphs().count();
-        // //qDebug()<<"# grap: "<<ui->customPlot->graphCount();
     }
 
     // if an axis is selected, only allow the direction of that axis to be dragged
     // if no axis is selected, both directions may be dragged
-
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->xAxis->orientation());
     else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
@@ -584,11 +500,7 @@ void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
                 ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
     } else // general context menu on graphs requested
     {
-        //FV removed, since we don't need to remove connections
-        /*
-        * if (ui->customPlot->selectedGraphs().size() > 0)
-        *    menu->addAction("Remove selected connection", this, SLOT(removeSelectedGraph()));
-        */
+
     }
 
     menu->popup(ui->customPlot->mapToGlobal(pos));
@@ -596,7 +508,6 @@ void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 
 void SEDVisualizerPlot::graphClicked(QCPAbstractPlottable *plottable)
 {
-    // ui->statusbar->showMessage(QString("Clicked on graph '%1'.").arg(plottable->name()), 1000);
 }
 
 SEDVisualizerPlot::~SEDVisualizerPlot()
@@ -611,9 +522,6 @@ void SEDVisualizerPlot::on_actionFit_triggered() { }
 bool SEDVisualizerPlot::prepareInputForSedFit(SEDNode *node)
 {
     bool validFit = true;
-
-    // qDebug()<<"Selected Items no multi : ";
-
     sedFitInput.insert(node->getWavelength(), node->getFlux());
     sedFitInputF = QString::number(node->getFlux()) + sedFitInputF;
     sedFitInputErrF = QString::number(node->getErrFlux()) + sedFitInputErrF;
@@ -642,15 +550,11 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     for (int i = 0; i < list_items.size(); i++) {
         QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
         QString refName = "SEDPlotPointCustom";
-        ////qDebug()<<"Class name :"<<className<<" "<<QString::compare(className,refName);
         if (QString::compare(className, refName) == 0) {
-            ////qDebug()<<"Insert item";
             SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(list_items.at(i));
             selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
         }
     }
-    // qDebug()<<"Selected Items : "<<selected_sed_map.size();
-
     if (selected_sed_map.size() >= 2) {
         QMap<double, SEDNode *>::iterator iter;
         iter = selected_sed_map.begin();
@@ -684,15 +588,12 @@ void SEDVisualizerPlot::on_actionLocal_triggered() { }
 
 void SEDVisualizerPlot::readSedFitResultsHeader(QString header)
 {
-    ////qDebug()<<header;
     QList<QString> line_list_string = header.split(',');
     QString field;
     for (int i = 0; i < line_list_string.size(); i++) {
         field = line_list_string.at(i).simplified();
-        ////qDebug()<<field;
         if (resultsOutputColumn.contains(field)) {
             resultsOutputColumn.insert(field, i);
-            ////qDebug()<<field<<"->"<<resultsOutputColumn.value(field);
         }
     }
 }
@@ -710,22 +611,13 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
     QVector<double> clamp_upper_age;
     QVector<double> compact_mass_fraction;
     QVector<double> dust_temp;
-
-    // qDebug()<<"filename: "<<filename;
     QFile file(filename);
-    // QFile file(qApp->applicationDirPath()+"/sedfit_output.dat");
     if (!file.open(QIODevice::ReadOnly)) {
-        // qDebug() << file.errorString();
         return;
     }
-    // read, and skip the first line (header)
-    // file.readLine();
     QString header = file.readLine();
-
     outputSedResults.append(header);
     readSedFitResultsHeader(header);
-    //  QStringList wordList;
-    int i = 0;
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setRowCount(0);
     ui->resultsTableWidget->setColumnCount(columnNames.size());
@@ -733,13 +625,8 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
 
     while (!file.atEnd()) {
         QByteArray line = file.readLine();
-        // wordList.append(line.split(',').first());
         outputSedResults.append(line);
-
         QList<QByteArray> line_list_string = line.split(',');
-
-        ////qDebug()<<i<<" line size = "<<line_list_string.length();
-
         QList<QByteArray> tmp_string = line_list_string;
         id_str = line_list_string.first().simplified();
         dist_str = line_list_string.last().simplified();
@@ -750,8 +637,6 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
         clamp_upper_age_str = line_list_string.at(4).simplified();
         compact_mass_fraction_str = line_list_string.at(3).simplified();
         dust_temp_str = line_list_string.at(5).simplified();
-        //    //qDebug()<<"id_ "<<id_str<<" dist_ "<<dist_str<<" chi2 "<<chi_str;
-        //   //qDebug()<<"clamp_mass_str "<<clamp_mass_str;
         clamp_mass.append(clamp_mass_str.toDouble());
         clamp_upper_age.append(clamp_upper_age_str.toDouble());
         dust_temp.append(dust_temp_str.toDouble());
@@ -783,23 +668,12 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
     iter = results.begin();
     iterLines = resultsLines.begin();
     for (int i = 0; i < nFitsResults; i++, iter++, iterLines++) {
-        // for(int i=0;i<results.size();i++,iter++,iterLines++){
         int new_id = iter.value();
         if (i == 0) { // Plot only the best one
             QString query = "SELECT * FROM vlkb_compactsources.sed_models where id="
                     + QString::number(new_id);
-            //   //qDebug()<<"query: " << query;
-            //   //qDebug()<<"color pre : blue " << Qt::blue;
             new VLKBQuery(query, vtkwin, "model", this, Qt::blue);
         }
-        /*
-        else{
-            if(i<10){
-            QString query="SELECT * FROM vlkb_compactsources.sed_models where id="+
-        QString::number(new_id); new VLKBQuery(query,vtkwin, "model", this, Qt::cyan);
-
-            }
-        }*/
         QList<QByteArray> line_list_string = iterLines.value();
         ui->resultsTableWidget->insertRow(i);
         for (int j = 0; j < columnNames.length(); j++) {
@@ -821,55 +695,30 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
 {
     int id;
     double chi2 = 99999999999;
-    double tmp;
     QString chi_str, id_str, dist_str;
     QMap<double, int> results;
     QMap<double, QList<QByteArray>> resultsLines;
-
-    //   //qDebug()<<"filename: "<<filename;
     QFile file(filename);
-    // QFile file(qApp->applicationDirPath()+"/sedfit_output.dat");
     if (!file.open(QIODevice::ReadOnly)) {
-        //  //qDebug() << file.errorString();
         return;
     }
-    // read, and skip the first line (header)
-    // file.readLine();
     QString header = file.readLine();
 
     outputSedResults.append(header);
     readSedFitResultsHeader(header);
-    //  QStringList wordList;
-    int i = 0;
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setRowCount(0);
     ui->resultsTableWidget->setColumnCount(columnNames.size());
     ui->resultsTableWidget->setHorizontalHeaderLabels(columnNames);
     while (!file.atEnd()) {
         QByteArray line = file.readLine();
-        // wordList.append(line.split(',').first());
         outputSedResults.append(line);
-
         QList<QByteArray> line_list_string = line.split(',');
-
-        ////qDebug()<<i<<" line size = "<<line_list_string.length();
-
-        /*
-            ui->resultsTableWidget->insertRow(i);
-            for(int j=0;j<columnNames.length();j++){
-                if(resultsOutputColumn.value(columnNames.at(j))!=-1){
-                    ui->resultsTableWidget->setItem(i, j, new
-           QTableWidgetItem(QString(line_list_string.at(resultsOutputColumn.value(columnNames.at(j))).simplified())));
-                }
-            }
-            i++;
-            */
         QList<QByteArray> tmp_string = line_list_string;
         id_str = line_list_string.first().simplified();
         dist_str = line_list_string.last().simplified();
         line_list_string.removeLast();
         chi_str = line_list_string.last().simplified();
-        //  //qDebug()<<"id_ "<<id_str<<" dist_ "<<dist_str<<" chi2 "<<chi_str;
         results.insert(chi_str.toDouble(), id_str.toInt());
         resultsLines.insert(chi_str.toDouble(), tmp_string);
         if (chi_str.toDouble() < chi2) {
@@ -879,8 +728,6 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
         }
     }
 
-    // qDebug()<<"id: "<<id<<" chi2: "<<chi2<<"dist: "<<dist;
-    // qDebug()<<"results chi2 :"<<results.firstKey();
     int threshold = 5;
     int nFitsResults = results.size() * threshold / 100;
     if (nFitsResults < 1 && results.size() >= 1) {
@@ -889,16 +736,12 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
     if (nFitsResults <= 10) {
         nFitsResults = results.size();
     }
-    // qDebug()<<"All Fits :"<<QString::number(results.size());
-    // qDebug()<<"results chi2 :"<<results.firstKey()<<" nFitsResults:
-    // "<<QString::number(nFitsResults); qDebug()<<"resultsLines chi2 :"<<resultsLines.firstKey();
-    //   //qDebug() << wordList;
+
     QMap<double, int>::iterator iter;
     QMap<double, QList<QByteArray>>::iterator iterLines;
     iter = results.begin();
     iterLines = resultsLines.begin();
     for (int i = 0; i < nFitsResults; i++, iter++, iterLines++) {
-        // for(int i=0;i<results.size();i++,iter++,iterLines++){
         QList<QByteArray> line_list_string = iterLines.value();
         ui->resultsTableWidget->insertRow(i);
         for (int j = 0; j < columnNames.length(); j++) {
@@ -917,7 +760,6 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
 void SEDVisualizerPlot::loadSedFitThin(QString filename)
 {
 
-    qDebug() << "leggo thin: " << filename;
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setColumnCount(6);
     ui->resultsTableWidget->setRowCount(0);
@@ -928,11 +770,8 @@ void SEDVisualizerPlot::loadSedFitThin(QString filename)
                                                       << "fbeta"
                                                       << "lum");
     ui->resultsTableWidget->insertRow(0);
-
     QFile filepar(filename);
     if (!filepar.open(QIODevice::ReadOnly)) {
-        // qDebug() << filepar.errorString();
-        // qDebug() << "ERRORE Parametri";
         return;
     }
     QString line = filepar.readLine();
@@ -948,9 +787,6 @@ void SEDVisualizerPlot::loadSedFitThin(QString filename)
 
 void SEDVisualizerPlot::loadSedFitThick(QString filename)
 {
-
-    qDebug() << "leggo thick " << filename;
-
     ui->resultsTableWidget->clearContents();
     ui->resultsTableWidget->setColumnCount(9);
     ui->resultsTableWidget->setRowCount(0);
@@ -966,7 +802,6 @@ void SEDVisualizerPlot::loadSedFitThick(QString filename)
     ui->resultsTableWidget->insertRow(0);
     QFile filepar(filename);
     if (!filepar.open(QIODevice::ReadOnly)) {
-        // qDebug() << filepar.errorString();
         return;
     }
     QString line = filepar.readLine();
@@ -983,7 +818,6 @@ void SEDVisualizerPlot::loadSedFitThick(QString filename)
 void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList,
                                          Qt::GlobalColor color)
 {
-    // qDebug()<<"color set model fit : " << color;
     QFile modelFile(QDir::homePath()
                     .append(QDir::separator())
                     .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
@@ -993,38 +827,18 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
         QDataStream out(&modelFile);
         out << headerAndValueList; // serialize the object
     }
-    /*
-        QVectorIterator<QStringList> i(headerAndValueList);
-        int count=0;
-        while (i.hasNext()){
-            //qDebug()<<"List: "<<QString::number(count);
-            QStringList list= i.next();
-            foreach (const QString &str, list) {
-                //qDebug()<<str;
-            }
-            count++;
-        }
-            //modelFile.write()
-    }*/
     QVector<double> x, y;
     double scale;
     QCPGraph *graph = ui->customPlot->addGraph();
     QList<SEDPlotPointCustom *> points;
     for (QMap<QString, double>::iterator it = modelFitBands.begin(); it != modelFitBands.end();
          ++it) {
-
-        //  scale= 1/sqrt(dist);
         scale = 1000 / pow(dist, 2);
-        // scale=1;
         x.append(it.value());
         int index = headerAndValueList.at(0).indexOf(it.key());
         y.append(headerAndValueList.at(1).at(index).toDouble() * scale);
-        // y.append(headerAndValueList.at(1).at(index).toDouble());
-
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3, vtkwin);
         cp->setAntialiased(true);
-
-        // cp->setPos(it.value(), headerAndValueList.at(1).at(index).toDouble()*scale);
         cp->setPos(it.value(), headerAndValueList.at(1).at(index).toDouble() * scale);
 
         cp->setDesignation("");
@@ -1033,33 +847,21 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
         cp->setLat(0);
         cp->setLon(0);
         points.push_back(cp);
-        //removed qcp 2
-        //ui->customPlot->addItem(cp);
     }
-
-    // qDebug()<<"x:\n"<<x;
-    // qDebug()<<"y:\n"<<y;
-
-    // ui->customPlot->addGraph();
-
-    // qDebug()<<"temporaryMOD : "<<temporaryMOD;
 
     if (color == Qt::blue || doubleClicked) {
         addNewSEDCheckBox("Theoretical Fit");
-        // qDebug()<<"Adding points of SED "<<QString::number(nSED-1);
         sedGraphPoints.insert(nSED - 1, points);
         sedGraphs.push_back(graph);
         doubleClicked = false;
     }
 
     if (temporaryMOD) {
-        // qDebug()<<"Temporary MOD";
         temporaryGraph = graph;
         temporaryGraphPoints = points;
     }
 
     ui->customPlot->graph()->setData(x, y);
-    // ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 6));
     ui->customPlot->graph()->setPen(QPen(color));
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
     ui->customPlot->replot();
@@ -1075,7 +877,6 @@ void SEDVisualizerPlot::on_actionScreenshot_triggered()
     QImage qImage = qPixMap.toImage();
 
     QString fileName = QFileDialog::getSaveFileName(this, "Save screenshot", "", ".png");
-    // qDebug()<<"pre "<<fileName;
     if (!fileName.endsWith(".png", Qt::CaseInsensitive))
         fileName.append(".png");
     bool b = qImage.save(fileName);
@@ -1083,13 +884,11 @@ void SEDVisualizerPlot::on_actionScreenshot_triggered()
 
 void SEDVisualizerPlot::on_actionCollapse_triggered()
 {
-
     QPen pen;
     pen.setStyle(Qt::DashLine);
     pen.setColor(Qt::lightGray);
 
     for (int i = 0; i < originalGraphs.size(); i++) {
-        // originalGraphs.push_back(ui->customPlot->graph(i));
         originalGraphs.at(i)->setPen(pen);
     }
 
@@ -1101,19 +900,14 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     int cnt = 0;
     double j;
     foreach (j, all_sed_node.uniqueKeys()) {
-        // qDebug() <<"j: "<< j;
         QList<SEDNode *> node_list_tmp = all_sed_node.values(j);
         double flux_sum = 0;
         double err_flux_sum = 0;
-
         if (cnt != 0) {
             old_tmp_node = tmp_node;
         }
-
         tmp_node = new SEDNode();
-
         for (int z = 0; z < node_list_tmp.count(); z++) {
-            // qDebug() <<"\t"<< node_list_tmp.at(z)->getDesignation();
             flux_sum += node_list_tmp.at(z)->getFlux();
             err_flux_sum += node_list_tmp.at(z)->getErrFlux();
         }
@@ -1127,7 +921,6 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
             old_tmp_node->setParent(tmp_node);
             tmp_node->setChild(old_tmp_node);
         }
-
         x.append(j);
         y.append(flux_sum);
 
@@ -1146,7 +939,6 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     }
 
     coll_sed->setRootNode(tmp_node);
-
     collapsedGraph = ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
@@ -1156,7 +948,6 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     sed_list.insert(0, coll_sed);
 }
 
-/// Currently disabled
 void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
 {
     sedFitInputFflag = "]";
@@ -1182,11 +973,8 @@ void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
         loading->setFocus();
 
         ui->outputTextBrowser->setText("");
-
         process = new QProcess();
-
         process->setProcessChannelMode(QProcess::MergedChannels);
-
         connect(process, SIGNAL(readyReadStandardError()), this, SLOT(onReadyReadStdOutput()));
         connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(onReadyReadStdOutput()));
         connect(process, SIGNAL(finished(int)), this, SLOT(finishedTheoreticalLocaleFit()));
@@ -1262,8 +1050,6 @@ void SEDVisualizerPlot::addNewSEDCheckBox(QString label)
 
 void SEDVisualizerPlot::on_SEDCheckboxClicked(int sedN)
 {
-    qDebug() << "processing checkbox " << sedN;
-    qDebug() << "sedGraphs.size() " << QString::number(sedGraphs.size());
     QCPGraph *graph = sedGraphs.at(sedN);
     if (graph->visible()) {
         graph->setVisible(false);
@@ -1439,13 +1225,6 @@ void SEDVisualizerPlot::doThinRemoteFit()
     QString srefRange = "[" + sd_thin->ui->srefOpacityLineEdit->text() + ", "
             + sd_thin->ui->srefWavelengthLineEdit->text() + "]";
 
-    qDebug() << " java -jar " << QApplication::applicationDirPath().append("/vsh-ws-client.jar")
-             << " \"sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-                + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text()
-                + "," + srefRange
-                + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
-                + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'";
-
     process->setWorkingDirectory(QApplication::applicationDirPath());
     process->start("java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
                    + " \"sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF
@@ -1453,11 +1232,6 @@ void SEDVisualizerPlot::doThinRemoteFit()
                    + sd_thin->ui->distLineEdit->text() + "," + srefRange
                    + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
                    + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\" ");
-    qDebug() << "sedfitgrid_engine_thin_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-                + mrange + "," + trange + "," + brange + "," + sd_thin->ui->distLineEdit->text()
-                + "," + srefRange
-                + ",lambdatn,flussotn,mtn,ttn,btn,ltn,dmtn,dttn,errorbars=" + sedFitInputErrF
-                + ",ulimit=" + sedFitInputUlimitString + ",printfile= 'sedfit_output.dat'\"";
 
     ui->outputTextBrowser->append(
                 "java -jar " + QApplication::applicationDirPath().append("/vsh-ws-client.jar")
@@ -1473,7 +1247,6 @@ void SEDVisualizerPlot::doThinRemoteFit()
 
 void SEDVisualizerPlot::doThickRemoteFit()
 {
-
     sd_thick->close();
     ui->outputTextBrowser->setText("");
 
@@ -1507,14 +1280,6 @@ void SEDVisualizerPlot::doThickRemoteFit()
                    + ",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="
                    + sedFitInputErrF + ",ulimit=" + sedFitInputUlimitString
                    + ",printfile= 'sedfit_output.dat'\" ");
-
-    qDebug() << "sedfitgrid_engine_thick_vialactea," + sedFitInputW + "," + sedFitInputF + ","
-                + sd_thick->ui->sizeLineEdit->text() + "," + trange + " ," + brange + " ,"
-                + l0range + ", " + sfactrange + "," + sd_thick->ui->distLineEdit->text() + ","
-                + srefRange
-                + ",lambdagb,flussogb,mtk,ttk,btk,l0,sizesec,ltk,dmtk,dtk,dl0,errorbars="
-                + sedFitInputErrF + ",ulimit=" + sedFitInputUlimitString
-                + ",printfile= 'sedfit_output.dat'\" ";
 }
 
 void SEDVisualizerPlot::finishedThinLocalFit()
@@ -1913,14 +1678,6 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
                     + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
                     + ui->submmLineEdit->text() + "],use_wave=" + sedFitInputW
                     + ",outdir='./',delta_chi2=" + ui->delta_chi2_lineEdit->text() + ")\" ");
-
-        qDebug() << "vialactea_tap_sedfit_v7(" + sedFitInputW + "," + sedFitInputF + ","
-                    + sedFitInputErrF + "," + sedFitInputFflag + ","
-                    + ui->distTheoLineEdit->text() + "," + ui->prefilterLineEdit->text()
-                    + ",sed_weights=[" + ui->mid_irLineEdit->text() + ","
-                    + ui->far_irLineEdit->text() + "," + ui->submmLineEdit->text()
-                    + "],use_wave=" + sedFitInputW
-                    + ",outdir='./',delta_chi2=" + ui->delta_chi2_lineEdit->text() + ")\" ";
     }
 }
 

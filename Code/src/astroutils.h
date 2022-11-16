@@ -21,6 +21,7 @@ public:
     static void GetRectSize(std::string file, double *values);
     static double GetRadiusSize(std::string file);
     static bool CheckOverlap(std::string f1, std::string f2, bool full = false);
+    static int calculateResizeFactor(long size, long maxSize);
 
 private:
     static WorldCoor *GetWCSFITS(char *filename, int verbose);

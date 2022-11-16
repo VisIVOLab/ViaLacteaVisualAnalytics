@@ -216,6 +216,7 @@ private:
     void operator=(const vtkLegendScaleActorWCS &); // Not implemented
     vtkSmartPointer<vtkFitsReader> myfits;
     int wcs;
+
 };
 
 #endif

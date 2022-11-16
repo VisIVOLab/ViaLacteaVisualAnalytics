@@ -19,6 +19,9 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+
+#include <QDebug>
+
 using namespace boost::algorithm;
 
 extern void setsys();
@@ -66,13 +69,6 @@ void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double
     AstroUtils().xy2sky(file, 0, wc->nypix, tl, WCS_GALACTIC);
     AstroUtils().xy2sky(file, wc->nxpix, 0, br, WCS_GALACTIC);
 
-    /*
-    *top = tl[1];
-    *left = tl[0];
-    *bottom = br[1];
-    *right = br[0];
-    */
-
     *top = fmax(tl[1], br[1]);
     *bottom = fmin(tl[1], br[1]);
     *left = fmax(tl[0], br[0]);
@@ -96,6 +92,17 @@ bool AstroUtils::CheckOverlap(std::string f1, std::string f2, bool full)
 
         return L1 >= R2 && R1 <= L2 && T1 >= B2 && B1 <= T2;
     }
+}
+
+int AstroUtils::calculateResizeFactor(long size, long maxSize)
+{
+    qDebug() << Q_FUNC_INFO << "size" << size << "maxSize" << maxSize;
+    if (maxSize <= 0 || size <= maxSize)
+        return 1;
+    double a = 1.0 * maxSize / size;
+    double b = cbrt(a);
+    double c = ceil(b);
+    return ceil(cbrt(1.0 * size / maxSize));
 }
 
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
@@ -544,7 +551,7 @@ WorldCoor *AstroUtils::GetFITSWCS(char *filename, char *header, int verbose, dou
         wcs->xinc = *dra * 2.0 / (double)wcs->nxpix;
         wcs->yinc = *ddec * 2.0 / (double)wcs->nypix;
         /* hchange (header,"PLTRAH","PLT0RAH");
-    wcs->plate_fit = 0; */
+        wcs->plate_fit = 0; */
     }
 
     /* Convert center to desired coordinate system */

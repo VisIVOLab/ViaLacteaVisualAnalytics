@@ -5,7 +5,6 @@
 LoadingWidget::LoadingWidget(QWidget *parent) : QWidget(parent), ui(new Ui::LoadingWidget)
 {
     ui->setupUi(this);
-    // this->setWindowFlags(this->windowFlags() |  Qt::WindowStaysOnTopHint);
     reply = 0;
 }
 
@@ -47,16 +46,13 @@ void LoadingWidget::loadingEnded()
 {
     ui->progressBar->setMaximum(100);
     ui->progressBar->setValue(100);
-
     ui->dismissPushButton->setEnabled(true);
 }
 
 void LoadingWidget::on_dismissPushButton_clicked()
 {
     if (reply) {
-        qDebug() << "Stop request " << qPrintable(reply->url().toString());
         reply->abort();
         reply = 0;
     }
-    // close();
 }

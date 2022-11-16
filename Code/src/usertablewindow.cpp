@@ -74,10 +74,10 @@ void UserTableWindow::getSurveysData()
 
     connect(nam, &QNetworkAccessManager::authenticationRequired, this,
             [](QNetworkReply *reply, QAuthenticator *authenticator) {
-                Q_UNUSED(reply);
-                authenticator->setUser(IA2_TAP_USER);
-                authenticator->setPassword(IA2_TAP_PASS);
-            });
+        Q_UNUSED(reply);
+        authenticator->setUser(IA2_TAP_USER);
+        authenticator->setPassword(IA2_TAP_PASS);
+    });
 
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
         if (reply->error() == QNetworkReply::NoError) {
@@ -86,10 +86,8 @@ void UserTableWindow::getSurveysData()
             surveysData.removeFirst(); // Remove column names line
             buildUI(surveysData);
         } else {
-            qDebug() << "UserTableWindow.getSurveysData.Error" << reply->errorString();
             QMessageBox::critical(this, "Error", reply->errorString());
         }
-
         reply->deleteLater();
         nam->deleteLater();
     });
@@ -178,7 +176,6 @@ void UserTableWindow::readFile()
 {
     QFile file(filepath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "UserTableWindow.readFile" << filepath << file.errorString();
         QMessageBox::critical(this, "Error", file.errorString());
         return;
     }
@@ -221,7 +218,6 @@ void UserTableWindow::loadSourceTable(const QStringList &columns)
     QStringList tableColumns;
     // Prepend a new empty column for the checkbox
     tableColumns << QString() << columns;
-
     ui->sourcesTable->setColumnCount(tableColumns.count());
     ui->sourcesTable->setHorizontalHeaderLabels(tableColumns);
 
@@ -274,18 +270,18 @@ void UserTableWindow::query(int index)
     auto vlkb = new VialacteaInitialQuery();
     connect(vlkb, &VialacteaInitialQuery::searchDone, this,
             [this, vlkb, source, index](QList<QMap<QString, QString>> results) {
-                source->parseSearchResults(results);
+        source->parseSearchResults(results);
 
-                if ((index + 1) < selectedSources.count()) {
-                    query(index + 1);
-                } else {
-                    updateTables();
-                    ui->tabWidget->setTabEnabled(1, true);
-                    ui->tabWidget->setTabEnabled(2, true);
-                    ui->tabWidget->setCurrentIndex(1);
-                }
-                vlkb->deleteLater();
-            });
+        if ((index + 1) < selectedSources.count()) {
+            query(index + 1);
+        } else {
+            updateTables();
+            ui->tabWidget->setTabEnabled(1, true);
+            ui->tabWidget->setTabEnabled(2, true);
+            ui->tabWidget->setCurrentIndex(1);
+        }
+        vlkb->deleteLater();
+    });
 
     if (ui->selectionComboBox->currentText() == "Point") {
         vlkb->searchRequest(source->getGlon(), source->getGlat(),
@@ -302,7 +298,7 @@ void UserTableWindow::updateTables()
     ui->cubesTable->setRowCount(0);
 
     const auto NewSurveyCell = [this](const QString &surveyName, const SourceCutouts *source,
-                                      bool is3D) {
+            bool is3D) {
         Survey *survey = (is3D ? surveys3d.value(surveyName) : surveys2d.value(surveyName));
 
         QString tooltip;

@@ -18,7 +18,6 @@ OperationQueue::~OperationQueue()
 
 int OperationQueue::addOperation(QString name)
 {
-
     int id = ui->tableWidget->rowCount();
     ui->tableWidget->insertRow(id);
 
@@ -36,7 +35,6 @@ int OperationQueue::addOperation(QString name)
 
 void OperationQueue::editOperation(int id, QString status)
 {
-
     QTableWidgetItem *statusItem = new QTableWidgetItem(status);
 
     ui->tableWidget->setItem(id, 2, statusItem);

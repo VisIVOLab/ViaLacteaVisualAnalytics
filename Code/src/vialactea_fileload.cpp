@@ -27,7 +27,6 @@ Vialactea_FileLoad::Vialactea_FileLoad(QString f, vtkwindow_new *v, QWidget *par
     : QWidget(parent), ui(new Ui::Vialactea_FileLoad)
 {
     ui->setupUi(this);
-
     vtkwin = v;
     init(f);
 }
@@ -35,9 +34,7 @@ Vialactea_FileLoad::Vialactea_FileLoad(QString f, vtkwindow_new *v, QWidget *par
 void Vialactea_FileLoad::init(QString f)
 {
     filename = f;
-
     ui->filenameLabel->setText(filename);
-
     if (filename.endsWith(".fits", Qt::CaseInsensitive)) {
         ui->mapRadioButton->setChecked(true);
         ui->waveLabel->setVisible(false);
@@ -62,35 +59,13 @@ void Vialactea_FileLoad::setCatalogueActive()
 
 void Vialactea_FileLoad::on_okPushButton_clicked()
 {
-
     if (ui->mapRadioButton->isChecked()) {
-        /*
 
-        vtkSmartPointer<vtkFitsReader> fitsReader = vtkSmartPointer<vtkFitsReader>::New();
-        fitsReader->SetFileName(filename.toLocal8Bit().data());
-        QFileInfo infoFile = QFileInfo(filename);
-
-        ViaLactea *vialacteaWindow = &Singleton<ViaLactea>::Instance();
-
-        // Modify the TreeModel
-        int rows = vialacteaWindow->getTreeModel()->rowCount();
-        vialacteaWindow->getTreeModel()->insertRow(rows);
-        vialacteaWindow->getTreeModel()->setFITSIMG(vialacteaWindow->getTreeModel()->index(rows,0),fitsReader);
-        vialacteaWindow->getTreeModel()->setData(vialacteaWindow->getTreeModel()->index(rows,0),QIcon(
-        ":/icons/VME_IMAGE.bmp" ));
-        vialacteaWindow->getTreeModel()->setData(vialacteaWindow->getTreeModel()->index(rows,1),infoFile.fileName());
-        // end: Modify the TreeModel
-
-
-        this->close();
-*/
     } else if (ui->catalogueRadioButton->isChecked()) {
-        qDebug() << "catalogue " << silentLoad;
         MainWindow *w = &Singleton<MainWindow>::Instance();
         w->importAscii(filename, ui->waveLineEdit->text(), true, false, vtkwin);
         if (!silentLoad)
             this->close();
-
     }
 
     else if (ui->bandmergedradioButton->isChecked()) {
@@ -109,7 +84,6 @@ void Vialactea_FileLoad::importFilaments()
 {
     MainWindow *w = &Singleton<MainWindow>::Instance();
     w->importAsciiFilaments(filename, vtkwin);
-    // w->importAscii(filename,"",true,true,vtkwin);
     this->close();
 }
 
@@ -124,14 +98,12 @@ void Vialactea_FileLoad::import3dSelection()
 {
     MainWindow *w = &Singleton<MainWindow>::Instance();
     w->importAscii3dSelection(filename, vtkwin);
-    // w->importAscii(filename,"",true,true,vtkwin);
     this->close();
 }
 
 void Vialactea_FileLoad::on_groupBox_toggled(bool arg1)
 {
     if (ui->catalogueRadioButton->isChecked()) {
-
         ui->waveLabel->setVisible(true);
         ui->waveLineEdit->setVisible(true);
     } else {

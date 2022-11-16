@@ -233,7 +233,6 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
             if (position > indentations.last()) {
                 // The last child of the current parent is now the new parent
                 // unless the current parent has no children.
-
                 if (parents.last()->childCount() > 0) {
                     parents << parents.last()->child(parents.last()->childCount() - 1);
                     indentations << position;
@@ -255,7 +254,6 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
         number++;
     }
 }
-//****************
 
 Qt::ItemFlags TreeModel::flags(const QModelIndex &index) const
 {
@@ -272,8 +270,8 @@ Qt::ItemFlags TreeModel::flags(const QModelIndex &index) const
     Qt:ItemIsUserCheckable       	It can be checked or unchecked by the user.
     Qt:ItemIsEnabled             	The user can interact with the item.
     Qt:ItemIsTristate            	The item is checkable with three separate states.
-*/
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable; // | Qt::ItemIsUserCheckable;
+    */
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 bool TreeModel::setTable(const QModelIndex &index, VSTableDesktop *table)
 {
@@ -302,7 +300,6 @@ bool TreeModel::setVTP(const QModelIndex &index, vtkLODActor *pActor)
     return result;
 }
 
-// bool TreeModel::setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkImageActor> imgActor)
 bool TreeModel::setFITSIMG(const QModelIndex &index, vtkSmartPointer<vtkFitsReader> fitsReader)
 {
     TreeItem *item = getItem(index);
@@ -341,8 +338,6 @@ vtkLODActor *TreeModel::getVTP(const QModelIndex &index)
     TreeItem *item = getItem(index);
     return item->getVTP();
 }
-
-// vtkImageActor *TreeModel::getFITSIMG(const QModelIndex &index)
 
 vtkSmartPointer<vtkFitsReader> TreeModel::getFITSIMG(const QModelIndex &index)
 {
@@ -389,7 +384,6 @@ void TreeModel::activeViewListTraverse(QModelIndex index)
     int rows = this->getItem(index)->childCount();
     if (rows > 0) {
         for (int i = 0; i < rows; i++) {
-            // TreeItem nextItem = this->getItem(index)->child(i);
             QModelIndex nextIndex = this->index(i, 0, index);
             activeViewListTraverse(nextIndex);
         }

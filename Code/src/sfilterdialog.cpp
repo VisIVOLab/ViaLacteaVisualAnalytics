@@ -11,19 +11,15 @@ SFilterDialog::SFilterDialog(Catalogue *c, QWidget *parent)
     : QDialog(parent), ui(new Ui::SFilterDialog), catalogue(c)
 {
     ui->setupUi(this);
-
     QFont font("monospace");
     font.setStyleHint(QFont::Monospace);
     ui->textPredicate->setFont(font);
-
     ui->comboFields->addItems(fields);
     ui->comboMorphLabel->addItems(morph_label_val);
     ui->comboClassLabel->addItems(class_label_val);
     ui->comboSourcenessLabel->addItems(sourceness_label_val);
-
     model = new QStringListModel(this);
     ui->listView->setModel(model);
-
     ui->textPredicate->clear();
 }
 
@@ -40,21 +36,21 @@ void SFilterDialog::on_btnFilter_clicked()
     py3->setProcessChannelMode(QProcess::MergedChannels);
     connect(py3, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
             [this, py3](int exitCode, QProcess::ExitStatus exitStatus) {
-                Q_UNUSED(exitStatus);
-                QStringList ids = QString::fromUtf8(py3->readAll()).trimmed().split('\n');
-                ids.removeAll(QString()); // Remove empty strings
-                model->setStringList(ids);
+        Q_UNUSED(exitStatus);
+        QStringList ids = QString::fromUtf8(py3->readAll()).trimmed().split('\n');
+        ids.removeAll(QString()); // Remove empty strings
+        model->setStringList(ids);
 
-                auto win = qobject_cast<vtkwindow_new *>(this->parent());
-                if (exitCode == 0 && !ids.isEmpty()) {
-                    win->showFilteredSources(ids);
-                    ui->btnConfirm->setEnabled(true);
-                } else {
-                    win->hideFilteredSources();
-                    ui->btnConfirm->setEnabled(false);
-                }
-                py3->deleteLater();
-            });
+        auto win = qobject_cast<vtkwindow_new *>(this->parent());
+        if (exitCode == 0 && !ids.isEmpty()) {
+            win->showFilteredSources(ids);
+            ui->btnConfirm->setEnabled(true);
+        } else {
+            win->hideFilteredSources();
+            ui->btnConfirm->setEnabled(false);
+        }
+        py3->deleteLater();
+    });
 
     QDir wd = QApplication::applicationDirPath();
 

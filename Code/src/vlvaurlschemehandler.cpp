@@ -8,7 +8,6 @@ VLVAUrlSchemeHandler::VLVAUrlSchemeHandler(QObject *parent) : QWebEngineUrlSchem
 void VLVAUrlSchemeHandler::requestStarted(QWebEngineUrlRequestJob *job)
 {
     QUrlQuery query(job->requestUrl().query());
-
     QString code;
     foreach (auto q, query.queryItems()) {
         if (q.first.compare(QString("code")) == 0) {

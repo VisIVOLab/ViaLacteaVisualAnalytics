@@ -43,6 +43,5 @@ void VSObjectDesktop::printSelf()
 {
     std::clog << "Name: " << m_name << std::endl;
     std::clog << "Description: " << m_description << std::endl;
-
     return;
 }
