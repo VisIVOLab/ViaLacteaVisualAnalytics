@@ -31,11 +31,12 @@
 // computed distances may provide users the wrong sense of scale. These
 // effects are not present when parallel projection is enabled.
 
-#ifndef vtkLegendScaleActor_h
-#define vtkLegendScaleActor_h
+#ifndef vtkLegendScaleActorWCS_h
+#define vtkLegendScaleActorWCS_h
 
 #include "vtkCoordinate.h" // For vtkViewportCoordinateMacro
 #include "vtkfitsreader.h"
+#include "vtkfitsreader2.h"
 #include "vtkImageActor.h"
 #include "vtkProp.h"
 #include "vtkRenderingAnnotationModule.h" // For export macro
@@ -50,18 +51,18 @@ class vtkTextMapper;
 class vtkPoints;
 class vtkCoordinate;
 
-class VTKRENDERINGANNOTATION_EXPORT vtkLegendScaleActor : public vtkProp
+class VTKRENDERINGANNOTATION_EXPORT vtkLegendScaleActorWCS : public vtkProp
 {
 public:
     // Description:
     // Instantiate the class.
-    static vtkLegendScaleActor *New();
-    void setFitsFile(vtkSmartPointer<vtkFitsReader> fits);
-    void setFitsFile(const std::string &fitspath);
+    static vtkLegendScaleActorWCS *New();
+    void setFitsFile(std::string fits);
+    void setWCS(int wcs);
 
     // Description:
     // Standard methods for the class.
-    vtkTypeMacro(vtkLegendScaleActor, vtkProp);
+    vtkTypeMacro(vtkLegendScaleActorWCS, vtkProp);
     // void PrintSelf(ostream& os, vtkIndent indent);
     void PrintHeader(ostream &os, vtkIndent indent) override;
     void PrintTrailer(std::ostream &os, vtkIndent indent) override;
@@ -170,8 +171,8 @@ public:
     virtual int RenderOpaqueGeometry(vtkViewport *);
 
 protected:
-    vtkLegendScaleActor();
-    ~vtkLegendScaleActor();
+    vtkLegendScaleActorWCS();
+    ~vtkLegendScaleActorWCS();
 
     int LabelMode;
     int RightBorderOffset;
@@ -206,10 +207,16 @@ protected:
 
     vtkTimeStamp BuildTime;
 
+    vtkActor2D * xLabel;
+    vtkTextMapper *xLabelMapper;
+    vtkActor2D * yLabel;
+    vtkTextMapper *yLabelMapper;
+
 private:
-    vtkLegendScaleActor(const vtkLegendScaleActor &); // Not implemented
-    void operator=(const vtkLegendScaleActor &); // Not implemented
-    std::string fitsPath;
+    vtkLegendScaleActorWCS(const vtkLegendScaleActorWCS &); // Not implemented
+    void operator=(const vtkLegendScaleActorWCS &); // Not implemented
+    int wcs;
+    std::string myfits;
 };
 
 #endif

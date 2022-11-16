@@ -148,11 +148,15 @@ void AstroUtils::xy2sky(std::string map, float x, float y, double *coord, int wc
     strcpy(fn, map.c_str());
     wcs = GetWCSFITS(fn, 0);
     wcs->sysout = wcs_type;
+    wcs->degout = 1; /* Output degrees instead of hh:mm:ss dd:mm:ss */
     // force the set of wcs in degree
     setwcsdeg(wcs, 1);
 
-    if (wcs_type == WCS_GALACTIC) {
+    if (wcs_type == WCS_GALACTIC || wcs_type == WCS_ECLIPTIC || wcs_type == WCS_J2000) {
         wcs->eqout = 2000.0;
+    }
+    else if (wcs_type == WCS_B1950) {
+        wcs->eqout = 1950.0;
     }
 
     if (pix2wcst(wcs, x, y, wcstring, lstr)) {

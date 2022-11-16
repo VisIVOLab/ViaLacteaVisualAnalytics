@@ -8,7 +8,7 @@
 #include "luteditor.h"
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
-#include "vtklegendscaleactor.h"
+#include "vtklegendscaleactorwcs.h"
 #include "vtkwindow_new.h"
 
 #include <vtkActor.h>
@@ -137,9 +137,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     axesWidget->InteractiveOff();
 
     // Legend
-    auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
+    auto legendActorCube = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorCube->LegendVisibilityOff();
-    legendActorCube->setFitsFile(filepath.toStdString());
+    legendActorCube->setFitsFile(readerCube->GetFileName());
     rendererCube->AddActor(legendActorCube);
 
     rendererCube->GetActiveCamera()->GetPosition(initialCameraPosition);
@@ -193,9 +193,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
     contoursActorForParent->GetProperty()->SetLineWidth(1);
 
-    auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
+    auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorSlice->LegendVisibilityOff();
-    legendActorSlice->setFitsFile(filepath.toStdString());
+    legendActorSlice->setFitsFile(readerSlice->GetFileName());
     rendererSlice->AddActor(legendActorSlice);
 
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();

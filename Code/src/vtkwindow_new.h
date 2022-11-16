@@ -43,6 +43,8 @@
 #include "vtkSmartPointer.h"
 #include "vtkSphereSource.h"
 
+#include "vtklegendscaleactorwcs.h"
+
 #include "profilewindow.h"
 #include "qcustomplot.h"
 
@@ -305,8 +307,8 @@ private:
     QVector<double> xp_x_array;
     QVector<double> yp_y_array;
     QVector<double> yp_x_array;
-    vtkSmartPointer<vtkScalarBarActor> scalarBar;
-    QPointer<LutCustomize> lcustom;
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendScaleActorImage;
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendScale3DActor;
 
 public slots:
     // void updateCoords(vtkObject*);
@@ -457,6 +459,7 @@ private slots:
     void on_actionCAESAR_triggered();
     void on_actionProfile_triggered();
     void on_actionSave_session_triggered();
+    void changeWCS_clicked(int wcs);
 };
 
 #endif // vtkwindow_new_H
