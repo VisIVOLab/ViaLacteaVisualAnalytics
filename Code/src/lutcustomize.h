@@ -20,6 +20,8 @@ public:
     void configurePoint3D();
     void configureFitsImage();
     Ui::LutCustomize *ui;
+    void setScaling(QString scaling);
+    void setLut(QString lut);
 
 
 private slots:

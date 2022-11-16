@@ -51,6 +51,17 @@ void LutCustomize::configureFitsImage()
     plotHistogram();
 }
 
+void LutCustomize::setScaling(QString scaling)
+{
+    ui->scalingComboBox->setCurrentText(scaling);
+}
+void LutCustomize::setLut(QString lut)
+{
+    ui->lutComboBox->setCurrentText(lut);
+}
+
+
+
 LutCustomize::~LutCustomize()
 {
     delete ui;
@@ -223,8 +234,6 @@ void LutCustomize::on_scalingComboBox_activated(const QString &arg1)
             vtkwin->ui->linear3dRadioButton->setChecked(true);
         else
             vtkwin->ui->log3dRadioButton->setChecked(true);
-
-
     }
     else
     {
@@ -232,8 +241,6 @@ void LutCustomize::on_scalingComboBox_activated(const QString &arg1)
             vtkwin->ui->linearadioButton->setChecked(true);
         else
             vtkwin->ui->logRadioButton->setChecked(true);
-
-        //vtkwin->on_lutComboBox_activated(arg1);
     }
 }
 
