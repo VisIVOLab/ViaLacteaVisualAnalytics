@@ -2902,8 +2902,21 @@ void vtkwindow_new::addLocalSources()
 {
     vtkfitstoolsw->on_addLocalSourcesPushButton_clicked();
 }
-
 void vtkwindow_new::changeFitsScale(std::string palette, std::string scale)
+{
+    int pos = 0;
+    if (ui->listWidget->selectionModel()->selectedRows().count() != 0
+            && imgLayerList.at(ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
+            == 0) {
+        pos = ui->listWidget->selectionModel()->selectedRows().at(0).row();
+    }
+
+    float min = imgLayerList.at(pos)->getFits()->GetMin();
+    float max = imgLayerList.at(pos)->getFits()->GetMax();
+
+    changeFitsScale(palette, scale, min, max);
+}
+void vtkwindow_new::changeFitsScale(std::string palette, std::string scale, float min, float max)
 {
     vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
 
@@ -2915,10 +2928,8 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale)
         pos = ui->listWidget->selectionModel()->selectedRows().at(0).row();
     }
 
-    float min = imgLayerList.at(pos)->getFits()->GetMin();
     if (min < 0)
         min = 0;
-    float max = imgLayerList.at(pos)->getFits()->GetMax();
     lut->SetTableRange(min, max);
     imgLayerList.at(pos)->setLutScale(myscale);
     imgLayerList.at(pos)->setLutType(QString::fromStdString(palette));
@@ -2931,7 +2942,6 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale)
     SelectLookTable(palette.c_str(), lut);
 
     vtkSmartPointer<vtkImageMapToColors> colors = vtkSmartPointer<vtkImageMapToColors>::New();
-
     colors->SetInputData(imgLayerList.at(pos)->getFits()->GetOutput());
     colors->SetLookupTable(lut);
     colors->Update();

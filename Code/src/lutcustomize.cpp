@@ -205,15 +205,20 @@ void LutCustomize::on_okPushButton_clicked()
     if(isPoint3D)
     {
         vtkwin->pp->setLookupTable(ui->fromValue->text().toDouble(), ui->toValue->text().toDouble());
-        // ES
         if (vtkwin->ui->glyphShapeComboBox->isEnabled()) {
             vtkwin->getGlyphActor()->GetMapper()->SetLookupTable(vtkwin->pp->getLookupTable());
             vtkwin->getGlyphActor()->GetMapper()->SetScalarRange(
                         vtkwin->pp->getLookupTable()->GetRange());
         }
     }
-    // End ES
-    this->close();
+    else
+    {
+        vtkwin->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
+                        ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromValue->text().toFloat(), ui->toValue->text().toFloat());
+    }
+    vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+
+//    this->close();
 }
 
 void LutCustomize::on_lutComboBox_activated(const QString &arg1)

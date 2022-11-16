@@ -115,6 +115,7 @@ public:
     void changePalette(std::string palette);
     void changeFitsPalette(std::string palette);
     void changeFitsScale(std::string palette, std::string scale);
+    void changeFitsScale(std::string palette, std::string scale, float min, float max);
     void changeScalar(std::string scalar);
     PointsPipe *pp;
     void resetCamera();
