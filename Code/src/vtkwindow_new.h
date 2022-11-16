@@ -42,7 +42,8 @@
 #include "vtkScalarBarActor.h"
 #include "vtkSmartPointer.h"
 #include "vtkSphereSource.h"
-#include "vtkLegendScaleActor.h"
+
+#include "vtklegendscaleactorwcs.h"
 
 #include "profilewindow.h"
 #include "qcustomplot.h"
@@ -305,8 +306,8 @@ private:
     QVector<double> xp_x_array;
     QVector<double> yp_y_array;
     QVector<double> yp_x_array;
-    vtkSmartPointer<vtkLegendScaleActor> legendScaleActorImage;
-    vtkSmartPointer<vtkLegendScaleActor> legendScale3DActor;
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendScaleActorImage;
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendScale3DActor;
 
 public slots:
     // void updateCoords(vtkObject*);

@@ -76,7 +76,7 @@
 #include "vtkInteractorStyleRubberBand2D.h"
 #include "vtkInteractorStyleRubberBandPick.h"
 #include "vtkInteractorStyleTrackballActor.h"
-#include "vtklegendscaleactor.h"
+#include "vtklegendscaleactorwcs.h"
 #include "vtkMath.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
@@ -1632,7 +1632,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         imageStack = vtkSmartPointer<vtkImageStack>::New();
         imageStack->AddImage(imageSliceBase);
 
-        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
         legendScaleActorImage->LegendVisibilityOff();
         legendScaleActorImage->setFitsFile(myfits);
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)
@@ -1801,7 +1801,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             m_Ren1->AddActor(legendScaleActor3d);
         }
 */
-        legendScaleActorImage  = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScaleActorImage  = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
         legendScaleActorImage->LegendVisibilityOff();
         legendScaleActorImage->setFitsFile(myfits);
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)
@@ -1852,7 +1852,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
 
 
-        legendScale3DActor  = vtkSmartPointer<vtkLegendScaleActor>::New();
+        legendScale3DActor  = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
         legendScale3DActor->LegendVisibilityOff();
         legendScale3DActor->setFitsFile(myfits);
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive)==0)

@@ -31,8 +31,8 @@
 // computed distances may provide users the wrong sense of scale. These
 // effects are not present when parallel projection is enabled.
 
-#ifndef vtkLegendScaleActor_h
-#define vtkLegendScaleActor_h
+#ifndef vtkLegendScaleActorWCS_h
+#define vtkLegendScaleActorWCS_h
 
 #include "vtkCoordinate.h" // For vtkViewportCoordinateMacro
 #include "vtkfitsreader.h"
@@ -50,18 +50,18 @@ class vtkTextMapper;
 class vtkPoints;
 class vtkCoordinate;
 
-class VTKRENDERINGANNOTATION_EXPORT vtkLegendScaleActor : public vtkProp
+class VTKRENDERINGANNOTATION_EXPORT vtkLegendScaleActorWCS : public vtkProp
 {
 public:
     // Description:
     // Instantiate the class.
-    static vtkLegendScaleActor *New();
+    static vtkLegendScaleActorWCS *New();
     void setFitsFile(vtkSmartPointer<vtkFitsReader> fits);
     void setWCS(int wcs);
 
     // Description:
     // Standard methods for the class.
-    vtkTypeMacro(vtkLegendScaleActor, vtkProp);
+    vtkTypeMacro(vtkLegendScaleActorWCS, vtkProp);
     // void PrintSelf(ostream& os, vtkIndent indent);
     void PrintHeader(ostream &os, vtkIndent indent) override;
     void PrintTrailer(std::ostream &os, vtkIndent indent) override;
@@ -170,8 +170,8 @@ public:
     virtual int RenderOpaqueGeometry(vtkViewport *);
 
 protected:
-    vtkLegendScaleActor();
-    ~vtkLegendScaleActor();
+    vtkLegendScaleActorWCS();
+    ~vtkLegendScaleActorWCS();
 
     int LabelMode;
     int RightBorderOffset;
@@ -212,8 +212,8 @@ protected:
     vtkTextMapper *yLabelMapper;
 
 private:
-    vtkLegendScaleActor(const vtkLegendScaleActor &); // Not implemented
-    void operator=(const vtkLegendScaleActor &); // Not implemented
+    vtkLegendScaleActorWCS(const vtkLegendScaleActorWCS &); // Not implemented
+    void operator=(const vtkLegendScaleActorWCS &); // Not implemented
     vtkSmartPointer<vtkFitsReader> myfits;
     int wcs;
 };
