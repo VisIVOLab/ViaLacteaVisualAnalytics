@@ -57,6 +57,30 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     readFitsHeader();
 
+    auto wcsGroup = new QActionGroup(this);
+    auto wcsItem = new QAction("Galactic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsItem->setChecked(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
+
+    wcsItem = new QAction("FK5", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
+
+    wcsItem = new QAction("FK4", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
+
+    wcsItem = new QAction("Ecliptic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
+
+    ui->menuWCS->addActions(wcsGroup->actions());
+
     readerCube= vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
     readerCube->SetScaleFactor(ScaleFactor);
@@ -137,7 +161,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     axesWidget->InteractiveOff();
 
     // Legend
-    auto legendActorCube = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+    legendActorCube = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorCube->LegendVisibilityOff();
     legendActorCube->setFitsFile(readerCube->GetFileName());
     rendererCube->AddActor(legendActorCube);
@@ -193,7 +217,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
     contoursActorForParent->GetProperty()->SetLineWidth(1);
 
-    auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+    legendActorSlice = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorSlice->LegendVisibilityOff();
     legendActorSlice->setFitsFile(readerSlice->GetFileName());
     rendererSlice->AddActor(legendActorSlice);
@@ -205,6 +229,19 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
+
+    // Set legend WCS
+    QString ctype1 = fitsHeader.value("CTYPE1").toUpper();
+    if (ctype1.startsWith("GL")) {
+        legendActorCube->setWCS(WCS_GALACTIC);
+        legendActorSlice->setWCS(WCS_GALACTIC);
+        ui->menuWCS->actions().at(1)->setChecked(true);
+    } else if (ctype1.startsWith("RA")) {
+        // FK5
+        legendActorCube->setWCS(WCS_J2000);
+        legendActorSlice->setWCS(WCS_J2000);
+        ui->menuWCS->actions().at(2)->setChecked(true);
+    }
 }
 
 vtkWindowCube::~vtkWindowCube()
@@ -547,4 +584,12 @@ void vtkWindowCube::on_actionShowStats_triggered()
     }
 
     dock->show();
+}
+
+void vtkWindowCube::changeLegendWCS(int wcs)
+{
+    legendActorCube->setWCS(wcs);
+    legendActorSlice->setWCS(wcs);
+    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }
