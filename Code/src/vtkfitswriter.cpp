@@ -13,7 +13,6 @@ vtkStandardNewMacro(vtkFitsWriter);
 void vtkFitsWriter::Write()
 {
     this->SetErrorCode(vtkErrorCode::NoError);
-
     // Error checking
     if (this->GetInput() == nullptr) {
         vtkErrorMacro(<< "Write:Please specify an input!");

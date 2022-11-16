@@ -25,7 +25,6 @@ vtkFitsReader::vtkFitsReader()
     this->title[0] = '\0';
     this->SetNumberOfInputPorts(0);
     this->SetNumberOfOutputPorts(1);
-    // this->is3D=is3D;
 
     for (int i = 0; i < 3; i++) {
         crval[i] = 0;
@@ -33,12 +32,9 @@ vtkFitsReader::vtkFitsReader()
         cdelt[i] = 0;
         naxes[i] = 10;
     }
-
     this->is3D = false;
     this->isMoment3D = false;
     this->ctypeXY = false;
-
-    qDebug() << "New.vtkFitsReader";
 }
 
 //----------------------------------------------------------------------------
@@ -46,34 +42,19 @@ vtkFitsReader::~vtkFitsReader() { }
 
 void vtkFitsReader::SetFileName(std::string name)
 {
-
     if (name.empty()) {
         vtkErrorMacro(<< "Null Datafile!");
         return;
     }
-
     filename = name;
     ReadHeader();
-
-    // this->Modified();
-
-    qDebug() << "SetFileName.vtkFitsReader";
 }
 //----------------------------------------------------------------------------
-void vtkFitsReader::PrintSelf(ostream &os, vtkIndent indent)
-{
-    // this->Superclass::PrintSelf(os, indent);
-}
+void vtkFitsReader::PrintSelf(ostream &os, vtkIndent indent) { }
 
-void vtkFitsReader::PrintHeader(ostream &os, vtkIndent indent)
-{
-    // this->Superclass::PrintHeader(os, indent);
-}
+void vtkFitsReader::PrintHeader(ostream &os, vtkIndent indent) { }
 
-void vtkFitsReader::PrintTrailer(std::ostream &os, vtkIndent indent)
-{
-    // this->Superclass::PrintTrailer(os, indent);
-}
+void vtkFitsReader::PrintTrailer(std::ostream &os, vtkIndent indent) { }
 
 //----------------------------------------------------------------------------
 vtkStructuredPoints *vtkFitsReader::GetOutput()
@@ -131,11 +112,7 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                                      vtkInformationVector **vtkNotUsed(inputVector),
                                      vtkInformationVector *outputVector)
 {
-
-    qDebug() << "RequestDataObject.vtkFitsReader";
-
     for (int i = 0; i < this->GetNumberOfOutputPorts(); ++i) {
-
         ReadHeader();
         fitsfile *fptr;
         int status = 0, nfound = 0, anynull = 0;
@@ -145,28 +122,20 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
         float nullval, buffer[buffsize];
         vtkFloatArray *scalars = vtkFloatArray::New();
 
-        qDebug() << "for.RequestDataObject.vtkFitsReader";
         vtkInformation *outInfo = outputVector->GetInformationObject(i);
         vtkStructuredPoints *output =
                 vtkStructuredPoints::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
         if (!output) {
-            qDebug() << "START-!output.for.RequestDataObject.vtkFitsReader";
             output = vtkStructuredPoints::New();
             outInfo->Set(vtkDataObject::DATA_OBJECT(), output);
             output->FastDelete();
 
             // FITS READER CORE
-
             char *fn = new char[filename.length() + 1];
-            ;
             strcpy(fn, filename.c_str());
-
             if (fits_open_file(&fptr, fn, READONLY, &status))
                 printerror(status);
-
             delete[] fn;
-
-            qDebug() << "*******----------------- is3D " << is3D;
 
             if (!(this->is3D)) {
 
@@ -174,10 +143,7 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                     // Calculate moment order=0 by default
                     scalars = this->CalculateMoment(momentOrder);
                 } else {
-                    qDebug() << "-!is3d.RequestDataObject.vtkFitsReader";
-
                     /* read the NAXIS1 and NAXIS2 keyword to get image size */
-                    // if ( fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status) )
                     if (fits_read_keys_lng(fptr, "NAXIS", 1, 2, naxes, &nfound, &status))
                         printerror(status);
 
@@ -188,14 +154,10 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                     datamax = -1.0E30;
 
                     output->SetDimensions(naxes[0], naxes[1], 1);
-
-                    // output->SetOrigin(0.0, 0.0, 0.0);
                     output->SetOrigin(1.0, 1.0, 0.0);
 
                     scalars->Allocate(npixels);
-
                     while (npixels > 0) {
-
                         nbuffer = npixels;
                         if (npixels > buffsize)
                             nbuffer = buffsize;
@@ -205,28 +167,20 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                             printerror(status);
 
                         for (ii = 0; ii < nbuffer; ii++) {
-
-                            // if (isnanf(buffer[ii])) buffer[ii] = -1000000.0; // hack for now
                             if (std::isnan(buffer[ii]))
                                 buffer[ii] = -1000000.0; // hack for now
-
                             scalars->InsertNextValue(buffer[ii]);
-
                             if (buffer[ii] < datamin && buffer[ii] != -1000000.0)
                                 datamin = buffer[ii];
                             if (buffer[ii] > datamax && buffer[ii] != -1000000.0)
                                 datamax = buffer[ii];
                         }
-
                         npixels -= nbuffer; /* increment remaining number of pixels */
                         fpixel += nbuffer; /* next pixel to be read in image */
                     }
                 }
             } else {
                 this->CalculateRMS();
-                qDebug() << "Dopo calculate RMS: " << this->GetRMS();
-                qDebug() << "datamin: " << datamin;
-
                 if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
                     printerror(status);
 
@@ -234,58 +188,34 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                 npix = npixels;
                 fpixel = 1;
                 nullval = 0;
-                // datamin  = 1.0E30;
-                // datamax  = -1.0E30;
-
                 QString xtrim(this->xStr);
                 QString ytrim(this->yStr);
                 bool swapped = false;
                 if (xtrim.split("-")[0].toLower().compare("glat") == 0
                     && ytrim.split("-")[0].toLower().compare("glon") == 0) {
-                    qDebug() << "INSIDE: " << xtrim.split("-")[0] << " - " << ytrim.split("-")[0];
-
                     output->SetDimensions(naxes[1], naxes[0], naxes[2]);
-                    // swapped=true;
                 } else
                     output->SetDimensions(naxes[0], naxes[1], naxes[2]);
-                //                output->SetOrigin(0.0, 0.0, 0.0);
                 output->SetOrigin(1.0, 1.0, 1.0);
-
-                // vtkFloatScalars *scalars = new vtkFloatScalars(npixels);
-                // vtkFloatScalars *scalars = vtkFloatScalars::New();
-
-                // vtkFloatArray *scalars = vtkFloatArray::New();
                 fitsScalars = vtkFloatArray::New();
                 fitsScalars->Allocate(npixels);
                 scalars->Allocate(npixels);
-
                 if (swapped) {
-
                     npixels = naxes[1];
                     fpixel = naxes[0] + 1;
-
-                    qDebug() << "npixels " << npixels << " pixel " << fpixel;
                     // For every pixel
                     while (npixels > 0) {
-
                         nbuffer = npixels;
                         if (npixels > buffsize)
                             nbuffer = buffsize;
-
                         if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull,
                                           &status))
                             printerror(status);
                         for (ii = 0; ii < nbuffer; ii++) {
-
                             if (std::isnan(buffer[ii])) {
-
                                 buffer[ii] = -1000000.0; // hack for now
                             }
-                            // conversion
-                            // CVAL3 + (X - CPIX3)*CDEL3
-
                             buffer[ii] = crval[2] / 1000 + (buffer[ii] - cpix[2]) * cdelt[2] / 1000;
-
                             scalars->InsertNextValue(buffer[ii]);
                             fitsScalars->InsertNextValue(buffer[ii]);
                         }
@@ -296,62 +226,41 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
 
                     npixels = naxes[0];
                     fpixel = 1;
-                    qDebug() << "npixels " << npixels << " pixel " << fpixel;
-
                     // For every pixel
                     while (npixels > 0) {
-
                         nbuffer = npixels;
                         if (npixels > buffsize)
                             nbuffer = buffsize;
-
                         if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull,
                                           &status))
                             printerror(status);
                         for (ii = 0; ii < nbuffer; ii++) {
-
                             if (std::isnan(buffer[ii])) {
-
                                 buffer[ii] = -1000000.0; // hack for now
                             }
-                            // conversion
-                            // CVAL3 + (X - CPIX3)*CDEL3
-
                             buffer[ii] = crval[2] / 1000 + (buffer[ii] - cpix[2]) * cdelt[2] / 1000;
-
                             scalars->InsertNextValue(buffer[ii]);
                             fitsScalars->InsertNextValue(buffer[ii]);
                         }
-
                         npixels -= nbuffer;
                         fpixel += nbuffer;
                     }
 
                     npixels = naxes[2];
                     fpixel = naxes[0] + naxes[1] + 1;
-                    qDebug() << "npixels " << npixels << " pixel " << fpixel;
-
                     // For every pixel
                     while (npixels > 0) {
-
                         nbuffer = npixels;
                         if (npixels > buffsize)
                             nbuffer = buffsize;
-
                         if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull,
                                           &status))
                             printerror(status);
                         for (ii = 0; ii < nbuffer; ii++) {
-
                             if (std::isnan(buffer[ii])) {
-
                                 buffer[ii] = -1000000.0; // hack for now
                             }
-                            // conversion
-                            // CVAL3 + (X - CPIX3)*CDEL3
-
                             buffer[ii] = crval[2] / 1000 + (buffer[ii] - cpix[2]) * cdelt[2] / 1000;
-
                             scalars->InsertNextValue(buffer[ii]);
                             fitsScalars->InsertNextValue(buffer[ii]);
                         }
@@ -361,39 +270,21 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                     }
 
                 } else {
-                    // For every pixel
                     while (npixels > 0) {
 
                         nbuffer = npixels;
                         if (npixels > buffsize)
                             nbuffer = buffsize;
-
                         if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull,
                                           &status))
                             printerror(status);
-                        float tmp;
-                        int index;
                         for (ii = 0; ii < nbuffer; ii++) {
-
-                            // if (isnanf(buffer[ii])) buffer[ii] = -1000000.0; // hack for now
-
                             if (std::isnan(buffer[ii])) {
-
                                 buffer[ii] = -1000000.0; // hack for now
                             }
-                            // conversion
-                            // CVAL3 + (X - CPIX3)*CDEL3
-
                             buffer[ii] = crval[2] / 1000 + (buffer[ii] - cpix[2]) * cdelt[2] / 1000;
-
                             scalars->InsertNextValue(buffer[ii]);
                             fitsScalars->InsertNextValue(buffer[ii]);
-
-                            //  qDebug()<<"buffer["<<ii<<"]"<<buffer[ii];
-                            //  if ( buffer[ii] < datamin )
-                            //  datamin = buffer[ii];
-                            //  if ( buffer[ii] > datamax )
-                            //  datamax = buffer[ii];
                         }
 
                         npixels -= nbuffer;
@@ -402,19 +293,11 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                 } // end else
             }
         }
-
-        // cerr << "min: " << datamin << " max: " << datamax << endl;
-
         if (fits_close_file(fptr, &status))
             printerror(status);
-
         output->GetPointData()->SetScalars(scalars);
-
-        // END FITS READ CORE
         this->GetOutputPortInformation(i)->Set(vtkDataObject::DATA_EXTENT_TYPE(),
                                                output->GetExtentType());
-
-        qDebug() << "END-!output.for.RequestDataObject.vtkFitsReader";
     }
 
     return 1;
@@ -434,7 +317,6 @@ int vtkFitsReader::RequestUpdateExtent(vtkInformation *vtkNotUsed(request),
                                        vtkInformationVector **inputVector,
                                        vtkInformationVector *vtkNotUsed(outputVector))
 {
-    qDebug() << " \t \t **RequestUpdateExtent.vtkFitsReader";
     int numInputPorts = this->GetNumberOfInputPorts();
     for (int i = 0; i < numInputPorts; i++) {
         int numInputConnections = this->GetNumberOfInputConnections(i);
@@ -453,8 +335,6 @@ int vtkFitsReader::RequestData(vtkInformation *vtkNotUsed(request),
                                vtkInformationVector **vtkNotUsed(inputVector),
                                vtkInformationVector *vtkNotUsed(outputVector))
 {
-    qDebug() << "\t\t *** RequestData.vtkFitsReader";
-
     // do nothing let subclasses handle it
     return 1;
 }
@@ -481,7 +361,6 @@ void vtkFitsReader::ReadHeader()
     char naxis3[80];
     char bunit[80];
 
-
     crval1[0] = '\0';
     crval2[0] = '\0';
     crval3[0] = '\0';
@@ -507,7 +386,6 @@ void vtkFitsReader::ReadHeader()
 
     /* attempt to move to next HDU, until we get an EOF error */
     for (ii = 1; !(fits_movabs_hdu(fptr, ii, &hdutype, &status)); ii++) {
-
         /* get no. of keywords */
         if (fits_get_hdrpos(fptr, &nkeys, &keypos, &status))
             printerror(status);
@@ -634,7 +512,7 @@ void vtkFitsReader::ReadHeader()
     delt3 = cdelt3;
     bUnit = bunit;
 
-    crval[0] = val1.toDouble(); // problema
+    crval[0] = val1.toDouble();
     crval[1] = val2.toDouble();
     crval[2] = val3.toDouble();
     cpix[0] = pix1.toDouble();
@@ -645,7 +523,6 @@ void vtkFitsReader::ReadHeader()
     cdelt[2] = delt3.toDouble();
 
     initSlice = crval[2] - (cdelt[2] * (cpix[2] - 1));
-
     std::string ctype1 { xStr };
     boost::trim(ctype1);
     boost::to_lower_copy(ctype1);
@@ -664,7 +541,6 @@ void vtkFitsReader::ReadHeader()
 // Note: from cookbook.c in fitsio distribution.
 void vtkFitsReader::printerror(int status)
 {
-
     cerr << "vtkFitsReader ERROR.";
     if (status) {
         fits_report_error(stderr, status); /* print error report */
@@ -815,12 +691,6 @@ void vtkFitsReader::CalculateRMS()
     nullval = 0;
     datamin = 1.0E30;
     datamax = -1.0E30;
-    /*
-    cerr << "\nvtkFitsReader: calculating the RMS" << this->filename << endl;
-    cerr << "Dim: " << naxes[0] << " " << naxes[1] << " " << naxes[2] << endl;
-    cerr << "points: " << npixels << endl;
-    cerr << "creating vtk structured points dataset" << endl;
-   */
     output->SetDimensions(naxes[0], naxes[1], naxes[2]);
     output->SetOrigin(0.0, 0.0, 0.0);
 
@@ -849,13 +719,8 @@ void vtkFitsReader::CalculateRMS()
             printerror(status);
 
         for (ii = 0; ii < nbuffer; ii++) {
-            // slice= (num/(naxes[0]*naxes[1]))%(naxes[0]*naxes[1]);
             slice = (num / (naxes[0] * naxes[1]));
             num++;
-
-            // qDebug()<<"npixel: "<<num <<" è sulla slice "<< slice <<" x: "<<naxes[0]<<" y:
-            // "<<naxes[1]<<" z: "<<naxes[2];
-
             if (std::isnan(buffer[ii]))
                 buffer[ii] = -1000000.0;
             scalars->InsertNextValue(buffer[ii]);
@@ -870,9 +735,6 @@ void vtkFitsReader::CalculateRMS()
                     minmaxslice[slice][0] = buffer[ii];
                 if (buffer[ii] > minmaxslice[slice][1])
                     minmaxslice[slice][1] = buffer[ii];
-
-                // meansquare+=buffer[ii]*buffer[ii];
-                //   media+=buffer[ii];
                 meansquare += buffer[ii] * buffer[ii];
 
             } else
@@ -882,29 +744,9 @@ void vtkFitsReader::CalculateRMS()
         npixels -= nbuffer;
         fpixel += nbuffer;
     }
-    /*
-    media=media/n;
-    float diff;
-    for(ii=0; ii<n; ii++)
-    {
-        if (scalars->GetValue(ii)!=-1000000.0)
-        {
-            meansquare+=scalars->GetValue(ii)*scalars->GetValue(ii);
-            diff=scalars->GetValue(ii)-media;
-            sigma+=qPow(diff, 2);
-        }
-        else
-            bad++;
-    }
-
-*/
     n = n - bad;
     double means = meansquare / n;
     rms = qSqrt(means);
-    // sigma=qSqrt(sigma/n);
-    qDebug() << "rms: " << rms << " badpixel: " << bad << " x: " << naxes[0] << " y: " << naxes[1]
-             << " z: " << naxes[2] << " Npixels: " << naxes[0] * naxes[1] * naxes[2];
-
     if (fits_close_file(fptr, &status))
         printerror(status);
 

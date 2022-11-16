@@ -23,8 +23,6 @@ xmlparser::~xmlparser() { }
 
 void xmlparser::parseXML_fitsDownload(QXmlStreamReader &xml_reader, QString &stringa)
 {
-
-    // qDebug()<<"#reading the xml file";
     QList<QMap<QString, QString>> datacubes;
     QString url;
     QMap<QString, QString> survey_map;
@@ -63,16 +61,16 @@ void xmlparser::parseXML_fitsDownload(QXmlStreamReader &xml_reader, QString &str
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                                               .split("_", QString::SkipEmptyParts)
-                                               .last()
-                                               .toInt();
+                            .split("_", QString::SkipEmptyParts)
+                            .last()
+                            .toInt();
                 if (datacube_map["code"].compare("1") == 0
-                    || datacube_map["code"].compare("6") == 0) {
+                        || datacube_map["code"].compare("6") == 0) {
                     qDebug() << "Do not add datacube wiwh code " << datacube_map["code"];
                 } else if (survey_map["Survey"].compare("NANTEN") == 0 && test_flag_nanten == 2) {
                     qDebug() << "NANTEN 2d Element not added";
                     qDebug() << survey_map["Survey"] << " " << datacube_map["PublisherDID"] << " "
-                             << test_flag_nanten;
+                                                     << test_flag_nanten;
                 } else {
                     if (survey_map["Survey"].compare("") == 0) {
                         datacube_map.insert("Survey", "Extinction_Map");
@@ -87,29 +85,6 @@ void xmlparser::parseXML_fitsDownload(QXmlStreamReader &xml_reader, QString &str
                     datacubes.append(datacube_map);
                 }
             }
-            /*
-            if(xml_reader.name() == "datacube") {
-                //datacubes.append(this->parseDatacube(xml_reader, stringa));
-
-                QMap<QString, QString> datacube_map=this->parseDatacube(xml_reader);
-                int test_flag_nanten=-1;
-                if(datacube_map["PublisherDID"].compare("")!=0)
-                    test_flag_nanten = datacube_map["PublisherDID"].split("_",
-            QString::SkipEmptyParts).last().toInt();
-                if(datacube_map["code"].compare("1")==0||datacube_map["code"].compare("6")==0){
-                    qDebug()<<"Do not add datacube wiwh code "<<datacube_map["code"];
-                }else if(datacube_map["Survey"].compare("NANTEN")==0 && test_flag_nanten==2){
-                    qDebug()<<"NANTEN 2d Element not added";
-                    qDebug()<<datacube_map["Survey"]<<" "<<datacube_map["PublisherDID"]<<"
-            "<<test_flag_nanten; }else{ if(datacube_map["Survey"].compare("")==0){
-                        datacube_map.insert("Survey","Extinction_Map");
-                        datacube_map.insert("Species","dust");
-                        datacube_map.insert("Transition","visual");
-                    }
-                    datacubes.append(datacube_map);
-                }
-            }
-            */
 
             if (xml_reader.name() == "URL") {
                 xml_reader.readNext();
@@ -120,21 +95,15 @@ void xmlparser::parseXML_fitsDownload(QXmlStreamReader &xml_reader, QString &str
         }
     }
     xml_reader.clear();
-    qDebug() << "EoF";
-
-    //      stringa=this->extractPublisherDID(datacubes, datacube_element);
     stringa = this->extractPublisherDID_fits(datacubes, datacube_element);
 
     if (url.compare("") != 0) {
-        // qDebug()<<"URL....."<<url;
         stringa = url;
     }
 }
 
 QList<QMap<QString, QString>> xmlparser::parseXmlAndGetList(QXmlStreamReader &xml_reader)
 {
-
-    // qDebug()<<"#reading the xml file";
     QList<QMap<QString, QString>> datacubes;
     QString url;
     QMap<QString, QString> survey_map;
@@ -183,17 +152,14 @@ QList<QMap<QString, QString>> xmlparser::parseXmlAndGetList(QXmlStreamReader &xm
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                                               .split("_", QString::SkipEmptyParts)
-                                               .last()
-                                               .toInt();
+                            .split("_", QString::SkipEmptyParts)
+                            .last()
+                            .toInt();
                 if (datacube_map["code"].compare("1") == 0
-                    || datacube_map["code"].compare("6") == 0) {
-                    qDebug() << "Do not add datacube wiwh code " << datacube_map["code"];
+                        || datacube_map["code"].compare("6") == 0) {
                 } else if (test_flag_nanten == 2
                            || test_flag_nanten
-                                   == 3) { // datacube_map["Survey"].compare("Cornish")==0){
-                    qDebug() << "Element not added: " << survey_map["Survey"] << " "
-                             << datacube_map["PublisherDID"] << " " << test_flag_nanten;
+                           == 3) { // datacube_map["Survey"].compare("Cornish")==0){
                 } else {
                     if (survey_map["Survey"].compare("") == 0) {
                         datacube_map.insert("Survey", "Extinction_Map");
@@ -205,18 +171,12 @@ QList<QMap<QString, QString>> xmlparser::parseXmlAndGetList(QXmlStreamReader &xm
                         datacube_map.insert("Transition", survey_map["Transition"]);
                         datacube_map.insert("Description", survey_map["Description"]);
                     }
-                    qDebug() << "Element added: " << datacube_map["Survey"] << " "
-                             << datacube_map["PublisherDID"] << " " << datacube_map["Description"]
-                             << " " << datacube_map["from"] << " " << datacube_map["to"] << " "
-                             << test_flag_nanten;
                     datacubes.append(datacube_map);
                 }
             }
-
             if (xml_reader.name() == "URL") {
                 xml_reader.readNext();
                 if (xml_reader.tokenType() == QXmlStreamReader::Characters) {
-                    // qDebug()<<"URL: "<<xml_reader.text().toString();
                     url = xml_reader.text().toString();
                 }
             }
@@ -236,8 +196,6 @@ bool operator<(const QMap<QString, QString> &a, const QMap<QString, QString> &b)
 
 void xmlparser::parseXML(QXmlStreamReader &xml_reader, QString &stringa, bool dc)
 {
-
-    // qDebug()<<"#reading the xml file";
     QList<QMap<QString, QString>> datacubes;
     QString url;
     double perc = 0.0;
@@ -272,17 +230,13 @@ void xmlparser::parseXML(QXmlStreamReader &xml_reader, QString &stringa, bool dc
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                                               .split("_", QString::SkipEmptyParts)
-                                               .last()
-                                               .toInt();
+                            .split("_", QString::SkipEmptyParts)
+                            .last()
+                            .toInt();
                 if (datacube_map["code"].compare("1") == 0
-                    || datacube_map["code"].compare("6") == 0) {
-                    qDebug() << "Do not add datacube wiwh code " << datacube_map["code"];
+                        || datacube_map["code"].compare("6") == 0) {
                 } else if (datacube_map["Survey"].compare("NANTEN") == 0 && test_flag_nanten == 2
                            || datacube_map["Survey"].compare("Cornish") == 0) {
-                    qDebug() << "NANTEN 2d Element not added";
-                    qDebug() << datacube_map["Survey"] << " " << datacube_map["PublisherDID"] << " "
-                             << test_flag_nanten;
                 } else {
                     if (datacube_map["Survey"].compare("") == 0) {
                         datacube_map.insert("Survey", "Extinction_Map");
@@ -297,7 +251,6 @@ void xmlparser::parseXML(QXmlStreamReader &xml_reader, QString &stringa, bool dc
                 xml_reader.readNext();
                 if (xml_reader.tokenType() == QXmlStreamReader::Characters) {
                     perc = xml_reader.text().toDouble();
-                    qDebug() << "NullValues percentage is " << perc;
                 }
             }
 
@@ -310,12 +263,10 @@ void xmlparser::parseXML(QXmlStreamReader &xml_reader, QString &stringa, bool dc
         }
     }
     xml_reader.clear();
-    // qDebug()<<"EoF";
-
     if (dc)
         stringa = this->extractPublisherDID(datacubes, datacube_element);
     else
-        ; // qDebug()<<datacubes;
+        ;
     if (url.compare("") != 0) {
         if (perc < 95.0)
             stringa = url;
@@ -356,10 +307,7 @@ QMap<QString, QString> xmlparser::parseSurvey(QXmlStreamReader &xml)
             }
 
             if (xml.name() == "VelocityUnit") {
-                qDebug() << "ATTENZIONE: " << xml.name();
                 this->parseVelocity(xml);
-
-                //  this->addDatacubeToMap(xml, survey_map);
             }
         }
         /* ...and next... */
@@ -371,7 +319,6 @@ QMap<QString, QString> xmlparser::parseSurvey(QXmlStreamReader &xml)
 
 void xmlparser::parseVelocity(QXmlStreamReader &xml)
 {
-
     /* We need a start element, like <foo> */
     if (xml.tokenType() != QXmlStreamReader::StartElement) {
         return;
@@ -389,16 +336,9 @@ void xmlparser::parseVelocity(QXmlStreamReader &xml)
         return;
     }
     /* Now we can add it to the map.*/
-    // map.insert(elementName, xml.text().toString());
-
-    qDebug() << "quientroelementName " << elementName << " " << xml.text().toString();
-
     if (xml.text().toString().compare("") != 0) {
-        qDebug() << "AATTTEEENNTTIII";
         velocity = xml.text().toString();
     }
-    // return velocity;
-    qDebug() << "quientrovelocity " << velocity;
 }
 
 QMap<QString, QString> xmlparser::parseDatacube(QXmlStreamReader &xml)
@@ -444,26 +384,10 @@ QMap<QString, QString> xmlparser::parseDatacube(QXmlStreamReader &xml)
             if (xml.name() == "URL") {
                 // temp fix: prendo solo cutout url
                 if ((xml.attributes().value("type").toString().compare("cutout") == 0)
-                    || (xml.attributes().value("type").toString().compare("mosaic") == 0))
+                        || (xml.attributes().value("type").toString().compare("mosaic") == 0))
                     this->addDatacubeToMap(xml, datacube_map);
             }
-            /*
-              if(xml.name() == "velocity") {
 
-                 parseSpectralCoordinate(xml, datacube_map);
-              }
-              */
-            /*
-              if (xml.name() =="VelocityUnit")
-              {
-                 // qDebug()<<"quientro";
-                  this->parseVelocity(xml);
-
-                // this->addDatacubeToMap(xml, datacube_map);
-              }
-
-              */
-            // if(xml.name() == "bounds") {
             if (xml.name() == "vertices") {
                 parseBounds(xml, datacube_map);
             }
@@ -473,7 +397,6 @@ QMap<QString, QString> xmlparser::parseDatacube(QXmlStreamReader &xml)
         /* ...and next... */
         xml.readNext();
     }
-    //    qDebug()<<datacube_map;
 
     return datacube_map;
 }
@@ -526,54 +449,9 @@ void xmlparser::parseOverlap(QXmlStreamReader &xml, QMap<QString, QString> &data
         xml.readNext();
     }
 }
-/*
-void xmlparser::parseBounds(QXmlStreamReader& xml,QMap<QString, QString> &datacube_map) {
 
-    if(xml.tokenType() != QXmlStreamReader::StartElement &&  xml.name() == "bounds") {
-        return ;
-    }
-
-    xml.readNext();
-
-    while(!(xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == "SkyCoordSystem")) {
-        if(xml.tokenType() == QXmlStreamReader::StartElement) {
-            if(xml.name() == "longitude") {
-                if(xml.tokenType() == QXmlStreamReader::StartElement){
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("longitudeFrom", xml.text().toString());
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("longitudeTo", xml.text().toString());
-                }
-            }
-            if(xml.name() == "latitude") {
-                if(xml.tokenType() == QXmlStreamReader::StartElement){
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("latitudeFrom", xml.text().toString());
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    xml.readNext();
-                    datacube_map.insert("latitudeTo", xml.text().toString());
-                }
-            }
-
-        }
-        xml.readNext();
-    }
-}
-
-*/
 void xmlparser::parseBounds(QXmlStreamReader &xml, QMap<QString, QString> &datacube_map)
 {
-    qDebug() << "Leggo vertici";
-
     while (!(xml.name() == "SkyCoordSystem" && xml.isEndElement())) {
         if (!xml.readNextStartElement()) {
             continue;
@@ -630,15 +508,11 @@ void xmlparser::addDatacubeToMap(QXmlStreamReader &xml, QMap<QString, QString> &
     }
     /* Now we can add it to the map.*/
     map.insert(elementName, xml.text().toString());
-
-    qDebug() << "elementName " << elementName << " " << xml.text().toString();
 }
 
 QString xmlparser::extractPublisherDID_fits(QList<QMap<QString, QString>> &datacubes,
                                             QMap<QString, QString> &element)
 {
-
-    // while(!datacubes.isEmpty()) {
     if (!datacubes.isEmpty()) {
 
         int bestOverlapIndex = 0;
@@ -658,7 +532,6 @@ QString xmlparser::extractPublisherDID_fits(QList<QMap<QString, QString>> &datac
             tmpIndex++;
         }
 
-        // QMap<QString,QString> datacube = datacubes.takeFirst();
         QMap<QString, QString> datacube = datacubes.at(bestOverlapIndex);
         return datacube["PublisherDID"];
     }
@@ -673,8 +546,8 @@ QString xmlparser::extractPublisherDID(QList<QMap<QString, QString>> &datacubes,
         QMap<QString, QString> datacube = datacubes.takeFirst();
 
         if (datacube["Survey"].compare(element["Survey"]) == 0
-            && datacube["Species"].compare(element["Species"]) == 0
-            && datacube["Transition"].compare(element["Transition"]) == 0) {
+                && datacube["Species"].compare(element["Species"]) == 0
+                && datacube["Transition"].compare(element["Transition"]) == 0) {
             return datacube["PublisherDID"];
         }
     }
@@ -697,22 +570,6 @@ void xmlparser::addDatacubesToUI(QList<QMap<QString, QString>> &datacubes)
 
     while (!datacubes.isEmpty()) {
 
-        /*QGroupBox* datacubeGB = new QGroupBox("Datacube");
-            QFormLayout* layout = new QFormLayout;
-            QMap<QString,QString> datacube = datacubes.takeFirst();
-            layout->addRow("SQL", new QLineEdit(datacube["SQL"]));
-            layout->addRow("PublisherDID", new QLineEdit(datacube["PublisherDID"]));
-            layout->addRow("Survey", new QLineEdit(datacube["Survey"]));
-            layout->addRow("Species", new QLineEdit(datacube["Species"]));
-            layout->addRow("Transition", new QLineEdit(datacube["Transition"]));
-            datacubeGB->setLayout(layout);
-            //qDebug()<<"sono certa";
-            this->show();
-*/
-        // ui->listWidget_datacubes
-
-        // this->_layout->addWidget(datacubeGB);
-        // this->_layout->addWidget(datacubeGB);
     }
 }
 
@@ -720,7 +577,6 @@ void xmlparser::datacubeExtraction(QXmlStreamReader &xml_reader,
                                    QList<QMap<QString, QString>> &datacubes)
 {
 
-    // qDebug()<<"#datacubes extraction";
 
     while (!xml_reader.atEnd() && !xml_reader.hasError()) {
         /* Read next element.*/
@@ -748,23 +604,18 @@ void xmlparser::datacubeExtraction(QXmlStreamReader &xml_reader,
 
             if (xml_reader.name() == "datacube") {
                 // datacubes.append(this->parseDatacube(xml_reader, stringa));
-                qDebug() << "Datacubeaaaa";
                 QMap<QString, QString> datacube_map = this->parseDatacube(xml_reader);
 
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                                               .split("_", QString::SkipEmptyParts)
-                                               .last()
-                                               .toInt();
+                            .split("_", QString::SkipEmptyParts)
+                            .last()
+                            .toInt();
                 if (datacube_map["code"].compare("1") == 0
-                    || datacube_map["code"].compare("6") == 0) {
-                    qDebug() << "Do not add datacube wiwh code " << datacube_map["code"];
+                        || datacube_map["code"].compare("6") == 0) {
                 } else if ((datacube_map["Survey"].compare("NANTEN") == 0 && test_flag_nanten == 2)
                            || datacube_map["Survey"].compare("Cornish") == 0) {
-                    qDebug() << "NANTEN 2d Element not added";
-                    qDebug() << datacube_map["Survey"] << " " << datacube_map["PublisherDID"] << " "
-                             << test_flag_nanten;
                 } else {
                     if (datacube_map["Survey"].compare("") == 0) {
                         datacube_map.insert("Survey", "Extinction_Map");

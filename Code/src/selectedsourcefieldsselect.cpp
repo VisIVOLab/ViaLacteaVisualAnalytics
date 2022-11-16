@@ -27,24 +27,19 @@ selectedSourceFieldsSelect::selectedSourceFieldsSelect(vtkwindow_new *v,
     QSignalMapper *mapper = new QSignalMapper(this);
 
     for (int i = 0; i < table->getNumberOfColumns(); i++) {
-
         row = ui->fieldListTableWidget->model()->rowCount();
-
         ui->fieldListTableWidget->insertRow(row);
         QCheckBox *cb1 = new QCheckBox();
         cb1->setChecked(true);
         ui->fieldListTableWidget->setCellWidget(row, 0, cb1);
         connect(cb1, SIGNAL(stateChanged(int)), mapper, SLOT(map()));
         mapper->setMapping(cb1, row);
-
         checkboxList.append(cb1);
-
         selectedFields.insert(i, QString::fromStdString(table->getColName(i)));
 
         QTableWidgetItem *item_1 = new QTableWidgetItem();
         item_1->setText(QString::fromStdString(table->getColName(i)));
         ui->fieldListTableWidget->setItem(row, 1, item_1);
-
         connect(mapper, SIGNAL(mapped(int)), this, SLOT(checkboxClicked(int)));
     }
 }
@@ -72,7 +67,6 @@ void selectedSourceFieldsSelect::on_selectAllButton_clicked()
 
 void selectedSourceFieldsSelect::on_deselectAllButton_clicked()
 {
-
     for (int i = 0; i < checkboxList.size(); i++) {
         checkboxList.at(i)->setChecked(false);
         selectedFields.remove(i);
@@ -81,10 +75,8 @@ void selectedSourceFieldsSelect::on_deselectAllButton_clicked()
 
 void selectedSourceFieldsSelect::on_okButton_clicked()
 {
-
     ViewSelectedSourceDataset *selDataset =
             new ViewSelectedSourceDataset(vtkwin, selectedFields, selectedSources);
     this->close();
-
     selDataset->show();
 }

@@ -30,7 +30,6 @@ void vtkfitstoolwidget_new::addLayer(vtkfitstoolwidgetobject *o)
         double r = o->getActor()->GetProperty()->GetColor()[0] * 255;
         double g = o->getActor()->GetProperty()->GetColor()[1] * 255;
         double b = o->getActor()->GetProperty()->GetColor()[2] * 255;
-
         QBrush brush(QColor(r, g, b));
         addTreeChild(o->getParent()->getTreeWidgetItem(), o->getName(), brush);
     }
@@ -42,7 +41,6 @@ QTreeWidgetItem *vtkfitstoolwidget_new::addTreeRoot(QString name)
 {
     QTreeWidgetItem *treeItem = new QTreeWidgetItem(ui->layerTreeWidget);
     treeItem->setText(1, name);
-
     return treeItem;
 }
 
@@ -50,11 +48,8 @@ void vtkfitstoolwidget_new::addTreeChild(QTreeWidgetItem *parent, QString name, 
 {
 
     QTreeWidgetItem *treeItem = new QTreeWidgetItem();
-
     treeItem->setBackground(0, brush);
-
     treeItem->setText(1, name);
-
     parent->addChild(treeItem);
 }
 
@@ -66,10 +61,10 @@ void vtkfitstoolwidget_new::setWavelength(QString w)
 void vtkfitstoolwidget_new::on_layerTreeWidget_itemSelectionChanged()
 {
     ui->layerTreeWidget->selectionModel()->select(
-            ui->layerTreeWidget->model()->index(
+                ui->layerTreeWidget->model()->index(
                     ui->layerTreeWidget->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()),
                     0),
-            QItemSelectionModel::Select);
+                QItemSelectionModel::Select);
     int pos = ui->layerTreeWidget->currentIndex().row()
             + qAbs(ui->layerTreeWidget->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()));
     ui->nameLineEdit->setText(layerList.at(pos)->getName());
@@ -80,10 +75,6 @@ void vtkfitstoolwidget_new::on_savePushButton_clicked()
 {
     int pos = ui->layerTreeWidget->currentIndex().row()
             + qAbs(ui->layerTreeWidget->indexOfTopLevelItem(ui->layerTreeWidget->currentItem()));
-    qDebug() << "pos: " << pos;
-    qDebug() << "type: " << layerList.at(pos)->getType();
-    qDebug() << "name: " << layerList.at(pos)->getName();
-
     layerList.at(pos)->setName(ui->nameLineEdit->text());
     layerList.at(pos)->setWavelength(ui->wavelenghtLineEdit->text());
 }

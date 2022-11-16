@@ -69,19 +69,6 @@ vtkExtractHistogram::~vtkExtractHistogram()
 }
 
 //-----------------------------------------------------------------------------
-/*
-void vtkExtractHistogram::PrintSelf(ostream& os, vtkIndent indent)
-{
-  this->Superclass::PrintSelf(os,indent);
-
-  os << indent << "Component: " << this->Component << "\n";
-  os << indent << "BinCount: " << this->BinCount << "\n";
-  os << indent << "UseCustomBinRanges: " << this->UseCustomBinRanges << endl;
-  os << indent << "CustomBinRanges: " <<
-    this->CustomBinRanges[0] << ", " << this->CustomBinRanges[1] << endl;
-}
-*/
-//-----------------------------------------------------------------------------
 int vtkExtractHistogram::FillInputPortInformation(int port, vtkInformation *info)
 {
     this->Superclass::FillInputPortInformation(port, info);
@@ -150,7 +137,7 @@ bool vtkExtractHistogram::GetInputArrayRange(vtkInformationVector **inputVector,
             vtkDataObject *dObj = cdit->GetCurrentDataObject();
             vtkDataArray *data_array = this->GetInputArrayToProcess(0, dObj);
             if (data_array && this->Component >= 0
-                && this->Component < data_array->GetNumberOfComponents()) {
+                    && this->Component < data_array->GetNumberOfComponents()) {
                 foundone = true;
                 double tRange[2];
                 data_array->GetRange(tRange, this->Component);
@@ -251,7 +238,7 @@ void vtkExtractHistogram::BinAnArray(vtkDataArray *data_array, vtkIntArray *bin_
     // If the requested component is out-of-range for the input,
     // the bin_values will be 0, so no need to do any actual counting.
     if (data_array == NULL || this->Component < 0
-        || this->Component >= data_array->GetNumberOfComponents()) {
+            || this->Component >= data_array->GetNumberOfComponents()) {
         return;
     }
 
@@ -392,15 +379,12 @@ int vtkExtractHistogram::RequestData(vtkInformation * /*request*/,
 }
 void vtkExtractHistogram::PrintSelf(ostream &os, vtkIndent indent)
 {
-    // this->Superclass::PrintSelf(os, indent);
 }
 
 void vtkExtractHistogram::PrintHeader(ostream &os, vtkIndent indent)
 {
-    // this->Superclass::PrintHeader(os, indent);
 }
 
 void vtkExtractHistogram::PrintTrailer(std::ostream &os, vtkIndent indent)
 {
-    // this->Superclass::PrintTrailer(os, indent);
 }

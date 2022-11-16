@@ -9,11 +9,7 @@ PlotWindow::PlotWindow(vtkwindow_new *v, QList<QListWidgetItem *> selItems, int 
     QString title = "Plot #" + QString::number(id);
 
     this->setWindowTitle(title);
-
     ui->customPlot->addGraph();
-    // ui->customPlot->xAxis2->setVisible(true);
-    // ui->customPlot->yAxis2->setVisible(true);
-
     vtkwin = v;
     selectedItems = selItems;
 
@@ -32,7 +28,6 @@ PlotWindow::~PlotWindow()
 
 void PlotWindow::on_plotButton_clicked()
 {
-    qDebug() << "index: " << ui->xComboBox->currentIndex();
     QVector<double> x(selectedItems.size()), y(selectedItems.size());
 
     int row;
@@ -65,10 +60,6 @@ void PlotWindow::on_plotButton_clicked()
 
     ui->customPlot->graph(0)->setLineStyle(QCPGraph::lsNone);
     ui->customPlot->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 4));
-
     ui->customPlot->graph(0)->rescaleAxes();
-
-    // ui->customPlot->xAxis->setRange(x.at(x.first()), x.at(x.last()));
-    //  ui->customPlot->yAxis->setRange(y.at(y.first()), y.at(y.last()));
     ui->customPlot->replot();
 }

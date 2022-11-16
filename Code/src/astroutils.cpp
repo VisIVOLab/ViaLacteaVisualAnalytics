@@ -69,13 +69,6 @@ void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double
     AstroUtils().xy2sky(file, 0, wc->nypix, tl, WCS_GALACTIC);
     AstroUtils().xy2sky(file, wc->nxpix, 0, br, WCS_GALACTIC);
 
-    /*
-    *top = tl[1];
-    *left = tl[0];
-    *bottom = br[1];
-    *right = br[0];
-    */
-
     *top = fmax(tl[1], br[1]);
     *bottom = fmin(tl[1], br[1]);
     *left = fmax(tl[0], br[0]);
@@ -554,7 +547,7 @@ WorldCoor *AstroUtils::GetFITSWCS(char *filename, char *header, int verbose, dou
         wcs->xinc = *dra * 2.0 / (double)wcs->nxpix;
         wcs->yinc = *ddec * 2.0 / (double)wcs->nypix;
         /* hchange (header,"PLTRAH","PLT0RAH");
-    wcs->plate_fit = 0; */
+        wcs->plate_fit = 0; */
     }
 
     /* Convert center to desired coordinate system */

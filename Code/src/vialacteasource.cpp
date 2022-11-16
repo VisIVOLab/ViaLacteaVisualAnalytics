@@ -183,27 +183,7 @@ int VialacteaSource::readData()
             lineData.clear();
         }
     }
-    /*
-     if(matrix)  //! delete matrix
-     {
-         for(int i = 0; i < m_nCols; i++)
-         {
-             if(matrix[i])
-             {
-                 delete [] matrix[i];
-             }
-         }
-
-         delete [] matrix;
-
-     }
- */
-
     inFile.close();
-
-    // makeHeader(sum,m_pointsBinaryName,m_fieldNames,m_cellSize,m_cellComp,m_volumeOrTable);
-    // //!create header file (in utility)
-
     return 1;
 }
 
@@ -253,46 +233,6 @@ void VialacteaSource::computeHistogram()
         if (m_rangeArray[i] == NULL)
             qDebug() << "float * m_rangeArray allocation:  out of memory";
     }
-
-    // da qui
-    /*    float  binInterval=((float)(maxMaxValue-minMinValue))/(float) m_binNumber;
-
-        counterCols=-1;
-        offset=minMinValue;
-        if(range) offset=minRange;
-        for(iter = colNumberSet.begin(); iter != end; iter++)
-        {
-            unsigned long long int totEle=nOfEle;
-            unsigned long long int fromRow, toRow, startCounter=0;
-            unsigned int colList[1];
-            colList[0]=*iter;
-            counterCols++;
-            totEle=nOfEle;
-            startCounter=0;
-            int histoIndex;
-            while(totEle!=0)
-            {
-                fromRow=startCounter;
-                toRow=fromRow+maxEle-1;
-                if(toRow>totRows-1)toRow=totRows-1;
-                m_tables[0]->getColumn(colList, m_nOfCol, fromRow, toRow, m_fArray);
-                for(unsigned int j=0;j<(toRow-fromRow+1);j++)
-                {
-                    if(range && (m_fArray[0][j]>maxRange || m_fArray[0][j]<minRange)) continue;
-                    if(binInterval==0)
-                        histoIndex=0;
-                    else
-                        histoIndex=(int) ((m_fArray[0][j]-offset)/binInterval);
-                    if(histoIndex>numberOfBin)
-                        histoIndex=numberOfBin;
-                    m_histogram[counterCols][histoIndex]++;
-                }
-                startCounter=toRow+1;
-                totEle=totEle-(toRow-fromRow+1);
-            }
-            m_histogram[counterCols][numberOfBin-1]=m_histogram[counterCols][numberOfBin-1]+m_histogram[counterCols][numberOfBin];
-        }
-    */
 }
 
 //---------------------------------------------------------------------
@@ -334,9 +274,6 @@ int VialacteaSource::readHeader()
         }
     }
     m_nRows = rows;
-    // std::clog<<"rowsheader="<<m_nRows<<endl;
-    //!tmp now is the line containing the field names
-
     inFile.close();
 
     if (rows == 0)

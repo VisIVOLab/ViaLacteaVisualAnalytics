@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
 
     setlocale(LC_NUMERIC, "C");
     QLocale::setDefault(QLocale::c());
-
     Singleton<MainWindow>::Instance();
 
     return a.exec();

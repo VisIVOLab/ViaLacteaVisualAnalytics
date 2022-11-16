@@ -38,4 +38,3 @@ void ProfileWindow::on_liveUpdate_stateChanged(int arg1)
     else
         vtkwin->liveUpdateProfile=true;
 }
-
