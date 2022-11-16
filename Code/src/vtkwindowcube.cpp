@@ -8,7 +8,7 @@
 #include "luteditor.h"
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
-#include "vtklegendscaleactor.h"
+#include "vtklegendscaleactorwcs.h"
 #include "vtkwindow_new.h"
 
 #include <vtkActor.h>
@@ -56,6 +56,30 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     setWindowTitle(filepath);
 
     readFitsHeader();
+
+    auto wcsGroup = new QActionGroup(this);
+    auto wcsItem = new QAction("Galactic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsItem->setChecked(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
+
+    wcsItem = new QAction("FK5", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
+
+    wcsItem = new QAction("FK4", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
+
+    wcsItem = new QAction("Ecliptic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
+
+    ui->menuWCS->addActions(wcsGroup->actions());
 
     readerCube= vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
@@ -137,9 +161,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     axesWidget->InteractiveOff();
 
     // Legend
-    auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
+    legendActorCube = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorCube->LegendVisibilityOff();
-    legendActorCube->setFitsFile(filepath.toStdString());
+    legendActorCube->setFitsFile(readerCube->GetFileName());
     rendererCube->AddActor(legendActorCube);
 
     rendererCube->GetActiveCamera()->GetPosition(initialCameraPosition);
@@ -193,9 +217,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
     contoursActorForParent->GetProperty()->SetLineWidth(1);
 
-    auto legendActorSlice = vtkSmartPointer<vtkLegendScaleActor>::New();
+    legendActorSlice = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorSlice->LegendVisibilityOff();
-    legendActorSlice->setFitsFile(filepath.toStdString());
+    legendActorSlice->setFitsFile(readerSlice->GetFileName());
     rendererSlice->AddActor(legendActorSlice);
 
     auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
@@ -205,6 +229,19 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
+
+    // Set legend WCS
+    QString ctype1 = fitsHeader.value("CTYPE1").toUpper();
+    if (ctype1.startsWith("GL")) {
+        legendActorCube->setWCS(WCS_GALACTIC);
+        legendActorSlice->setWCS(WCS_GALACTIC);
+        ui->menuWCS->actions().at(1)->setChecked(true);
+    } else if (ctype1.startsWith("RA")) {
+        // FK5
+        legendActorCube->setWCS(WCS_J2000);
+        legendActorSlice->setWCS(WCS_J2000);
+        ui->menuWCS->actions().at(2)->setChecked(true);
+    }
 }
 
 vtkWindowCube::~vtkWindowCube()
@@ -547,4 +584,12 @@ void vtkWindowCube::on_actionShowStats_triggered()
     }
 
     dock->show();
+}
+
+void vtkWindowCube::changeLegendWCS(int wcs)
+{
+    legendActorCube->setWCS(wcs);
+    legendActorSlice->setWCS(wcs);
+    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
+    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }

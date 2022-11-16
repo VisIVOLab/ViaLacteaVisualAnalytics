@@ -76,7 +76,7 @@
 #include "vtkInteractorStyleRubberBand2D.h"
 #include "vtkInteractorStyleRubberBandPick.h"
 #include "vtkInteractorStyleTrackballActor.h"
-#include "vtklegendscaleactor.h"
+#include "vtklegendscaleactorwcs.h"
 #include "vtkMath.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
@@ -1102,9 +1102,49 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     selected_scale = "Log";
     profileMode = false;
     liveUpdateProfile = false;
+
+    ui->setupUi(this);
+
+#define WCS_J2000 1 /* J2000(FK5) right ascension and declination */
+#define WCS_B1950 2 /* B1950(FK4) right ascension and declination */
+#define WCS_GALACTIC 3 /* Galactic longitude and latitude */
+#define WCS_ECLIPTIC 4 /* Ecliptic longitude and latitude */
+#define WCS_ALTAZ 5 /* Azimuth and altitude/elevation */
+#define WCS_LINEAR 6 /* Linear with optional units */
+#define WCS_NPOLE 7 /* Longitude and north polar angle */
+#define WCS_SPA 8 /* Longitude and south polar angle */
+#define WCS_PLANET 9 /* Longitude and latitude on planet */
+#define WCS_XY 10 /* X-Y Cartesian coordinates */
+#define WCS_ICRS 11 /* ICRS right ascension and declination */
+
+    auto wcsGroup = new QActionGroup(this);
+    auto wcsItem = new QAction("Galactic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsItem->setChecked(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_GALACTIC); });
+
+    wcsItem = new QAction("FK5", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_J2000); });
+
+    wcsItem = new QAction("FK4", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_B1950); });
+
+    wcsItem = new QAction("Ecliptic", wcsGroup);
+    wcsItem->setCheckable(true);
+    wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC); });
+
+    ui->menuWCS->addActions(wcsGroup->actions());
+
     switch (b) {
     case 0: {
-        ui->setupUi(this);
+        // ui->setupUi(this);
+
         this->setWindowTitle(myfits->GetFileName().c_str());
         this->isDatacube = false;
         ui->menuCamera->menuAction()->setVisible(false);
@@ -1220,12 +1260,20 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         // Stack
         imageStack = vtkSmartPointer<vtkImageStack>::New();
         imageStack->AddImage(imageSliceBase);
-        if (!myfits->ctypeXY) {
-            auto legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
-            legendScaleActorImage->LegendVisibilityOff();
-            legendScaleActorImage->setFitsFile(myfits);
-            m_Ren1->AddActor(legendScaleActorImage);
+
+        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+        legendScaleActorImage->LegendVisibilityOff();
+        legendScaleActorImage->setFitsFile(myfits->GetFileName());
+        if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
+            legendScaleActorImage->setWCS(3);
+            ui->menuWCS->actions().at(1)->setChecked(true);
+        } else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive) == 0) {
+            legendScaleActorImage->setWCS(1);
+            ui->menuWCS->actions().at(2)->setChecked(true);
         }
+
+        m_Ren1->AddActor(legendScaleActorImage);
+
         m_Ren1->AddViewProp(imageStack);
         m_Ren1->ResetCamera();
         addLayer(imageObject);
@@ -1241,7 +1289,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->max = vis->GetMax();
         this->min = vis->GetMin();
         this->naxis3 = vis->GetNaxes(2);
-        ui->setupUi(this);
+
+        // ui->setupUi(this);
         ui->menuTools->menuAction()->setVisible(false);
         ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
@@ -1355,12 +1404,27 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->AddActor(outlineA);
         m_Ren1->AddActor(shellA);
         m_Ren1->AddActor(sliceA);
+        /*
         if (!myfits->ctypeXY) {
             auto legendScaleActor3d = vtkSmartPointer<vtkLegendScaleActor>::New();
             legendScaleActor3d->LegendVisibilityOff();
             legendScaleActor3d->setFitsFile(myfits);
             m_Ren1->AddActor(legendScaleActor3d);
         }
+*/
+        legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+        legendScaleActorImage->LegendVisibilityOff();
+        legendScaleActorImage->setFitsFile(myfits->GetFileName());
+        if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
+            legendScaleActorImage->setWCS(3);
+            ui->menuWCS->actions().at(1)->setChecked(true);
+        } else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive) == 0) {
+            legendScaleActorImage->setWCS(1);
+            ui->menuWCS->actions().at(2)->setChecked(true);
+        }
+
+        m_Ren1->AddActor(legendScaleActorImage);
+
         // Start isocontourVtkWin (right)
         auto renWin2 = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
         renwin2 = renWin2;
@@ -1386,12 +1450,20 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         currentContourActorForMainWindow = vtkSmartPointer<vtkLODActor>::New();
         ui->cuttingPlane_Slider->setRange(1, vis->GetNaxes(2));
         ui->spinBox_cuttingPlane->setRange(1, vis->GetNaxes(2));
-        if (!myfits->ctypeXY) {
-            auto legendScaleActorImage = vtkSmartPointer<vtkLegendScaleActor>::New();
-            legendScaleActorImage->LegendVisibilityOff();
-            legendScaleActorImage->setFitsFile(myfits);
-            m_Ren2->AddActor(legendScaleActorImage);
+
+        legendScale3DActor = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+        legendScale3DActor->LegendVisibilityOff();
+        legendScale3DActor->setFitsFile(myfits->GetFileName());
+        if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
+            legendScale3DActor->setWCS(3);
+            ui->menuWCS->actions().at(1)->setChecked(true);
+        } else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive) == 0) {
+            legendScale3DActor->setWCS(1);
+            ui->menuWCS->actions().at(2)->setChecked(true);
         }
+
+        m_Ren2->AddActor(legendScale3DActor);
+
         this->setWindowName("Datacube visualization");
         showMaximized();
         activateWindow();
@@ -1403,7 +1475,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         isDatacube = true;
         vis->is3D = true;
         vis->GetOutput();
-        ui->setupUi(this);
+        // ui->setupUi(this);
         this->setWindowName("Datacubes slices visualization");
         contourWin = new contour();
         m_Ren1 = vtkRenderer::New();
@@ -1434,6 +1506,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->lineEdit_transition->setEnabled(false);
         ui->selectionGroupBox->hide();
         ui->filterGroupBox->hide();
+        ui->menuWCS->menuAction()->setVisible(false);
+
         naxis3 = vis->GetNaxes(2);
         fitsViewer = true;
         filenameWithPath = vis->GetFileName();
@@ -3383,20 +3457,31 @@ void vtkwindow_new::showGrid(bool checked)
 {
     pp->activateGrid(checked);
 }
-
 void vtkwindow_new::changeWCS(bool galaptic)
 {
     if (galaptic) {
         vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
         transform->RotateY(180);
         vtkAxes->SetUserTransform(transform);
-    } else {
+    }
+    // ecliptic?
+    else {
         vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
         transform->RotateY(-180);
         transform->RotateZ(-23.5);
         vtkAxes->SetUserTransform(transform);
     }
     update();
+}
+
+void vtkwindow_new::changeWCS_clicked(int wcs)
+{
+    legendScaleActorImage->setWCS(wcs);
+    ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    if (ui->isocontourVtkWin->isVisible()) {
+        legendScale3DActor->setWCS(wcs);
+        ui->isocontourVtkWin->renderWindow()->GetInteractor()->Render();
+    }
 }
 
 void vtkwindow_new::plotSlice(vtkSmartPointer<vtkFitsReader> visvis, int arg1) { }

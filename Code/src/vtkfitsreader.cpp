@@ -511,6 +511,7 @@ void vtkFitsReader::ReadHeader()
     delt2 = cdelt2;
     delt3 = cdelt3;
     bUnit = bunit;
+    ctype1 = xStr;
 
     crval[0] = val1.toDouble();
     crval[1] = val2.toDouble();

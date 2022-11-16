@@ -1535,11 +1535,18 @@
     <addaction name="actionCAESAR"/>
     <addaction name="actionProfile"/>
    </widget>
+   <widget class="QMenu" name="menuWCS">
+    <property name="title">
+     <string>WCS</string>
+    </property>
+    <addaction name="separator"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuWindow"/>
    <addaction name="menuCamera"/>
    <addaction name="menuMoment"/>
    <addaction name="menuTools"/>
+   <addaction name="menuWCS"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionTools">

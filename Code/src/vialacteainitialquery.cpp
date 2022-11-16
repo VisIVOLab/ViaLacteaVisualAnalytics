@@ -552,10 +552,9 @@ void VialacteaInitialQuery::on_download_completed()
                                    .append("/setting.ini"),
                            QSettings::NativeFormat);
 
-        long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024 * 1024;
-        long size = QFileInfo(currentPath).size();
+        long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024;
+        long size = QFileInfo(currentPath).size() / 1024;
         int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
-        qDebug() << Q_FUNC_INFO << "ScaleFactor" << ScaleFactor;
 
         auto win = new vtkWindowCube(myCallingVtkWindow, currentPath, ScaleFactor, velocityUnit);
         win->show();
