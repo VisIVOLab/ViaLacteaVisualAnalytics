@@ -17,6 +17,10 @@ class LutCustomize : public QWidget
 public:
     explicit LutCustomize(vtkwindow_new *v, QWidget *parent = 0);
     ~LutCustomize();
+    void configurePoint3D();
+    void configureFitsImage();
+    Ui::LutCustomize *ui;
+
 
 private slots:
     void on_cancelPushButton_clicked();
@@ -29,16 +33,17 @@ private slots:
     void on_fromSlider_sliderMoved(int position);
 
     void on_toSlider_sliderMoved(int position);
-
     void on_okPushButton_clicked();
+    void on_lutComboBox_activated(const QString &arg1);
+    void on_scalingComboBox_activated(const QString &arg1);
 
 private:
-    Ui::LutCustomize *ui;
     vtkwindow_new *vtkwin;
     QCPItemLine *fromLine;
     QCPItemLine *toLine;
     double *range;
     double *y_range;
+    bool isPoint3D;
 };
 
 #endif // LUTCUSTOMIZE_H

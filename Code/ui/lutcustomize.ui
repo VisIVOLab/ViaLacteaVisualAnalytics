@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>391</height>
+    <height>397</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -79,6 +79,163 @@
      </item>
      <item>
       <widget class="QLineEdit" name="toValue"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QComboBox" name="lutComboBox">
+       <item>
+        <property name="text">
+         <string>Gray</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Default</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Default Step</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>EField</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Glow</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>MinMax</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PhysicsContour</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PureRed</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PureGreen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PureBlue</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Run1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Run2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Sar</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Temperature</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>TenStep</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenGlow</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenGreen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenRGB</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>VolRenTwoLev</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllYellow</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllCyan</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllViolet</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllWhite</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllBlack</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllRed</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllGreen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AllBlu</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="scalingComboBox">
+       <item>
+        <property name="text">
+         <string>Linear</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Log</string>
+        </property>
+       </item>
+      </widget>
      </item>
     </layout>
    </item>
