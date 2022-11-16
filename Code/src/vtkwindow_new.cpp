@@ -1284,6 +1284,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         if (!lcustom)
             lcustom = new LutCustomize(this);
+        lcustom->setLut("Gray");
+        lcustom->setScaling("Log");
         lcustom->configureFitsImage();
         lcustom->show();
         showColorbarFits(true);
@@ -3893,7 +3895,7 @@ void vtkwindow_new::on_lutComboBox_activated(const QString &arg1)
 
     if (lcustom)
     {
-       lcustom->ui->lutComboBox->setCurrentText(arg1);
+        lcustom->ui->lutComboBox->setCurrentText(arg1);
     }
 }
 
@@ -3904,6 +3906,11 @@ void vtkwindow_new::on_logRadioButton_toggled(bool checked)
     else
         selected_scale = "Linear";
 
+    if(lcustom)
+    {
+        lcustom->setScaling(selected_scale);
+        lcustom->plotHistogram();
+    }
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
                     selected_scale.toStdString().c_str());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
@@ -4162,7 +4169,11 @@ void vtkwindow_new::on_linear3dRadioButton_toggled(bool checked)
         selected_scale = "Log";
 
     pp->scale = selected_scale.toStdString();
-
+    if(lcustom)
+    {
+        lcustom->setScaling(selected_scale);
+        lcustom->plotHistogram();
+    }
     pp->colorScalar = ui->scalarComboBox->currentText().toStdString();
     pp->palette = ui->lut3dComboBox->currentText().toStdString();
     pp->setLookupTableScale();

@@ -17,6 +17,7 @@ LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     vtkwin = v;
     isPoint3D=false;
     ui->histogramWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+    ui->histogramWidget->addGraph();
 }
 
 void LutCustomize::configurePoint3D()
@@ -59,8 +60,6 @@ void LutCustomize::setLut(QString lut)
 {
     ui->lutComboBox->setCurrentText(lut);
 }
-
-
 
 LutCustomize::~LutCustomize()
 {
@@ -122,13 +121,18 @@ void LutCustomize::plotHistogram()
         cnt++;
     }
     // create graph and assign data to it:
-    ui->histogramWidget->addGraph();
+
     ui->histogramWidget->graph(0)->setData(x, y);
     if (vtkwin->getSelectedScale() == "Log") {
         ui->histogramWidget->xAxis->setScaleType(QCPAxis::stLogarithmic);
         QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
         logTicker->setLogBase(10);
         ui->histogramWidget->xAxis->setTicker(logTicker);
+    }
+    else if (vtkwin->getSelectedScale() == "Linear") {
+        ui->histogramWidget->xAxis->setScaleType(QCPAxis::stLinear);
+        QSharedPointer<QCPAxisTicker> linearTicker(new QCPAxisTicker);
+        ui->histogramWidget->xAxis->setTicker(linearTicker);
     }
 
     ui->histogramWidget->yAxis->setTickLabels(false);

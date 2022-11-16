@@ -22,13 +22,12 @@ public:
     Ui::LutCustomize *ui;
     void setScaling(QString scaling);
     void setLut(QString lut);
-
+    void plotHistogram();
 
 private slots:
     void on_cancelPushButton_clicked();
     void closeEvent(QCloseEvent *event);
     void on_ShowColorbarCheckBox_clicked(bool checked);
-    void plotHistogram();
     void drawLine(double from, double to);
     void setRange();
 
