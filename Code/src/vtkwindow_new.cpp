@@ -1288,7 +1288,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         lcustom->setScaling("Log");
         lcustom->configureFitsImage();
         lcustom->show();
-        showColorbarFits(true);
+        changeFitsScale("Gray","Log");
 
         break;
     }
@@ -2690,32 +2690,41 @@ void vtkwindow_new::changeScalar(std::string scalar)
 void vtkwindow_new::showColorbar(bool checked)
 {
     pp->showColorBar = checked;
-    pp->scalarBar->SetVisibility(checked);
+    pp->colorBar(checked);
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::showColorbarFits(bool checked)
+void vtkwindow_new::showColorbarFits(bool checked,double min, double max)
 {
     if (scalarBar != 0) {
         ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(scalarBar);
+        scalarBar=nullptr;
     }
 
-    vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-    SelectLookTable(ui->lutComboBox->currentText().toStdString().c_str(), lut);
-    scalarBar = vtkScalarBarActor::New();
-    scalarBar->SetLabelFormat("%.3g");
-    scalarBar->SetOrientationToVertical();
-    scalarBar->UnconstrainedFontSizeOn();
-    // vtkTextProperty* labelTextProperty = scalarBar->GetLabelTextProperty();
-    // labelTextProperty->SetFontSize(12);
-    scalarBar->SetMaximumWidthInPixels(80);
-    legendScaleActorImage->RightAxisVisibilityOff();
-    scalarBar->SetPosition(0.95,0.10);
-    scalarBar->SetLookupTable(lut);
-    auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
-    renderer->AddActor(scalarBar);
-    scalarBar->SetVisibility(checked);
+    if (checked)
+    {
+        vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
+        SelectLookTable(ui->lutComboBox->currentText().toStdString().c_str(), lut);
+        lut->SetTableRange(min, max);
+        scalarBar = vtkScalarBarActor::New();
+        scalarBar->SetLabelFormat("%.3g");
+        scalarBar->SetOrientationToVertical();
+        scalarBar->UnconstrainedFontSizeOn();
+        // vtkTextProperty* labelTextProperty = scalarBar->GetLabelTextProperty();
+        // labelTextProperty->SetFontSize(12);
+        scalarBar->SetMaximumWidthInPixels(80);
+        legendScaleActorImage->RightAxisVisibilityOff();
+        scalarBar->SetPosition(0.90,0.10);
+        scalarBar->SetLookupTable(lut);
+        auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+        renderer->AddActor(scalarBar);
+        scalarBar->SetVisibility(checked);
+    }
+    else
+    {
+        legendScaleActorImage->RightAxisVisibilityOn();
+    }
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
@@ -2958,7 +2967,9 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale, floa
     vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(pos))
             ->SetMapper(imageSliceMapperLutModified);
     if(scalarBar)
-        showColorbarFits(true);
+    {
+        showColorbarFits(true,min,max);
+    }
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
@@ -4114,7 +4125,7 @@ void vtkwindow_new::on_lut3dActivateCheckBox_clicked(bool checked)
     ui->toolButton->setEnabled(checked);
     selected_scale = "Linear";
     changeScalar(ui->scalarComboBox->currentText().toStdString().c_str());
-    showColorbar(checked);
+//    showColorbar(checked);
     if (ui->glyphActivateCheckBox->isChecked()) {
         ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
     }

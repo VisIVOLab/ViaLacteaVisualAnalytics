@@ -30,13 +30,11 @@ private slots:
     void on_ShowColorbarCheckBox_clicked(bool checked);
     void drawLine(double from, double to);
     void setRange();
-
-    void on_fromSlider_sliderMoved(int position);
-
-    void on_toSlider_sliderMoved(int position);
     void on_okPushButton_clicked();
     void on_lutComboBox_activated(const QString &arg1);
     void on_scalingComboBox_activated(const QString &arg1);
+    void on_fromSpinBox_valueChanged(int arg1);
+    void on_toSpinBox_valueChanged(int arg1);
 
 private:
     vtkwindow_new *vtkwin;

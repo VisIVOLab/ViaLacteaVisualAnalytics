@@ -321,7 +321,7 @@ public slots:
     void showBox(bool checked);
     void showAxes(bool checked);
     void showColorbar(bool checked);
-    void showColorbarFits(bool checked);
+    void showColorbarFits(bool checked, double min, double max);
     void setCameraElevation(double el);
     void setCameraAzimuth(double az);
     void scale(bool checked);

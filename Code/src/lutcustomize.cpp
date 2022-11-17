@@ -24,32 +24,27 @@ void LutCustomize::configurePoint3D()
 {
     isPoint3D=true;
     setRange();
-
-    ui->fromSlider->setMinimum(range[0]);
-    ui->fromSlider->setMaximum(range[1]);
-
-    ui->toSlider->setMinimum(range[0]);
-    ui->toSlider->setMaximum(range[1]);
-
-    ui->fromSlider->setValue(range[0]);
-    ui->toSlider->setValue(range[1]);
     plotHistogram();
+
+    ui->fromSpinBox->setMinimum(range[0]);
+    ui->fromSpinBox->setMaximum(range[1]);
+    ui->toSpinBox->setMinimum(range[0]);
+    ui->toSpinBox->setMaximum(range[1]);
+    ui->fromSpinBox->setValue(range[0]);
+    ui->toSpinBox->setValue(range[1]);
 }
 
 void LutCustomize::configureFitsImage()
 {
     setRange();
-    ui->fromSlider->setMinimum(range[0]);
-    ui->fromSlider->setMaximum(range[1]);
-
-    ui->toSlider->setMinimum(range[0]);
-    ui->toSlider->setMaximum(range[1]);
-
-    ui->fromSlider->setValue(range[0]);
-    ui->toSlider->setValue(range[1]);
-    ui->fromValue->setText(QString::number(range[0]));
-    ui->toValue->setText(QString::number(range[1]));
     plotHistogram();
+
+    ui->fromSpinBox->setMinimum(range[0]);
+    ui->fromSpinBox->setMaximum(range[1]);
+    ui->toSpinBox->setMinimum(range[0]);
+    ui->toSpinBox->setMaximum(range[1]);
+    ui->fromSpinBox->setValue(range[0]);
+    ui->toSpinBox->setValue(range[1]);
 }
 
 void LutCustomize::setScaling(QString scaling)
@@ -76,8 +71,8 @@ void LutCustomize::setRange()
                 ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
                 ->GetRange(range);
 
-        ui->fromValue->setText(QString::number(vtkwin->pp->actualFrom));
-        ui->toValue->setText(QString::number(vtkwin->pp->actualTo));
+        range[0]=vtkwin->pp->actualFrom;
+        range[1]=vtkwin->pp->actualTo;
     }
     else
     {
@@ -97,8 +92,10 @@ void LutCustomize::plotHistogram()
         extraction->SetInputData(vtkwin->pp->getPolyData());
         numberOfBins = vtkwin->vispoint->getOrigin()->getbinNumber();
 
-    }else
-    {   extraction->SetInputData(vtkwin->getFitsImage()->GetOutputDataObject(0));
+    }
+    else
+    {
+        extraction->SetInputData(vtkwin->getFitsImage()->GetOutputDataObject(0));
         numberOfBins=(vtkwin->getFitsImage()->GetNaxes(0)*vtkwin->getFitsImage()->GetNaxes(1))/10;
     }
     extraction->SetBinCount(numberOfBins);
@@ -185,26 +182,14 @@ void LutCustomize::on_ShowColorbarCheckBox_clicked(bool checked)
     if(isPoint3D)
         vtkwin->showColorbar(checked);
     else
-        vtkwin->showColorbarFits(checked);
-}
-
-void LutCustomize::on_fromSlider_sliderMoved(int position)
-{
-    ui->fromValue->setText(QString::number(position));
-    drawLine(position, ui->toValue->text().toDouble());
-}
-
-void LutCustomize::on_toSlider_sliderMoved(int position)
-{
-    ui->toValue->setText(QString::number(position));
-    drawLine(ui->fromValue->text().toDouble(), position);
+        vtkwin->showColorbarFits(checked, ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
 }
 
 void LutCustomize::on_okPushButton_clicked()
 {
     if(isPoint3D)
     {
-        vtkwin->pp->setLookupTable(ui->fromValue->text().toDouble(), ui->toValue->text().toDouble());
+        vtkwin->pp->setLookupTable(ui->fromSpinBox->text().toDouble(), ui->toSpinBox->text().toDouble());
         if (vtkwin->ui->glyphShapeComboBox->isEnabled()) {
             vtkwin->getGlyphActor()->GetMapper()->SetLookupTable(vtkwin->pp->getLookupTable());
             vtkwin->getGlyphActor()->GetMapper()->SetScalarRange(
@@ -214,11 +199,11 @@ void LutCustomize::on_okPushButton_clicked()
     else
     {
         vtkwin->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
-                        ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromValue->text().toFloat(), ui->toValue->text().toFloat());
+                                ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
     }
     vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-//    this->close();
+    //    this->close();
 }
 
 void LutCustomize::on_lutComboBox_activated(const QString &arg1)
@@ -253,4 +238,15 @@ void LutCustomize::on_scalingComboBox_activated(const QString &arg1)
     }
 }
 
+
+
+void LutCustomize::on_fromSpinBox_valueChanged(int arg1)
+{
+    drawLine(arg1, ui->toSpinBox->text().toDouble());
+}
+
+void LutCustomize::on_toSpinBox_valueChanged(int arg1)
+{
+    drawLine(ui->fromSpinBox->text().toDouble(), arg1);
+}
 

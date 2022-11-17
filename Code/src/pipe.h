@@ -64,13 +64,13 @@ public:
 
     vtkLookupTable *getLookupTable() { return m_lut; }
     int getRows() { return m_nRows; }
+    void colorBar(bool showColorBar);
 
 protected:
     void setCamera();
     void constructVTK(vtkwindow_new *v);
     void destroyVTK();
     void setBoundingBox(vtkDataObject *data);
-    void colorBar(bool showColorBar);
     virtual void setAxes(vtkDataSet *data, double *bounds);
     int m_nRows;
     int m_nCols;

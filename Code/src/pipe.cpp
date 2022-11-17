@@ -418,18 +418,21 @@ void Pipe::colorBar(bool showColorBar)
 {
     if (scalarBar != 0) {
         m_pRenderer->RemoveActor(scalarBar);
+        scalarBar=nullptr;
     }
+    if (showColorBar)
+    {
+        scalarBar = vtkScalarBarActor::New();
+        scalarBar->SetTitle(colorScalar.c_str());
 
-    scalarBar = vtkScalarBarActor::New();
-    scalarBar->SetTitle(colorScalar.c_str());
-
-    scalarBar->SetLabelFormat("%.3g");
-    scalarBar->SetOrientationToHorizontal();
-    scalarBar->SetPosition(0.1, 0);
-    scalarBar->SetPosition2(0.8, 0.1);
-    scalarBar->SetLookupTable(m_lut);
-    m_pRenderer->AddActor(scalarBar);
-    scalarBar->SetVisibility(showColorBar);
+        scalarBar->SetLabelFormat("%.3g");
+        scalarBar->SetOrientationToHorizontal();
+        scalarBar->SetPosition(0.1, 0);
+        scalarBar->SetPosition2(0.8, 0.1);
+        scalarBar->SetLookupTable(m_lut);
+        m_pRenderer->AddActor(scalarBar);
+        scalarBar->SetVisibility(showColorBar);
+    }
 }
 
 void Pipe::setAxes(vtkDataSet *data, double *bounds)
