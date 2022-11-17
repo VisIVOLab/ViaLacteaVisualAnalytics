@@ -14,6 +14,7 @@ LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::LutCustomize)
 {
     ui->setupUi(this);
+    this->setWindowTitle("LUT Customizer");
     vtkwin = v;
     isPoint3D=false;
     ui->histogramWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
