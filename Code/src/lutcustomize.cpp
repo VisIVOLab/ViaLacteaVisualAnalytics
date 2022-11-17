@@ -189,6 +189,11 @@ void LutCustomize::closeEvent(QCloseEvent *event)
     vtkwin->activateWindow();
     vtkwin->show();
 }
+void LutCustomize::refreshColorbar()
+{
+    on_ShowColorbarCheckBox_clicked(false);
+    on_ShowColorbarCheckBox_clicked(true);
+}
 
 void LutCustomize::on_ShowColorbarCheckBox_clicked(bool checked)
 {

@@ -23,6 +23,7 @@ public:
     void setScaling(QString scaling);
     void setLut(QString lut);
     void plotHistogram();
+    void refreshColorbar();
 
 private slots:
     void on_cancelPushButton_clicked();

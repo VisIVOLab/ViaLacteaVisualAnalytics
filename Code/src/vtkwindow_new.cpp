@@ -4483,6 +4483,8 @@ void vtkwindow_new::on_listWidget_clicked(const QModelIndex &index)
                 lcustom->setScaling("Linear");
             else
                 lcustom->setScaling("Log");
+
+            lcustom->refreshColorbar();
         }
     }
 }
