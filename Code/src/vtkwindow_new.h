@@ -463,6 +463,7 @@ private slots:
     void on_actionProfile_triggered();
     void on_actionSave_session_triggered();
     void changeWCS_clicked(int wcs);
+    void on_toolButton_2_clicked();
 };
 
 #endif // vtkwindow_new_H

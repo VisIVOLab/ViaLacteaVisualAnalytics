@@ -1282,14 +1282,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         showMaximized();
         activateWindow();
 
-        if (!lcustom)
-            lcustom = new LutCustomize(this);
-        lcustom->setLut("Gray");
-        lcustom->setScaling("Log");
-        lcustom->configureFitsImage();
-        lcustom->show();
-        changeFitsScale("Gray","Log");
-
         break;
     }
     case 1: {
@@ -4125,7 +4117,7 @@ void vtkwindow_new::on_lut3dActivateCheckBox_clicked(bool checked)
     ui->toolButton->setEnabled(checked);
     selected_scale = "Linear";
     changeScalar(ui->scalarComboBox->currentText().toStdString().c_str());
-//    showColorbar(checked);
+    //    showColorbar(checked);
     if (ui->glyphActivateCheckBox->isChecked()) {
         ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
     }
@@ -5227,3 +5219,15 @@ void vtkwindow_new::on_actionSave_session_triggered()
     QMessageBox::information(this, tr("Save session"),
                              tr("Session saved in ") + sessionFolder.absolutePath());
 }
+
+void vtkwindow_new::on_toolButton_2_clicked()
+{
+    if (!lcustom)
+        lcustom = new LutCustomize(this);
+    lcustom->setLut(ui->lutComboBox->currentText().toStdString().c_str());
+    lcustom->setScaling(selected_scale);
+    lcustom->configureFitsImage();
+    lcustom->show();
+    //changeFitsScale("Gray",selected_scale);
+}
+
