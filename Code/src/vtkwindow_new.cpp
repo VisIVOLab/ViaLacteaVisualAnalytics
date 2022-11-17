@@ -2705,8 +2705,14 @@ void vtkwindow_new::showColorbarFits(bool checked)
     SelectLookTable(ui->lutComboBox->currentText().toStdString().c_str(), lut);
     scalarBar = vtkScalarBarActor::New();
     scalarBar->SetLabelFormat("%.3g");
-    scalarBar->SetLookupTable(lut);
     scalarBar->SetOrientationToVertical();
+    scalarBar->UnconstrainedFontSizeOn();
+    // vtkTextProperty* labelTextProperty = scalarBar->GetLabelTextProperty();
+    // labelTextProperty->SetFontSize(12);
+    scalarBar->SetMaximumWidthInPixels(80);
+    legendScaleActorImage->RightAxisVisibilityOff();
+    scalarBar->SetPosition(0.95,0.10);
+    scalarBar->SetLookupTable(lut);
     auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
     renderer->AddActor(scalarBar);
     scalarBar->SetVisibility(checked);
@@ -2951,6 +2957,8 @@ void vtkwindow_new::changeFitsScale(std::string palette, std::string scale, floa
     imageSliceMapperLutModified->SetInputData(colors->GetOutput());
     vtkImageSlice::SafeDownCast(imageStack->GetImages()->GetItemAsObject(pos))
             ->SetMapper(imageSliceMapperLutModified);
+    if(scalarBar)
+        showColorbarFits(true);
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
