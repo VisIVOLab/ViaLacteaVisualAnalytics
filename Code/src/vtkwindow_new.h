@@ -68,6 +68,7 @@ class FitsImageStatisiticInfo;
 class contour;
 class DS9Region;
 class Catalogue;
+class LutCustomize;
 
 namespace Ui {
 class vtkwindow_new;
@@ -114,6 +115,7 @@ public:
     void changePalette(std::string palette);
     void changeFitsPalette(std::string palette);
     void changeFitsScale(std::string palette, std::string scale);
+    void changeFitsScale(std::string palette, std::string scale, float min, float max);
     void changeScalar(std::string scalar);
     PointsPipe *pp;
     void resetCamera();
@@ -308,6 +310,8 @@ private:
     QVector<double> yp_x_array;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendScaleActorImage;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendScale3DActor;
+    vtkSmartPointer<vtkScalarBarActor> scalarBar;
+    QPointer<LutCustomize> lcustom;
 
 public slots:
     // void updateCoords(vtkObject*);
@@ -317,6 +321,7 @@ public slots:
     void showBox(bool checked);
     void showAxes(bool checked);
     void showColorbar(bool checked);
+    void showColorbarFits(bool checked, double min, double max);
     void setCameraElevation(double el);
     void setCameraAzimuth(double az);
     void scale(bool checked);
@@ -350,6 +355,8 @@ public slots:
     void setSelectedCubeVelocityUnit(QString v) { selectedCubeVelocityUnit = v; }
     // void setCuttingPlane(int value);
     void downloadStartingLayers(QList<QPair<QString, QString>> selectedSurvey);
+    void on_lutComboBox_activated(const QString &arg1);
+    void on_lut3dComboBox_activated(const QString &arg1);
 
 protected:
     // vtkEventQtSlotConnect* Connections;
@@ -412,7 +419,6 @@ private slots:
     void on_tableWidget_doubleClicked(const QModelIndex &index);
     void on_fil_rectPushButton_clicked();
 
-    void on_lutComboBox_activated(const QString &arg1);
     void on_logRadioButton_toggled(bool checked);
     void on_tdRectPushButton_clicked();
     void on_ElementListWidget_doubleClicked(const QModelIndex &index);
@@ -426,7 +432,6 @@ private slots:
     void on_contourCheckBox_clicked(bool checked);
     void on_lut3dActivateCheckBox_clicked(bool checked);
     void on_scalarComboBox_activated(const QString &arg1);
-    void on_lut3dComboBox_activated(const QString &arg1);
     void on_toolButton_clicked();
     void on_glyphActivateCheckBox_clicked(bool checked);
     void on_linear3dRadioButton_toggled(bool checked);
@@ -458,7 +463,7 @@ private slots:
     void on_actionProfile_triggered();
     void on_actionSave_session_triggered();
     void changeWCS_clicked(int wcs);
-
+    void on_toolButton_2_clicked();
 };
 
 #endif // vtkwindow_new_H
