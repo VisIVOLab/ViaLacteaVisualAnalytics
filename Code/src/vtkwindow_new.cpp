@@ -4474,6 +4474,16 @@ void vtkwindow_new::on_listWidget_clicked(const QModelIndex &index)
         auto radioBtn = imgLayerList.at(row)->getLutScale() == "Linear" ? ui->linearadioButton
                                                                         : ui->logRadioButton;
         radioBtn->setChecked(true);
+
+        if(lcustom)
+        {
+            lcustom->configureFitsImage();
+            lcustom->setLut(imgLayerList.at(row)->getLutType());
+            if(imgLayerList.at(row)->getLutScale() == "Linear")
+                lcustom->setScaling("Linear");
+            else
+                lcustom->setScaling("Log");
+        }
     }
 }
 
