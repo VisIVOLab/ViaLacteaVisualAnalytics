@@ -2703,8 +2703,6 @@ void vtkwindow_new::showColorbarFits(bool checked,double min, double max)
         scalarBar->SetLabelFormat("%.3g");
         scalarBar->SetOrientationToVertical();
         scalarBar->UnconstrainedFontSizeOn();
-        // vtkTextProperty* labelTextProperty = scalarBar->GetLabelTextProperty();
-        // labelTextProperty->SetFontSize(12);
         scalarBar->SetMaximumWidthInPixels(80);
         legendScaleActorImage->RightAxisVisibilityOff();
         scalarBar->SetPosition(0.90,0.10);

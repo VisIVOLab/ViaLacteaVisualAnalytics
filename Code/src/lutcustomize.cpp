@@ -77,8 +77,15 @@ void LutCustomize::setRange()
     }
     else
     {
-        range[0]=vtkwin->getFitsImage()->GetMin();
-        range[1]=vtkwin->getFitsImage()->GetMax();
+        int pos = 0;
+        if (vtkwin->ui->listWidget->selectionModel()->selectedRows().count() != 0
+                && vtkwin->getLayerListImages().at(vtkwin->ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
+                == 0) {
+            pos = vtkwin->ui->listWidget->selectionModel()->selectedRows().at(0).row();
+        }
+
+        range[0] = vtkwin->getLayerListImages().at(pos)->getFits()->GetMin();
+        range[1] = vtkwin->getLayerListImages().at(pos)->getFits()->GetMax();
     }
 }
 
@@ -92,12 +99,17 @@ void LutCustomize::plotHistogram()
     {
         extraction->SetInputData(vtkwin->pp->getPolyData());
         numberOfBins = vtkwin->vispoint->getOrigin()->getbinNumber();
-
     }
     else
     {
-        extraction->SetInputData(vtkwin->getFitsImage()->GetOutputDataObject(0));
-        numberOfBins=(vtkwin->getFitsImage()->GetNaxes(0)*vtkwin->getFitsImage()->GetNaxes(1))/10;
+        int pos = 0;
+        if (vtkwin->ui->listWidget->selectionModel()->selectedRows().count() != 0
+                && vtkwin->getLayerListImages().at(vtkwin->ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
+                == 0) {
+            pos = vtkwin->ui->listWidget->selectionModel()->selectedRows().at(0).row();
+        }
+        extraction->SetInputData(vtkwin->getLayerListImages().at(pos)->getFits()->GetOutputDataObject(0));
+        numberOfBins=(vtkwin->getLayerListImages().at(pos)->getFits()->GetNaxes(0)*vtkwin->getLayerListImages().at(pos)->getFits()->GetNaxes(1))/10;
     }
     extraction->SetBinCount(numberOfBins);
     extraction->SetCustomBinRanges(range);
@@ -194,16 +206,16 @@ void LutCustomize::on_okPushButton_clicked()
             vtkwin->getGlyphActor()->GetMapper()->SetLookupTable(vtkwin->pp->getLookupTable());
             vtkwin->getGlyphActor()->GetMapper()->SetScalarRange(
                         vtkwin->pp->getLookupTable()->GetRange());
-            }
-            if (ui->scalingComboBox->currentText()=="Linear")
-                vtkwin->ui->linear3dRadioButton->setChecked(true);
-            else
-                vtkwin->ui->log3dRadioButton->setChecked(true);
+        }
+        if (ui->scalingComboBox->currentText()=="Linear")
+            vtkwin->ui->linear3dRadioButton->setChecked(true);
+        else
+            vtkwin->ui->log3dRadioButton->setChecked(true);
 
-            vtkwin->ui->lut3dComboBox->setCurrentText(ui->lutComboBox->currentText());
-            vtkwin->changePalette(ui->lutComboBox->currentText().toStdString().c_str());
-            vtkwin->showColorbar(ui->ShowColorbarCheckBox->isChecked());
-            vtkwin->pp->setLookupTable(ui->fromSpinBox->text().toDouble(), ui->toSpinBox->text().toDouble());
+        vtkwin->ui->lut3dComboBox->setCurrentText(ui->lutComboBox->currentText());
+        vtkwin->changePalette(ui->lutComboBox->currentText().toStdString().c_str());
+        vtkwin->showColorbar(ui->ShowColorbarCheckBox->isChecked());
+        vtkwin->pp->setLookupTable(ui->fromSpinBox->text().toDouble(), ui->toSpinBox->text().toDouble());
     }
     else
     {
@@ -234,9 +246,9 @@ void LutCustomize::on_resetMinPushButton_clicked()
 {
     if(isPoint3D)
         ui->fromSpinBox->setValue(vtkwin->pp->getPolyData()
-                ->GetPointData()
-                ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
-                ->GetRange()[0]);
+                                  ->GetPointData()
+                                  ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
+                                  ->GetRange()[0]);
     else
         ui->fromSpinBox->setValue(vtkwin->getFitsImage()->GetMin());
 }
@@ -246,9 +258,9 @@ void LutCustomize::on_resetMaxPushButton_clicked()
 {
     if(isPoint3D)
         ui->toSpinBox->setValue(vtkwin->pp->getPolyData()
-                ->GetPointData()
-                ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
-                ->GetRange()[1]);
+                                ->GetPointData()
+                                ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
+                                ->GetRange()[1]);
     else
         ui->toSpinBox->setValue(vtkwin->getFitsImage()->GetMax());
 }
