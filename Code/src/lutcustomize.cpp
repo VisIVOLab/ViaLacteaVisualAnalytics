@@ -201,15 +201,13 @@ void LutCustomize::on_okPushButton_clicked()
                 vtkwin->ui->log3dRadioButton->setChecked(true);
 
             vtkwin->ui->lut3dComboBox->setCurrentText(ui->lutComboBox->currentText());
-            vtkwin->on_lut3dComboBox_activated(ui->lutComboBox->currentText());
+            vtkwin->changePalette(ui->lutComboBox->currentText().toStdString().c_str());
             vtkwin->showColorbar(ui->ShowColorbarCheckBox->isChecked());
             vtkwin->pp->setLookupTable(ui->fromSpinBox->text().toDouble(), ui->toSpinBox->text().toDouble());
     }
     else
     {
         vtkwin->ui->lutComboBox->setCurrentText(ui->lutComboBox->currentText());
-        vtkwin->on_lutComboBox_activated(ui->lutComboBox->currentText());
-
         if (ui->scalingComboBox->currentText()=="Linear")
             vtkwin->ui->linearadioButton->setChecked(true);
         else

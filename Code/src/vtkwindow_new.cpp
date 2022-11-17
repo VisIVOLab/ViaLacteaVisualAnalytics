@@ -3917,6 +3917,8 @@ void vtkwindow_new::on_lutComboBox_activated(const QString &arg1)
     if (lcustom)
     {
         lcustom->ui->lutComboBox->setCurrentText(arg1);
+        lcustom->ui->fromSpinBox->setValue(myfits->GetMin());
+        lcustom->ui->toSpinBox->setValue(myfits->GetMax());
     }
 }
 
@@ -4136,6 +4138,19 @@ void vtkwindow_new::on_lut3dComboBox_activated(const QString &arg1)
 {
     changePalette(ui->lut3dComboBox->currentText().toStdString().c_str());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    if (lcustom)
+    {
+        vtkSmartPointer<vtkDataArray> data =
+                pp->getPolyData()->GetPointData()->GetArray(ui->scalarComboBox->currentText().toStdString().c_str());
+        if (data != 0) {
+            double range[2];
+            data->GetRange(range);
+            lcustom->ui->fromSpinBox->setValue(range[0]);
+            lcustom->ui->toSpinBox->setValue(range[1]);
+        }
+        lcustom->ui->lutComboBox->setCurrentText(arg1);
+
+    }
 }
 
 void vtkwindow_new::on_toolButton_clicked()
