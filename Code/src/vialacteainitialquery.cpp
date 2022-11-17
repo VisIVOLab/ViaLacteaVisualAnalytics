@@ -509,6 +509,9 @@ void VialacteaInitialQuery::on_download_completed()
 
     this->close();
 
+    auto vl = &Singleton<ViaLactea>::Instance();
+    vl->showMinimized();
+
     if ((velfrom.compare("0.0") == 0 && velto.compare("0.0") == 0) || species.compare("dust") == 0
             || species.compare("Continuum") == 0
             || (surveyname.compare("NANTEN") == 0 && test_flag_nanten == 2)
@@ -536,7 +539,6 @@ void VialacteaInitialQuery::on_download_completed()
             if (selectedSurvey.length() > 1)
                 win->downloadStartingLayers(selectedSurvey);
 
-            auto vl = &Singleton<ViaLactea>::Instance();
             vl->setMasterWin(win);
         }
     } else {
