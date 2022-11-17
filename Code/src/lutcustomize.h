@@ -31,10 +31,12 @@ private slots:
     void drawLine(double from, double to);
     void setRange();
     void on_okPushButton_clicked();
-    void on_lutComboBox_activated(const QString &arg1);
-    void on_scalingComboBox_activated(const QString &arg1);
     void on_fromSpinBox_valueChanged(int arg1);
     void on_toSpinBox_valueChanged(int arg1);
+
+    void on_resetMinPushButton_clicked();
+
+    void on_resetMaxPushButton_clicked();
 
 private:
     vtkwindow_new *vtkwin;

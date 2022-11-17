@@ -194,51 +194,34 @@ void LutCustomize::on_okPushButton_clicked()
             vtkwin->getGlyphActor()->GetMapper()->SetLookupTable(vtkwin->pp->getLookupTable());
             vtkwin->getGlyphActor()->GetMapper()->SetScalarRange(
                         vtkwin->pp->getLookupTable()->GetRange());
+
+            if (ui->scalingComboBox->currentText()=="Linear")
+                vtkwin->ui->linear3dRadioButton->setChecked(true);
+            else
+                vtkwin->ui->log3dRadioButton->setChecked(true);
+
+            vtkwin->ui->lut3dComboBox->setCurrentText(ui->lutComboBox->currentText());
+            vtkwin->on_lut3dComboBox_activated(ui->lutComboBox->currentText());
+            vtkwin->showColorbar(ui->ShowColorbarCheckBox->isChecked());
         }
     }
     else
     {
         vtkwin->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
                                 ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
-    }
-    vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    //    this->close();
-}
+        vtkwin->ui->lutComboBox->setCurrentText(ui->lutComboBox->currentText());
+        vtkwin->on_lutComboBox_activated(ui->lutComboBox->currentText());
 
-void LutCustomize::on_lutComboBox_activated(const QString &arg1)
-{
-    if(isPoint3D)
-    {
-        vtkwin->ui->lut3dComboBox->setCurrentText(arg1);
-        vtkwin->on_lut3dComboBox_activated(arg1);
-    }
-    else
-    {
-        vtkwin->ui->lutComboBox->setCurrentText(arg1);
-        vtkwin->on_lutComboBox_activated(arg1);
-    }
-}
-
-void LutCustomize::on_scalingComboBox_activated(const QString &arg1)
-{
-    if(isPoint3D)
-    {
-        if (arg1=="Linear")
-            vtkwin->ui->linear3dRadioButton->setChecked(true);
-        else
-            vtkwin->ui->log3dRadioButton->setChecked(true);
-    }
-    else
-    {
-        if (arg1=="Linear")
+        if (ui->scalingComboBox->currentText()=="Linear")
             vtkwin->ui->linearadioButton->setChecked(true);
         else
             vtkwin->ui->logRadioButton->setChecked(true);
+
+        vtkwin->showColorbarFits(ui->ShowColorbarCheckBox->isChecked(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
     }
+    vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
-
-
 
 void LutCustomize::on_fromSpinBox_valueChanged(int arg1)
 {
@@ -248,5 +231,22 @@ void LutCustomize::on_fromSpinBox_valueChanged(int arg1)
 void LutCustomize::on_toSpinBox_valueChanged(int arg1)
 {
     drawLine(ui->fromSpinBox->text().toDouble(), arg1);
+}
+
+void LutCustomize::on_resetMinPushButton_clicked()
+{
+    if(isPoint3D)
+        ;
+    else
+        ui->fromSpinBox->setValue(vtkwin->getFitsImage()->GetMin());
+}
+
+
+void LutCustomize::on_resetMaxPushButton_clicked()
+{
+    if(isPoint3D)
+        ;
+    else
+        ui->toSpinBox->setValue(vtkwin->getFitsImage()->GetMax());
 }
 

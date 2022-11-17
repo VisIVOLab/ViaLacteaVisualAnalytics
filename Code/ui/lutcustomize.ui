@@ -49,6 +49,27 @@
      <item>
       <widget class="QSpinBox" name="fromSpinBox"/>
      </item>
+     <item>
+      <widget class="QPushButton" name="resetMinPushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Reset Default Value</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normalon>:/icons/reset.png</normalon>
+        </iconset>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
@@ -62,6 +83,27 @@
      </item>
      <item>
       <widget class="QSpinBox" name="toSpinBox"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="resetMaxPushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Reset Default Value</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normalon>:/icons/reset.png</normalon>
+        </iconset>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
