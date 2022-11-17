@@ -43,8 +43,8 @@ private:
     vtkwindow_new *vtkwin;
     QCPItemLine *fromLine;
     QCPItemLine *toLine;
-    double *range;
-    double *y_range;
+    double range[2];
+    double y_range[2];
     bool isPoint3D;
 };
 

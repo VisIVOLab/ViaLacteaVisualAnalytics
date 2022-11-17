@@ -2552,6 +2552,10 @@ void vtkwindow_new::closeEvent(QCloseEvent *event)
 
         vl->resetMasterWin();
     }
+
+    if (lcustom) {
+        lcustom->close();
+    }
 }
 
 void vtkwindow_new::updateSpecies()
@@ -5249,7 +5253,7 @@ void vtkwindow_new::on_toolButton_2_clicked()
 {
     if (!lcustom)
         lcustom = new LutCustomize(this);
-    lcustom->setLut(ui->lutComboBox->currentText().toStdString().c_str());
+    lcustom->setLut(ui->lutComboBox->currentText());
     lcustom->setScaling(selected_scale);
     lcustom->configureFitsImage();
     lcustom->show();

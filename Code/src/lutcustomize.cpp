@@ -64,7 +64,6 @@ LutCustomize::~LutCustomize()
 
 void LutCustomize::setRange()
 {
-    range = new double[2];
     if (isPoint3D)
     {
         vtkwin->pp->getPolyData()
@@ -119,7 +118,7 @@ void LutCustomize::plotHistogram()
             vtkDoubleArray::SafeDownCast(histogram->GetRowData()->GetArray("bin_extents"));
     vtkIntArray *const bin_values =
             vtkIntArray::SafeDownCast(histogram->GetRowData()->GetArray((int)1));
-    y_range = new double[2];
+
     bin_values->GetRange(y_range);
     QVector<double> x(numberOfBins);
     QVector<double> y(numberOfBins);
@@ -186,9 +185,13 @@ void LutCustomize::on_cancelPushButton_clicked()
 
 void LutCustomize::closeEvent(QCloseEvent *event)
 {
-    vtkwin->activateWindow();
-    vtkwin->show();
+    Q_UNUSED(event);
+    if (vtkwin && vtkwin->isVisible()) {
+        vtkwin->activateWindow();
+        vtkwin->raise();
+    }
 }
+
 void LutCustomize::refreshColorbar()
 {
     on_ShowColorbarCheckBox_clicked(false);
