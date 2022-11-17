@@ -276,7 +276,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">
@@ -302,6 +302,7 @@
      <string>View</string>
     </property>
     <addaction name="actionShowStats"/>
+    <addaction name="actionLookup_Table"/>
    </widget>
    <widget class="QMenu" name="menuWCS">
     <property name="title">
@@ -381,6 +382,11 @@
   <action name="actionShowStats">
    <property name="text">
     <string>Show FITS statistics</string>
+   </property>
+  </action>
+  <action name="actionLookup_Table">
+   <property name="text">
+    <string>Lookup Table</string>
    </property>
   </action>
  </widget>
