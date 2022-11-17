@@ -303,9 +303,15 @@
     </property>
     <addaction name="actionShowStats"/>
    </widget>
+   <widget class="QMenu" name="menuWCS">
+    <property name="title">
+     <string>WCS</string>
+    </property>
+   </widget>
    <addaction name="menuCamera"/>
-   <addaction name="menuMoment"/>
+   <addaction name="menuWCS"/>
    <addaction name="menuView"/>
+   <addaction name="menuMoment"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionFront">

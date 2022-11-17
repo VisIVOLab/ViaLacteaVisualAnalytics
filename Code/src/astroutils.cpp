@@ -96,12 +96,8 @@ bool AstroUtils::CheckOverlap(std::string f1, std::string f2, bool full)
 
 int AstroUtils::calculateResizeFactor(long size, long maxSize)
 {
-    qDebug() << Q_FUNC_INFO << "size" << size << "maxSize" << maxSize;
-    if (maxSize <= 0 || size <= maxSize)
+    if (size <= 0 || maxSize <= 0 || size <= maxSize)
         return 1;
-    double a = 1.0 * maxSize / size;
-    double b = cbrt(a);
-    double c = ceil(b);
     return ceil(cbrt(1.0 * size / maxSize));
 }
 

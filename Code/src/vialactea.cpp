@@ -379,6 +379,17 @@ void ViaLactea::on_localDCPushButton_clicked()
         return;
     }
 
+    long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
+    long size = QFileInfo(fn).size() / 1024; // B -> KB
+    int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
+
+    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
+    win->show();
+    win->activateWindow();
+    win->raise();
+    this->showMinimized();
+    return;
+
     bool doSearch = settings.value("vlkb.search", false).toBool();
     auto load = [fn, this](const QList<QMap<QString, QString>> &results =
                                    QList<QMap<QString, QString>>()) {

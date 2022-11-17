@@ -16,6 +16,7 @@ class vtkFitsReader2;
 class vtkFlyingEdges3D;
 class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
+class vtkLegendScaleActorWCS;
 class vtkwindow_new;
 class FitsImageStatisiticInfo;
 
@@ -80,12 +81,16 @@ private:
     double lowerBound;
     double upperBound;
 
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendActorCube;
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendActorSlice;
     vtkSmartPointer<vtkActor> planeActor;
     vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
+
+    void changeLegendWCS(int wcs);
 
     int readFitsHeader();
     void showStatusBarMessage(const std::string &msg);
