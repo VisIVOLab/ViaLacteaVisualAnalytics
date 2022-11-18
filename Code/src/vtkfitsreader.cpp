@@ -645,6 +645,39 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
         }
 
         m0->Delete();
+    } else if (order == 6) {
+        // root mean square of the spectrum (noise map)
+
+        // sum of squares
+        while (npixels > 0) {
+            nbuffer = fmin(npixels, buffsize);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < nbuffer; ++i) {
+                if (std::isnan(buffer[i]))
+                    continue;
+
+                float v = scalars->GetValue(i) + buffer[i] * buffer[i];
+                scalars->SetValue(i, v);
+            }
+
+            fpixel += nbuffer;
+            npixels -= nbuffer;
+        }
+
+        // RMS and data range
+        for (int i = 0; i < buffsize; ++i) {
+            float v = std::sqrt(scalars->GetValue(i)/naxes[2]);
+            scalars->SetValue(i, v);
+
+            if (v < datamin)
+                datamin = v;
+            if (v > datamax)
+                datamax = v;
+        }
+
     } else if (order == 8) {
         // maximum value of the spectrum (peak map)
         while (npixels > 0) {
