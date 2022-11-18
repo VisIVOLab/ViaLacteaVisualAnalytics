@@ -574,6 +574,21 @@ void vtkWindowCube::on_actionCalculate_order_1_triggered()
     calculateAndShowMomentMap(1);
 }
 
+void vtkWindowCube::on_actionCalculate_order_6_triggered()
+{
+    calculateAndShowMomentMap(6);
+}
+
+void vtkWindowCube::on_actionCalculate_order_8_triggered()
+{
+    calculateAndShowMomentMap(8);
+}
+
+void vtkWindowCube::on_actionCalculate_order_10_triggered()
+{
+    calculateAndShowMomentMap(10);
+}
+
 void vtkWindowCube::on_actionShowStats_triggered()
 {
     if (!dock) {

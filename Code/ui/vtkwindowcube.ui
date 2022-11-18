@@ -296,6 +296,9 @@
     </property>
     <addaction name="actionCalculate_order_0"/>
     <addaction name="actionCalculate_order_1"/>
+    <addaction name="actionCalculate_order_6"/>
+    <addaction name="actionCalculate_order_8"/>
+    <addaction name="actionCalculate_order_10"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -370,17 +373,47 @@
   </action>
   <action name="actionCalculate_order_0">
    <property name="text">
-    <string>Calculate order 0</string>
+    <string>0 – the integrated value of the spectrum</string>
+   </property>
+   <property name="toolTip">
+    <string>0 – the integrated value of the spectrum</string>
    </property>
   </action>
   <action name="actionCalculate_order_1">
    <property name="text">
-    <string>Calculate order 1</string>
+    <string>1 – the intensity weighted coordinate</string>
+   </property>
+   <property name="toolTip">
+    <string>1 – the intensity weighted coordinate</string>
    </property>
   </action>
   <action name="actionShowStats">
    <property name="text">
     <string>Show FITS statistics</string>
+   </property>
+  </action>
+  <action name="actionCalculate_order_8">
+   <property name="text">
+    <string>8 – the maximum value of the spectrum</string>
+   </property>
+   <property name="toolTip">
+    <string>8 – the maximum value of the spectrum</string>
+   </property>
+  </action>
+  <action name="actionCalculate_order_6">
+   <property name="text">
+    <string>6 – the root mean square of the spectrum</string>
+   </property>
+   <property name="toolTip">
+    <string>6 – the root mean square of the spectrum</string>
+   </property>
+  </action>
+  <action name="actionCalculate_order_10">
+   <property name="text">
+    <string>10 – the minimum value of the spectrum</string>
+   </property>
+   <property name="toolTip">
+    <string>10 – the minimum value of the spectrum</string>
    </property>
   </action>
  </widget>
