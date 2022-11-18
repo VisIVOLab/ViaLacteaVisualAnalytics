@@ -296,6 +296,7 @@
     </property>
     <addaction name="actionCalculate_order_0"/>
     <addaction name="actionCalculate_order_1"/>
+    <addaction name="actionCalculate_order_8"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -381,6 +382,11 @@
   <action name="actionShowStats">
    <property name="text">
     <string>Show FITS statistics</string>
+   </property>
+  </action>
+  <action name="actionCalculate_order_8">
+   <property name="text">
+    <string>Calculate order 8</string>
    </property>
   </action>
  </widget>
