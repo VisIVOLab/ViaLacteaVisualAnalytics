@@ -593,3 +593,15 @@ void vtkWindowCube::changeLegendWCS(int wcs)
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }
+
+void vtkWindowCube::on_actionLookup_Table_triggered()
+{
+    qDebug()<<"LUT";
+    if (!lcustom)
+        lcustom = new LutCustomize(this);
+   /* lcustom->setLut(ui->lutComboBox->currentText());
+    lcustom->setScaling(selected_scale);
+    lcustom->configureFitsImage();
+*/
+    lcustom->show();
+}

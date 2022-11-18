@@ -9,6 +9,7 @@
 #include <QPointer>
 
 #include <vtkSmartPointer.h>
+#include "lutcustomize.h"
 
 class vtkActor;
 class vtkFitsReader;
@@ -19,6 +20,7 @@ class vtkOrientationMarkerWidget;
 class vtkLegendScaleActorWCS;
 class vtkwindow_new;
 class FitsImageStatisiticInfo;
+class LutCustomize;
 
 namespace Ui {
 class vtkWindowCube;
@@ -59,6 +61,7 @@ private slots:
     void on_actionCalculate_order_1_triggered();
 
     void on_actionShowStats_triggered();
+    void on_actionLookup_Table_triggered();
 
 private:
     Ui::vtkWindowCube *ui;
@@ -89,22 +92,17 @@ private:
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
+    QPointer<LutCustomize> lcustom;
 
     void changeLegendWCS(int wcs);
-
     int readFitsHeader();
     void showStatusBarMessage(const std::string &msg);
-
     void updateSliceDatacube();
     void updateVelocityText();
-
     void setThreshold(double threshold);
-
     void showContours();
     void removeContours();
-
     void calculateAndShowMomentMap(int order);
-
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);

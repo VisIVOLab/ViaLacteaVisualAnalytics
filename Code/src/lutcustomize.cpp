@@ -9,6 +9,13 @@
 
 #include "vtkImageHistogram.h"
 
+LutCustomize::LutCustomize(vtkWindowCube *v, QWidget *parent)
+    : QWidget(parent), ui(new Ui::LutCustomize)
+{
+    ui->setupUi(this);
+    this->setWindowTitle("LUT Customizer");
+
+}
 
 LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::LutCustomize)

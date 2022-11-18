@@ -3,8 +3,12 @@
 
 #include "qcustomplot.h"
 #include "vtkwindow_new.h"
+#include "vtkwindowcube.h"
 
 #include <QWidget>
+class vtkwindow_new;
+
+class vtkWindowCube;
 
 namespace Ui {
 class LutCustomize;
@@ -16,6 +20,7 @@ class LutCustomize : public QWidget
 
 public:
     explicit LutCustomize(vtkwindow_new *v, QWidget *parent = 0);
+    explicit LutCustomize(vtkWindowCube *v, QWidget *parent = 0);
     ~LutCustomize();
     void configurePoint3D();
     void configureFitsImage();
