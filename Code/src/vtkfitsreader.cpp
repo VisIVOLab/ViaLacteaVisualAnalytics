@@ -701,6 +701,28 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
             fpixel += nbuffer;
             npixels -= nbuffer;
         }
+    } else if (order == 10) {
+        while (npixels > 0) {
+            nbuffer = fmin(npixels, buffsize);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < nbuffer; ++i) {
+                if (std::isnan(buffer[i]))
+                    continue;
+
+                float v = fmin(scalars->GetValue(i), buffer[i]);
+                scalars->SetValue(i, v);
+                if (v < datamin)
+                    datamin = v;
+                if (v > datamax)
+                    datamax = v;
+            }
+
+            fpixel += nbuffer;
+            npixels -= nbuffer;
+        }
     }
 
     delete[] buffer;

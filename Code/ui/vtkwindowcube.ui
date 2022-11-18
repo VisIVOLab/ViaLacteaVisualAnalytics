@@ -298,6 +298,7 @@
     <addaction name="actionCalculate_order_1"/>
     <addaction name="actionCalculate_order_6"/>
     <addaction name="actionCalculate_order_8"/>
+    <addaction name="actionCalculate_order_10"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -405,6 +406,14 @@
    </property>
    <property name="toolTip">
     <string>6 – the root mean square of the spectrum</string>
+   </property>
+  </action>
+  <action name="actionCalculate_order_10">
+   <property name="text">
+    <string>10 – the minimum value of the spectrum</string>
+   </property>
+   <property name="toolTip">
+    <string>10 – the minimum value of the spectrum</string>
    </property>
   </action>
  </widget>
