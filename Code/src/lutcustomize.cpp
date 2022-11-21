@@ -2,6 +2,8 @@
 #include "ui_lutcustomize.h"
 
 #include "ui_vtkwindow_new.h"
+#include "ui_vtkwindowcube.h"
+
 #include "vispoint.h"
 #include "vtkDoubleArray.h"
 #include "vtkextracthistogram.h"
@@ -271,8 +273,10 @@ void LutCustomize::on_okPushButton_clicked()
         vtkwin->changePalette(ui->lutComboBox->currentText().toStdString().c_str());
         vtkwin->showColorbar(ui->ShowColorbarCheckBox->isChecked());
         vtkwin->pp->setLookupTable(ui->fromSpinBox->text().toDouble(), ui->toSpinBox->text().toDouble());
+        vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+
     }
-    else
+    else if(isFits2D)
     {
         vtkwin->ui->lutComboBox->setCurrentText(ui->lutComboBox->currentText());
         if (ui->scalingComboBox->currentText()=="Linear")
@@ -283,8 +287,17 @@ void LutCustomize::on_okPushButton_clicked()
         vtkwin->showColorbarFits(ui->ShowColorbarCheckBox->isChecked(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
         vtkwin->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
                                 ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
+        vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+
     }
-    vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
+    else if(isFits3D)
+    {
+        vtkwincube->showColorbar(ui->ShowColorbarCheckBox->isChecked(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
+        vtkwincube->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
+                                ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
+        vtkwincube->ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+
+    }
 }
 
 void LutCustomize::on_fromSpinBox_valueChanged(double arg1)

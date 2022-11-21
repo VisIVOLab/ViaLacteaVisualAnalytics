@@ -35,6 +35,7 @@
 #include <vtkResliceImageViewer.h>
 #include <vtkTextActor.h>
 #include <vtkTransform.h>
+#include <vtkImageSliceMapper.h>
 #include "ui_lutcustomize.h"
 
 #include <QDebug>
@@ -655,5 +656,27 @@ void vtkWindowCube::showColorbar(bool checked,double min, double max)
     ui->qVtkSlice->update();
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 
+}
+
+void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, float min, float max)
+{
+    vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
+
+    QString myscale = scale.c_str();
+    lut->SetTableRange(min, max);
+    if (myscale == "Linear")
+        lut->SetScaleToLinear();
+    else if (myscale == "Log")
+        lut->SetScaleToLog10();
+
+    SelectLookTable(palette.c_str(), lut);
+    sliceViewer->GetWindowLevel()->SetLookupTable(lut);
+
+    if(scalarBar)
+    {
+        showColorbar(true,min,max);
+    }
+    ui->qVtkSlice->update();
+    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }
 

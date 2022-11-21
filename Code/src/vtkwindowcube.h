@@ -36,8 +36,10 @@ public:
     explicit vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor = 1,
                            QString velocityUnit = "km/s");
     ~vtkWindowCube();
-    vtkSmartPointer<vtkFitsReader2> readerSlice;
     void showColorbar(bool checked,double min, double max);
+    void changeFitsScale(std::string palette, std::string scale, float min, float max);
+    Ui::vtkWindowCube *ui;
+    vtkSmartPointer<vtkFitsReader2> readerSlice;
 
 private slots:
     void on_sliceSlider_valueChanged(int value);
@@ -69,7 +71,6 @@ private slots:
     void on_actionSlice_Lookup_Table_triggered();
 
 private:
-    Ui::vtkWindowCube *ui;
     QString filepath;
     int ScaleFactor;
     QPointer<vtkwindow_new> parentWindow;
