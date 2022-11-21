@@ -294,7 +294,7 @@ void LutCustomize::on_okPushButton_clicked()
     {
         vtkwincube->showColorbar(ui->ShowColorbarCheckBox->isChecked(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
         vtkwincube->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
-                                ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
+                                    ui->scalingComboBox->currentText().toStdString().c_str(), ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
         vtkwincube->ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
     }
 }
