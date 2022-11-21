@@ -595,10 +595,9 @@ void vtkWindowCube::on_actionShowStats_triggered()
         dock = new QDockWidget(this);
         dock->setWidget(fitsStatsWidget);
         dock->setAllowedAreas(Qt::RightDockWidgetArea);
-        dock->setFloating(true);
     }
 
-    dock->show();
+    addDockWidget(Qt::RightDockWidgetArea, dock);
 }
 
 void vtkWindowCube::changeLegendWCS(int wcs)

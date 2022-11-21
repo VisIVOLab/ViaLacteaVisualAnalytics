@@ -3618,12 +3618,12 @@ void vtkwindow_new::showSourceDockWidget()
         dock = new QDockWidget(this);
         dock->setAllowedAreas(Qt::LeftDockWidgetArea);
         dock->setAttribute(Qt::WA_DeleteOnClose);
-        dock->setFloating(true);
 
         auto sourceWidget = new SourceWidget(dock, catalogue, this);
         dock->setWidget(sourceWidget);
-        dock->show();
     }
+
+    addDockWidget(Qt::LeftDockWidgetArea, dock);
 }
 
 void vtkwindow_new::addToList(vtkfitstoolwidgetobject *o, bool enabled)
