@@ -284,14 +284,14 @@ void LutCustomize::on_okPushButton_clicked()
     vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void LutCustomize::on_fromSpinBox_valueChanged(int arg1)
+void LutCustomize::on_fromSpinBox_valueChanged(double arg1)
 {
-    drawLine(arg1, ui->toSpinBox->text().toDouble());
+    drawLine(arg1, ui->toSpinBox->value());
 }
 
-void LutCustomize::on_toSpinBox_valueChanged(int arg1)
+void LutCustomize::on_toSpinBox_valueChanged(double arg1)
 {
-    drawLine(ui->fromSpinBox->text().toDouble(), arg1);
+    drawLine(ui->fromSpinBox->value(), arg1);
 }
 
 void LutCustomize::on_resetMinPushButton_clicked()

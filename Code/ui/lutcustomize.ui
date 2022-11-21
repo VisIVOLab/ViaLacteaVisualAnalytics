@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>439</height>
+    <height>451</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,7 +47,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="fromSpinBox"/>
+      <widget class="QDoubleSpinBox" name="fromSpinBox">
+       <property name="decimals">
+        <number>6</number>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="resetMinPushButton">
@@ -82,7 +86,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="toSpinBox"/>
+      <widget class="QDoubleSpinBox" name="toSpinBox">
+       <property name="decimals">
+        <number>6</number>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="resetMaxPushButton">

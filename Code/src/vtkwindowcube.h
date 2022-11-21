@@ -60,6 +60,9 @@ private slots:
 
     void on_actionCalculate_order_0_triggered();
     void on_actionCalculate_order_1_triggered();
+    void on_actionCalculate_order_6_triggered();
+    void on_actionCalculate_order_8_triggered();
+    void on_actionCalculate_order_10_triggered();
 
     void on_actionShowStats_triggered();
     void on_actionLookup_Table_triggered();

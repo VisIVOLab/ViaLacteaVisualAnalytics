@@ -582,16 +582,15 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
     long npixels = naxes[0] * naxes[1] * naxes[2];
     long buffsize = naxes[0] * naxes[1];
     float *buffer = new float[buffsize];
-    scalars->Allocate(buffsize);
-
-    for (long i = 0; i < buffsize; ++i)
-        scalars->InsertNextValue(0.0);
+    scalars->SetNumberOfValues(buffsize);
+    scalars->Fill(0.0);
 
     int anynull = 0;
     float fpixel = 1, nullval = 0;
     long nbuffer = 0;
 
     if (order == 0) {
+        // the integrated value of the spectrum
         while (npixels > 0) {
             nbuffer = fmin(npixels, buffsize);
 
@@ -600,16 +599,14 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
             for (long i = 0; i < nbuffer; ++i) {
                 if (std::isnan(buffer[i]))
-                    buffer[i] = -1000000.0;
+                    continue;
 
-                if (scalars->GetValue(i) != -1000000.0) {
-                    float v = scalars->GetValue(i) + buffer[i];
-                    scalars->SetValue(i, v);
-                    if (v < datamin)
-                        datamin = v;
-                    if (v > datamax)
-                        datamax = v;
-                }
+                float v = scalars->GetValue(i) + buffer[i];
+                scalars->SetValue(i, v);
+                if (v < datamin)
+                    datamin = v;
+                if (v > datamax)
+                    datamax = v;
             }
 
             fpixel += nbuffer;
@@ -617,6 +614,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
         }
 
     } else if (order == 1) {
+        // the intensity weighted coordinate
         vtkFloatArray *m0 = CalculateMoment(0);
 
         int slice = 0;
@@ -629,17 +627,15 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
             for (long i = 0; i < nbuffer; ++i) {
                 if (std::isnan(buffer[i]))
-                    buffer[i] = -1000000.0;
+                    continue;
 
-                if (m0->GetValue(i) != -1000000.0) {
+                if (m0->GetValue(i) != 0) {
                     float v = scalars->GetValue(i) + (buffer[i] * velocityValue) / m0->GetValue(i);
                     scalars->SetValue(i, v);
                     if (v < datamin)
                         datamin = v;
                     if (v > datamax)
                         datamax = v;
-                } else {
-                    scalars->SetValue(i, buffer[i]);
                 }
             }
 
@@ -649,6 +645,84 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
         }
 
         m0->Delete();
+    } else if (order == 6) {
+        // root mean square of the spectrum (noise map)
+
+        // sum of squares
+        while (npixels > 0) {
+            nbuffer = fmin(npixels, buffsize);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < nbuffer; ++i) {
+                if (std::isnan(buffer[i]))
+                    continue;
+
+                float v = scalars->GetValue(i) + buffer[i] * buffer[i];
+                scalars->SetValue(i, v);
+            }
+
+            fpixel += nbuffer;
+            npixels -= nbuffer;
+        }
+
+        // RMS and data range
+        for (int i = 0; i < buffsize; ++i) {
+            float v = std::sqrt(scalars->GetValue(i)/naxes[2]);
+            scalars->SetValue(i, v);
+
+            if (v < datamin)
+                datamin = v;
+            if (v > datamax)
+                datamax = v;
+        }
+
+    } else if (order == 8) {
+        // maximum value of the spectrum (peak map)
+        while (npixels > 0) {
+            nbuffer = fmin(npixels, buffsize);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < nbuffer; ++i) {
+                if (std::isnan(buffer[i]))
+                    continue;
+
+                float v = fmax(scalars->GetValue(i), buffer[i]);
+                scalars->SetValue(i, v);
+                if (v < datamin)
+                    datamin = v;
+                if (v > datamax)
+                    datamax = v;
+            }
+
+            fpixel += nbuffer;
+            npixels -= nbuffer;
+        }
+    } else if (order == 10) {
+        while (npixels > 0) {
+            nbuffer = fmin(npixels, buffsize);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < nbuffer; ++i) {
+                if (std::isnan(buffer[i]))
+                    continue;
+
+                float v = fmin(scalars->GetValue(i), buffer[i]);
+                scalars->SetValue(i, v);
+                if (v < datamin)
+                    datamin = v;
+                if (v > datamax)
+                    datamax = v;
+            }
+
+            fpixel += nbuffer;
+            npixels -= nbuffer;
+        }
     }
 
     delete[] buffer;
