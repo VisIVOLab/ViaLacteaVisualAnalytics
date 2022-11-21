@@ -202,7 +202,6 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(rangeSlice[0], rangeSlice[1]);
     SelectLookTable(lutName, lutSlice);
-    //lutSlice->SetScaleToLog10();
 
     sliceViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     sliceViewer->SetInputData(readerSlice->GetOutput());
@@ -312,9 +311,11 @@ void vtkWindowCube::updateSliceDatacube()
 
     auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(range[0], range[1]);
-    SelectLookTable("Gray", lutSlice);
+    SelectLookTable(lutName, lutSlice);
     sliceViewer->SetInputData(readerSlice->GetOutput());
     sliceViewer->GetWindowLevel()->SetLookupTable(lutSlice);
+    if (lcustom)
+        lcustom->configureFits3D();
 
     sliceViewer->GetRenderer()->ResetCamera();
     sliceViewer->Render();
@@ -663,6 +664,7 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
     vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
 
     QString myscale = scale.c_str();
+    lutName= QString::fromUtf8(palette.c_str());
     lut->SetTableRange(min, max);
     if (myscale == "Linear")
         lut->SetScaleToLinear();
