@@ -65,7 +65,7 @@ private slots:
     void on_actionCalculate_order_10_triggered();
 
     void on_actionShowStats_triggered();
-    void on_actionLookup_Table_triggered();
+    void on_actionSlice_Lookup_Table_triggered();
 
 private:
     Ui::vtkWindowCube *ui;

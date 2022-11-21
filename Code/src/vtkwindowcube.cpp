@@ -610,7 +610,7 @@ void vtkWindowCube::changeLegendWCS(int wcs)
     ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkWindowCube::on_actionLookup_Table_triggered()
+void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
 {
     if (!lcustom)
         lcustom = new LutCustomize(this);
@@ -620,6 +620,5 @@ void vtkWindowCube::on_actionLookup_Table_triggered()
         selected_scale="Log";
     lcustom->setScaling(selected_scale);
     lcustom->configureFits3D();
-    //sliceViewer->GetWindowLevel()->GetLookupTable()->get
     lcustom->show();
 }
