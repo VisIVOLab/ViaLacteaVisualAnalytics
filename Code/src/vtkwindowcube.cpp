@@ -196,9 +196,11 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     rendererSlice->GlobalWarningDisplayOff();
     renWinSlice->AddRenderer(rendererSlice);
 
-    auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
+    lutName="Gray";
+    lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(rangeSlice[0], rangeSlice[1]);
-    SelectLookTable("Gray", lutSlice);
+    SelectLookTable(lutName, lutSlice);
+    //lutSlice->SetScaleToLog10();
 
     sliceViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     sliceViewer->SetInputData(readerSlice->GetOutput());
@@ -207,7 +209,6 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     sliceViewer->GetImageActor()->InterpolateOff();
     sliceViewer->SetRenderWindow(renWinSlice);
     sliceViewer->SetRenderer(rendererSlice);
-
     ui->sliceSlider->setRange(1, readerSlice->GetNumberOfSlices());
     ui->sliceSpinBox->setRange(1, readerSlice->GetNumberOfSlices());
 
@@ -282,7 +283,7 @@ int vtkWindowCube::readFitsHeader()
 
         // Skip empty names, HISTORY and COMMENT keyworks
         if ((strlen(name) == 0) || (strcasecmp(name, "HISTORY") == 0)
-            || (strcasecmp(name, "COMMENT") == 0)) {
+                || (strcasecmp(name, "COMMENT") == 0)) {
             continue;
         }
 
@@ -374,7 +375,7 @@ void vtkWindowCube::showContours()
 
         double coord[3];
         AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
-                           sky_coord_gal[1], coord);
+                sky_coord_gal[1], coord);
 
         double angle = 0;
         double x1 = coord[0];
@@ -382,7 +383,7 @@ void vtkWindowCube::showContours()
 
         AstroUtils::xy2sky(filepath.toStdString(), 0, 100, sky_coord_gal, WCS_GALACTIC);
         AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
-                           sky_coord_gal[1], coord);
+                sky_coord_gal[1], coord);
 
         if (x1 != coord[0]) {
             double m = fabs((coord[1] - y1) / (coord[0] - x1));
@@ -596,12 +597,14 @@ void vtkWindowCube::changeLegendWCS(int wcs)
 
 void vtkWindowCube::on_actionLookup_Table_triggered()
 {
-    qDebug()<<"LUT";
     if (!lcustom)
         lcustom = new LutCustomize(this);
-   /* lcustom->setLut(ui->lutComboBox->currentText());
+    lcustom->setLut(lutName);
+    QString selected_scale="Linear";
+    if(lutSlice->GetScale()!=0)
+        selected_scale="Log";
     lcustom->setScaling(selected_scale);
-    lcustom->configureFitsImage();
-*/
+    lcustom->configureFits3D();
+    //sliceViewer->GetWindowLevel()->GetLookupTable()->get
     lcustom->show();
 }

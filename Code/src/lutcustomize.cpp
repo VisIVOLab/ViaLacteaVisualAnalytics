@@ -14,7 +14,12 @@ LutCustomize::LutCustomize(vtkWindowCube *v, QWidget *parent)
 {
     ui->setupUi(this);
     this->setWindowTitle("LUT Customizer");
-
+    vtkwincube=v;
+    isPoint3D=false;
+    isFits2D=false;
+    isFits3D=false;
+    ui->histogramWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+    ui->histogramWidget->addGraph();
 }
 
 LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
@@ -24,6 +29,8 @@ LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     this->setWindowTitle("LUT Customizer");
     vtkwin = v;
     isPoint3D=false;
+    isFits2D=false;
+    isFits3D=false;
     ui->histogramWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
     ui->histogramWidget->addGraph();
 }
@@ -44,6 +51,21 @@ void LutCustomize::configurePoint3D()
 
 void LutCustomize::configureFitsImage()
 {
+    isFits2D=true;
+    setRange();
+    plotHistogram();
+
+    ui->fromSpinBox->setMinimum(range[0]);
+    ui->fromSpinBox->setMaximum(range[1]);
+    ui->toSpinBox->setMinimum(range[0]);
+    ui->toSpinBox->setMaximum(range[1]);
+    ui->fromSpinBox->setValue(range[0]);
+    ui->toSpinBox->setValue(range[1]);
+}
+
+void LutCustomize::configureFits3D()
+{
+    isFits3D=true;
     setRange();
     plotHistogram();
 
@@ -81,7 +103,7 @@ void LutCustomize::setRange()
         range[0]=vtkwin->pp->actualFrom;
         range[1]=vtkwin->pp->actualTo;
     }
-    else
+    else if (isFits2D)
     {
         int pos = 0;
         if (vtkwin->ui->listWidget->selectionModel()->selectedRows().count() != 0
@@ -93,6 +115,11 @@ void LutCustomize::setRange()
         range[0] = vtkwin->getLayerListImages().at(pos)->getFits()->GetMin();
         range[1] = vtkwin->getLayerListImages().at(pos)->getFits()->GetMax();
     }
+    else if (isFits3D)
+    {
+        range[0] = 0;
+        range[1] = 1;
+    }
 }
 
 void LutCustomize::plotHistogram()
@@ -100,14 +127,16 @@ void LutCustomize::plotHistogram()
     vtkSmartPointer<vtkExtractHistogram> extraction = vtkSmartPointer<vtkExtractHistogram>::New();
     int numberOfBins=-1;
     extraction->UseCustomBinRangesOn();
-
+    QString selected_scale;
     if(isPoint3D)
     {
         extraction->SetInputData(vtkwin->pp->getPolyData());
         numberOfBins = vtkwin->vispoint->getOrigin()->getbinNumber();
+        selected_scale=vtkwin->getSelectedScale();
     }
-    else
+    else if (isFits2D)
     {
+        selected_scale=vtkwin->getSelectedScale();
         int pos = 0;
         if (vtkwin->ui->listWidget->selectionModel()->selectedRows().count() != 0
                 && vtkwin->getLayerListImages().at(vtkwin->ui->listWidget->selectionModel()->selectedRows().at(0).row())->getType()
@@ -117,6 +146,15 @@ void LutCustomize::plotHistogram()
         extraction->SetInputData(vtkwin->getLayerListImages().at(pos)->getFits()->GetOutputDataObject(0));
         numberOfBins=(vtkwin->getLayerListImages().at(pos)->getFits()->GetNaxes(0)*vtkwin->getLayerListImages().at(pos)->getFits()->GetNaxes(1))/10;
     }
+    else if (isFits3D)
+    {
+        selected_scale=ui->scalingComboBox->currentText();
+        extraction->SetInputData(vtkwincube->readerSlice->GetOutput());
+        float dimX=vtkwincube->readerSlice->GetBounds()[1]-vtkwincube->readerSlice->GetBounds()[0]+1;
+        float dimY=vtkwincube->readerSlice->GetBounds()[3]-vtkwincube->readerSlice->GetBounds()[2]+1;
+        numberOfBins=(dimX*dimY)/10;
+    }
+
     extraction->SetBinCount(numberOfBins);
     extraction->SetCustomBinRanges(range);
     extraction->Update();
@@ -137,15 +175,14 @@ void LutCustomize::plotHistogram()
         cnt++;
     }
     // create graph and assign data to it:
-
     ui->histogramWidget->graph(0)->setData(x, y);
-    if (vtkwin->getSelectedScale() == "Log") {
+    if (selected_scale == "Log") {
         ui->histogramWidget->xAxis->setScaleType(QCPAxis::stLogarithmic);
         QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
         logTicker->setLogBase(10);
         ui->histogramWidget->xAxis->setTicker(logTicker);
     }
-    else if (vtkwin->getSelectedScale() == "Linear") {
+    else if (selected_scale == "Linear") {
         ui->histogramWidget->xAxis->setScaleType(QCPAxis::stLinear);
         QSharedPointer<QCPAxisTicker> linearTicker(new QCPAxisTicker);
         ui->histogramWidget->xAxis->setTicker(linearTicker);

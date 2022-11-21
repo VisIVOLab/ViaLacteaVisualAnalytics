@@ -386,7 +386,7 @@
   </action>
   <action name="actionLookup_Table">
    <property name="text">
-    <string>Lookup Table</string>
+    <string>Slice Lookup Table</string>
    </property>
   </action>
  </widget>

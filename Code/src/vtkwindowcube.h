@@ -36,6 +36,7 @@ public:
     explicit vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor = 1,
                            QString velocityUnit = "km/s");
     ~vtkWindowCube();
+    vtkSmartPointer<vtkFitsReader2> readerSlice;
 
 private slots:
     void on_sliceSlider_valueChanged(int value);
@@ -69,7 +70,6 @@ private:
     int ScaleFactor;
     QPointer<vtkwindow_new> parentWindow;
     vtkSmartPointer<vtkFitsReader2> readerCube;
-    vtkSmartPointer<vtkFitsReader2> readerSlice;
     FitsImageStatisiticInfo *fitsStatsWidget;
     QPointer<QDockWidget> dock;
 
@@ -93,6 +93,8 @@ private:
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
     QPointer<LutCustomize> lcustom;
+    QString lutName;
+    vtkSmartPointer<vtkLookupTable> lutSlice;
 
     void changeLegendWCS(int wcs);
     int readFitsHeader();
