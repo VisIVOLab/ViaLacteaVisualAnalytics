@@ -117,8 +117,8 @@ void LutCustomize::setRange()
     }
     else if (isFits3D)
     {
-        range[0] = 0;
-        range[1] = 1;
+        range[0] = vtkwincube->readerSlice->GetValueRange()[0];
+        range[1] = vtkwincube->readerSlice->GetValueRange()[1];
     }
 }
 
