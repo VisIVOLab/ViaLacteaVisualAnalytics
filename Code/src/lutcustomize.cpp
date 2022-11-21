@@ -304,8 +304,10 @@ void LutCustomize::on_resetMinPushButton_clicked()
                                   ->GetPointData()
                                   ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
                                   ->GetRange()[0]);
-    else
+    else if(isFits2D)
         ui->fromSpinBox->setValue(vtkwin->getFitsImage()->GetMin());
+    else if(isFits3D)
+        ui->fromSpinBox->setValue(vtkwincube->readerSlice->GetValueRange()[0]);
 }
 
 
@@ -316,7 +318,9 @@ void LutCustomize::on_resetMaxPushButton_clicked()
                                 ->GetPointData()
                                 ->GetScalars(vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
                                 ->GetRange()[1]);
-    else
-        ui->toSpinBox->setValue(vtkwin->getFitsImage()->GetMax());
+    else if(isFits2D)
+        ui->fromSpinBox->setValue(vtkwin->getFitsImage()->GetMax());
+    else if(isFits3D)
+        ui->fromSpinBox->setValue(vtkwincube->readerSlice->GetValueRange()[1]);
 }
 
