@@ -246,8 +246,11 @@ void LutCustomize::on_ShowColorbarCheckBox_clicked(bool checked)
 {
     if(isPoint3D)
         vtkwin->showColorbar(checked);
-    else
+    else  if(isFits2D)
         vtkwin->showColorbarFits(checked, ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
+    else  if(isFits3D)
+        vtkwincube->showColorbar(checked, ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
+
 }
 
 void LutCustomize::on_okPushButton_clicked()

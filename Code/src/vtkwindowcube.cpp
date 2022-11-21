@@ -35,6 +35,7 @@
 #include <vtkResliceImageViewer.h>
 #include <vtkTextActor.h>
 #include <vtkTransform.h>
+#include "ui_lutcustomize.h"
 
 #include <QDebug>
 
@@ -622,3 +623,37 @@ void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
     lcustom->configureFits3D();
     lcustom->show();
 }
+
+void vtkWindowCube::showColorbar(bool checked,double min, double max)
+{
+    if (scalarBar != 0) {
+        ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(scalarBar);
+        scalarBar=nullptr;
+    }
+
+    if (checked)
+    {
+        vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
+        SelectLookTable(lcustom->ui->lutComboBox->currentText().toStdString().c_str(), lut);
+        lut->SetTableRange(min, max);
+        scalarBar = vtkScalarBarActor::New();
+        scalarBar->SetLabelFormat("%.3g");
+        scalarBar->SetOrientationToVertical();
+        scalarBar->UnconstrainedFontSizeOn();
+        scalarBar->SetMaximumWidthInPixels(80);
+        legendActorSlice->RightAxisVisibilityOff();
+        scalarBar->SetPosition(0.80,0.10);
+        scalarBar->SetLookupTable(lut);
+        auto renderer = ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer();
+        renderer->AddActor(scalarBar);
+        scalarBar->SetVisibility(checked);
+    }
+    else
+    {
+        legendActorSlice->RightAxisVisibilityOn();
+    }
+    ui->qVtkSlice->update();
+    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+
+}
+

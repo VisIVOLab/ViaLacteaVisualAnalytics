@@ -37,6 +37,7 @@ public:
                            QString velocityUnit = "km/s");
     ~vtkWindowCube();
     vtkSmartPointer<vtkFitsReader2> readerSlice;
+    void showColorbar(bool checked,double min, double max);
 
 private slots:
     void on_sliceSlider_valueChanged(int value);
@@ -98,6 +99,7 @@ private:
     QPointer<LutCustomize> lcustom;
     QString lutName;
     vtkSmartPointer<vtkLookupTable> lutSlice;
+    vtkSmartPointer<vtkScalarBarActor> scalarBar;
 
     void changeLegendWCS(int wcs);
     int readFitsHeader();
