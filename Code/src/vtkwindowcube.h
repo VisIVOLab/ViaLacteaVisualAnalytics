@@ -9,6 +9,7 @@
 #include <QPointer>
 
 #include <vtkSmartPointer.h>
+#include "lutcustomize.h"
 
 class vtkActor;
 class vtkFitsReader;
@@ -19,6 +20,7 @@ class vtkOrientationMarkerWidget;
 class vtkLegendScaleActorWCS;
 class vtkwindow_new;
 class FitsImageStatisiticInfo;
+class LutCustomize;
 
 namespace Ui {
 class vtkWindowCube;
@@ -34,6 +36,10 @@ public:
     explicit vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor = 1,
                            QString velocityUnit = "km/s");
     ~vtkWindowCube();
+    void showColorbar(bool checked,double min, double max);
+    void changeFitsScale(std::string palette, std::string scale, float min, float max);
+    Ui::vtkWindowCube *ui;
+    vtkSmartPointer<vtkFitsReader2> readerSlice;
 
 private slots:
     void on_sliceSlider_valueChanged(int value);
@@ -62,14 +68,13 @@ private slots:
     void on_actionCalculate_order_10_triggered();
 
     void on_actionShowStats_triggered();
+    void on_actionSlice_Lookup_Table_triggered();
 
 private:
-    Ui::vtkWindowCube *ui;
     QString filepath;
     int ScaleFactor;
     QPointer<vtkwindow_new> parentWindow;
     vtkSmartPointer<vtkFitsReader2> readerCube;
-    vtkSmartPointer<vtkFitsReader2> readerSlice;
     FitsImageStatisiticInfo *fitsStatsWidget;
     QPointer<QDockWidget> dock;
 
@@ -92,22 +97,20 @@ private:
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
+    QPointer<LutCustomize> lcustom;
+    QString lutName;
+    vtkSmartPointer<vtkLookupTable> lutSlice;
+    vtkSmartPointer<vtkScalarBarActor> scalarBar;
 
     void changeLegendWCS(int wcs);
-
     int readFitsHeader();
     void showStatusBarMessage(const std::string &msg);
-
     void updateSliceDatacube();
     void updateVelocityText();
-
     void setThreshold(double threshold);
-
     void showContours();
     void removeContours();
-
     void calculateAndShowMomentMap(int order);
-
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);
