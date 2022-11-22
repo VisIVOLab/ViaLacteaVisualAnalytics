@@ -371,6 +371,14 @@ void ViaLactea::on_localDCPushButton_clicked()
         return;
     }
 
+    // Do not continue if the file is an image or it can't be loaded
+    int ReadStatus = 0;
+    if (isFitsImage(fn, ReadStatus) || ReadStatus != 0) {
+        QMessageBox::warning(this, "Open file", "The file you selected is not a cube!\n"
+                                                "Use Load Image to load it.");
+        return;
+    }
+
     // Check if the fits is a simcube
     auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader_dc->SetFileName(fn.toStdString());
@@ -643,4 +651,24 @@ void ViaLactea::on_loadTableButton_clicked()
     win->raise();
 
     this->showMinimized();
+}
+
+bool ViaLactea::isFitsImage(const QString &filepath, int &ReadStatus) const
+{
+    fitsfile *fptr;
+    ReadStatus = 0;
+    if (fits_open_data(&fptr, filepath.toUtf8().data(), READONLY, &ReadStatus)) {
+        fits_report_error(stderr, ReadStatus);
+        return false;
+    }
+
+    int naxis = 0;
+    if (fits_get_img_dim(fptr, &naxis, &ReadStatus)) {
+        fits_report_error(stderr, ReadStatus);
+        return false;
+    }
+
+    fits_close_file(fptr, &ReadStatus);
+
+    return naxis == 2;
 }

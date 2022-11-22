@@ -90,6 +90,7 @@ private:
     QMap<int, QPair<QString, QString>> mapSurvey;
     vtkwindow_new *masterWin = nullptr;
 
+    bool isFitsImage(const QString &filepath, int &ReadStatus) const;
     bool canImportToMasterWin(std::string importFn);
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
 
