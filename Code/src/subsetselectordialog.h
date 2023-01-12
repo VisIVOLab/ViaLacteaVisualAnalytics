@@ -9,9 +9,11 @@ class SubsetSelectorDialog;
 
 struct CubeSubset
 {
-    bool readSubset { false };
-    int subset[6] { 0, 0, 0, 0, 0, 0 };
-    int readSteps[3] { 1, 1, 1 };
+    bool ReadSubExtent { false };
+    int SubExtent[6] { -1, -1, -1, -1, -1, -1 };
+    bool AutoScale { false };
+    int CubeMaxSize { 1024 };
+    int ScaleFactor { 1 };
 };
 
 class SubsetSelectorDialog : public QDialog

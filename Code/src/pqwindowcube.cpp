@@ -332,9 +332,11 @@ void pqWindowCube::showStatusBarMessage(const std::string &msg)
 void pqWindowCube::setSubsetProperties(const CubeSubset &subset)
 {
     auto sourceProxy = FitsSource->getProxy();
-    vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Set(subset.readSubset);
-    vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.subset, 6);
-    vtkSMPropertyHelper(sourceProxy, "ReadStep").Set(subset.readSteps, 3);
+    vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Set(subset.ReadSubExtent);
+    vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.SubExtent, 6);
+    vtkSMPropertyHelper(sourceProxy, "AutoScale").Set(subset.AutoScale);
+    vtkSMPropertyHelper(sourceProxy, "CubeMaxSize").Set(subset.CubeMaxSize);
+    vtkSMPropertyHelper(sourceProxy, "ScaleFactor").Set(subset.ScaleFactor);
     sourceProxy->UpdateVTKObjects();
 }
 

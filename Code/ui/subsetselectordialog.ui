@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>333</width>
-    <height>334</height>
+    <height>328</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,23 +29,13 @@
       </item>
       <item>
        <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="2">
+         <widget class="QLineEdit" name="textX1"/>
+        </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label">
           <property name="text">
            <string>X</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QLineEdit" name="textX0"/>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLineEdit" name="textX1"/>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>Y</string>
           </property>
          </widget>
         </item>
@@ -55,15 +45,25 @@
         <item row="1" column="2">
          <widget class="QLineEdit" name="textY1"/>
         </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="textZ0"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="textX0"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Y</string>
+          </property>
+         </widget>
+        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_3">
           <property name="text">
            <string>Z</string>
           </property>
          </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="textZ0"/>
         </item>
         <item row="2" column="2">
          <widget class="QLineEdit" name="textZ1"/>
@@ -76,50 +76,47 @@
    <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Read steps</string>
+      <string>Scale</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_4">
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <widget class="QCheckBox" name="checkAutoScale">
         <property name="text">
-         <string>X</string>
+         <string>Auto Scale</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Y</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_6">
-        <property name="text">
-         <string>Z</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="textStepX">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="textStepY">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="textStepZ">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
+      <item>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Cube Max Size</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="textCubeMaxSize">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Scale Factor</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="textScaleFactor">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -144,9 +141,8 @@
   <tabstop>textY1</tabstop>
   <tabstop>textZ0</tabstop>
   <tabstop>textZ1</tabstop>
-  <tabstop>textStepX</tabstop>
-  <tabstop>textStepY</tabstop>
-  <tabstop>textStepZ</tabstop>
+  <tabstop>textCubeMaxSize</tabstop>
+  <tabstop>textScaleFactor</tabstop>
  </tabstops>
  <resources/>
  <connections>
