@@ -95,7 +95,6 @@ private:
     QMap<int, QPair<QString, QString>> mapSurvey;
     vtkwindow_new *masterWin = nullptr;
     QPointer<pqServer> server;
-    QPointer<pqPipelineSource> originSource;
 
     bool connectToPVServer();
 
@@ -106,7 +105,7 @@ protected:
     void closeEvent(QCloseEvent *);
 
 protected slots:
-    void onDataLoaded(pqPipelineSource *, std::string fn);
+    void onDataLoaded(const QString &filepath);
 };
 
 #endif // VIALACTEA_H

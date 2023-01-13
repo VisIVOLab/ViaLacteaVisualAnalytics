@@ -8,6 +8,7 @@
 #include <pqAlwaysConnectedBehavior.h>
 #include <pqApplicationCore.h>
 #include <pqObjectBuilder.h>
+#include <pqLoadDataReaction.h>
 #include <pqPipelineSource.h>
 #include <pqRenderView.h>
 
@@ -36,11 +37,10 @@
 #include <cstring>
 #include <utility>
 
-pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
+pqWindowCube::pqWindowCube(const QString &filepath,
                            const CubeSubset &cubeSubset)
     : ui(new Ui::pqWindowCube),
-      FitsSource(fitsSource),
-      FitsFileName(std::move(fn)),
+      FitsFileName(QFileInfo(filepath).fileName()),
       cubeSubset(cubeSubset),
       currentSlice(-1),
       contourFilter(nullptr),
@@ -48,20 +48,10 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
-    setWindowTitle(QString::fromStdString(FitsFileName));
+    setWindowTitle(FitsFileName);
     connect(ui->actionVolGenerate, &QAction::triggered, this,
             &pqWindowCube::generateVolumeRendering);
-
-    // ParaView Init
-    builder = pqApplicationCore::instance()->getObjectBuilder();
-    server = pqActiveObjects::instance().activeServer();
-    serverProxyManager = server->proxyManager();
-    new pqAlwaysConnectedBehavior(this);
-
-    // Enable annotations such as Remote Rendering, FPS, etc...
-    auto renderingSettings = serverProxyManager->GetProxy("settings", "RenderViewSettings");
-    vtkSMPropertyHelper(renderingSettings, "ShowAnnotation").Set(1);
-
+    
     // Opacity menu actions
     auto opacityGroup = new QActionGroup(this);
     opacityGroup->addAction(ui->action0);
@@ -69,7 +59,7 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
     opacityGroup->addAction(ui->action50);
     opacityGroup->addAction(ui->action75);
     opacityGroup->addAction(ui->action100);
-
+    
     // Create LUTs menu actions
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     auto lutGroup = new QActionGroup(this);
@@ -84,6 +74,19 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
         connect(lut, &QAction::triggered, this, [=]() { changeColorMap(name); });
     }
     ui->menuColorMap->addActions(lutGroup->actions());
+
+    // ParaView Init
+    builder = pqApplicationCore::instance()->getObjectBuilder();
+    server = pqActiveObjects::instance().activeServer();
+    serverProxyManager = server->proxyManager();
+    new pqAlwaysConnectedBehavior(this);
+
+    // Enable annotations such as Remote Rendering, FPS, etc...
+    auto renderingSettings = serverProxyManager->GetProxy("settings", "RenderViewSettings");
+    vtkSMPropertyHelper(renderingSettings, "ShowAnnotation").Set(1);
+    
+    // Load Reaction
+    FitsSource = pqLoadDataReaction::loadData({ filepath });
 
     // Handle Subset selection
     setSubsetProperties(cubeSubset);
@@ -129,6 +132,7 @@ pqWindowCube::pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
 
 pqWindowCube::~pqWindowCube()
 {
+    builder->destroy(FitsSource);
     builder->destroySources(server);
     this->FitsSource = NULL;
     delete ui;
@@ -176,7 +180,7 @@ QString pqWindowCube::createFitsHeaderFile(const FitsHeaderMap &fitsHeader)
                                  .append(QDir::separator())
                                  .append("VisIVODesktopTemp")
                                  .append(QDir::separator())
-                                 .append(this->FitsFileName.c_str());
+                                 .append(this->FitsFileName);
 
     fits_create_file(&fptr, ("!" + headerFile).toStdString().c_str(), &status);
     fits_update_key_log(fptr, "SIMPLE", TRUE, "", &status);

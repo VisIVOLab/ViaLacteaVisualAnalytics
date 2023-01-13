@@ -184,19 +184,13 @@ bool ViaLactea::connectToPVServer()
     return server != nullptr;
 }
 
-void ViaLactea::onDataLoaded(pqPipelineSource *source, std::string fn)
+void ViaLactea::onDataLoaded(const QString &filepath)
 {
     auto subsetSelector = new SubsetSelectorDialog(this);
     subsetSelector->setAttribute(Qt::WA_DeleteOnClose);
     connect(subsetSelector, &SubsetSelectorDialog::subsetSelected, this,
-            [this, source, fn](const CubeSubset &subset) {
-                if (this->originSource) {
-                    pqApplicationCore::instance()->getObjectBuilder()->destroy(this->originSource);
-                }
-
-                this->originSource = source;
-
-                auto win = new pqWindowCube(this->originSource, fn, subset);
+            [=](const CubeSubset &subset) {
+                auto win = new pqWindowCube(filepath, subset);
                 win->showMaximized();
                 win->raise();
                 win->activateWindow();
@@ -476,10 +470,7 @@ void ViaLactea::on_localDCPushButton_clicked()
     dialog.setFileMode(pqFileDialog::ExistingFile);
     if (dialog.exec() == pqFileDialog::Accepted) {
         QString file = dialog.getSelectedFiles().first();
-        std::string fileStd = file.toStdString();
-        pqLoadDataReaction *dataLoader = new pqLoadDataReaction(new QAction());
-        auto newSources = dataLoader->loadData({ file });
-        onDataLoaded(newSources, fileStd.substr(fileStd.find_last_of("/\\") + 1));
+        onDataLoaded(file);
     }
 
     /*

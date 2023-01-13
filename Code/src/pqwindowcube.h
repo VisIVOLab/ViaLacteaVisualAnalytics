@@ -26,7 +26,7 @@ class pqWindowCube : public QMainWindow
     using FitsHeaderMap = QMap<QString, QString>;
 
 public:
-    explicit pqWindowCube(pqPipelineSource *fitsSource, const std::string &fn,
+    explicit pqWindowCube(const QString &filepath,
                           const CubeSubset &cubeSubset = CubeSubset());
     ~pqWindowCube() override;
 
@@ -61,7 +61,7 @@ private:
     Ui::pqWindowCube *ui;
 
     pqPipelineSource *FitsSource;
-    std::string FitsFileName;
+    QString FitsFileName;
 
     CubeSubset cubeSubset;
 
