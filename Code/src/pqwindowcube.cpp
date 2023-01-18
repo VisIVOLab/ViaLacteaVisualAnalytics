@@ -7,8 +7,8 @@
 #include <pqActiveObjects.h>
 #include <pqAlwaysConnectedBehavior.h>
 #include <pqApplicationCore.h>
-#include <pqObjectBuilder.h>
 #include <pqLoadDataReaction.h>
+#include <pqObjectBuilder.h>
 #include <pqPipelineSource.h>
 #include <pqRenderView.h>
 
@@ -27,6 +27,7 @@
 #include <vtkSMTransferFunctionManager.h>
 #include <vtkSMTransferFunctionPresets.h>
 #include <vtkSMTransferFunctionProxy.h>
+#include <vtkSMUncheckedPropertyHelper.h>
 #include <vtkSMViewProxy.h>
 #include <vtkTable.h>
 
@@ -37,8 +38,7 @@
 #include <cstring>
 #include <utility>
 
-pqWindowCube::pqWindowCube(const QString &filepath,
-                           const CubeSubset &cubeSubset)
+pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset)
     : ui(new Ui::pqWindowCube),
       FitsFileName(QFileInfo(filepath).fileName()),
       cubeSubset(cubeSubset),
@@ -51,7 +51,7 @@ pqWindowCube::pqWindowCube(const QString &filepath,
     setWindowTitle(FitsFileName);
     connect(ui->actionVolGenerate, &QAction::triggered, this,
             &pqWindowCube::generateVolumeRendering);
-    
+
     // Opacity menu actions
     auto opacityGroup = new QActionGroup(this);
     opacityGroup->addAction(ui->action0);
@@ -59,7 +59,7 @@ pqWindowCube::pqWindowCube(const QString &filepath,
     opacityGroup->addAction(ui->action50);
     opacityGroup->addAction(ui->action75);
     opacityGroup->addAction(ui->action100);
-    
+
     // Create LUTs menu actions
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     auto lutGroup = new QActionGroup(this);
@@ -84,9 +84,10 @@ pqWindowCube::pqWindowCube(const QString &filepath,
     // Enable annotations such as Remote Rendering, FPS, etc...
     auto renderingSettings = serverProxyManager->GetProxy("settings", "RenderViewSettings");
     vtkSMPropertyHelper(renderingSettings, "ShowAnnotation").Set(1);
-    
-    // Load Reaction
-    FitsSource = pqLoadDataReaction::loadData({ filepath });
+
+    // Load Reactions
+    CubeSource = pqLoadDataReaction::loadData({ filepath });
+    SliceSource = pqLoadDataReaction::loadData({ filepath });
 
     // Handle Subset selection
     setSubsetProperties(cubeSubset);
@@ -132,16 +133,18 @@ pqWindowCube::pqWindowCube(const QString &filepath,
 
 pqWindowCube::~pqWindowCube()
 {
-    builder->destroy(FitsSource);
+    builder->destroy(CubeSource);
+    builder->destroy(SliceSource);
     builder->destroySources(server);
-    this->FitsSource = NULL;
+    this->CubeSource = NULL;
+    this->SliceSource = NULL;
     delete ui;
 }
 
 void pqWindowCube::readInfoFromSource()
 {
     // Bounds
-    auto fitsInfo = this->FitsSource->getOutputPort(0)->getDataInformation();
+    auto fitsInfo = this->CubeSource->getOutputPort(0)->getDataInformation();
     fitsInfo->GetBounds(bounds);
 
     // Data range
@@ -155,7 +158,7 @@ void pqWindowCube::readInfoFromSource()
 void pqWindowCube::readHeaderFromSource()
 {
     auto dataMoverProxy = vtk::TakeSmartPointer(serverProxyManager->NewProxy("misc", "DataMover"));
-    vtkSMPropertyHelper(dataMoverProxy, "Producer").Set(this->FitsSource->getProxy());
+    vtkSMPropertyHelper(dataMoverProxy, "Producer").Set(this->CubeSource->getProxy());
     vtkSMPropertyHelper(dataMoverProxy, "PortNumber").Set(1);
     vtkSMPropertyHelper(dataMoverProxy, "SkipEmptyDataSets").Set(1);
     dataMoverProxy->UpdateVTKObjects();
@@ -277,7 +280,7 @@ void pqWindowCube::createViews()
 void pqWindowCube::showOutline()
 {
     auto outline =
-            builder->createDataRepresentation(FitsSource->getOutputPort(0), viewCube)->getProxy();
+            builder->createDataRepresentation(CubeSource->getOutputPort(0), viewCube)->getProxy();
     vtkSMPropertyHelper(outline, "Representation").Set("Outline");
     double red[3] = { 1.0, 0.0, 0.0 };
     vtkSMPropertyHelper(outline, "AmbientColor").Set(red, 3);
@@ -304,25 +307,36 @@ void pqWindowCube::showLegendScaleActors()
 void pqWindowCube::showSlice()
 {
     // Slice in Cube Renderer
-    cubeSliceProxy = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewCube)
+    cubeSliceProxy = builder->createDataRepresentation(this->CubeSource->getOutputPort(0), viewCube)
                              ->getProxy();
     vtkSMPropertyHelper(cubeSliceProxy, "Representation").Set("Slice");
     vtkSMPVRepresentationProxy::SetScalarColoring(cubeSliceProxy, "FITSImage",
                                                   vtkDataObject::POINT);
     cubeSliceProxy->UpdateVTKObjects();
 
-    vtkNew<vtkSMTransferFunctionManager> mgr;
-    lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
-            mgr->GetColorTransferFunction("FITSImage", cubeSliceProxy->GetSessionProxyManager()));
+    // vtkNew<vtkSMTransferFunctionManager> mgr;
+    // lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
+    //                                                     mgr->GetColorTransferFunction("FITSImage",
+    // cubeSliceProxy->GetSessionProxyManager()));
 
     // Filter to extract the slice (used for slice data range and contour 2D)
-    extractGrid = builder->createFilter("filters", "ExtractGrid", this->FitsSource);
+    // extractGrid = builder->createFilter("filters", "ExtractGrid", this->CubeSource);
+
+    // Setup reader to get a slice using SubExtent Property
+    int extent[6] = { -1, -1, -1, -1, 0, 0 };
+    auto slicePropertyProxy = this->SliceSource->getProxy();
+    vtkSMPropertyHelper(slicePropertyProxy, "ReadSubExtent").Set(true);
+    vtkSMPropertyHelper(slicePropertyProxy, "SubExtent").Set(extent, 6);
+    slicePropertyProxy->UpdateVTKObjects();
 
     // Slice Render (right view)
-    sliceProxy = builder->createDataRepresentation(this->FitsSource->getOutputPort(0), viewSlice)
+    sliceProxy = builder->createDataRepresentation(this->SliceSource->getOutputPort(0), viewSlice)
                          ->getProxy();
     vtkSMPropertyHelper(sliceProxy, "Representation").Set("Slice");
     vtkSMPVRepresentationProxy::SetScalarColoring(sliceProxy, "FITSImage", vtkDataObject::POINT);
+    vtkNew<vtkSMTransferFunctionManager> mgr;
+    lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
+            mgr->GetColorTransferFunction("FITSImage", sliceProxy->GetSessionProxyManager()));
 
     ui->sliceSlider->setRange(1, bounds[5] + 1);
     ui->sliceSpinBox->setRange(1, bounds[5] + 1);
@@ -335,7 +349,7 @@ void pqWindowCube::showStatusBarMessage(const std::string &msg)
 
 void pqWindowCube::setSubsetProperties(const CubeSubset &subset)
 {
-    auto sourceProxy = FitsSource->getProxy();
+    auto sourceProxy = CubeSource->getProxy();
     vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Set(subset.ReadSubExtent);
     vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.SubExtent, 6);
     vtkSMPropertyHelper(sourceProxy, "AutoScale").Set(subset.AutoScale);
@@ -373,7 +387,7 @@ void pqWindowCube::showContours()
 {
     removeContours();
 
-    contourFilter2D = builder->createFilter("filters", "Contour", this->extractGrid);
+    contourFilter2D = builder->createFilter("filters", "Contour", this->SliceSource);
     auto contourProxy = contourFilter2D->getProxy();
 
     int level = ui->levelText->text().toInt();
@@ -450,8 +464,14 @@ void pqWindowCube::setSliceDatacube(int value)
     currentSlice = value - 1;
     updateVelocityText();
 
-    vtkSMPropertyHelper(sliceProxy, "Slice").Set(currentSlice);
-    vtkSMPropertyHelper(sliceProxy, "SliceMode").Set(VTK_XY_PLANE);
+    // vtkSMPropertyHelper(sliceProxy, "Slice").Set(currentSlice);
+    // vtkSMPropertyHelper(sliceProxy, "SliceMode").Set(VTK_XY_PLANE);
+    //  Setup reader to get a slice using SubExtent Property
+    int extent[6] = { -1, -1, -1, -1, currentSlice, currentSlice };
+    auto slicePropertyProxy = this->SliceSource->getProxy();
+    vtkSMPropertyHelper(slicePropertyProxy, "ReadSubExtent").Set(true);
+    vtkSMPropertyHelper(slicePropertyProxy, "SubExtent").Set(extent, 6);
+    slicePropertyProxy->UpdateVTKObjects();
     sliceProxy->UpdateVTKObjects();
 
     vtkSMPropertyHelper(cubeSliceProxy, "Slice").Set(currentSlice);
@@ -459,14 +479,18 @@ void pqWindowCube::setSliceDatacube(int value)
     cubeSliceProxy->UpdateVTKObjects();
 
     // Get slice data range and update UI
+    /*
     auto extractGridProxy = extractGrid->getProxy();
     int selectedSlice[] = { (int)bounds[0], (int)bounds[1], (int)bounds[2],
                             (int)bounds[3], (currentSlice), (currentSlice) };
     vtkSMPropertyHelper(extractGridProxy, "VOI").Set(selectedSlice, 6);
     extractGridProxy->UpdateVTKObjects();
     extractGrid->updatePipeline();
-    auto dataInformation = extractGrid->getOutputPort(0)->getDataInformation();
-    auto fitsImageInfo = dataInformation->GetPointDataInformation()->GetArrayInformation(0);
+    */
+
+    auto dataInformation = this->SliceSource->getOutputPort(0)->getDataInformation();
+    auto fitsImageInfo =
+            dataInformation->GetPointDataInformation()->GetArrayInformation("FITSImage");
     double dataRange[2];
     fitsImageInfo->GetComponentRange(0, dataRange);
     ui->minSliceText->setText(QString::number(dataRange[0], 'f', 4));
@@ -489,7 +513,7 @@ void pqWindowCube::generateVolumeRendering()
     }
 
     // Default contour value is lowerBound (RMS*3)
-    contourFilter = builder->createFilter("filters", "Contour", this->FitsSource);
+    contourFilter = builder->createFilter("filters", "Contour", this->CubeSource);
     ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
     setThreshold(lowerBound);
 

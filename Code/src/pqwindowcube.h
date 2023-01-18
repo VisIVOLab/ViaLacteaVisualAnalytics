@@ -60,8 +60,9 @@ private slots:
 private:
     Ui::pqWindowCube *ui;
 
-    pqPipelineSource *FitsSource;
     QString FitsFileName;
+    pqPipelineSource *CubeSource;
+    pqPipelineSource *SliceSource;
 
     CubeSubset cubeSubset;
 
