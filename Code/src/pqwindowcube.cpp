@@ -328,6 +328,7 @@ void pqWindowCube::showSlice()
     vtkSMPropertyHelper(slicePropertyProxy, "ReadSubExtent").Set(true);
     vtkSMPropertyHelper(slicePropertyProxy, "SubExtent").Set(extent, 6);
     slicePropertyProxy->UpdateVTKObjects();
+    SliceSource->updatePipeline();
 
     // Slice Render (right view)
     sliceProxy = builder->createDataRepresentation(this->SliceSource->getOutputPort(0), viewSlice)
@@ -473,6 +474,7 @@ void pqWindowCube::setSliceDatacube(int value)
     vtkSMPropertyHelper(slicePropertyProxy, "SubExtent").Set(extent, 6);
     slicePropertyProxy->UpdateVTKObjects();
     sliceProxy->UpdateVTKObjects();
+    SliceSource->updatePipeline();
 
     vtkSMPropertyHelper(cubeSliceProxy, "Slice").Set(currentSlice);
     vtkSMPropertyHelper(cubeSliceProxy, "SliceMode").Set(VTK_XY_PLANE);
