@@ -33,7 +33,7 @@ public:
 private slots:
     void on_sliceSlider_sliderReleased();
     void on_sliceSpinBox_editingFinished();
-
+    void on_sliceSpinBox_valueChanged(int arg1);
     void on_actionFront_triggered();
     void on_actionBack_triggered();
     void on_actionTop_triggered();

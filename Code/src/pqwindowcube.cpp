@@ -444,6 +444,10 @@ void pqWindowCube::on_sliceSlider_sliderReleased()
     setSliceDatacube(value);
 }
 
+void pqWindowCube::on_sliceSpinBox_valueChanged(int arg1){
+    setSliceDatacube(arg1);
+}
+
 void pqWindowCube::on_sliceSpinBox_editingFinished()
 {
     int value = ui->sliceSpinBox->value();
