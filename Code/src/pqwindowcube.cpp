@@ -307,6 +307,8 @@ void pqWindowCube::showLegendScaleActors()
 void pqWindowCube::showSlice()
 {
     // Slice in Cube Renderer
+   
+    
     cubeSliceProxy = builder->createDataRepresentation(this->CubeSource->getOutputPort(0), viewCube)
                              ->getProxy();
     vtkSMPropertyHelper(cubeSliceProxy, "Representation").Set("Slice");
@@ -535,16 +537,12 @@ void pqWindowCube::generateVolumeRendering()
 void pqWindowCube::changeColorMap(const QString &name)
 {
     if (vtkSMProperty *lutProperty = sliceProxy->GetProperty("LookupTable")) {
-        int rescaleMode =
-                vtkSMPropertyHelper(lutProxy, "AutomaticRescaleRangeMode", true).GetAsInt();
 
         auto presets = vtkSMTransferFunctionPresets::GetInstance();
-        lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()),
-                              (bool)rescaleMode);
+        lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()));
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);
-
-        bool extend = rescaleMode == vtkSMTransferFunctionManager::GROW_ON_APPLY;
-        vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(sliceProxy, extend, false);
+        lutProxy->UpdateVTKObjects();
+        vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(sliceProxy, false, false);
         sliceProxy->UpdateVTKObjects();
 
         viewSlice->resetDisplay();
