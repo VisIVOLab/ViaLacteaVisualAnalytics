@@ -445,6 +445,12 @@ void pqWindowCube::on_sliceSlider_sliderReleased()
 }
 
 void pqWindowCube::on_sliceSpinBox_valueChanged(int arg1){
+    // Match slider and spinbox values
+    if (ui->sliceSlider->value() != arg1) {
+        ui->sliceSlider->setValue(arg1);
+        ui->sliceSlider->update();
+    }
+    
     setSliceDatacube(arg1);
 }
 
