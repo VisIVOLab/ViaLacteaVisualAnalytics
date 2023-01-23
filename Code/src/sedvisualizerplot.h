@@ -121,7 +121,6 @@ private slots:
     void on_actionLocal_triggered();
     void on_actionScreenshot_triggered();
     void on_actionCollapse_triggered();
-    void on_TheoreticalLocaleFit_triggered();
     void on_ThinLocalFit_triggered();
     void on_ThickLocalFit_triggered();
     void on_TheoreticalRemoteFit_triggered();
@@ -143,10 +142,8 @@ private slots:
     void on_resultsTableWidget_clicked(const QModelIndex &index);
     void addNewTheoreticalFit();
     void sectionClicked(int index);
-    void finishedTheoreticalLocaleFit();
     void finishedTheoreticalRemoteFit();
     void finishedThickLocalFit();
-    void finishedThickRemoteFit();
 
     void onReadyReadStdOutput();
     void finishedThinLocalFit();
@@ -155,8 +152,6 @@ private slots:
     void on_theoreticalPushButton_clicked();
     void on_theorConfirmPushButton_clicked();
     void on_greyBodyPushButton_clicked();
-    void on_ThinRemore_triggered();
-    void on_ThickRemote_triggered();
     void on_Thick_clicked();
     void on_thinButton_clicked();
 };

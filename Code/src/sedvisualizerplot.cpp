@@ -614,7 +614,6 @@ void SEDVisualizerPlot::readColumnsFromSedFitResults(const QJsonArray &columns)
 void SEDVisualizerPlot::readSedFitOutput(QString filename)
 {
     double chi2 = 99999999999;
-    QString id_str;
 
     // Models Map chi2 -> Model
     // QMap<double, QJsonArray> models;
@@ -765,68 +764,75 @@ void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor
 
 void SEDVisualizerPlot::loadSedFitOutput(QString filename)
 {
-    int id;
     double chi2 = 99999999999;
-    QString chi_str, id_str, dist_str;
-    QMap<double, int> results;
-    QMap<double, QList<QByteArray>> resultsLines;
+
+    // Models Map chi2 -> Model
+    models.clear();
+
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
         return;
     }
-    QString header = file.readLine();
 
-    outputSedLog.append(header);
-    readSedFitResultsHeader(header);
-    ui->resultsTableWidget->clearContents();
-    ui->resultsTableWidget->setRowCount(0);
-    ui->resultsTableWidget->setColumnCount(columnNames.size());
-    ui->resultsTableWidget->setHorizontalHeaderLabels(columnNames);
-    while (!file.atEnd()) {
-        QByteArray line = file.readLine();
-        outputSedLog.append(line);
-        QList<QByteArray> line_list_string = line.split(',');
-        QList<QByteArray> tmp_string = line_list_string;
-        id_str = line_list_string.first().simplified();
-        dist_str = line_list_string.last().simplified();
-        line_list_string.removeLast();
-        chi_str = line_list_string.last().simplified();
-        results.insert(chi_str.toDouble(), id_str.toInt());
-        resultsLines.insert(chi_str.toDouble(), tmp_string);
-        if (chi_str.toDouble() < chi2) {
-            id = id_str.toInt();
-            chi2 = chi_str.toDouble();
-            dist = dist_str.toDouble();
+    QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+    QJsonArray columns = root.value("columns").toArray();
+    QJsonArray data = root.value("data").toArray();
+
+    readColumnsFromSedFitResults(columns);
+    for (int i = 0; i < data.count(); ++i) {
+        QJsonArray item = data.at(i).toArray();
+
+        double chi2_i = item.at(resultsOutputColumn.value("chi2")).toDouble();
+        double dist_i = item.at(resultsOutputColumn.value("d")).toDouble();
+        models.insert(chi2_i, item);
+        if (chi2_i < chi2) {
+            chi2 = chi2_i;
+            dist = dist_i;
         }
     }
 
     int threshold = 5;
-    int nFitsResults = results.size() * threshold / 100;
-    if (nFitsResults < 1 && results.size() >= 1) {
+    int nFitsResults = models.size() * threshold / 100;
+
+    if (nFitsResults < 1 && models.size() >= 1) {
         nFitsResults = 1;
     }
+
     if (nFitsResults <= 10) {
-        nFitsResults = results.size();
+        nFitsResults = models.size();
     }
 
-    QMap<double, int>::iterator iter;
-    QMap<double, QList<QByteArray>>::iterator iterLines;
-    iter = results.begin();
-    iterLines = resultsLines.begin();
-    for (int i = 0; i < nFitsResults; i++, iter++, iterLines++) {
-        QList<QByteArray> line_list_string = iterLines.value();
-        ui->resultsTableWidget->insertRow(i);
-        for (int j = 0; j < columnNames.length(); j++) {
-            if (resultsOutputColumn.value(columnNames.at(j)) != -1) {
-                ui->resultsTableWidget->setItem(
-                        i, j,
-                        new QTableWidgetItem(QString(
-                                line_list_string.at(resultsOutputColumn.value(columnNames.at(j)))
-                                        .simplified())));
+    ui->resultsTableWidget->clearContents();
+    ui->resultsTableWidget->setRowCount(0);
+    ui->resultsTableWidget->setColumnCount(columnNames.size());
+    ui->resultsTableWidget->setHorizontalHeaderLabels(columnNames);
+
+    auto it = models.cbegin();
+    for (int r = 0; r < nFitsResults; ++r, ++it) {
+        ui->resultsTableWidget->insertRow(r);
+
+        auto item = it.value();
+        for (int c = 0; c <= columnNames.indexOf("d"); ++c) {
+            int colIdx = resultsOutputColumn.value(columnNames.at(c));
+            if (colIdx != -1) {
+                auto field_v = item.at(colIdx);
+                QString field_s = field_v.isDouble() ? QString::number(field_v.toDouble())
+                                                     : field_v.toString();
+                ui->resultsTableWidget->setItem(r, c, new QTableWidgetItem(field_s));
             }
         }
+
+        QJsonArray fmod = item.at(resultsOutputColumn.value("fmod")).toArray();
+        int fmod_idx = 0;
+        for (int c = columnNames.indexOf("wise1"); c <= columnNames.indexOf("bol11");
+             ++c, ++fmod_idx) {
+            ui->resultsTableWidget->setItem(
+                    r, c, new QTableWidgetItem(QString::number(fmod.at(fmod_idx).toDouble())));
+        }
     }
+
     ui->resultsTableWidget->resizeColumnsToContents();
+    ui->resultsTableWidget->resizeRowsToContents();
 }
 
 void SEDVisualizerPlot::loadSedFitThin(QString filename)
@@ -1018,50 +1024,6 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     ui->customPlot->graph()->setSelectable(QCP::stNone);
     ui->customPlot->replot();
     sed_list.insert(0, coll_sed);
-}
-
-void SEDVisualizerPlot::on_TheoreticalLocaleFit_triggered()
-{
-    sedFitInputFflag = "]";
-    sedFitInputF = "]";
-    sedFitInputW = "]";
-    sedFitInputErrF = "]";
-    sedFitInput.clear();
-    bool validFit = false;
-
-    validFit = prepareSelectedInputForSedFit();
-
-    if (validFit) {
-        sedFitInputF = "[" + sedFitInputF;
-        sedFitInputW = "[" + sedFitInputW;
-        sedFitInputFflag = "[" + sedFitInputFflag;
-        sedFitInputErrF = "[" + sedFitInputErrF;
-
-        loading = new LoadingWidget();
-        loading->init();
-        loading->setText("Executing vialactea_tap_sedfit");
-        loading->show();
-        loading->activateWindow();
-        loading->setFocus();
-
-        ui->outputTextBrowser->setText("");
-        process = new QProcess();
-        process->setProcessChannelMode(QProcess::MergedChannels);
-        connect(process, SIGNAL(readyReadStandardError()), this, SLOT(onReadyReadStdOutput()));
-        connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(onReadyReadStdOutput()));
-        connect(process, SIGNAL(finished(int)), this, SLOT(finishedTheoreticalLocaleFit()));
-    }
-}
-
-void SEDVisualizerPlot::finishedTheoreticalLocaleFit()
-{
-    readSedFitOutput(QDir::homePath()
-                             .append(QDir::separator())
-                             .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                                     + "_sedfit_output.dat"));
-
-    this->setFocus();
-    this->activateWindow();
 }
 
 void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
@@ -1528,33 +1490,6 @@ void SEDVisualizerPlot::finishedThinRemoteFit()
                                             + QString::number(nSED) + "_thinfile.csv"));
     if (res)
         addNewSEDCheckBox("Thin Fit");
-    else
-        QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("No results."));
-}
-
-void SEDVisualizerPlot::finishedThickRemoteFit()
-{
-
-    QDir dir(QApplication::applicationDirPath());
-
-    dir.rename("sedfit_output.dat",
-               QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_thickfile.csv"));
-    dir.rename("sedfit_output.dat.par",
-               QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp/tmp_download/SED" + QString::number(nSED)
-                               + "_thickfile.csv.par"));
-
-    bool res = readThickFit(QDir::homePath()
-                                    .append(QDir::separator())
-                                    .append("VisIVODesktopTemp/tmp_download/SED"
-                                            + QString::number(nSED) + "_thickfile.csv"));
-
-    if (res)
-        addNewSEDCheckBox("Thick Fit");
     else
         QMessageBox::critical(NULL, QObject::tr("Error"), QObject::tr("No results."));
 }
@@ -2148,124 +2083,12 @@ void SEDVisualizerPlot::on_greyBodyPushButton_clicked()
     ui->greyBodyGroupBox->show();
 }
 
-void SEDVisualizerPlot::on_ThinRemore_triggered()
-{
-
-    sedFitInputF = "]";
-    sedFitInputErrF = "]";
-    sedFitInputW = "]";
-    sedFitInput.clear();
-
-    bool validFit = false;
-
-    validFit = prepareSelectedInputForSedFit();
-
-    if (validFit) {
-
-        sedFitInputF = "[" + sedFitInputF;
-        sedFitInputErrF = "[" + sedFitInputErrF;
-        sedFitInputW = "[" + sedFitInputW;
-
-        QString f = sedFitInputW.mid(1, sedFitInputW.length() - 2);
-
-        QStringList wave = f.split(",");
-
-        QSignalMapper *mapper = new QSignalMapper(this);
-
-        sd_thin = new SedFitGrid_thin(this);
-        sd_thin->ui->distLineEdit->setText(ui->distTheoLineEdit->text());
-        sedFitInputUlimitString = "[";
-
-        for (int i = 0; i < wave.length(); i++) {
-            sedFitInputUlimit.insert(i, "0");
-
-            sedFitInputUlimitString += "0";
-            if (i < wave.size() - 1)
-                sedFitInputUlimitString += ",";
-
-            int row = sd_thin->ui->tableWidget->model()->rowCount();
-            sd_thin->ui->tableWidget->insertRow(row);
-
-            QCheckBox *cb1 = new QCheckBox();
-            cb1->setChecked(false);
-            sd_thin->ui->tableWidget->setCellWidget(row, 1, cb1);
-
-            connect(cb1, SIGNAL(stateChanged(int)), mapper, SLOT(map()));
-            mapper->setMapping(cb1, row);
-
-            QTableWidgetItem *item_1 = new QTableWidgetItem();
-            item_1->setText(wave.at(i));
-
-            sd_thin->ui->tableWidget->setItem(row, 0, item_1);
-        }
-        sedFitInputUlimitString += "]";
-        connect(mapper, SIGNAL(mapped(int)), this, SLOT(checkboxClicked(int)));
-        sd_thin->show();
-        connect(sd_thin->ui->pushButton, SIGNAL(clicked()), this, SLOT(doThinRemoteFit()));
-    }
-}
-
-void SEDVisualizerPlot::on_ThickRemote_triggered()
-{
-    sedFitInputF = "]";
-    sedFitInputErrF = "]";
-    sedFitInputW = "]";
-    sedFitInput.clear();
-
-    bool validFit = true;
-
-    validFit = prepareSelectedInputForSedFit();
-
-    if (validFit) {
-
-        sedFitInputF = "[" + sedFitInputF;
-        sedFitInputErrF = "[" + sedFitInputErrF;
-        sedFitInputW = "[" + sedFitInputW;
-
-        QString f = sedFitInputW.mid(1, sedFitInputW.length() - 2);
-        QStringList wave = f.split(",");
-        QSignalMapper *mapper = new QSignalMapper(this);
-
-        sd_thick = new SedFitgrid_thick(this);
-        sd_thick->ui->distLineEdit->setText(ui->distTheoLineEdit->text());
-        sedFitInputUlimitString = "[";
-
-        for (int i = 0; i < wave.length(); i++) {
-            sedFitInputUlimit.insert(i, "0");
-
-            sedFitInputUlimitString += "0";
-            if (i < wave.size() - 1)
-                sedFitInputUlimitString += ",";
-
-            int row = sd_thick->ui->tableWidget->model()->rowCount();
-            sd_thick->ui->tableWidget->insertRow(row);
-
-            QCheckBox *cb1 = new QCheckBox();
-            cb1->setChecked(false);
-            sd_thick->ui->tableWidget->setCellWidget(row, 1, cb1);
-
-            connect(cb1, SIGNAL(stateChanged(int)), mapper, SLOT(map()));
-            mapper->setMapping(cb1, row);
-
-            QTableWidgetItem *item_1 = new QTableWidgetItem();
-            item_1->setText(wave.at(i));
-
-            sd_thick->ui->tableWidget->setItem(row, 0, item_1);
-        }
-        sedFitInputUlimitString += "]";
-        connect(mapper, SIGNAL(mapped(int)), this, SLOT(checkboxClicked(int)));
-
-        sd_thick->show();
-        connect(sd_thick->ui->pushButton, SIGNAL(clicked()), this, SLOT(doThickRemoteFit()));
-    }
-}
-
 void SEDVisualizerPlot::on_Thick_clicked()
 {
-    on_ThickRemote_triggered();
+    on_ThickLocalFit_triggered();
 }
 
 void SEDVisualizerPlot::on_thinButton_clicked()
 {
-    on_ThinRemore_triggered();
+    on_ThinLocalFit_triggered();
 }

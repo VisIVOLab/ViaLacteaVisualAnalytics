@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>972</height>
+    <height>1010</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -619,7 +619,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -645,36 +645,16 @@
      <property name="title">
       <string>Fit</string>
      </property>
-     <widget class="QMenu" name="menuTheoretical_model">
-      <property name="title">
-       <string>Theoretical model</string>
-      </property>
-      <addaction name="TheoreticalLocaleFit"/>
-      <addaction name="TheoreticalRemoteFit"/>
-     </widget>
      <widget class="QMenu" name="menuGrey_body">
       <property name="title">
        <string>Grey-body</string>
       </property>
-      <widget class="QMenu" name="menuThin">
-       <property name="title">
-        <string>Thin</string>
-       </property>
-       <addaction name="ThinLocalFit"/>
-       <addaction name="ThinRemore"/>
-      </widget>
-      <widget class="QMenu" name="menuThick">
-       <property name="title">
-        <string>Thick</string>
-       </property>
-       <addaction name="ThickLocalFit"/>
-       <addaction name="ThickRemote"/>
-      </widget>
-      <addaction name="menuThin"/>
-      <addaction name="menuThick"/>
+      <addaction name="ThinLocalFit"/>
+      <addaction name="ThickLocalFit"/>
      </widget>
-     <addaction name="menuTheoretical_model"/>
+     <addaction name="TheoreticalRemoteFit"/>
      <addaction name="menuGrey_body"/>
+     <addaction name="separator"/>
     </widget>
     <addaction name="menuFit"/>
     <addaction name="actionCollapse"/>
@@ -700,16 +680,6 @@
     <string>Ctrl+S</string>
    </property>
   </action>
-  <action name="actionLocal">
-   <property name="text">
-    <string>Local</string>
-   </property>
-  </action>
-  <action name="actionRemote">
-   <property name="text">
-    <string>Remote</string>
-   </property>
-  </action>
   <action name="actionScreenshot">
    <property name="text">
     <string>Screenshot</string>
@@ -718,29 +688,6 @@
   <action name="actionCollapse">
    <property name="text">
     <string>Collapse</string>
-   </property>
-  </action>
-  <action name="TheoreticalLocaleFit">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>Local</string>
-   </property>
-  </action>
-  <action name="TheoreticalRemoteFit">
-   <property name="text">
-    <string>Remote</string>
-   </property>
-  </action>
-  <action name="ThinLocalFit">
-   <property name="text">
-    <string>Local</string>
-   </property>
-  </action>
-  <action name="ThickLocalFit">
-   <property name="text">
-    <string>Local</string>
    </property>
   </action>
   <action name="actionSave">
@@ -761,6 +708,21 @@
   <action name="ThickRemote">
    <property name="text">
     <string>Remote</string>
+   </property>
+  </action>
+  <action name="TheoreticalRemoteFit">
+   <property name="text">
+    <string>Theoretical model</string>
+   </property>
+  </action>
+  <action name="ThinLocalFit">
+   <property name="text">
+    <string>Thin</string>
+   </property>
+  </action>
+  <action name="ThickLocalFit">
+   <property name="text">
+    <string>Thick</string>
    </property>
   </action>
  </widget>
