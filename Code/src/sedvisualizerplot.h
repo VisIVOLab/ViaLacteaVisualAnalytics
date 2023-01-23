@@ -52,8 +52,12 @@ private:
     double dist;
     QString outputSedLog;
     QString outputSedResults;
+    QMap<double, QJsonArray> models;
 
     QStringList plottedSedLabels;
+
+    void readColumnsFromSedFitResults(const QJsonArray &columns);
+    void plotSedFitModel(const QJsonArray &model, Qt::GlobalColor color);
 
     void readSedFitResultsHeader(QString header);
     void readSedFitOutput(QString filename);
