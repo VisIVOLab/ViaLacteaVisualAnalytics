@@ -5,6 +5,7 @@
 #include "astroutils.h"
 #include "authwrapper.h"
 #include "mainwindow.h"
+#include "mcutoutsummary.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
 #include "sessionloader.h"
@@ -374,8 +375,9 @@ void ViaLactea::on_localDCPushButton_clicked()
     // Do not continue if the file is an image or it can't be loaded
     int ReadStatus = 0;
     if (isFitsImage(fn, ReadStatus) || ReadStatus != 0) {
-        QMessageBox::warning(this, "Open file", "The file you selected is not a cube!\n"
-                                                "Use Load Image to load it.");
+        QMessageBox::warning(this, "Open file",
+                             "The file you selected is not a cube!\n"
+                             "Use Load Image to load it.");
         return;
     }
 
@@ -634,11 +636,28 @@ void ViaLactea::on_actionLoad_session_triggered()
 void ViaLactea::on_loadTableButton_clicked()
 {
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
-
     if (vlkbtype == "neanias") {
         QMessageBox::information(this, "Info",
                                  "This feature is only available using the IA2 instance.");
         return;
+    }
+
+    // Check if a job was already being polled
+    QString pendingFile(QDir::homePath().append("/VisIVODesktopTemp/pending_mcutouts.dat"));
+    if (QFileInfo::exists(pendingFile)) {
+        auto res = QMessageBox::question(this, "MCutout",
+                                         "A pending job has been found.\nWould you like to check "
+                                         "it?\n\nIf you refuse, the job will be discarded!");
+
+        if (res == QMessageBox::Yes) {
+            auto mcutoutWin = new MCutoutSummary(this, pendingFile);
+            mcutoutWin->show();
+            mcutoutWin->activateWindow();
+            mcutoutWin->raise();
+            return;
+        } else {
+            QFile::remove(pendingFile);
+        }
     }
 
     QString fn = QFileDialog::getOpenFileName(this, "Load user table", QDir::homePath());

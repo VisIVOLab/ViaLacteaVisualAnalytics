@@ -20,19 +20,13 @@
 #include <QUrlQuery>
 #include <QXmlStreamReader>
 
-MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
+MCutoutSummary::MCutoutSummary(QWidget *parent)
     : QWidget(parent, Qt::Window),
       ui(new Ui::MCutoutSummary),
-      settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-               QSettings::NativeFormat),
+      settings(QDir::homePath().append("/VisIVODesktopTemp/setting.ini"), QSettings::NativeFormat),
       pollTimeout(2000)
 {
     ui->setupUi(this);
-    ui->textWait->hide();
-    ui->progressBar->hide();
     setAttribute(Qt::WA_DeleteOnClose);
     connect(this, &MCutoutSummary::jobSubmitted, this, &MCutoutSummary::pollJob);
     connect(this, &MCutoutSummary::jobCompleted, this, &MCutoutSummary::getJobReport);
@@ -40,9 +34,43 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts)
     nam = new QNetworkAccessManager(this);
     mcutoutEndpoint = settings.value("vlkburl", "").toString().append("/uws_mcutout/mcutout");
     qDebug() << "MCutout endpoint" << mcutoutEndpoint;
+}
+
+MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts) : MCutoutSummary(parent)
+{
+    ui->textWait->hide();
+    ui->progressBar->hide();
+
+    this->cutouts = cutouts;
+    this->pendingFile = QDir::homePath().append("/VisIVODesktopTemp/pending_mcutouts.dat");
 
     createRequestBody(cutouts);
     initSummaryTable();
+}
+
+MCutoutSummary::MCutoutSummary(QWidget *parent, const QString &pendingFile) : MCutoutSummary(parent)
+{
+    ui->btnSendRequest->setEnabled(false);
+
+    this->pendingFile = pendingFile;
+
+    // Here we get the jobId that was being polled when the user closed
+    // the application
+    QFile file(pendingFile);
+    if (!file.open(QFile::ReadOnly)) {
+        QMessageBox::warning(this, "Error", file.errorString());
+        return;
+    }
+
+    QDataStream stream(&file);
+    stream.setVersion(QDataStream::Qt_5_15);
+    QString jobId;
+    stream >> jobId >> cutouts;
+    file.close();
+
+    createRequestBody(cutouts);
+    initSummaryTable();
+    pollJob(jobId);
 }
 
 MCutoutSummary::~MCutoutSummary()
@@ -229,6 +257,7 @@ void MCutoutSummary::submitJob()
         if (statusCode == 303) {
             QString location = reply->header(QNetworkRequest::LocationHeader).toString();
             QString jobId = location.split('/').last();
+            saveStatus(jobId);
             emit jobSubmitted(jobId);
         } else {
             QMessageBox::critical(this, tr("Error"), reply->errorString());
@@ -375,6 +404,27 @@ void MCutoutSummary::on_btnSendRequest_clicked()
         if (path.isEmpty()) {
             return;
         }
+
         downloadArchive(path);
+        if (QFileInfo::exists(pendingFile)) {
+            QFile::remove(pendingFile);
+        }
     }
+}
+
+void MCutoutSummary::saveStatus(const QString &jobId)
+{
+    // Here we save the jobId and the cutouts requested to a binary file so that it can be polled
+    // again if the user closes the application before the job is completed
+    QFile file(pendingFile);
+    if (!file.open(QFile::WriteOnly)) {
+        QMessageBox::warning(this, "Error", file.errorString());
+        return;
+    }
+
+    QDataStream stream(&file);
+    stream.setVersion(QDataStream::Qt_5_15);
+    stream << jobId << cutouts;
+
+    file.close();
 }

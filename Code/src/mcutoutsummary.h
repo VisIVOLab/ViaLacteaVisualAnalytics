@@ -17,6 +17,7 @@ class MCutoutSummary : public QWidget
 
 public:
     explicit MCutoutSummary(QWidget *parent, const QStringList &cutouts);
+    explicit MCutoutSummary(QWidget *parent, const QString &pendingFile);
     ~MCutoutSummary();
 
 signals:
@@ -31,8 +32,14 @@ private slots:
     void on_tableSummary_itemClicked(QTableWidgetItem *item);
     void on_btnSendRequest_clicked();
 
+    void saveStatus(const QString &jobId);
+
 private:
+    explicit MCutoutSummary(QWidget *parent);
+
     Ui::MCutoutSummary *ui;
+    QStringList cutouts;
+
     QNetworkAccessManager *nam;
 
     QSettings settings;
@@ -41,6 +48,7 @@ private:
     QJsonArray requestBody;
     QStringList responseContents;
     QUrl downloadUrl;
+    QString pendingFile;
 
     void createRequestBody(const QStringList &cutouts);
     void initSummaryTable();
