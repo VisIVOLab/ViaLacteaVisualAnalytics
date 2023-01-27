@@ -712,6 +712,7 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
     plotSedFitModel(models.first(), Qt::blue);
 
     loading->close();
+    ui->resultsRadioButton->setChecked(true);
 }
 
 void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor color)
