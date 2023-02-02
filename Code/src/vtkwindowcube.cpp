@@ -193,6 +193,10 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
 
+    ui->qVtkSlice->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect( ui->qVtkSlice, SIGNAL(customContextMenuRequested(const QPoint &)),
+            this, SLOT(ShowContextMenu(const QPoint &)));
+
     auto rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
     rendererSlice->GlobalWarningDisplayOff();
@@ -253,6 +257,38 @@ vtkWindowCube::~vtkWindowCube()
     }
 
     delete ui;
+}
+
+void vtkWindowCube::ShowContextMenu(const QPoint &pos)
+{
+   QMenu contextMenu(tr("View selector"), this);
+
+   QActionGroup *grp= new QActionGroup(this);
+   auto sliceAction = new QAction("Slice", grp);
+   sliceAction->setCheckable(true);
+   sliceAction->setChecked(true);
+   connect(sliceAction, &QAction::triggered, this, [=]() { changeSliceView(0); });
+
+   auto momAction = new QAction("Moment Map", grp);
+   momAction->setCheckable(true);
+   connect(momAction, &QAction::triggered, this, [=]() { changeSliceView(1); });
+
+   grp->addAction(sliceAction);
+   grp->addAction(momAction);
+
+   contextMenu.addActions(grp->actions());
+   contextMenu.exec(mapToParent(pos));
+}
+
+void vtkWindowCube::changeSliceView(int mode)
+{
+    switch (mode)
+    {
+    case 0:
+        break;
+    case 1:
+        break;
+    }
 }
 
 int vtkWindowCube::readFitsHeader()

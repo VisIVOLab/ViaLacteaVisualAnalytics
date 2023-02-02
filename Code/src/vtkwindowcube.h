@@ -69,6 +69,9 @@ private slots:
 
     void on_actionShowStats_triggered();
     void on_actionSlice_Lookup_Table_triggered();
+    void ShowContextMenu(const QPoint &pos);
+    void changeSliceView(int mode);
+
 
 private:
     QString filepath;
