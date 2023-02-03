@@ -7,6 +7,7 @@
 
 #include <QMainWindow>
 #include <QMap>
+#include <QNetworkAccessManager>
 #include <QPair>
 #include <QPointer>
 
@@ -81,8 +82,15 @@ private slots:
 
     void on_loadTableButton_clicked();
 
+    void sendObsCoreRequest(const QString &url);
+    void handleObsCoreResponse(const QByteArray &response);
+
+    void sendDataLinkRequest(const QString &url);
+    void handleDataLinkResponse(const QByteArray &response);
+
 private:
     Ui::ViaLactea *ui;
+    QNetworkAccessManager nam;
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
 
@@ -97,6 +105,7 @@ private:
     QPointer<pqServer> server;
 
     bool connectToPVServer();
+    bool connectToPVServer(const QString &url, int port);
 
     bool canImportToMasterWin(std::string importFn);
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);

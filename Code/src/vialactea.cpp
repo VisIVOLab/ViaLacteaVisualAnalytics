@@ -4,6 +4,7 @@
 #include "aboutform.h"
 #include "astroutils.h"
 #include "authwrapper.h"
+#include "loadingwidget.h"
 #include "mainwindow.h"
 #include "pqwindowcube.h"
 #include "sed.h"
@@ -22,6 +23,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QWebChannel>
+#include <QXmlStreamReader>
 
 #include "pqActiveObjects.h"
 #include "pqApplicationCore.h"
@@ -184,6 +186,36 @@ bool ViaLactea::connectToPVServer()
     return server != nullptr;
 }
 
+bool ViaLactea::connectToPVServer(const QString &url, int port)
+{
+    auto builder = pqApplicationCore::instance()->getObjectBuilder();
+
+    if (server) {
+        builder->removeServer(server);
+    }
+
+    auto loading = new LoadingWidget;
+    loading->setText("Connecting to " + url);
+    loading->show();
+    loading->raise();
+    loading->activateWindow();
+    connect(builder, &pqObjectBuilder::finishedAddingServer, loading, &LoadingWidget::deleteLater);
+
+    QString serverUrl = QString("%1:%2").arg(url, QString::number(port));
+    vtkNetworkAccessManager::ConnectionResult res;
+    server = pqApplicationCore::instance()->getObjectBuilder()->createServer(
+            pqServerResource(serverUrl), 60, res);
+
+    if (res != vtkNetworkAccessManager::ConnectionResult::CONNECTION_SUCCESS) {
+        return false;
+    }
+
+    vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    readerFactory->RegisterPrototype("sources", "FitsReader");
+
+    return true;
+}
+
 void ViaLactea::onDataLoaded(const QString &filepath)
 {
     auto subsetSelector = new SubsetSelectorDialog(this);
@@ -223,51 +255,24 @@ void ViaLactea::updateVLKBSetting()
 
 void ViaLactea::on_queryPushButton_clicked()
 {
-    if (masterWin != nullptr) {
-        QMessageBox::information(
-                this, QObject::tr(""),
-                QObject::tr(
-                        "A session is already open. Close the session window to start a new one."));
-        return;
+    // Mock SKA-Discovery-Service Interaction
+    // https://github.com/VisIVOLab/SKA-Discovery-Service-Mockup
+
+    QString ra = ui->glonLineEdit->text();
+    QString dec = ui->glatLineEdit->text();
+
+    // Mockups use these coordinates
+    if (ra == "208.72" && dec == "52.77") {
+        // Mock n.1
+        sendObsCoreRequest("https://raw.githubusercontent.com/VisIVOLab/"
+                           "SKA-Discovery-Service-Mockup/main/ObsCore/ObsCore_001.xml");
+    } else if (ra == "214.26" && dec == "57.22") {
+        // Mock n.2
+        sendObsCoreRequest("https://raw.githubusercontent.com/VisIVOLab/"
+                           "SKA-Discovery-Service-Mockup/main/ObsCore/ObsCore_002.xml");
+    } else {
+        QMessageBox::warning(this, "No results", "Empty results.");
     }
-
-    VialacteaInitialQuery *vq;
-    if (ui->saveToDiskCheckBox->isChecked()) {
-        if (ui->fileNameLineEdit->text() != "")
-            vq = new VialacteaInitialQuery(ui->fileNameLineEdit->text());
-        else {
-            QMessageBox::critical(this, "Error", "Insert filename");
-            return;
-        }
-    } else
-        vq = new VialacteaInitialQuery();
-
-    vq->setL(ui->glonLineEdit->text());
-    vq->setB(ui->glatLineEdit->text());
-    if (ui->radiumLineEdit->text() != "")
-        vq->setR(ui->radiumLineEdit->text());
-    else {
-        vq->setDeltaRect(ui->dlLineEdit->text(), ui->dbLineEdit->text());
-    }
-
-    QList<QPair<QString, QString>> selectedSurvey;
-
-    QList<QCheckBox *> allButtons = ui->surveySelectorGroupBox->findChildren<QCheckBox *>();
-    for (int i = 0; i < allButtons.size(); ++i) {
-        qDebug() << "i: " << i << " " << allButtons.at(i);
-
-        if (allButtons.at(i)->isChecked()) {
-
-            selectedSurvey.append(mapSurvey.value(i));
-        }
-    }
-
-    // connettere la banda selezionata
-    vq->setSpecies("Continuum");
-    vq->setSurveyname(selectedSurvey.at(0).first);
-    vq->setTransition(selectedSurvey.at(0).second);
-    vq->setSelectedSurveyMap(selectedSurvey);
-    vq->on_queryPushButton_clicked();
 }
 
 void ViaLactea::on_noneRadioButton_clicked(bool checked)
@@ -759,4 +764,193 @@ void ViaLactea::on_loadTableButton_clicked()
     win->showMaximized();
     win->activateWindow();
     win->raise();
+}
+
+void ViaLactea::sendObsCoreRequest(const QString &url)
+{
+    QNetworkRequest req(url);
+
+    auto loading = new LoadingWidget;
+    loading->setText("Querying ObsCore...");
+    loading->show();
+    loading->raise();
+    loading->activateWindow();
+
+    auto reply = nam.get(req);
+    loading->setLoadingProcess(reply);
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        reply->deleteLater();
+        loading->deleteLater();
+
+        if (reply->error()) {
+            qDebug() << Q_FUNC_INFO << "Error" << reply->errorString();
+            QMessageBox::critical(this, "Error", reply->errorString());
+            return;
+        }
+
+        handleObsCoreResponse(reply->readAll());
+    });
+}
+
+void ViaLactea::handleObsCoreResponse(const QByteArray &response)
+{
+    // Parse <TABLE> element in ObsCore Response
+    auto parseTable = [](QXmlStreamReader &xml, QList<QHash<QString, QString>> &table) {
+        QStringList columns;
+        while (!(xml.name() == QStringLiteral("DATA") && xml.isStartElement())) {
+            xml.readNext();
+
+            if (xml.name() == QStringLiteral("FIELD") && xml.isStartElement()) {
+                auto field = xml.attributes().value(QStringLiteral("name")).toString();
+                columns.append(field);
+            }
+        }
+
+        while (!(xml.name() == QStringLiteral("TABLE") && xml.isEndElement())) {
+            xml.readNext();
+
+            if (!xml.isStartElement()) {
+                continue;
+            }
+
+            if (xml.name() != QStringLiteral("TR")) {
+                continue;
+            }
+
+            QHash<QString, QString> row;
+            row.reserve(columns.count());
+            for (int i = 0; i < columns.count(); ++i) {
+                xml.readNextStartElement();
+                row.insert(columns.at(i), xml.readElementText());
+            }
+            table.append(row);
+        }
+    };
+
+    QList<QHash<QString, QString>> table;
+
+    QXmlStreamReader xml(response);
+    while (!xml.atEnd()) {
+        xml.readNext();
+
+        if (!xml.isStartElement()) {
+            continue;
+        }
+
+        if (xml.name() == QStringLiteral("TABLE")) {
+            parseTable(xml, table);
+            break;
+        }
+    }
+
+    if (xml.hasError()) {
+        qDebug() << "Error parsing ObsCore response:" << xml.errorString() << "at"
+                 << xml.lineNumber() << ":" << xml.columnNumber();
+        QMessageBox::critical(this, "Error", xml.errorString());
+        return;
+    }
+
+    // Get DataLink endpoint and send another request
+    QString dataLinkUrl = table.first().value("access_url");
+    sendDataLinkRequest(dataLinkUrl);
+}
+
+void ViaLactea::sendDataLinkRequest(const QString &url)
+{
+    QNetworkRequest req(url);
+
+    auto loading = new LoadingWidget;
+    loading->setText("Querying DataLink...");
+    loading->show();
+    loading->raise();
+    loading->activateWindow();
+
+    auto reply = nam.get(req);
+    loading->setLoadingProcess(reply);
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        reply->deleteLater();
+        loading->deleteLater();
+
+        if (reply->error()) {
+            qDebug() << Q_FUNC_INFO << "Error" << reply->errorString();
+            QMessageBox::critical(this, "Error", reply->errorString());
+            return;
+        }
+
+        handleDataLinkResponse(reply->readAll());
+    });
+}
+
+void ViaLactea::handleDataLinkResponse(const QByteArray &response)
+{
+    auto parseVisIVOElement = [](QXmlStreamReader &xml, QVariantMap &metadata) {
+        while (!(xml.name() == QStringLiteral("RESOURCE") && xml.isEndElement())) {
+            xml.readNext();
+
+            if (!xml.isStartElement()) {
+                continue;
+            }
+
+            if (xml.name() != QStringLiteral("PARAM")) {
+                continue;
+            }
+
+            auto attributes = xml.attributes();
+            if (attributes.value("name") == QStringLiteral("accessURL")) {
+                QString accessURL = attributes.value(QStringLiteral("value")).toString();
+                metadata.insert(QStringLiteral("accessURL"), accessURL);
+            }
+
+            if (attributes.value("name") == QStringLiteral("accessFilePath")) {
+                QString accessFilePath = attributes.value(QStringLiteral("value")).toString();
+                metadata.insert(QStringLiteral("accessFilePath"), accessFilePath);
+            }
+
+            if (attributes.value("name") == QStringLiteral("port")) {
+                int port = attributes.value(QStringLiteral("value")).toInt();
+                metadata.insert(QStringLiteral("port"), port);
+            }
+        }
+    };
+
+    QVariantMap metadata;
+    QXmlStreamReader xml(response);
+    while (!xml.atEnd()) {
+        xml.readNext();
+
+        if (!xml.isStartElement()) {
+            continue;
+        }
+
+        auto id = xml.attributes().value(QStringLiteral("ID")).toString();
+        if (xml.name() == QStringLiteral("RESOURCE") && id == QStringLiteral("visivo")) {
+            parseVisIVOElement(xml, metadata);
+            break;
+        }
+    }
+
+    if (xml.hasError()) {
+        qDebug() << "Error parsing DataLink response:" << xml.errorString() << "at"
+                 << xml.lineNumber() << ":" << xml.columnNumber();
+        QMessageBox::critical(this, "Error", xml.errorString());
+        return;
+    }
+
+    // Connect to this pvserver instance
+    QString url = metadata.value("accessURL").toString();
+    int port = metadata.value("port").toInt();
+    if (!connectToPVServer(url, port)) {
+        QMessageBox::critical(this, "Error", "Could not connect to backend!");
+        return;
+    }
+
+    CubeSubset subset;
+    subset.AutoScale = true;
+    subset.CubeMaxSize = 128;
+
+    QString filepath = metadata.value("accessFilePath").toString();
+    auto win = new pqWindowCube(filepath, subset);
+    win->showMaximized();
+    win->raise();
+    win->activateWindow();
 }

@@ -32,7 +32,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWebEngineView" name="webView">
+      <widget class="QWebEngineView" name="webView" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -45,7 +45,7 @@
          <height>0</height>
         </size>
        </property>
-       <property name="url">
+       <property name="url" stdset="0">
         <url>
          <string>about:blank</string>
         </url>
@@ -351,7 +351,7 @@
            <item>
             <widget class="QLabel" name="label">
              <property name="text">
-              <string>glon</string>
+              <string>ra</string>
              </property>
             </widget>
            </item>
@@ -374,7 +374,7 @@
            <item>
             <widget class="QLabel" name="label_3">
              <property name="text">
-              <string>glat</string>
+              <string>dec</string>
              </property>
             </widget>
            </item>
@@ -577,7 +577,7 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>29</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
