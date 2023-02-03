@@ -506,9 +506,7 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     if (parentWindow) {
         parentWindow->addLayerImage(moment);
     } else {
-        parentWindow = new vtkwindow_new(nullptr, moment);
-        this->show();
-        this->raise();
+        parentWindow = new vtkwindow_new(nullptr, moment,0,0,false);
     }
 
     momViewer->SetInputData(moment->GetOutput());
