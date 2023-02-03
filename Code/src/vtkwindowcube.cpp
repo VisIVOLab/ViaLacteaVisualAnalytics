@@ -189,6 +189,18 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     float rangeSlice[2];
     readerSlice->GetValueRange(rangeSlice);
 
+    ui->qVtkMom->setVisible(false);
+    auto renWinMom = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
+    ui->qVtkMom->setDefaultCursor(Qt::ArrowCursor);
+    ui->qVtkMom->setRenderWindow(renWinMom);
+    auto rendererMom = vtkSmartPointer<vtkRenderer>::New();
+    rendererMom->SetBackground(0.21, 0.23, 0.25);
+    rendererMom->GlobalWarningDisplayOff();
+    renWinMom->AddRenderer(rendererMom);
+    momViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
+    momViewer->SetRenderWindow(renWinMom);
+    momViewer->SetRenderer(rendererMom);
+
     auto renWinSlice = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
@@ -197,6 +209,10 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->qVtkSlice->setContextMenuPolicy(Qt::CustomContextMenu);
     connect( ui->qVtkSlice, SIGNAL(customContextMenuRequested(const QPoint &)),
             this, SLOT(ShowContextMenu(const QPoint &)));
+    ui->qVtkMom->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect( ui->qVtkMom, SIGNAL(customContextMenuRequested(const QPoint &)),
+            this, SLOT(ShowContextMenu(const QPoint &)));
+
 
     auto rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
@@ -233,6 +249,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
     interactorStyle->SetReader(readerSlice);
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    ui->qVtkMom->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
 
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
@@ -295,9 +312,13 @@ void vtkWindowCube::changeSliceView(int mode)
     {
     case 0:
         currentVisOnSlicePanel=0;
+        ui->qVtkMom->setVisible(false);
+        ui->qVtkSlice->setVisible(true);
         break;
     case 1:
         currentVisOnSlicePanel=1;
+        ui->qVtkMom->setVisible(true);
+        ui->qVtkSlice->setVisible(false);
         break;
     }
 }
@@ -486,10 +507,14 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
         parentWindow->addLayerImage(moment);
     } else {
         parentWindow = new vtkwindow_new(nullptr, moment);
+        this->show();
+        this->raise();
     }
 
-    parentWindow->show();
-    parentWindow->raise();
+    momViewer->SetInputData(moment->GetOutput());
+    ui->qVtkMom->renderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
+    ui->qVtkMom->renderWindow()->GetInteractor()->Render();
+
 }
 
 void vtkWindowCube::resetCamera()

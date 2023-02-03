@@ -99,6 +99,7 @@ private:
     vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
     vtkSmartPointer<vtkResliceImageViewer> sliceViewer;
+    vtkSmartPointer<vtkResliceImageViewer> momViewer;
     vtkSmartPointer<vtkActor> contoursActor;
     vtkSmartPointer<vtkActor> contoursActorForParent;
     QPointer<LutCustomize> lcustom;
