@@ -193,6 +193,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
 
+    currentVisOnSlicePanel=0;
     ui->qVtkSlice->setContextMenuPolicy(Qt::CustomContextMenu);
     connect( ui->qVtkSlice, SIGNAL(customContextMenuRequested(const QPoint &)),
             this, SLOT(ShowContextMenu(const QPoint &)));
@@ -248,6 +249,10 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
         legendActorSlice->setWCS(WCS_J2000);
         ui->menuWCS->actions().at(2)->setChecked(true);
     }
+
+    ui->thresholdGroupBox->setTitle(ui->thresholdGroupBox->title()+" ("+   fitsHeader.value("BUNIT")+")");
+    ui->contourGroupBox->setTitle(ui->contourGroupBox->title()+" ("+   fitsHeader.value("BUNIT")+")");
+
 }
 
 vtkWindowCube::~vtkWindowCube()
@@ -266,7 +271,6 @@ void vtkWindowCube::ShowContextMenu(const QPoint &pos)
    QActionGroup *grp= new QActionGroup(this);
    auto sliceAction = new QAction("Slice", grp);
    sliceAction->setCheckable(true);
-   sliceAction->setChecked(true);
    connect(sliceAction, &QAction::triggered, this, [=]() { changeSliceView(0); });
 
    auto momAction = new QAction("Moment Map", grp);
@@ -275,6 +279,11 @@ void vtkWindowCube::ShowContextMenu(const QPoint &pos)
 
    grp->addAction(sliceAction);
    grp->addAction(momAction);
+   if(currentVisOnSlicePanel==0)
+       sliceAction->setChecked(true);
+    else
+       momAction->setChecked(true);
+
 
    contextMenu.addActions(grp->actions());
    contextMenu.exec(mapToParent(pos));
@@ -285,8 +294,10 @@ void vtkWindowCube::changeSliceView(int mode)
     switch (mode)
     {
     case 0:
+        currentVisOnSlicePanel=0;
         break;
     case 1:
+        currentVisOnSlicePanel=1;
         break;
     }
 }

@@ -86,6 +86,7 @@ private:
     double initialCameraFocalPoint[3];
     double initialCameraPosition[3];
 
+    int currentVisOnSlicePanel;
     int currentSlice;
     QString velocityUnit;
 
