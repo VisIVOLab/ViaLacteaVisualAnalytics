@@ -264,9 +264,6 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
-        <property name="contextMenuPolicy">
-         <enum>Qt::ActionsContextMenu</enum>
-        </property>
        </widget>
       </item>
      </layout>
@@ -279,7 +276,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">
@@ -309,6 +306,9 @@
     </property>
     <addaction name="actionShowStats"/>
     <addaction name="actionSlice_Lookup_Table"/>
+    <addaction name="separator"/>
+    <addaction name="actionShowSlice"/>
+    <addaction name="actionShowMomentMap"/>
    </widget>
    <widget class="QMenu" name="menuWCS">
     <property name="title">
@@ -423,6 +423,25 @@
   <action name="actionSlice_Lookup_Table">
    <property name="text">
     <string>Slice Lookup Table</string>
+   </property>
+  </action>
+  <action name="actionShowSlice">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Slice</string>
+   </property>
+  </action>
+  <action name="actionShowMomentMap">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Moment Map</string>
    </property>
   </action>
  </widget>

@@ -197,15 +197,10 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     // Setup context menu to toggle slice/moment renderers
     QActionGroup *grp = new QActionGroup(this);
-    auto sliceAction = new QAction("Slice", grp);
-    sliceAction->setCheckable(true);
-    sliceAction->setChecked(true);
-    connect(sliceAction, &QAction::triggered, this, [=]() { changeSliceView(0); });
-
-    auto momAction = new QAction("Moment Map", grp);
-    momAction->setCheckable(true);
-    connect(momAction, &QAction::triggered, this, [=]() { changeSliceView(1); });
-    ui->qVtkSlice->addActions(grp->actions());
+    grp->addAction(ui->actionShowSlice);
+    grp->addAction(ui->actionShowMomentMap);
+    connect(ui->actionShowSlice, &QAction::triggered, this, [=]() { changeSliceView(0); });
+    connect(ui->actionShowMomentMap, &QAction::triggered, this, [=]() { changeSliceView(1); });
 
     rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
@@ -291,17 +286,18 @@ void vtkWindowCube::changeSliceView(int mode)
         currentVisOnSlicePanel = 0;
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
+        ui->actionShowSlice->setChecked(true);
         break;
     case 1:
         currentVisOnSlicePanel = 1;
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
+        ui->actionShowMomentMap->setChecked(true);
         break;
     }
 
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
     ui->qVtkSlice->renderWindow()->Render();
-    ui->qVtkSlice->actions().at(mode)->setChecked(true);
 }
 
 int vtkWindowCube::readFitsHeader()
