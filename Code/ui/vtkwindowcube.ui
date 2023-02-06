@@ -257,22 +257,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QVTKOpenGLNativeWidget" name="qVtkMom" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QVTKOpenGLNativeWidget" name="qVtkSlice" native="true">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="contextMenuPolicy">
+         <enum>Qt::ActionsContextMenu</enum>
         </property>
        </widget>
       </item>
@@ -286,7 +279,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">

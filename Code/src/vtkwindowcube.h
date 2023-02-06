@@ -9,7 +9,6 @@
 #include <QPointer>
 
 #include <vtkSmartPointer.h>
-#include "lutcustomize.h"
 
 class vtkActor;
 class vtkFitsReader;
@@ -19,6 +18,9 @@ class vtkResliceImageViewer;
 class vtkOrientationMarkerWidget;
 class vtkLegendScaleActorWCS;
 class vtkwindow_new;
+class vtkRenderer;
+class vtkLookupTable;
+class vtkScalarBarActor;
 class FitsImageStatisiticInfo;
 class LutCustomize;
 
@@ -36,7 +38,7 @@ public:
     explicit vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor = 1,
                            QString velocityUnit = "km/s");
     ~vtkWindowCube();
-    void showColorbar(bool checked,double min, double max);
+    void showColorbar(bool checked, double min, double max);
     void changeFitsScale(std::string palette, std::string scale, float min, float max);
     Ui::vtkWindowCube *ui;
     vtkSmartPointer<vtkFitsReader2> readerSlice;
@@ -69,9 +71,7 @@ private slots:
 
     void on_actionShowStats_triggered();
     void on_actionSlice_Lookup_Table_triggered();
-    void ShowContextMenu(const QPoint &pos);
     void changeSliceView(int mode);
-
 
 private:
     QString filepath;
@@ -93,6 +93,8 @@ private:
     double lowerBound;
     double upperBound;
 
+    vtkSmartPointer<vtkRenderer> rendererSlice;
+    vtkSmartPointer<vtkRenderer> rendererMoment;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendActorCube;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendActorSlice;
     vtkSmartPointer<vtkActor> planeActor;
