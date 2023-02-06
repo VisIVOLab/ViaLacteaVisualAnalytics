@@ -299,9 +299,9 @@ void vtkWindowCube::changeSliceView(int mode)
         break;
     }
 
-    ui->qVtkSlice->actions().at(mode)->setChecked(true);
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
     ui->qVtkSlice->renderWindow()->Render();
+    ui->qVtkSlice->actions().at(mode)->setChecked(true);
 }
 
 int vtkWindowCube::readFitsHeader()
@@ -488,10 +488,11 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
         parentWindow->addLayerImage(moment);
     } else {
         parentWindow = new vtkwindow_new(nullptr, moment, 0, 0, false);
-        parentWindow->show();
+        parentWindow->showMaximized();
     }
 
     momViewer->SetInputData(moment->GetOutput());
+    momViewer->Render();
     changeSliceView(1);
     this->activateWindow();
     this->raise();
