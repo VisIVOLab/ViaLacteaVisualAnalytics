@@ -7,10 +7,9 @@
 #include <QVTKOpenGLNativeWidget.h>
 #include <QWebEngineUrlScheme>
 
-#include <clocale>
+#include <pqPVApplicationCore.h>
 
-#include <QSurfaceFormat>
-#include "pqPVApplicationCore.h"
+#include <clocale>
 
 int main(int argc, char *argv[])
 {
@@ -20,19 +19,19 @@ int main(int argc, char *argv[])
     vlvaUrlScheme.setFlags(QWebEngineUrlScheme::SecureScheme);
     QWebEngineUrlScheme::registerScheme(vlvaUrlScheme);
 
-    //QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+    // QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
     QSurfaceFormat glFormat;
     glFormat.setVersion(3, 3);
     glFormat.setProfile(QSurfaceFormat::CoreProfile);
     QSurfaceFormat::setDefaultFormat(glFormat);
-    
+
     QApplication a(argc, argv);
-    
-    //paraview init
+
+    // paraview init
     pqPVApplicationCore appCore(argc, argv);
-  
+
     a.setApplicationName("Vialactea - Visual Analytics client");
-    a.setApplicationVersion("1.6-beta.1");
+    a.setApplicationVersion("1.6-beta.2");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
 
     setlocale(LC_NUMERIC, "C");
