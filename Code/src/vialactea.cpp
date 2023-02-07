@@ -145,6 +145,9 @@ ViaLactea::ViaLactea(QWidget *parent) : QMainWindow(parent), ui(new Ui::ViaLacte
     mapSurvey.insert(14, QPair<QString, QString>("ATLASGAL", "870 um"));
     mapSurvey.insert(15, QPair<QString, QString>("CSO BGPS", "1.1 mm"));
     mapSurvey.insert(16, QPair<QString, QString>("CORNISH", "5 GHz"));
+
+    // Set SKA Discovery Service checkbox as default
+    ui->checkSKADiscovery->setChecked(true);
 }
 
 ViaLactea::~ViaLactea()
