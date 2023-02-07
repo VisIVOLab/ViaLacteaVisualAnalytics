@@ -11,8 +11,6 @@
 #include <QPair>
 #include <QPointer>
 
-#include "pqPipelineSource.h"
-
 class pqServer;
 class pqPipelineSource;
 
@@ -87,6 +85,8 @@ private slots:
 
     void sendDataLinkRequest(const QString &url);
     void handleDataLinkResponse(const QByteArray &response);
+
+    void on_checkSKADiscovery_toggled(bool checked);
 
 private:
     Ui::ViaLactea *ui;

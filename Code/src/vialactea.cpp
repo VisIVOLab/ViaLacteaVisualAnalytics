@@ -3,9 +3,7 @@
 
 #include "aboutform.h"
 #include "astroutils.h"
-#include "authwrapper.h"
 #include "loadingwidget.h"
-#include "mainwindow.h"
 #include "pqwindowcube.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
@@ -18,23 +16,18 @@
 #include "vialacteastringdictwidget.h"
 #include "vlkbsimplequerycomposer.h"
 
-#include <pqFileDialog.h>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
 #include <QWebChannel>
 #include <QXmlStreamReader>
 
-#include "pqActiveObjects.h"
-#include "pqApplicationCore.h"
-#include "pqLoadDataReaction.h"
-#include "pqObjectBuilder.h"
-#include "vtkSMProxy.h"
-#include "vtkSMStringVectorProperty.h"
-
-#include "vtkSMProxyManager.h"
-#include "vtkSMReaderFactory.h"
-#include "vtkSMSessionProxyManager.h"
+#include <pqApplicationCore.h>
+#include <pqFileDialog.h>
+#include <pqObjectBuilder.h>
+#include <pqServer.h>
+#include <vtkSMProxyManager.h>
+#include <vtkSMReaderFactory.h>
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -255,23 +248,58 @@ void ViaLactea::updateVLKBSetting()
 
 void ViaLactea::on_queryPushButton_clicked()
 {
-    // Mock SKA-Discovery-Service Interaction
-    // https://github.com/VisIVOLab/SKA-Discovery-Service-Mockup
+    if (ui->checkSKADiscovery->isChecked()) {
+        // Mock SKA-Discovery-Service Interaction
+        // https://github.com/VisIVOLab/SKA-Discovery-Service-Mockup
 
-    QString ra = ui->glonLineEdit->text();
-    QString dec = ui->glatLineEdit->text();
+        QString ra = ui->glonLineEdit->text();
+        QString dec = ui->glatLineEdit->text();
 
-    // Mockups use these coordinates
-    if (ra == "208.72" && dec == "52.77") {
-        // Mock n.1
-        sendObsCoreRequest("https://raw.githubusercontent.com/VisIVOLab/"
-                           "SKA-Discovery-Service-Mockup/main/ObsCore/ObsCore_001.xml");
-    } else if (ra == "214.26" && dec == "57.22") {
-        // Mock n.2
-        sendObsCoreRequest("https://raw.githubusercontent.com/VisIVOLab/"
-                           "SKA-Discovery-Service-Mockup/main/ObsCore/ObsCore_002.xml");
+        // Mockups use these coordinates
+        if (ra == "208.72" && dec == "52.77") {
+            // Mock n.1
+            sendObsCoreRequest("https://raw.githubusercontent.com/VisIVOLab/"
+                               "SKA-Discovery-Service-Mockup/main/ObsCore/ObsCore_001.xml");
+        } else if (ra == "214.26" && dec == "57.22") {
+            // Mock n.2
+            sendObsCoreRequest("https://raw.githubusercontent.com/VisIVOLab/"
+                               "SKA-Discovery-Service-Mockup/main/ObsCore/ObsCore_002.xml");
+        } else {
+            QMessageBox::warning(this, "No results", "Empty results.");
+        }
     } else {
-        QMessageBox::warning(this, "No results", "Empty results.");
+        // VLKB Query
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery();
+
+        vq->setL(ui->glonLineEdit->text());
+        vq->setB(ui->glatLineEdit->text());
+        if (ui->radiumLineEdit->text() != "")
+            vq->setR(ui->radiumLineEdit->text());
+        else {
+            vq->setDeltaRect(ui->dlLineEdit->text(), ui->dbLineEdit->text());
+        }
+
+        QList<QPair<QString, QString>> selectedSurvey;
+        QList<QCheckBox *> allButtons = ui->surveySelectorGroupBox->findChildren<QCheckBox *>();
+
+        // Pop SKA Discovery Service checkbox
+        allButtons.pop_back();
+
+        for (int i = 0; i < allButtons.size(); ++i) {
+            qDebug() << "i: " << i << " " << allButtons.at(i);
+
+            if (allButtons.at(i)->isChecked()) {
+
+                selectedSurvey.append(mapSurvey.value(i));
+            }
+        }
+
+        // connettere la banda selezionata
+        vq->setSpecies("Continuum");
+        vq->setSurveyname(selectedSurvey.at(0).first);
+        vq->setTransition(selectedSurvey.at(0).second);
+        vq->setSelectedSurveyMap(selectedSurvey);
+        vq->on_queryPushButton_clicked();
     }
 }
 
@@ -946,11 +974,39 @@ void ViaLactea::handleDataLinkResponse(const QByteArray &response)
 
     CubeSubset subset;
     subset.AutoScale = true;
-    subset.CubeMaxSize = 128;
+    subset.CubeMaxSize = 256;
 
     QString filepath = metadata.value("accessFilePath").toString();
     auto win = new pqWindowCube(filepath, subset);
     win->showMaximized();
     win->raise();
     win->activateWindow();
+}
+
+void ViaLactea::on_checkSKADiscovery_toggled(bool checked)
+{
+    QList<QGroupBox *> boxes { ui->groupHigal, ui->groupGlimpse,  ui->groupCornish,
+                               ui->groupWise,  ui->groupAtlasgal, ui->groupBGPS };
+
+    if (checked) {
+        ui->labelLon->setText("ra");
+        ui->labelLat->setText("dec");
+
+        // Disable other checkboxes
+        for (auto survey : boxes) {
+            for (auto check : survey->findChildren<QCheckBox *>()) {
+                check->setChecked(false);
+            }
+            survey->setEnabled(false);
+        }
+    } else {
+        ui->labelLon->setText("glon");
+        ui->labelLat->setText("glat");
+
+        // Enable other checkboxes
+        for (auto survey : boxes) {
+            survey->setEnabled(true);
+        }
+        ui->PSW_checkBox_12->setChecked(true);
+    }
 }
