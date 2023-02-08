@@ -85,6 +85,12 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     auto renderingSettings = serverProxyManager->GetProxy("settings", "RenderViewSettings");
     vtkSMPropertyHelper(renderingSettings, "ShowAnnotation").Set(1);
 
+    vtkSMPropertyHelper(renderingSettings, "LODThreshold").Set(512);
+    vtkSMPropertyHelper(renderingSettings, "LODResolution").Set(0);
+    vtkSMPropertyHelper(renderingSettings, "UseOutlineForLODRendering").Set(1);
+    vtkSMPropertyHelper(renderingSettings, "RemoteRenderThreshold").Set(512);
+    vtkSMPropertyHelper(renderingSettings, "CompressorConfig").Set("vtkLZ4Compressor 0 5");
+
     // Load Reactions
     CubeSource = pqLoadDataReaction::loadData({ filepath });
     SliceSource = pqLoadDataReaction::loadData({ filepath });
