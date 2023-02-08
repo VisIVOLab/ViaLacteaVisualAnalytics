@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-project(ViaLacteaVisualAnalytics LANGUAGES CXX C)
+project(ViaLacteaVisualAnalytics LANGUAGES CXX C VERSION 1.6.0)
 
 # Set a default build type if none was specified
 set(default_build_type "Release")
@@ -269,7 +269,14 @@ set(ui_files
         ui/vtkwindow_new.ui
         )
 
-set(resources visivo.qrc)
+set(ICON_RESOURCE icons/logo_256_beta.icns)
+set(MACOSX_BUNDLE_ICON_FILE logo_256_beta.icns)
+set(app_icon_macos "${CMAKE_SOURCE_DIR}/icons/logo_256_beta.icns")
+set_source_files_properties(${app_icon_macos} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources"
+)
+
+set(resources visivo.qrc ${ICON_RESOURCE})
 
 add_executable(ViaLacteaVisualAnalytics ${ui_files} ${resources} ${sources} ${headers})
 
@@ -282,4 +289,11 @@ target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
         ParaView::RemotingViews
         CFITSIO::CFITSIO
         CURL::libcurl
-        )
+)
+
+set_target_properties(ViaLacteaVisualAnalytics PROPERTIES
+    MACOSX_BUNDLE_GUI_IDENTIFIER it.inaf.oact.visivo
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}
+    MACOSX_BUNDLE ON
+)
