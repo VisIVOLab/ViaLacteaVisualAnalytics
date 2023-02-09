@@ -209,6 +209,12 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     rendererMoment = vtkSmartPointer<vtkRenderer>::New();
     rendererMoment->SetBackground(0.21, 0.23, 0.25);
     rendererMoment->GlobalWarningDisplayOff();
+
+    legendActorMoment = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+    legendActorMoment->LegendVisibilityOff();
+    legendActorMoment->setFitsFile(readerSlice->GetFileName());
+    rendererMoment->AddActor(legendActorMoment);
+
     momViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     momViewer->SetRenderer(rendererMoment);
     momViewer->SetRenderWindow(renWinSlice);
@@ -256,11 +262,13 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     if (ctype1.startsWith("GL")) {
         legendActorCube->setWCS(WCS_GALACTIC);
         legendActorSlice->setWCS(WCS_GALACTIC);
+        legendActorMoment->setWCS(WCS_GALACTIC);
         ui->menuWCS->actions().at(1)->setChecked(true);
     } else if (ctype1.startsWith("RA")) {
         // FK5
         legendActorCube->setWCS(WCS_J2000);
         legendActorSlice->setWCS(WCS_J2000);
+        legendActorMoment->setWCS(WCS_J2000);
         ui->menuWCS->actions().at(2)->setChecked(true);
     }
 
@@ -657,8 +665,9 @@ void vtkWindowCube::changeLegendWCS(int wcs)
 {
     legendActorCube->setWCS(wcs);
     legendActorSlice->setWCS(wcs);
-    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+    legendActorMoment->setWCS(wcs);
+    ui->qVtkCube->renderWindow()->Render();
+    ui->qVtkSlice->renderWindow()->Render();
 }
 
 void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()

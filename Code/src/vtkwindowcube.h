@@ -97,6 +97,7 @@ private:
     vtkSmartPointer<vtkRenderer> rendererMoment;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendActorCube;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendActorSlice;
+    vtkSmartPointer<vtkLegendScaleActorWCS> legendActorMoment;
     vtkSmartPointer<vtkActor> planeActor;
     vtkSmartPointer<vtkFlyingEdges3D> isosurface;
     vtkSmartPointer<vtkOrientationMarkerWidget> axesWidget;
