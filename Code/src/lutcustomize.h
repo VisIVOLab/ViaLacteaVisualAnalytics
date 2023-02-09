@@ -5,10 +5,8 @@
 #include "vtkwindow_new.h"
 #include "vtkwindowcube.h"
 
+#include <QPointer>
 #include <QWidget>
-class vtkwindow_new;
-
-class vtkWindowCube;
 
 namespace Ui {
 class LutCustomize;
@@ -45,8 +43,8 @@ private slots:
     void on_resetMaxPushButton_clicked();
 
 private:
-    vtkwindow_new *vtkwin;
-    vtkWindowCube *vtkwincube;
+    QPointer<vtkwindow_new> vtkwin;
+    QPointer<vtkWindowCube> vtkwincube;
     QCPItemLine *fromLine;
     QCPItemLine *toLine;
     double range[2];
