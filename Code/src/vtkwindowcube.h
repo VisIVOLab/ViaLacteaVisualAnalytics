@@ -42,6 +42,7 @@ public:
     void changeFitsScale(std::string palette, std::string scale, float min, float max);
     Ui::vtkWindowCube *ui;
     vtkSmartPointer<vtkFitsReader2> readerSlice;
+    vtkSmartPointer<vtkFitsReader> moment;
 
 private slots:
     void on_sliceSlider_valueChanged(int value);

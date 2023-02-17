@@ -295,12 +295,18 @@ void vtkWindowCube::changeSliceView(int mode)
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
         ui->actionShowSlice->setChecked(true);
+        if (lcustom) {
+            lcustom->configureFits3D();
+        }
         break;
     case 1:
         currentVisOnSlicePanel = 1;
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
         ui->actionShowMomentMap->setChecked(true);
+        if (lcustom) {
+            lcustom->configureMoment();
+        }
         break;
     }
 
@@ -367,7 +373,7 @@ void vtkWindowCube::updateSliceDatacube()
     SelectLookTable(lutName, lutSlice);
     sliceViewer->SetInputData(readerSlice->GetOutput());
     sliceViewer->GetWindowLevel()->SetLookupTable(lutSlice);
-    if (lcustom)
+    if (lcustom && currentVisOnSlicePanel == 0)
         lcustom->configureFits3D();
 
     sliceViewer->GetRenderer()->ResetCamera();
@@ -483,7 +489,7 @@ void vtkWindowCube::removeContours()
 
 void vtkWindowCube::calculateAndShowMomentMap(int order)
 {
-    auto moment = vtkSmartPointer<vtkFitsReader>::New();
+    moment = vtkSmartPointer<vtkFitsReader>::New();
     moment->SetFileName(filepath.toStdString());
     moment->isMoment3D = true;
     moment->setMomentOrder(order);
@@ -679,7 +685,13 @@ void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
     if (lutSlice->GetScale() != 0)
         selected_scale = "Log";
     lcustom->setScaling(selected_scale);
-    lcustom->configureFits3D();
+
+    if (currentVisOnSlicePanel == 0) {
+        lcustom->configureFits3D();
+    } else {
+        lcustom->configureMoment();
+    }
+
     lcustom->show();
 }
 
@@ -725,7 +737,10 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
         lut->SetScaleToLog10();
 
     SelectLookTable(palette.c_str(), lut);
-    sliceViewer->GetWindowLevel()->SetLookupTable(lut);
+    if (currentVisOnSlicePanel == 0)
+        sliceViewer->GetWindowLevel()->SetLookupTable(lut);
+    else
+        momViewer->GetWindowLevel()->SetLookupTable(lut);
 
     if (scalarBar) {
         showColorbar(true, min, max);

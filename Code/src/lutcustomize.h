@@ -23,6 +23,7 @@ public:
     void configurePoint3D();
     void configureFitsImage();
     void configureFits3D();
+    void configureMoment();
     Ui::LutCustomize *ui;
     void setScaling(QString scaling);
     void setLut(QString lut);
@@ -52,6 +53,7 @@ private:
     bool isPoint3D;
     bool isFits2D;
     bool isFits3D;
+    bool isMoment;
 };
 
 #endif // LUTCUSTOMIZE_H
