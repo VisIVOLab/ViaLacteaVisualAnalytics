@@ -3,7 +3,6 @@
 
 #include "qcustomplot.h"
 #include "vtkwindow_new.h"
-#include "vtkwindowcube.h"
 
 #include <QPointer>
 #include <QWidget>
@@ -11,6 +10,8 @@
 namespace Ui {
 class LutCustomize;
 }
+
+class vtkWindowCube;
 
 class LutCustomize : public QWidget
 {
