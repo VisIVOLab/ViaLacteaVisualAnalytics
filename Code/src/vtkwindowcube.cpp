@@ -428,8 +428,8 @@ void vtkWindowCube::showContours()
     mapper->SetColorModeToMapScalars();
 
     contoursActor->SetMapper(mapper);
-    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+    rendererSlice->AddActor(contoursActor);
+    ui->qVtkSlice->renderWindow()->Render();
 
     if (parentWindow) {
         double sky_coord_gal[2];
@@ -479,8 +479,8 @@ void vtkWindowCube::showContours()
 
 void vtkWindowCube::removeContours()
 {
-    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+    rendererSlice->RemoveActor(contoursActor);
+    ui->qVtkSlice->renderWindow()->Render();
 
     if (parentWindow) {
         parentWindow->removeActor(contoursActorForParent);
