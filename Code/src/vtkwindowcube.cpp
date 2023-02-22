@@ -200,7 +200,13 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     grp->addAction(ui->actionShowSlice);
     grp->addAction(ui->actionShowMomentMap);
     connect(ui->actionShowSlice, &QAction::triggered, this, [=]() { changeSliceView(0); });
-    connect(ui->actionShowMomentMap, &QAction::triggered, this, [=]() { changeSliceView(1); });
+    connect(ui->actionShowMomentMap, &QAction::triggered, this, [=]() {
+        if (moment.Get() == nullptr) {
+            calculateAndShowMomentMap(0);
+        } else {
+            changeSliceView(1);
+        }
+    });
 
     rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
@@ -272,10 +278,15 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
         ui->menuWCS->actions().at(2)->setChecked(true);
     }
 
-    ui->thresholdGroupBox->setTitle(ui->thresholdGroupBox->title() + " ("
-                                    + fitsHeader.value("BUNIT") + ")");
-    ui->contourGroupBox->setTitle(ui->contourGroupBox->title() + " (" + fitsHeader.value("BUNIT")
-                                  + ")");
+    QString bunit = fitsHeader.value("BUNIT");
+    bunit.replace("'", QString());
+    bunit.replace("\"", QString());
+    bunit = bunit.simplified();
+
+    if (!bunit.isEmpty()) {
+        ui->thresholdGroupBox->setTitle(ui->thresholdGroupBox->title() + " (" + bunit + ")");
+        ui->contourGroupBox->setTitle(ui->contourGroupBox->title() + " (" + bunit + ")");
+    }
 }
 
 vtkWindowCube::~vtkWindowCube()
