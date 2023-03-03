@@ -185,7 +185,8 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     readerSlice->Update();
 
     // Create FITS Stats Widget
-    fitsStatsWidget = new FitsImageStatisiticInfo(readerCube, readerSlice, this);
+    fitsStatsWidget = new FitsImageStatisiticInfo(readerCube, this);
+    fitsStatsWidget->showSliceStats(readerSlice);
     on_actionShowStats_triggered();
 
     float rangeSlice[2];
@@ -306,6 +307,7 @@ void vtkWindowCube::changeSliceView(int mode)
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
         ui->actionShowSlice->setChecked(true);
+        fitsStatsWidget->showSliceStats(readerSlice);
         if (lcustom) {
             lcustom->configureFits3D();
         }
@@ -315,6 +317,7 @@ void vtkWindowCube::changeSliceView(int mode)
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
         ui->actionShowMomentMap->setChecked(true);
+        fitsStatsWidget->showMomentStats(moment);
         if (lcustom) {
             lcustom->configureMoment();
         }
@@ -391,7 +394,10 @@ void vtkWindowCube::updateSliceDatacube()
     sliceViewer->Render();
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
 
-    fitsStatsWidget->updateSliceStats();
+    if (currentVisOnSlicePanel == 0) {
+        // Update stats widget only if needed
+        fitsStatsWidget->showSliceStats(readerSlice);
+    }
 
     if (parentWindow && ui->contourCheckBox->isChecked()) {
         removeContours();
