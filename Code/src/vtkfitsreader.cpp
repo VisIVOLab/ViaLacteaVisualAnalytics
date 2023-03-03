@@ -562,8 +562,6 @@ void vtkFitsReader::setMomentOrder(int order)
 
 vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 {
-    auto scalars = vtkFloatArray::New();
-
     ReadHeader();
     fitsfile *fptr;
     int status = 0, nfound = 0;
@@ -582,8 +580,8 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
     long npixels = naxes[0] * naxes[1] * naxes[2];
     long buffsize = naxes[0] * naxes[1];
     float *buffer = new float[buffsize];
-    scalars->SetNumberOfValues(buffsize);
-    scalars->Fill(0.0);
+    float *scalars = new float[buffsize];
+    std::fill_n(scalars, buffsize, 0);
 
     int anynull = 0;
     float fpixel = 1, nullval = 0;
@@ -601,18 +599,12 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
                 if (std::isnan(buffer[i]))
                     continue;
 
-                float v = scalars->GetValue(i) + buffer[i];
-                scalars->SetValue(i, v);
-                if (v < datamin)
-                    datamin = v;
-                if (v > datamax)
-                    datamax = v;
+                scalars[i] += buffer[i];
             }
 
             fpixel += nbuffer;
             npixels -= nbuffer;
         }
-
     } else if (order == 1) {
         // the intensity weighted coordinate
         vtkFloatArray *m0 = CalculateMoment(0);
@@ -630,12 +622,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
                     continue;
 
                 if (m0->GetValue(i) != 0) {
-                    float v = scalars->GetValue(i) + (buffer[i] * velocityValue) / m0->GetValue(i);
-                    scalars->SetValue(i, v);
-                    if (v < datamin)
-                        datamin = v;
-                    if (v > datamax)
-                        datamax = v;
+                    scalars[i] = scalars[i] + (buffer[i] * velocityValue) / m0->GetValue(i);
                 }
             }
 
@@ -659,23 +646,17 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
                 if (std::isnan(buffer[i]))
                     continue;
 
-                float v = scalars->GetValue(i) + buffer[i] * buffer[i];
-                scalars->SetValue(i, v);
+                scalars[i] += buffer[i] * buffer[i];
             }
 
             fpixel += nbuffer;
             npixels -= nbuffer;
         }
 
-        // RMS and data range
+        // RMS
         for (int i = 0; i < buffsize; ++i) {
-            float v = std::sqrt(scalars->GetValue(i)/naxes[2]);
-            scalars->SetValue(i, v);
-
-            if (v < datamin)
-                datamin = v;
-            if (v > datamax)
-                datamax = v;
+            float v = std::sqrt(scalars[i] / naxes[2]);
+            scalars[i] = v;
         }
 
     } else if (order == 8) {
@@ -690,12 +671,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
                 if (std::isnan(buffer[i]))
                     continue;
 
-                float v = fmax(scalars->GetValue(i), buffer[i]);
-                scalars->SetValue(i, v);
-                if (v < datamin)
-                    datamin = v;
-                if (v > datamax)
-                    datamax = v;
+                scalars[i] = fmax(scalars[i], buffer[i]);
             }
 
             fpixel += nbuffer;
@@ -712,12 +688,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
                 if (std::isnan(buffer[i]))
                     continue;
 
-                float v = fmin(scalars->GetValue(i), buffer[i]);
-                scalars->SetValue(i, v);
-                if (v < datamin)
-                    datamin = v;
-                if (v > datamax)
-                    datamax = v;
+                scalars[i] = fmin(scalars[i], buffer[i]);
             }
 
             fpixel += nbuffer;
@@ -727,10 +698,17 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
     delete[] buffer;
 
+    if (fits_img_stats_float(scalars, naxes[0], naxes[1], 0, 0, 0, &this->datamin, &this->datamax,
+                             &this->media, &this->rms, 0, 0, 0, 0, &status)) {
+        fits_report_error(stderr, status);
+    }
+
     if (fits_close_file(fptr, &status))
         printerror(status);
 
-    return scalars;
+    auto values = vtkFloatArray::New();
+    values->SetVoidArray(scalars, buffsize, 0, vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+    return values;
 }
 
 // Note: This function adapted from readimage() from cookbook.c in
