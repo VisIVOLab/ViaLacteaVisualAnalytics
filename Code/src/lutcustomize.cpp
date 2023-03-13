@@ -200,11 +200,9 @@ void LutCustomize::plotHistogram()
     QVector<double> x(numberOfBins);
     QVector<double> y(numberOfBins);
     vtkIdType nPoints = bin_extents->GetDataSize();
-    int cnt = 0;
     for (vtkIdType i = 0; i < nPoints; ++i) {
         x.push_back(bin_extents->GetValue(i));
         y.push_back(bin_values->GetValue(i));
-        cnt++;
     }
     // create graph and assign data to it:
     ui->histogramWidget->graph(0)->setData(x, y);
@@ -279,7 +277,7 @@ void LutCustomize::on_ShowColorbarCheckBox_clicked(bool checked)
     else if (isFits2D)
         vtkwin->showColorbarFits(checked, ui->fromSpinBox->text().toFloat(),
                                  ui->toSpinBox->text().toFloat());
-    else if (isFits3D)
+    else if (isFits3D || isMoment)
         vtkwincube->showColorbar(checked, ui->fromSpinBox->text().toFloat(),
                                  ui->toSpinBox->text().toFloat());
 }
@@ -319,7 +317,7 @@ void LutCustomize::on_okPushButton_clicked()
                                 ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
         vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    } else if (isFits3D) {
+    } else if (isFits3D || isMoment) {
         vtkwincube->showColorbar(ui->ShowColorbarCheckBox->isChecked(),
                                  ui->fromSpinBox->text().toFloat(),
                                  ui->toSpinBox->text().toFloat());
@@ -327,16 +325,7 @@ void LutCustomize::on_okPushButton_clicked()
                                     ui->scalingComboBox->currentText().toStdString().c_str(),
                                     ui->fromSpinBox->text().toFloat(),
                                     ui->toSpinBox->text().toFloat());
-        vtkwincube->ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
-    } else if (isMoment) {
-        vtkwincube->showColorbar(ui->ShowColorbarCheckBox->isChecked(),
-                                 ui->fromSpinBox->text().toFloat(),
-                                 ui->toSpinBox->text().toFloat());
-        vtkwincube->changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
-                                    ui->scalingComboBox->currentText().toStdString().c_str(),
-                                    ui->fromSpinBox->text().toFloat(),
-                                    ui->toSpinBox->text().toFloat());
-        vtkwincube->ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+        vtkwincube->ui->qVtkSlice->renderWindow()->Render();
     }
 }
 

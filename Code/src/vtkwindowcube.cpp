@@ -714,8 +714,11 @@ void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
 
 void vtkWindowCube::showColorbar(bool checked, double min, double max)
 {
+    auto renderer = currentVisOnSlicePanel == 0 ? rendererSlice : rendererMoment;
+    auto legend = currentVisOnSlicePanel == 0 ? legendActorSlice : legendActorMoment;
+
     if (scalarBar != 0) {
-        ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(scalarBar);
+        renderer->RemoveActor(scalarBar);
         scalarBar = nullptr;
     }
 
@@ -728,17 +731,16 @@ void vtkWindowCube::showColorbar(bool checked, double min, double max)
         scalarBar->SetOrientationToVertical();
         scalarBar->UnconstrainedFontSizeOn();
         scalarBar->SetMaximumWidthInPixels(80);
-        legendActorSlice->RightAxisVisibilityOff();
+        legend->RightAxisVisibilityOff();
         scalarBar->SetPosition(0.80, 0.10);
         scalarBar->SetLookupTable(lut);
-        auto renderer = ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer();
         renderer->AddActor(scalarBar);
         scalarBar->SetVisibility(checked);
     } else {
-        legendActorSlice->RightAxisVisibilityOn();
+        legend->RightAxisVisibilityOn();
     }
-    ui->qVtkSlice->update();
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+
+    ui->qVtkSlice->renderWindow()->Render();
 }
 
 void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, float min, float max)
@@ -762,6 +764,6 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
     if (scalarBar) {
         showColorbar(true, min, max);
     }
-    ui->qVtkSlice->update();
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+
+    ui->qVtkSlice->renderWindow()->Render();
 }
