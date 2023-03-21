@@ -1,9 +1,11 @@
 #include "astroutils.h"
 
+#include <fitsio.h>
+
 #include "libwcs/fitsfile.h"
 #include "libwcs/lwcs.h"
 #include "libwcs/wcs.h"
-#include "libwcs/wcscat.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
@@ -12,7 +14,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <exception>
 #include <iostream>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -101,6 +105,48 @@ int AstroUtils::calculateResizeFactor(long size, long maxSize)
     return ceil(cbrt(1.0 * size / maxSize));
 }
 
+bool AstroUtils::checkSimCubeHeader(const std::string &file,
+                                    std::list<std::string> &missingKeywords)
+{
+    // Set of required header's keywords to handle simcubes
+    std::set<std::string> requiredKeywords = { "CTYPE", "CUNIT", "CDELT" };
+
+    // Clear return list
+    missingKeywords.clear();
+
+    fitsfile *fptr;
+    int status = 0;
+    char errmsg[FLEN_ERRMSG];
+    if (fits_open_data(&fptr, file.data(), READONLY, &status)) {
+        fits_get_errstatus(status, errmsg);
+        fits_report_error(stderr, status);
+        throw std::runtime_error(errmsg);
+    }
+
+    int nfound = 0;
+    char *cards[3];
+    for (int i = 0; i < 3; ++i) {
+        cards[i] = new char[FLEN_CARD];
+    }
+    std::for_each(requiredKeywords.cbegin(), requiredKeywords.cend(),
+                  [&](const std::string &keyword) {
+                      if (fits_read_keys_str(fptr, keyword.data(), 1, 3, cards, &nfound, &status)) {
+                          fits_report_error(stderr, status);
+                      }
+
+                      if (nfound != 3) {
+                          missingKeywords.push_back(keyword);
+                      }
+                  });
+
+    for (int i = 0; i < 3; ++i) {
+        delete[] cards[i];
+    }
+
+    // Returns true if there are no missing keywords in the header
+    return missingKeywords.empty();
+}
+
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
 {
     double T1, B1, R1, L1;
@@ -150,8 +196,7 @@ void AstroUtils::xy2sky(std::string map, float x, float y, double *coord, int wc
 
     if (wcs_type == WCS_GALACTIC || wcs_type == WCS_ECLIPTIC || wcs_type == WCS_J2000) {
         wcs->eqout = 2000.0;
-    }
-    else if (wcs_type == WCS_B1950) {
+    } else if (wcs_type == WCS_B1950) {
         wcs->eqout = 1950.0;
     }
 

@@ -3,6 +3,7 @@
 
 #include "libwcs/wcs.h"
 
+#include <list>
 #include <string>
 
 class AstroUtils
@@ -22,6 +23,8 @@ public:
     static double GetRadiusSize(std::string file);
     static bool CheckOverlap(std::string f1, std::string f2, bool full = false);
     static int calculateResizeFactor(long size, long maxSize);
+    static bool checkSimCubeHeader(const std::string &file,
+                                   std::list<std::string> &missingKeywords);
 
 private:
     static WorldCoor *GetWCSFITS(char *filename, int verbose);
