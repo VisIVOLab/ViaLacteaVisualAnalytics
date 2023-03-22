@@ -31,7 +31,7 @@ public:
     ~pqWindowCube() override;
 
 private slots:
-    void on_sliceSlider_sliderReleased();
+    void on_sliceSlider_valueChanged(int value);
     void on_sliceSpinBox_editingFinished();
     void on_sliceSpinBox_valueChanged(int arg1);
     void on_actionFront_triggered();
