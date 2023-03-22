@@ -11,12 +11,12 @@ SimCollapseDialog::SimCollapseDialog(double *angles, QWidget *parent)
     ui->textY->setText(QString::number(angles[1], 'g', 4));
     ui->textZ->setText(QString::number(angles[2], 'g', 4));
 
-    auto v = new QDoubleValidator(this);
-    ui->textScale->setValidator(v);
-    ui->textLon->setValidator(v);
-    ui->textLat->setValidator(v);
-    ui->textDistance->setValidator(v);
-    ui->textSigma->setValidator(v);
+    // auto v = new QDoubleValidator(this);
+    // ui->textScale->setValidator(v);
+    // ui->textLon->setValidator(v);
+    // ui->textLat->setValidator(v);
+    // ui->textDistance->setValidator(v);
+    // ui->textSigma->setValidator(v);
 }
 
 SimCollapseDialog::~SimCollapseDialog()
