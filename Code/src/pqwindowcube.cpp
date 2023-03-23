@@ -347,8 +347,9 @@ void pqWindowCube::showSlice()
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
             mgr->GetColorTransferFunction("FITSImage", sliceProxy->GetSessionProxyManager()));
 
-    ui->sliceSlider->setRange(1, bounds[5] + 1);
-    ui->sliceSpinBox->setRange(1, bounds[5] + 1);
+    int sliceMax = (bounds[5] + 1) / cubeSubset.ScaleFactor + ((int) std::floor(bounds[5] + 1)) % cubeSubset.ScaleFactor;
+    ui->sliceSlider->setRange(1, sliceMax);
+    ui->sliceSpinBox->setRange(1, sliceMax);
 }
 
 void pqWindowCube::showStatusBarMessage(const std::string &msg)
@@ -436,18 +437,6 @@ void pqWindowCube::removeContours()
         contourFilter2D = nullptr;
         viewSlice->render();
     }
-}
-
-void pqWindowCube::on_sliceSlider_sliderReleased()
-{
-    int value = ui->sliceSlider->value();
-
-    // Match slider and spinbox values
-    if (ui->sliceSpinBox->value() != value) {
-        ui->sliceSpinBox->setValue(value);
-    }
-
-    setSliceDatacube(value);
 }
 
 void pqWindowCube::on_sliceSlider_valueChanged()
