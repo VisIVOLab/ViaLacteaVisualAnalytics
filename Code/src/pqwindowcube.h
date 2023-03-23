@@ -31,7 +31,9 @@ public:
     ~pqWindowCube() override;
 
 private slots:
+    void on_sliceSlider_actionTriggered(int action);
     void on_sliceSlider_sliderReleased();
+    void on_sliceSlider_valueChanged();
     void on_sliceSpinBox_editingFinished();
     void on_sliceSpinBox_valueChanged(int arg1);
     void on_actionFront_triggered();
@@ -56,6 +58,7 @@ private slots:
     void on_action100_triggered();
 
     void generateVolumeRendering();
+
 
 private:
     Ui::pqWindowCube *ui;
@@ -112,6 +115,8 @@ private:
 
     void showContours();
     void removeContours();
+
+    bool loadChange = false;
 };
 
 #endif // PQWINDOWCUBE_H

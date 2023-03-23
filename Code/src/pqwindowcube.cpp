@@ -450,6 +450,37 @@ void pqWindowCube::on_sliceSlider_sliderReleased()
     setSliceDatacube(value);
 }
 
+void pqWindowCube::on_sliceSlider_valueChanged()
+{
+    if (!loadChange)
+        return;
+
+    int value = ui->sliceSlider->value();
+
+    // Match slider and spinbox values
+    if (ui->sliceSpinBox->value() != value) {
+        ui->sliceSpinBox->setValue(value);
+    }
+
+    setSliceDatacube(value);
+    loadChange = false;
+}
+
+void pqWindowCube::on_sliceSlider_actionTriggered(int action)
+{
+    switch (action) {
+    case 0:
+        loadChange = false;
+        break;
+    case 7:
+        loadChange = false;
+        break;
+    default:
+        loadChange = true;
+        break;
+    }
+}
+
 void pqWindowCube::on_sliceSpinBox_valueChanged(int arg1){
     // Match slider and spinbox values
     if (ui->sliceSlider->value() != arg1) {
@@ -494,7 +525,8 @@ void pqWindowCube::setSliceDatacube(int value)
     sliceProxy->UpdateVTKObjects();
     SliceSource->updatePipeline();
 
-    vtkSMPropertyHelper(cubeSliceProxy, "Slice").Set(currentSlice);
+    int slicePos = std::round(((float) currentSlice) / cubeSubset.ScaleFactor);
+    vtkSMPropertyHelper(cubeSliceProxy, "Slice").Set(slicePos);
     vtkSMPropertyHelper(cubeSliceProxy, "SliceMode").Set(VTK_XY_PLANE);
     cubeSliceProxy->UpdateVTKObjects();
 
@@ -701,3 +733,4 @@ void pqWindowCube::setVolumeRenderingOpacity(double opacity)
     contourProxy->UpdateVTKObjects();
     viewCube->render();
 }
+
