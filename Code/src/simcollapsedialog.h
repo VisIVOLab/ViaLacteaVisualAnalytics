@@ -30,6 +30,7 @@ private:
     Ui::SimCollapseDialog *ui;
     vtkSmartPointer<vtkFitsReader> reader;
     double rotAngles[3];
+    double minDistance;
 
     void showResultingImage(const QString &filepath);
 };

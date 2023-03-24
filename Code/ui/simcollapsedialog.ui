@@ -85,6 +85,9 @@
         <property name="text">
          <string>Pixel size (cunit3):</string>
         </property>
+        <property name="buddy">
+         <cstring>spinPixelSize</cstring>
+        </property>
        </widget>
       </item>
       <item row="3" column="1">
@@ -144,7 +147,7 @@
            <string>Galactic longitude of the point where the simulation is to be placed.</string>
           </property>
           <property name="text">
-           <string/>
+           <string>0</string>
           </property>
          </widget>
         </item>
@@ -167,7 +170,7 @@
            <string>Galactic latitude of the point where the simulation is to be placed.</string>
           </property>
           <property name="text">
-           <string/>
+           <string>0</string>
           </property>
          </widget>
         </item>
@@ -177,20 +180,7 @@
            <string>Distance (pc):</string>
           </property>
           <property name="buddy">
-           <cstring>textDistance</cstring>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="textDistance">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="toolTip">
-           <string>Distance of the point where the simulation is to be placed.</string>
-          </property>
-          <property name="text">
-           <string/>
+           <cstring>spinDistance</cstring>
           </property>
          </widget>
         </item>
@@ -217,6 +207,19 @@
           </property>
          </widget>
         </item>
+        <item row="2" column="1">
+         <widget class="QDoubleSpinBox" name="spinDistance">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>9</number>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
@@ -235,10 +238,11 @@
   <tabstop>textX</tabstop>
   <tabstop>textY</tabstop>
   <tabstop>textZ</tabstop>
+  <tabstop>spinPixelSize</tabstop>
   <tabstop>checkPlace</tabstop>
   <tabstop>textLon</tabstop>
   <tabstop>textLat</tabstop>
-  <tabstop>textDistance</tabstop>
+  <tabstop>spinDistance</tabstop>
   <tabstop>textSigma</tabstop>
  </tabstops>
  <resources/>
@@ -272,22 +276,6 @@
     <hint type="destinationlabel">
      <x>312</x>
      <y>359</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkPlace</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>textDistance</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>202</x>
-     <y>297</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>312</x>
-     <y>390</y>
     </hint>
    </hints>
   </connection>
@@ -336,6 +324,22 @@
     <hint type="destinationlabel">
      <x>7</x>
      <y>199</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkPlace</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinDistance</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>75</x>
+     <y>291</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>284</x>
+     <y>395</y>
     </hint>
    </hints>
   </connection>
