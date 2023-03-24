@@ -81,22 +81,19 @@
        </widget>
       </item>
       <item row="3" column="0">
-       <widget class="QLabel" name="label_5">
+       <widget class="QLabel" name="labelPixelSize">
         <property name="text">
          <string>Pixel size (cunit3):</string>
-        </property>
-        <property name="buddy">
-         <cstring>textScale</cstring>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QLineEdit" name="textScale">
-        <property name="toolTip">
-         <string>Size of the pixel.</string>
+       <widget class="QDoubleSpinBox" name="spinPixelSize">
+        <property name="buttonSymbols">
+         <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
-        <property name="text">
-         <string>default</string>
+        <property name="decimals">
+         <number>9</number>
         </property>
        </widget>
       </item>
@@ -238,7 +235,6 @@
   <tabstop>textX</tabstop>
   <tabstop>textY</tabstop>
   <tabstop>textZ</tabstop>
-  <tabstop>textScale</tabstop>
   <tabstop>checkPlace</tabstop>
   <tabstop>textLon</tabstop>
   <tabstop>textLat</tabstop>
@@ -308,6 +304,38 @@
     <hint type="destinationlabel">
      <x>312</x>
      <y>421</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>SimCollapseDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>346</x>
+     <y>467</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>6</x>
+     <y>174</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>SimCollapseDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>292</x>
+     <y>460</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>7</x>
+     <y>199</y>
     </hint>
    </hints>
   </connection>

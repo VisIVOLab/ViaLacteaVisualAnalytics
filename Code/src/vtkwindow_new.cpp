@@ -17,7 +17,6 @@
 #include "selectedsourcesform.h"
 #include "sfilterdialog.h"
 #include "simcollapsedialog.h"
-#include "simplacedialog.h"
 #include "singleton.h"
 #include "source.h"
 #include "sourcewidget.h"
@@ -2812,7 +2811,7 @@ void vtkwindow_new::actionCollapseTriggered()
                              ->GetActiveCamera()
                              ->GetOrientation();
 
-    SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
+    SimCollapseDialog *dialog = new SimCollapseDialog(myfits, angles, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &SimCollapseDialog::dialogSubmitted, this,
             [this, angles](double scale, double lon, double lat, double distance, double sigma) {
