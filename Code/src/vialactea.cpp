@@ -3,8 +3,7 @@
 
 #include "aboutform.h"
 #include "astroutils.h"
-#include "authwrapper.h"
-#include "mainwindow.h"
+#include "fitsheadermodifierdialog.h"
 #include "mcutoutsummary.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
@@ -378,6 +377,31 @@ void ViaLactea::on_localDCPushButton_clicked()
         QMessageBox::warning(this, "Open file",
                              "The file you selected is not a cube!\n"
                              "Use Load Image to load it.");
+        return;
+    }
+
+    // Check if the keywords in the header are present
+    std::list<std::string> missing;
+    try {
+        if (!AstroUtils::checkSimCubeHeader(fn.toStdString(), missing)) {
+            auto res = QMessageBox::warning(this, "Warning",
+                                            "The header does not contain all the necessary "
+                                            "keywords!\nDo you want to add them?",
+                                            QMessageBox::Yes | QMessageBox::No);
+
+            if (res == QMessageBox::Yes) {
+                QStringList qMissing;
+                std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
+                    qMissing << QString::fromStdString(key);
+                });
+                auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
+                dialog->show();
+            }
+
+            return;
+        }
+    } catch (const std::exception &e) {
+        QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
         return;
     }
 

@@ -111,6 +111,7 @@ SOURCES += \
     src/ds9region/DS9RegionParser.cpp \
     src/extendedglyph3d.cpp \
     src/filtercustomize.cpp \
+    src/fitsheadermodifierdialog.cpp \
     src/fitsimagestatisiticinfo.cpp \
     src/higalselectedsources.cpp \
     src/histogram.cpp \
@@ -228,6 +229,7 @@ HEADERS  += \
     src/ds9region/DS9RegionParser.h \
     src/extendedglyph3d.h \
     src/filtercustomize.h \
+    src/fitsheadermodifierdialog.h \
     src/fitsimagestatisiticinfo.h \
     src/higalselectedsources.h \
     src/histogram.h \
@@ -311,6 +313,7 @@ FORMS += \
     ui/contour.ui \
     ui/dbquery.ui \
     ui/filtercustomize.ui \
+    ui/fitsheadermodifierdialog.ui \
     ui/fitsimagestatisiticinfo.ui \
     ui/higalselectedsources.ui \
     ui/loadingwidget.ui \
