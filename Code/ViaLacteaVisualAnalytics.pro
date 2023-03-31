@@ -175,7 +175,6 @@ SOURCES += \
     src/simcube/simcube_projection-collapse/utils.cpp \
     src/simcube/simcube_projection-galactic/api-galactic.cpp \
     src/simcube/simcube_projection-galactic/fits_simimg.cpp \
-    src/simplacedialog.cpp \
     src/treeitem.cpp \
     src/treemodel.cpp \
     src/usertablewindow.cpp \
@@ -202,7 +201,6 @@ SOURCES += \
     src/vtkfitstoolswidget.cpp \
     src/vtkfitstoolwidgetobject.cpp \
     src/vtkfitstoolwidget_new.cpp \
-    src/vtkfitswriter.cpp \
     src/vtklegendscaleactorwcs.cpp \
     src/vtktoolswidget.cpp \
     src/vtkwindow_new.cpp \
@@ -268,7 +266,6 @@ HEADERS  += \
     src/simcube/simcube_projection-collapse/utils.hpp \
     src/simcube/simcube_projection-galactic/fits_simimg.hpp \
     src/simcube/simcube_projection.hpp \
-    src/simplacedialog.h \
     src/singleton.h \
     src/source.h \
     src/sourcewidget.h \
@@ -298,7 +295,6 @@ HEADERS  += \
     src/vtkfitstoolswidget.h \
     src/vtkfitstoolwidgetobject.h \
     src/vtkfitstoolwidget_new.h \
-    src/vtkfitswriter.h \
     src/vtklegendscaleactorwcs.h \
     src/vtktoolswidget.h \
     src/vtkwindow_new.h \
@@ -332,7 +328,6 @@ FORMS += \
     ui/sfilterdialog.ui \
     ui/sourcewidget.ui \
     ui/simcollapsedialog.ui \
-    ui/simplacedialog.ui \
     ui/usertablewindow.ui \
     ui/vialactea.ui \
     ui/vialactea_fileload.ui \

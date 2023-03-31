@@ -375,8 +375,6 @@ private slots:
     void cutoutDatacube(QString c);
     void openFilterDialog();
     void actionCollapseTriggered();
-    void showCollapsedImage(const QString &filepath);
-    void placeCollapsedImage(double lon, double lat, double distance);
 
     void on_cameraLeft_clicked();
     void on_bottomCamera_clicked();

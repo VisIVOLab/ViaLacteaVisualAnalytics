@@ -9,7 +9,6 @@
 
 #include <QDebug>
 #include <QDir>
-#include <QDoubleValidator>
 #include <QFileInfo>
 #include <QMessageBox>
 
@@ -37,14 +36,6 @@ SimCollapseDialog::SimCollapseDialog(vtkSmartPointer<vtkFitsReader> reader, doub
     ui->spinDistance->setMinimum(0);
     ui->spinDistance->setMaximum(std::numeric_limits<double>::max());
     ui->spinDistance->setValue(minDistance);
-
-    // Validators
-    // auto v = new QDoubleValidator(this);
-    // ui->textPixelSize->setValidator(v);
-    //  ui->textLon->setValidator(v);
-    //  ui->textLat->setValidator(v);
-    //  ui->textDistance->setValidator(v);
-    //  ui->textSigma->setValidator(v);
 }
 
 SimCollapseDialog::~SimCollapseDialog()

@@ -52,7 +52,6 @@
 #include "vtkfitstoolswidget.h"
 #include "vtkfitstoolwidget_new.h"
 #include "vtkfitstoolwidgetobject.h"
-#include "vtkfitswriter.h"
 #include "vtkFrustumSource.h"
 #include "vtkGenericOpenGLRenderWindow.h"
 #include "vtkGeometryFilter.h"
@@ -2817,42 +2816,6 @@ void vtkwindow_new::actionCollapseTriggered()
     dialog->show();
     dialog->raise();
     dialog->activateWindow();
-}
-
-void vtkwindow_new::showCollapsedImage(const QString &filepath)
-{
-    auto fits = vtkSmartPointer<vtkFitsReader>::New();
-    fits->SetFileName(filepath.toStdString());
-    auto win = new vtkwindow_new(this, fits);
-    win->activateWindow();
-    win->raise();
-}
-
-void vtkwindow_new::placeCollapsedImage(double lon, double lat, double distance)
-{
-    // Make a copy and work on it
-    QString inFile = QString::fromStdString(myfits->GetFileName());
-    QFileInfo inInfo(inFile);
-    QString outFile = inInfo.baseName() + "_gal.fits";
-    outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
-
-    if (QFile::exists(outFile)) {
-        QFile::remove(outFile);
-    }
-    QFile::copy(inFile, outFile);
-
-    double coords[] { lon, lat };
-    try {
-        // simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords);
-    } catch (const std::exception &e) {
-        QMessageBox::critical(this, "Error", e.what());
-        return;
-    }
-
-    QMessageBox::information(this, "Success",
-                             "The FITS Header has been updated.\n"
-                             "You can load the image from the main window now.");
-    this->close();
 }
 
 void vtkwindow_new::addLocalSources()

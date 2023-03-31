@@ -23,9 +23,6 @@ public:
 public slots:
     void accept() override;
 
-signals:
-    void dialogSubmitted(double scale, double lon, double lat, double distance, double ghwidth);
-
 private:
     Ui::SimCollapseDialog *ui;
     vtkSmartPointer<vtkFitsReader> reader;
