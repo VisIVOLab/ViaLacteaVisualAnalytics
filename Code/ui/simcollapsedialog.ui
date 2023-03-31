@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>406</width>
-    <height>487</height>
+    <width>377</width>
+    <height>468</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,6 +20,9 @@
       <string>Collapse</string>
      </property>
      <layout class="QFormLayout" name="formLayout">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::ExpandingFieldsGrow</enum>
+      </property>
       <item row="0" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
@@ -92,6 +95,15 @@
       </item>
       <item row="3" column="1">
        <widget class="QDoubleSpinBox" name="spinPixelSize">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="toolTip">
+         <string>Size of the pixel. It must be greater than or equal to the size of the input fits file.</string>
+        </property>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
@@ -128,6 +140,9 @@
       </item>
       <item>
        <layout class="QFormLayout" name="formLayout_2">
+        <property name="fieldGrowthPolicy">
+         <enum>QFormLayout::ExpandingFieldsGrow</enum>
+        </property>
         <item row="0" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
@@ -190,12 +205,12 @@
            <string>Full Width Half Maximum (deg):</string>
           </property>
           <property name="buddy">
-           <cstring>textSigma</cstring>
+           <cstring>textFWHM</cstring>
           </property>
          </widget>
         </item>
         <item row="3" column="1">
-         <widget class="QLineEdit" name="textSigma">
+         <widget class="QLineEdit" name="textFWHM">
           <property name="enabled">
            <bool>false</bool>
           </property>
@@ -211,6 +226,15 @@
          <widget class="QDoubleSpinBox" name="spinDistance">
           <property name="enabled">
            <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Distance of the point where the simulation is to be placed.</string>
           </property>
           <property name="buttonSymbols">
            <enum>QAbstractSpinBox::NoButtons</enum>
@@ -243,7 +267,7 @@
   <tabstop>textLon</tabstop>
   <tabstop>textLat</tabstop>
   <tabstop>spinDistance</tabstop>
-  <tabstop>textSigma</tabstop>
+  <tabstop>textFWHM</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -282,7 +306,7 @@
   <connection>
    <sender>checkPlace</sender>
    <signal>toggled(bool)</signal>
-   <receiver>textSigma</receiver>
+   <receiver>textFWHM</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">

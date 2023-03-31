@@ -2825,10 +2825,10 @@ void vtkwindow_new::actionCollapseTriggered()
                     simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(),
                                                  angles, scale);
 
-                    double cdelt_gal_deg[2];
+                    // double cdelt_gal_deg[2];
 
-                    simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords,
-                                                   cdelt_gal_deg);
+                    // simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords,
+                    //                                cdelt_gal_deg);
                     if (sigma == 0.0) {
                         auto fits = vtkSmartPointer<vtkFitsReader>::New();
                         fits->SetFileName(outFile.toStdString());
@@ -2838,6 +2838,7 @@ void vtkwindow_new::actionCollapseTriggered()
                         return;
                     }
                     double cdelt2_new = (sigma * 2.355) / 3;
+                    /*
                     if (cdelt2_new < cdelt_gal_deg[1]) {
                         QMessageBox::information(
                                 this, "Invalid value",
@@ -2846,8 +2847,9 @@ void vtkwindow_new::actionCollapseTriggered()
                                 "not rescale the image.");
                         return;
                     }
-
-                    int resizeFactor = cdelt2_new / cdelt_gal_deg[1];
+                    */
+                    // int resizeFactor = cdelt2_new / cdelt_gal_deg[1];
+                    int resizeFactor = 1;
                     char outFileChar[outFile.size() + 1];
                     strcpy(outFileChar, outFile.toStdString().c_str());
 
