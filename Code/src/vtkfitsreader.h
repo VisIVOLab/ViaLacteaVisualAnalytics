@@ -74,6 +74,16 @@ public:
             return -1;
     }
 
+    double getMaxCDelt()
+    {
+        double v = cdelt[0];
+        if (v < cdelt[1])
+            v = cdelt[1];
+        if (v < cdelt[2])
+            v = cdelt[2];
+        return v;
+    }
+
     int GetNaxes(int i);
 
     vtkFloatArray *fitsScalars;
@@ -93,7 +103,7 @@ public:
     int getMomentOrder();
     QString getBunit() { return bUnit; };
     QString getCtype1() { return ctype1; };
-
+    QString getCUnit3() { return QString::fromUtf8(cunit3); };
 
     void setSpecies(QString s) { species = s; };
     void setTransition(QString s) { transition = s; };
@@ -156,6 +166,9 @@ private:
     char xStr[80];
     char yStr[80];
     char zStr[80];
+    char cunit1[80];
+    char cunit2[80];
+    char cunit3[80];
     //    char cunit3[1][200];
 
     void ReadHeader();

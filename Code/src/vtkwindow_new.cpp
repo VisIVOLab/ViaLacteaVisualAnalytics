@@ -17,7 +17,6 @@
 #include "selectedsourcesform.h"
 #include "sfilterdialog.h"
 #include "simcollapsedialog.h"
-#include "simplacedialog.h"
 #include "singleton.h"
 #include "source.h"
 #include "sourcewidget.h"
@@ -2812,56 +2811,8 @@ void vtkwindow_new::actionCollapseTriggered()
                              ->GetActiveCamera()
                              ->GetOrientation();
 
-    SimCollapseDialog *dialog = new SimCollapseDialog(angles, this);
+    SimCollapseDialog *dialog = new SimCollapseDialog(myfits, angles, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dialog, &SimCollapseDialog::dialogSubmitted, this,
-            [this, angles](double scale, double lon, double lat, double distance, double sigma) {
-                QString inFile = QString::fromStdString(myfits->GetFileName());
-                QFileInfo inInfo(inFile);
-                QString outFile = inInfo.baseName() + "_collapsed_gal.fits";
-                outFile = inInfo.absoluteDir().absoluteFilePath(outFile);
-                try {
-                    double coords[] { lon, lat };
-
-                    simcube::rotate_and_collapse(outFile.toStdString(), inFile.toStdString(),
-                                                 angles, scale);
-
-                    double cdelt_gal_deg[2];
-
-                    simcube::collapsed_to_galactic(outFile.toStdString(), distance, coords,
-                                                   cdelt_gal_deg);
-                    if (sigma == 0.0) {
-                        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-                        fits->SetFileName(outFile.toStdString());
-                        auto win = new vtkwindow_new(this, fits);
-                        win->activateWindow();
-                        win->raise();
-                        return;
-                    }
-                    double cdelt2_new = (sigma * 2.355) / 3;
-                    if (cdelt2_new < cdelt_gal_deg[1]) {
-                        QMessageBox::information(
-                                this, "Invalid value",
-                                "Invalid Sigma value.\nThe new CDELT would be "
-                                "lower than the current value.\nChange Sigma or set it to 0 to "
-                                "not rescale the image.");
-                        return;
-                    }
-
-                    int resizeFactor = cdelt2_new / cdelt_gal_deg[1];
-                    char outFileChar[outFile.size() + 1];
-                    strcpy(outFileChar, outFile.toStdString().c_str());
-
-                    imresize(outFileChar, resizeFactor, sigma);
-                    auto fits = vtkSmartPointer<vtkFitsReader>::New();
-                    fits->SetFileName(outFile.toStdString());
-                    auto win = new vtkwindow_new(this, fits);
-                    win->activateWindow();
-                    win->raise();
-                } catch (const std::exception &e) {
-                    QMessageBox::critical(this, "Error", e.what());
-                }
-            });
     dialog->setModal(true);
     dialog->show();
     dialog->raise();

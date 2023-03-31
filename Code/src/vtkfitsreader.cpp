@@ -356,9 +356,6 @@ void vtkFitsReader::ReadHeader()
     char cdelt1[80];
     char cdelt2[80];
     char cdelt3[80];
-    char naxis1[80];
-    char naxis2[80];
-    char naxis3[80];
     char bunit[80];
 
     crval1[0] = '\0';
@@ -407,6 +404,19 @@ void vtkFitsReader::ReadHeader()
                     strcpy(yStr, first + 1);
                 if (card[5] == '3')
                     strcpy(zStr, first + 1);
+            }
+
+            if (!strncmp(card, "CUNIT", 5)) {
+                char *first = strchr(card, '\'');
+                char *last = strrchr(card, '\'');
+
+                *last = '\0';
+                if (card[5] == '1')
+                    strcpy(cunit1, first + 1);
+                if (card[5] == '2')
+                    strcpy(cunit2, first + 1);
+                if (card[5] == '3')
+                    strcpy(cunit3, first + 1);
             }
 
             if (!strncmp(card, "OBJECT", 6)) {
@@ -669,7 +679,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
         // RMS and data range
         for (int i = 0; i < buffsize; ++i) {
-            float v = std::sqrt(scalars->GetValue(i)/naxes[2]);
+            float v = std::sqrt(scalars->GetValue(i) / naxes[2]);
             scalars->SetValue(i, v);
 
             if (v < datamin)

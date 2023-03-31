@@ -3,27 +3,36 @@
 
 #include <QDialog>
 
+#include <vtkSmartPointer.h>
+
 namespace Ui {
 class SimCollapseDialog;
 }
+
+class vtkFitsReader;
 
 class SimCollapseDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit SimCollapseDialog(double *angles, QWidget *parent = nullptr);
+    explicit SimCollapseDialog(vtkSmartPointer<vtkFitsReader> reader, double *angles,
+                               QWidget *parent = nullptr);
     ~SimCollapseDialog();
+
+public slots:
+    void accept() override;
 
 signals:
     void dialogSubmitted(double scale, double lon, double lat, double distance, double ghwidth);
 
-private slots:
-    void on_buttonBox_rejected();
-    void on_buttonBox_accepted();
-
 private:
     Ui::SimCollapseDialog *ui;
+    vtkSmartPointer<vtkFitsReader> reader;
+    double rotAngles[3];
+    double minDistance;
+
+    void showResultingImage(const QString &filepath);
 };
 
 #endif // SIMCOLLAPSEDIALOG_H
