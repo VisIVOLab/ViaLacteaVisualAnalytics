@@ -80,7 +80,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox_2">
+    <widget class="QGroupBox" name="boxSliceMom">
      <property name="title">
       <string>Slice</string>
      </property>
@@ -93,7 +93,7 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLabel" name="textSliceMin">
+       <widget class="QLabel" name="textMin">
         <property name="text">
          <string>slice_min</string>
         </property>
@@ -107,7 +107,7 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QLabel" name="textSliceMax">
+       <widget class="QLabel" name="textMax">
         <property name="text">
          <string>slice_max</string>
         </property>
@@ -121,7 +121,7 @@
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QLabel" name="textSliceMean">
+       <widget class="QLabel" name="textMean">
         <property name="text">
          <string>slice_mean</string>
         </property>
@@ -135,7 +135,7 @@
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QLabel" name="textSliceRMS">
+       <widget class="QLabel" name="textRMS">
         <property name="text">
          <string>slice_rms</string>
         </property>

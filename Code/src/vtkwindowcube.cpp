@@ -1,10 +1,12 @@
 #include "vtkwindowcube.h"
+#include "ui_lutcustomize.h"
 #include "ui_vtkwindowcube.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
 
 #include "astroutils.h"
 #include "fitsimagestatisiticinfo.h"
+#include "lutcustomize.h"
 #include "luteditor.h"
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
@@ -22,6 +24,7 @@
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageActor.h>
 #include <vtkImageMapToWindowLevelColors.h>
+#include <vtkImageSliceMapper.h>
 #include <vtkLODActor.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
@@ -33,10 +36,9 @@
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkResliceImageViewer.h>
+#include <vtkScalarBarActor.h>
 #include <vtkTextActor.h>
 #include <vtkTransform.h>
-#include <vtkImageSliceMapper.h>
-#include "ui_lutcustomize.h"
 
 #include <QDebug>
 
@@ -83,7 +85,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     ui->menuWCS->addActions(wcsGroup->actions());
 
-    readerCube= vtkSmartPointer<vtkFitsReader2>::New();
+    readerCube = vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
     readerCube->SetScaleFactor(ScaleFactor);
     readerCube->Update();
@@ -183,7 +185,8 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     readerSlice->Update();
 
     // Create FITS Stats Widget
-    fitsStatsWidget = new FitsImageStatisiticInfo(readerCube, readerSlice, this);
+    fitsStatsWidget = new FitsImageStatisiticInfo(readerCube, this);
+    fitsStatsWidget->showSliceStats(readerSlice);
     on_actionShowStats_triggered();
 
     float rangeSlice[2];
@@ -193,12 +196,41 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
 
-    auto rendererSlice = vtkSmartPointer<vtkRenderer>::New();
+    // Setup context menu to toggle slice/moment renderers
+    QActionGroup *grp = new QActionGroup(this);
+    grp->addAction(ui->actionShowSlice);
+    grp->addAction(ui->actionShowMomentMap);
+    connect(ui->actionShowSlice, &QAction::triggered, this, [=]() { changeSliceView(0); });
+    connect(ui->actionShowMomentMap, &QAction::triggered, this, [=]() {
+        if (moment.Get() == nullptr) {
+            calculateAndShowMomentMap(0);
+        } else {
+            changeSliceView(1);
+        }
+    });
+
+    rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
     rendererSlice->GlobalWarningDisplayOff();
+
+    rendererMoment = vtkSmartPointer<vtkRenderer>::New();
+    rendererMoment->SetBackground(0.21, 0.23, 0.25);
+    rendererMoment->GlobalWarningDisplayOff();
+
+    legendActorMoment = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
+    legendActorMoment->LegendVisibilityOff();
+    legendActorMoment->setFitsFile(readerSlice->GetFileName());
+    rendererMoment->AddActor(legendActorMoment);
+
+    momViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
+    momViewer->SetRenderer(rendererMoment);
+    momViewer->SetRenderWindow(renWinSlice);
+
+    // Show cube slices by default
+    currentVisOnSlicePanel = 0;
     renWinSlice->AddRenderer(rendererSlice);
 
-    lutName="Gray";
+    lutName = "Gray";
     lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(rangeSlice[0], rangeSlice[1]);
     SelectLookTable(lutName, lutSlice);
@@ -237,12 +269,24 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     if (ctype1.startsWith("GL")) {
         legendActorCube->setWCS(WCS_GALACTIC);
         legendActorSlice->setWCS(WCS_GALACTIC);
+        legendActorMoment->setWCS(WCS_GALACTIC);
         ui->menuWCS->actions().at(1)->setChecked(true);
     } else if (ctype1.startsWith("RA")) {
         // FK5
         legendActorCube->setWCS(WCS_J2000);
         legendActorSlice->setWCS(WCS_J2000);
+        legendActorMoment->setWCS(WCS_J2000);
         ui->menuWCS->actions().at(2)->setChecked(true);
+    }
+
+    QString bunit = fitsHeader.value("BUNIT");
+    bunit.replace("'", QString());
+    bunit.replace("\"", QString());
+    bunit = bunit.simplified();
+
+    if (!bunit.isEmpty()) {
+        ui->thresholdGroupBox->setTitle(ui->thresholdGroupBox->title() + " (" + bunit + ")");
+        ui->contourGroupBox->setTitle(ui->contourGroupBox->title() + " (" + bunit + ")");
     }
 }
 
@@ -253,6 +297,35 @@ vtkWindowCube::~vtkWindowCube()
     }
 
     delete ui;
+}
+
+void vtkWindowCube::changeSliceView(int mode)
+{
+    switch (mode) {
+    case 0:
+        currentVisOnSlicePanel = 0;
+        ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
+        ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
+        ui->actionShowSlice->setChecked(true);
+        fitsStatsWidget->showSliceStats(readerSlice);
+        if (lcustom) {
+            lcustom->configureFits3D();
+        }
+        break;
+    case 1:
+        currentVisOnSlicePanel = 1;
+        ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
+        ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
+        ui->actionShowMomentMap->setChecked(true);
+        fitsStatsWidget->showMomentStats(moment);
+        if (lcustom) {
+            lcustom->configureMoment();
+        }
+        break;
+    }
+
+    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
+    ui->qVtkSlice->renderWindow()->Render();
 }
 
 int vtkWindowCube::readFitsHeader()
@@ -284,7 +357,7 @@ int vtkWindowCube::readFitsHeader()
 
         // Skip empty names, HISTORY and COMMENT keyworks
         if ((strlen(name) == 0) || (strcasecmp(name, "HISTORY") == 0)
-                || (strcasecmp(name, "COMMENT") == 0)) {
+            || (strcasecmp(name, "COMMENT") == 0)) {
             continue;
         }
 
@@ -314,14 +387,17 @@ void vtkWindowCube::updateSliceDatacube()
     SelectLookTable(lutName, lutSlice);
     sliceViewer->SetInputData(readerSlice->GetOutput());
     sliceViewer->GetWindowLevel()->SetLookupTable(lutSlice);
-    if (lcustom)
+    if (lcustom && currentVisOnSlicePanel == 0)
         lcustom->configureFits3D();
 
     sliceViewer->GetRenderer()->ResetCamera();
     sliceViewer->Render();
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
 
-    fitsStatsWidget->updateSliceStats();
+    if (currentVisOnSlicePanel == 0) {
+        // Update stats widget only if needed
+        fitsStatsWidget->showSliceStats(readerSlice);
+    }
 
     if (parentWindow && ui->contourCheckBox->isChecked()) {
         removeContours();
@@ -369,8 +445,8 @@ void vtkWindowCube::showContours()
     mapper->SetColorModeToMapScalars();
 
     contoursActor->SetMapper(mapper);
-    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(contoursActor);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+    rendererSlice->AddActor(contoursActor);
+    ui->qVtkSlice->renderWindow()->Render();
 
     if (parentWindow) {
         double sky_coord_gal[2];
@@ -378,7 +454,7 @@ void vtkWindowCube::showContours()
 
         double coord[3];
         AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
-                sky_coord_gal[1], coord);
+                           sky_coord_gal[1], coord);
 
         double angle = 0;
         double x1 = coord[0];
@@ -386,7 +462,7 @@ void vtkWindowCube::showContours()
 
         AstroUtils::xy2sky(filepath.toStdString(), 0, 100, sky_coord_gal, WCS_GALACTIC);
         AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
-                sky_coord_gal[1], coord);
+                           sky_coord_gal[1], coord);
 
         if (x1 != coord[0]) {
             double m = fabs((coord[1] - y1) / (coord[0] - x1));
@@ -420,8 +496,8 @@ void vtkWindowCube::showContours()
 
 void vtkWindowCube::removeContours()
 {
-    ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(contoursActor);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+    rendererSlice->RemoveActor(contoursActor);
+    ui->qVtkSlice->renderWindow()->Render();
 
     if (parentWindow) {
         parentWindow->removeActor(contoursActorForParent);
@@ -430,7 +506,7 @@ void vtkWindowCube::removeContours()
 
 void vtkWindowCube::calculateAndShowMomentMap(int order)
 {
-    auto moment = vtkSmartPointer<vtkFitsReader>::New();
+    moment = vtkSmartPointer<vtkFitsReader>::New();
     moment->SetFileName(filepath.toStdString());
     moment->isMoment3D = true;
     moment->setMomentOrder(order);
@@ -438,11 +514,15 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     if (parentWindow) {
         parentWindow->addLayerImage(moment);
     } else {
-        parentWindow = new vtkwindow_new(nullptr, moment);
+        parentWindow = new vtkwindow_new(nullptr, moment, 0, 0, false);
+        parentWindow->showMaximized();
     }
 
-    parentWindow->show();
-    parentWindow->raise();
+    momViewer->SetInputData(moment->GetOutput());
+    momViewer->Render();
+    changeSliceView(1);
+    this->activateWindow();
+    this->raise();
 }
 
 void vtkWindowCube::resetCamera()
@@ -601,6 +681,7 @@ void vtkWindowCube::on_actionShowStats_triggered()
         dock->setAllowedAreas(Qt::RightDockWidgetArea);
     }
 
+    dock->show();
     addDockWidget(Qt::RightDockWidgetArea, dock);
 }
 
@@ -608,8 +689,9 @@ void vtkWindowCube::changeLegendWCS(int wcs)
 {
     legendActorCube->setWCS(wcs);
     legendActorSlice->setWCS(wcs);
-    ui->qVtkCube->renderWindow()->GetInteractor()->Render();
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+    legendActorMoment->setWCS(wcs);
+    ui->qVtkCube->renderWindow()->Render();
+    ui->qVtkSlice->renderWindow()->Render();
 }
 
 void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
@@ -617,23 +699,31 @@ void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
     if (!lcustom)
         lcustom = new LutCustomize(this);
     lcustom->setLut(lutName);
-    QString selected_scale="Linear";
-    if(lutSlice->GetScale()!=0)
-        selected_scale="Log";
+    QString selected_scale = "Linear";
+    if (lutSlice->GetScale() != 0)
+        selected_scale = "Log";
     lcustom->setScaling(selected_scale);
-    lcustom->configureFits3D();
+
+    if (currentVisOnSlicePanel == 0) {
+        lcustom->configureFits3D();
+    } else {
+        lcustom->configureMoment();
+    }
+
     lcustom->show();
 }
 
-void vtkWindowCube::showColorbar(bool checked,double min, double max)
+void vtkWindowCube::showColorbar(bool checked, double min, double max)
 {
+    auto renderer = currentVisOnSlicePanel == 0 ? rendererSlice : rendererMoment;
+    auto legend = currentVisOnSlicePanel == 0 ? legendActorSlice : legendActorMoment;
+
     if (scalarBar != 0) {
-        ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(scalarBar);
-        scalarBar=nullptr;
+        renderer->RemoveActor(scalarBar);
+        scalarBar = nullptr;
     }
 
-    if (checked)
-    {
+    if (checked) {
         vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
         SelectLookTable(lcustom->ui->lutComboBox->currentText().toStdString().c_str(), lut);
         lut->SetTableRange(min, max);
@@ -642,20 +732,16 @@ void vtkWindowCube::showColorbar(bool checked,double min, double max)
         scalarBar->SetOrientationToVertical();
         scalarBar->UnconstrainedFontSizeOn();
         scalarBar->SetMaximumWidthInPixels(80);
-        legendActorSlice->RightAxisVisibilityOff();
-        scalarBar->SetPosition(0.80,0.10);
+        legend->RightAxisVisibilityOff();
+        scalarBar->SetPosition(0.80, 0.10);
         scalarBar->SetLookupTable(lut);
-        auto renderer = ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer();
         renderer->AddActor(scalarBar);
         scalarBar->SetVisibility(checked);
+    } else {
+        legend->RightAxisVisibilityOn();
     }
-    else
-    {
-        legendActorSlice->RightAxisVisibilityOn();
-    }
-    ui->qVtkSlice->update();
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
 
+    ui->qVtkSlice->renderWindow()->Render();
 }
 
 void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, float min, float max)
@@ -663,7 +749,7 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
     vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
 
     QString myscale = scale.c_str();
-    lutName= QString::fromUtf8(palette.c_str());
+    lutName = QString::fromUtf8(palette.c_str());
     lut->SetTableRange(min, max);
     if (myscale == "Linear")
         lut->SetScaleToLinear();
@@ -671,13 +757,14 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
         lut->SetScaleToLog10();
 
     SelectLookTable(palette.c_str(), lut);
-    sliceViewer->GetWindowLevel()->SetLookupTable(lut);
+    if (currentVisOnSlicePanel == 0)
+        sliceViewer->GetWindowLevel()->SetLookupTable(lut);
+    else
+        momViewer->GetWindowLevel()->SetLookupTable(lut);
 
-    if(scalarBar)
-    {
-        showColorbar(true,min,max);
+    if (scalarBar) {
+        showColorbar(true, min, max);
     }
-    ui->qVtkSlice->update();
-    ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
-}
 
+    ui->qVtkSlice->renderWindow()->Render();
+}

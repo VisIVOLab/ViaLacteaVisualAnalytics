@@ -1077,7 +1077,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint *vis)
 }
 
 vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis, int b,
-                             vtkwindow_new *p)
+                             vtkwindow_new *p, bool activate)
     : QMainWindow(parent), ui(new Ui::vtkwindow_new)
 {
     QSettings settings(QDir::homePath()
@@ -1277,9 +1277,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         addLayer(imageObject);
         ui->listWidget->setContextMenuPolicy(Qt::CustomContextMenu);
         createInfoWindow();
-        showMaximized();
-        activateWindow();
-
+        if(activate)
+        {
+            showMaximized();
+            activateWindow();
+        }
         break;
     }
     case 1: {

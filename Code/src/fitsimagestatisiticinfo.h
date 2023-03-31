@@ -1,8 +1,6 @@
 #ifndef FITSIMAGESTATISITICINFO_H
 #define FITSIMAGESTATISITICINFO_H
 
-#include "vtkfitsreader2.h"
-
 #include <QWidget>
 
 #include <vtkSmartPointer.h>
@@ -11,22 +9,23 @@ namespace Ui {
 class FitsImageStatisiticInfo;
 }
 
+class vtkFitsReader;
+class vtkFitsReader2;
+
 class FitsImageStatisiticInfo : public QWidget
 {
     Q_OBJECT
 
 public:
     explicit FitsImageStatisiticInfo(vtkSmartPointer<vtkFitsReader2> readerCube,
-                                     vtkSmartPointer<vtkFitsReader2> readerSlice,
                                      QWidget *parent = 0);
     ~FitsImageStatisiticInfo();
 
-    void updateSliceStats();
+    void showSliceStats(vtkSmartPointer<vtkFitsReader2> readerSlice);
+    void showMomentStats(vtkSmartPointer<vtkFitsReader> moment);
 
 private:
     Ui::FitsImageStatisiticInfo *ui;
-    vtkSmartPointer<vtkFitsReader2> readerCube;
-    vtkSmartPointer<vtkFitsReader2> readerSlice;
 };
 
 #endif // FITSIMAGESTATISITICINFO_H

@@ -19,6 +19,7 @@ LutCustomize::LutCustomize(vtkWindowCube *v, QWidget *parent)
     isPoint3D = false;
     isFits2D = false;
     isFits3D = false;
+    isMoment = false;
     ui->histogramWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
     ui->histogramWidget->addGraph();
 }
@@ -32,6 +33,7 @@ LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     isPoint3D = false;
     isFits2D = false;
     isFits3D = false;
+    isMoment = false;
     ui->histogramWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
     ui->histogramWidget->addGraph();
 }
@@ -67,6 +69,22 @@ void LutCustomize::configureFitsImage()
 void LutCustomize::configureFits3D()
 {
     isFits3D = true;
+    isMoment = false;
+    setRange();
+    plotHistogram();
+
+    ui->fromSpinBox->setMinimum(range[0]);
+    ui->fromSpinBox->setMaximum(range[1]);
+    ui->toSpinBox->setMinimum(range[0]);
+    ui->toSpinBox->setMaximum(range[1]);
+    ui->fromSpinBox->setValue(range[0]);
+    ui->toSpinBox->setValue(range[1]);
+}
+
+void LutCustomize::configureMoment()
+{
+    isFits3D = false;
+    isMoment = true;
     setRange();
     plotHistogram();
 
@@ -120,6 +138,9 @@ void LutCustomize::setRange()
     } else if (isFits3D) {
         range[0] = vtkwincube->readerSlice->GetValueRange()[0];
         range[1] = vtkwincube->readerSlice->GetValueRange()[1];
+    } else if (isMoment) {
+        range[0] = vtkwincube->moment->GetMin();
+        range[1] = vtkwincube->moment->GetMax();
     }
 }
 
@@ -159,6 +180,12 @@ void LutCustomize::plotHistogram()
         float dimY = vtkwincube->readerSlice->GetBounds()[3]
                 - vtkwincube->readerSlice->GetBounds()[2] + 1;
         numberOfBins = (dimX * dimY) / 10;
+    } else if (isMoment) {
+        selected_scale = ui->scalingComboBox->currentText();
+        extraction->SetInputData(vtkwincube->moment->GetOutput());
+        numberOfBins =
+                vtkwincube->moment->GetOutput()->GetPointData()->GetScalars()->GetNumberOfValues()
+                / 10;
     }
 
     extraction->SetBinCount(numberOfBins);
@@ -174,11 +201,9 @@ void LutCustomize::plotHistogram()
     QVector<double> x(numberOfBins);
     QVector<double> y(numberOfBins);
     vtkIdType nPoints = bin_extents->GetDataSize();
-    int cnt = 0;
     for (vtkIdType i = 0; i < nPoints; ++i) {
         x.push_back(bin_extents->GetValue(i));
         y.push_back(bin_values->GetValue(i));
-        cnt++;
     }
     // create graph and assign data to it:
     ui->histogramWidget->graph(0)->setData(x, y);
@@ -253,7 +278,7 @@ void LutCustomize::on_ShowColorbarCheckBox_clicked(bool checked)
     else if (isFits2D)
         vtkwin->showColorbarFits(checked, ui->fromSpinBox->text().toFloat(),
                                  ui->toSpinBox->text().toFloat());
-    else if (isFits3D)
+    else if (isFits3D || isMoment)
         vtkwincube->showColorbar(checked, ui->fromSpinBox->text().toFloat(),
                                  ui->toSpinBox->text().toFloat());
 }
@@ -293,7 +318,7 @@ void LutCustomize::on_okPushButton_clicked()
                                 ui->fromSpinBox->text().toFloat(), ui->toSpinBox->text().toFloat());
         vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
 
-    } else if (isFits3D) {
+    } else if (isFits3D || isMoment) {
         vtkwincube->showColorbar(ui->ShowColorbarCheckBox->isChecked(),
                                  ui->fromSpinBox->text().toFloat(),
                                  ui->toSpinBox->text().toFloat());
@@ -301,7 +326,7 @@ void LutCustomize::on_okPushButton_clicked()
                                     ui->scalingComboBox->currentText().toStdString().c_str(),
                                     ui->fromSpinBox->text().toFloat(),
                                     ui->toSpinBox->text().toFloat());
-        vtkwincube->ui->qVtkSlice->renderWindow()->GetInteractor()->Render();
+        vtkwincube->ui->qVtkSlice->renderWindow()->Render();
     }
 }
 
@@ -328,6 +353,8 @@ void LutCustomize::on_resetMinPushButton_clicked()
         ui->fromSpinBox->setValue(vtkwin->getFitsImage()->GetMin());
     else if (isFits3D)
         ui->fromSpinBox->setValue(vtkwincube->readerSlice->GetValueRange()[0]);
+    else if (isMoment)
+        ui->fromSpinBox->setValue(vtkwincube->moment->GetMin());
 }
 
 void LutCustomize::on_resetMaxPushButton_clicked()
@@ -340,7 +367,9 @@ void LutCustomize::on_resetMaxPushButton_clicked()
                                 vtkwin->ui->scalarComboBox->currentText().toStdString().c_str())
                         ->GetRange()[1]);
     else if (isFits2D)
-        ui->fromSpinBox->setValue(vtkwin->getFitsImage()->GetMax());
+        ui->toSpinBox->setValue(vtkwin->getFitsImage()->GetMax());
     else if (isFits3D)
-        ui->fromSpinBox->setValue(vtkwincube->readerSlice->GetValueRange()[1]);
+        ui->toSpinBox->setValue(vtkwincube->readerSlice->GetValueRange()[1]);
+    else if (isMoment)
+        ui->toSpinBox->setValue(vtkwincube->moment->GetMax());
 }
