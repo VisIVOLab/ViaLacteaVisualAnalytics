@@ -20,11 +20,15 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->theorGroupBox->hide();
     ui->greyBodyGroupBox->hide();
 
-    QString m_sSettingsFile = QDir::homePath()
-                                      .append(QDir::separator())
-                                      .append("VisIVODesktopTemp")
-                                      .append("/setting.ini");
+    QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+
+    if (settings.value("python.bundle", true).toBool()) {
+        pythonExe = "vialactea.pex";
+    } else {
+        pythonExe = settings.value("python.path").toString();
+    }
+
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
                                     | QCP::iSelectLegend | QCP::iSelectPlottables
                                     | QCP::iMultiSelect | QCP::iSelectItems);
@@ -1233,7 +1237,7 @@ void SEDVisualizerPlot::doThinLocalFit()
          << sedFitInputErrF << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start("python3", args);
+    process->start(pythonExe, args);
 }
 
 void SEDVisualizerPlot::doThinRemoteFit()
@@ -1467,7 +1471,7 @@ void SEDVisualizerPlot::doThickLocalFit()
          << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start("python3", args);
+    process->start(pythonExe, args);
 }
 
 void SEDVisualizerPlot::finishedThinRemoteFit()

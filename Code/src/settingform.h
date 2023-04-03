@@ -20,7 +20,6 @@ public:
 
 private slots:
     void on_TilePushButton_clicked();
-    void on_checkBox_clicked(bool checked);
     void on_workdirButton_clicked();
     void on_pushButton_clicked();
     void on_OkPushButton_clicked();
@@ -34,6 +33,9 @@ private slots:
     void vlkb_loggedout();
     void caesar_loggedin();
     void caesar_loggedout();
+    void on_checkBundlePython_toggled(bool checked);
+
+    void on_btnPython_clicked();
 
 private:
     Ui::SettingForm *ui;

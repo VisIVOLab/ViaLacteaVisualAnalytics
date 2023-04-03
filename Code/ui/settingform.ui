@@ -6,14 +6,68 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>692</width>
-    <height>721</height>
+    <width>796</width>
+    <height>845</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Settings</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <widget class="QGroupBox" name="groupBox_5">
+     <property name="title">
+      <string>Python</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Executable:</string>
+          </property>
+          <property name="buddy">
+           <cstring>textPython</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="textPython">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnPython">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset resource="../visivo.qrc">
+            <normaloff>:/icons/FILE_OPEN.bmp</normaloff>:/icons/FILE_OPEN.bmp</iconset>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBundlePython">
+        <property name="text">
+         <string>Use bundled environment</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
@@ -26,6 +80,9 @@
          <widget class="QLabel" name="label_2">
           <property name="text">
            <string>Path</string>
+          </property>
+          <property name="buddy">
+           <cstring>TileLineEdit</cstring>
           </property>
          </widget>
         </item>
@@ -80,6 +137,9 @@
         <property name="text">
          <string>max</string>
         </property>
+        <property name="buddy">
+         <cstring>glyphLineEdit</cstring>
+        </property>
        </widget>
       </item>
       <item>
@@ -117,6 +177,9 @@
          <widget class="QLabel" name="label_8">
           <property name="text">
            <string>Max size (MB):</string>
+          </property>
+          <property name="buddy">
+           <cstring>textDownscaleSize</cstring>
           </property>
          </widget>
         </item>
@@ -205,6 +268,9 @@
           <property name="text">
            <string>VLKB URL</string>
           </property>
+          <property name="buddy">
+           <cstring>vlkbUrl_lineEdit</cstring>
+          </property>
          </widget>
         </item>
         <item row="0" column="1">
@@ -224,6 +290,9 @@
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>TAP URL</string>
+          </property>
+          <property name="buddy">
+           <cstring>tapUrl_lineEdit</cstring>
           </property>
          </widget>
         </item>
@@ -326,6 +395,9 @@
           <property name="text">
            <string>API Endpoint</string>
           </property>
+          <property name="buddy">
+           <cstring>caesarEndpoint</cstring>
+          </property>
          </widget>
         </item>
         <item>
@@ -418,6 +490,9 @@
         <property name="text">
          <string>Path</string>
         </property>
+        <property name="buddy">
+         <cstring>lineEdit_2</cstring>
+        </property>
        </widget>
       </item>
       <item>
@@ -474,6 +549,31 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>textPython</tabstop>
+  <tabstop>btnPython</tabstop>
+  <tabstop>checkBundlePython</tabstop>
+  <tabstop>TileLineEdit</tabstop>
+  <tabstop>TilePushButton</tabstop>
+  <tabstop>checkBox</tabstop>
+  <tabstop>urlLineEdit</tabstop>
+  <tabstop>glyphLineEdit</tabstop>
+  <tabstop>textDownscaleSize</tabstop>
+  <tabstop>ia2VLKB_radioButton</tabstop>
+  <tabstop>neaniasVLKB_radioButton</tabstop>
+  <tabstop>vlkbUrl_lineEdit</tabstop>
+  <tabstop>tapUrl_lineEdit</tabstop>
+  <tabstop>vlkbLoginButton</tabstop>
+  <tabstop>vlkbLogoutButton</tabstop>
+  <tabstop>checkSearchOnImport</tabstop>
+  <tabstop>caesarEndpoint</tabstop>
+  <tabstop>caesarLoginButton</tabstop>
+  <tabstop>caesarLogoutButton</tabstop>
+  <tabstop>lineEdit_2</tabstop>
+  <tabstop>workdirButton</tabstop>
+  <tabstop>pushButton</tabstop>
+  <tabstop>OkPushButton</tabstop>
+ </tabstops>
  <resources>
   <include location="../visivo.qrc"/>
  </resources>

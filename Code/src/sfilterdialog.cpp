@@ -5,6 +5,7 @@
 #include "vtkwindow_new.h"
 
 #include <QDir>
+#include <QSettings>
 #include <QStringListModel>
 
 SFilterDialog::SFilterDialog(Catalogue *c, QWidget *parent)
@@ -21,6 +22,15 @@ SFilterDialog::SFilterDialog(Catalogue *c, QWidget *parent)
     model = new QStringListModel(this);
     ui->listView->setModel(model);
     ui->textPredicate->clear();
+
+    QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+
+    if (settings.value("python.bundle", true).toBool()) {
+        pythonExe = "vialactea.pex";
+    } else {
+        pythonExe = settings.value("python.path").toString();
+    }
 }
 
 SFilterDialog::~SFilterDialog()
@@ -36,28 +46,28 @@ void SFilterDialog::on_btnFilter_clicked()
     py3->setProcessChannelMode(QProcess::MergedChannels);
     connect(py3, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
             [this, py3](int exitCode, QProcess::ExitStatus exitStatus) {
-        Q_UNUSED(exitStatus);
-        QStringList ids = QString::fromUtf8(py3->readAll()).trimmed().split('\n');
-        ids.removeAll(QString()); // Remove empty strings
-        model->setStringList(ids);
+                Q_UNUSED(exitStatus);
+                QStringList ids = QString::fromUtf8(py3->readAll()).trimmed().split('\n');
+                ids.removeAll(QString()); // Remove empty strings
+                model->setStringList(ids);
 
-        auto win = qobject_cast<vtkwindow_new *>(this->parent());
-        if (exitCode == 0 && !ids.isEmpty()) {
-            win->showFilteredSources(ids);
-            ui->btnConfirm->setEnabled(true);
-        } else {
-            win->hideFilteredSources();
-            ui->btnConfirm->setEnabled(false);
-        }
-        py3->deleteLater();
-    });
+                auto win = qobject_cast<vtkwindow_new *>(this->parent());
+                if (exitCode == 0 && !ids.isEmpty()) {
+                    win->showFilteredSources(ids);
+                    ui->btnConfirm->setEnabled(true);
+                } else {
+                    win->hideFilteredSources();
+                    ui->btnConfirm->setEnabled(false);
+                }
+                py3->deleteLater();
+            });
 
     QDir wd = QApplication::applicationDirPath();
 
     QStringList args;
     args << "sfilter.py" << catalogue->getFilepath() << ui->textPredicate->text();
     py3->setWorkingDirectory(wd.absolutePath());
-    py3->start("python3", args);
+    py3->start(pythonExe, args);
 }
 
 void SFilterDialog::append(const QString &arg)

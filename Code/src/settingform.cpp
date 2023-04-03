@@ -32,9 +32,9 @@ SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new 
     connect(m_caesarAuth, &AuthWrapper::logged_out, this, &SettingForm::caesar_loggedout);
 
     m_settingsFile = QDir::homePath()
-            .append(QDir::separator())
-            .append("VisIVODesktopTemp")
-            .append("/setting.ini");
+                             .append(QDir::separator())
+                             .append("VisIVODesktopTemp")
+                             .append("/setting.ini");
     readSettingsFromFile();
 }
 
@@ -47,6 +47,12 @@ void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
     m_termsAccepted = settings.value("termsaccepted", false).toBool();
+
+    QString pythonpath = settings.value("python.path", "").toString();
+    ui->textPython->setText(pythonpath);
+
+    bool useBundlePython = settings.value("python.bundle", true).toBool();
+    ui->checkBundlePython->setChecked(useBundlePython);
 
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
@@ -92,7 +98,7 @@ void SettingForm::readSettingsFromFile()
     }
 
     ui->urlLineEdit->setText(
-                settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
+            settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
 
     if (m_caesarAuth->isAuthenticated()) {
         caesar_loggedin();
@@ -146,6 +152,8 @@ void SettingForm::on_OkPushButton_clicked()
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
     settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath", ui->TileLineEdit->text());
+    settings.setValue("python.path", ui->textPython->text());
+    settings.setValue("python.bundle", ui->checkBundlePython->isChecked());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
     if (ui->ia2VLKB_radioButton->isChecked())
@@ -171,10 +179,6 @@ void SettingForm::on_pushButton_clicked()
     this->close();
 }
 
-void SettingForm::on_checkBox_clicked(bool checked)
-{
-}
-
 void SettingForm::on_ia2VLKB_radioButton_toggled(bool checked)
 {
     if (checked) {
@@ -193,7 +197,7 @@ void SettingForm::on_workdirButton_clicked()
 {
     QString fn = QFileDialog::getExistingDirectory(this, tr("Open Directory"), "~",
                                                    QFileDialog::ShowDirsOnly
-                                                   | QFileDialog::DontResolveSymlinks);
+                                                           | QFileDialog::DontResolveSymlinks);
     if (!fn.isEmpty()) {
         ui->lineEdit_2->setText(fn);
     }
@@ -223,7 +227,7 @@ void SettingForm::on_vlkbLoginButton_clicked()
     if (vlkbAuth == m_neaniasVlkbAuth && !m_termsAccepted) {
         auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and "
                             "the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
-                .arg(m_privacyPolicyUrl, m_termsOfUseUrl);
+                            .arg(m_privacyPolicyUrl, m_termsOfUseUrl);
 
         QMessageBox msgBox(this);
         msgBox.setIcon(QMessageBox::Question);
@@ -259,4 +263,18 @@ void SettingForm::on_caesarLogoutButton_clicked()
 {
     if (m_caesarAuth->isAuthenticated())
         m_caesarAuth->logout();
+}
+
+void SettingForm::on_checkBundlePython_toggled(bool checked)
+{
+    ui->textPython->setEnabled(!checked);
+    ui->btnPython->setEnabled(!checked);
+}
+
+void SettingForm::on_btnPython_clicked()
+{
+    QString fn = QFileDialog::getOpenFileName(this, "Python3 Binary", QString(), "python3");
+    if (!fn.isEmpty()) {
+        ui->textPython->setText(fn);
+    }
 }
