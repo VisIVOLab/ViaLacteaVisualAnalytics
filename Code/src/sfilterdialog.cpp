@@ -29,7 +29,9 @@ SFilterDialog::SFilterDialog(Catalogue *c, QWidget *parent)
     if (settings.value("python.bundle", true).toBool()) {
         pythonExe = "vialactea.pex";
     } else {
-        pythonExe = settings.value("python.path", "python3").toString();
+        pythonExe = settings.value("python.path").toString();
+        if (pythonExe.isEmpty())
+            pythonExe = "python3";
     }
 }
 

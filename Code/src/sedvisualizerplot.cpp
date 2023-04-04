@@ -26,7 +26,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     if (settings.value("python.bundle", true).toBool()) {
         pythonExe = "vialactea.pex";
     } else {
-        pythonExe = settings.value("python.path", "python3").toString();
+        pythonExe = settings.value("python.path").toString();
+        if (pythonExe.isEmpty())
+            pythonExe = "python3";
     }
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes

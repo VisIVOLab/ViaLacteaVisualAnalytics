@@ -48,7 +48,10 @@ void SettingForm::readSettingsFromFile()
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
     m_termsAccepted = settings.value("termsaccepted", false).toBool();
 
-    QString pythonpath = settings.value("python.path", "").toString();
+    QString pythonpath = settings.value("python.path").toString();
+    if (pythonpath.isEmpty()) {
+        pythonpath = "python3";
+    }
     ui->textPython->setText(pythonpath);
 
     bool useBundlePython = settings.value("python.bundle", true).toBool();
