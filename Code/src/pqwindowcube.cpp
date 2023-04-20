@@ -528,8 +528,9 @@ void pqWindowCube::setSliceDatacube(int value)
     sliceProxy->UpdateVTKObjects();
     SliceSource->updatePipeline();
 
+    CubeSource->getProxy()->UpdatePropertyInformation();
     int sF;
-    vtkSMPropertyHelper(CubeSource->getProxy(), "ScaleFactor").Get(&sF);
+    vtkSMPropertyHelper(CubeSource->getProxy(), "ScaleFactorInfo").Get(&sF);
     int slicePos = std::round(((float) currentSlice) / sF);
     vtkSMPropertyHelper(cubeSliceProxy, "Slice").Set(slicePos);
     vtkSMPropertyHelper(cubeSliceProxy, "SliceMode").Set(VTK_XY_PLANE);
