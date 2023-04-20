@@ -347,9 +347,8 @@ void pqWindowCube::showSlice()
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
             mgr->GetColorTransferFunction("FITSImage", sliceProxy->GetSessionProxyManager()));
 
-    int sliceMax = (bounds[5] + 1) / cubeSubset.ScaleFactor + ((int) std::floor(bounds[5] + 1)) % cubeSubset.ScaleFactor;
-    ui->sliceSlider->setRange(1, sliceMax);
-    ui->sliceSpinBox->setRange(1, sliceMax);
+    ui->sliceSlider->setRange(1, bounds[5] + 1);
+    ui->sliceSpinBox->setRange(1, bounds[5] + 1);
 }
 
 void pqWindowCube::showStatusBarMessage(const std::string &msg)
@@ -364,7 +363,8 @@ void pqWindowCube::setSubsetProperties(const CubeSubset &subset)
     vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.SubExtent, 6);
     vtkSMPropertyHelper(sourceProxy, "AutoScale").Set(subset.AutoScale);
     vtkSMPropertyHelper(sourceProxy, "CubeMaxSize").Set(subset.CubeMaxSize);
-    vtkSMPropertyHelper(sourceProxy, "ScaleFactor").Set(subset.ScaleFactor);
+    if (!subset.AutoScale)
+        vtkSMPropertyHelper(sourceProxy, "ScaleFactor").Set(subset.ScaleFactor);
     sourceProxy->UpdateVTKObjects();
 }
 
@@ -441,6 +441,7 @@ void pqWindowCube::removeContours()
 
 void pqWindowCube::on_sliceSlider_valueChanged()
 {
+    //Check what caused the value to change, and don't update while sliding.
     if (!loadChange)
         return;
 
@@ -457,6 +458,7 @@ void pqWindowCube::on_sliceSlider_valueChanged()
 
 void pqWindowCube::on_sliceSlider_actionTriggered(int action)
 {
+    //Set the slider to only update the image when released or changed by keyboard/mouse
     switch (action) {
     case 0:
         loadChange = false;
@@ -468,6 +470,18 @@ void pqWindowCube::on_sliceSlider_actionTriggered(int action)
         loadChange = true;
         break;
     }
+}
+
+void pqWindowCube::on_sliceSlider_sliderReleased(){
+    int value = ui->sliceSlider->value();
+
+    // Match slider and spinbox values
+    if (ui->sliceSpinBox->value() != value) {
+        ui->sliceSpinBox->setValue(value);
+    }
+
+    setSliceDatacube(value);
+    loadChange = false;
 }
 
 void pqWindowCube::on_sliceSpinBox_valueChanged(int arg1){
@@ -514,7 +528,9 @@ void pqWindowCube::setSliceDatacube(int value)
     sliceProxy->UpdateVTKObjects();
     SliceSource->updatePipeline();
 
-    int slicePos = std::round(((float) currentSlice) / cubeSubset.ScaleFactor);
+    int sF;
+    vtkSMPropertyHelper(CubeSource->getProxy(), "ScaleFactor").Get(&sF);
+    int slicePos = std::round(((float) currentSlice) / sF);
     vtkSMPropertyHelper(cubeSliceProxy, "Slice").Set(slicePos);
     vtkSMPropertyHelper(cubeSliceProxy, "SliceMode").Set(VTK_XY_PLANE);
     cubeSliceProxy->UpdateVTKObjects();
