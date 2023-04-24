@@ -26,8 +26,7 @@ class pqWindowCube : public QMainWindow
     using FitsHeaderMap = QMap<QString, QString>;
 
 public:
-    explicit pqWindowCube(const QString &filepath,
-                          const CubeSubset &cubeSubset = CubeSubset());
+    explicit pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset = CubeSubset());
     ~pqWindowCube() override;
 
 private slots:
@@ -58,7 +57,6 @@ private slots:
     void on_action100_triggered();
 
     void generateVolumeRendering();
-
 
 private:
     Ui::pqWindowCube *ui;
