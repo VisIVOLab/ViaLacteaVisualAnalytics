@@ -3,3 +3,5 @@ Code/includes.pri
 build-*
 **/.DS_Store
 Code/build/
+CMakeLists.txt.user
+

@@ -26,12 +26,13 @@ class pqWindowCube : public QMainWindow
     using FitsHeaderMap = QMap<QString, QString>;
 
 public:
-    explicit pqWindowCube(const QString &filepath,
-                          const CubeSubset &cubeSubset = CubeSubset());
+    explicit pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset = CubeSubset());
     ~pqWindowCube() override;
 
 private slots:
+    void on_sliceSlider_actionTriggered(int action);
     void on_sliceSlider_sliderReleased();
+    void on_sliceSlider_valueChanged();
     void on_sliceSpinBox_editingFinished();
     void on_sliceSpinBox_valueChanged(int arg1);
     void on_actionFront_triggered();
@@ -112,6 +113,8 @@ private:
 
     void showContours();
     void removeContours();
+
+    bool loadChange = false;
 };
 
 #endif // PQWINDOWCUBE_H
