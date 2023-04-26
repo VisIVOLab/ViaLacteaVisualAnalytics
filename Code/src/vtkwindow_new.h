@@ -85,7 +85,7 @@ class vtkwindow_new : public QMainWindow
 public:
     explicit vtkwindow_new(QWidget *parent = 0, VisPoint *vis = 0);
     explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis = 0, int b = 0,
-                           vtkwindow_new *p = 0, bool activate=true);
+                           vtkwindow_new *p = 0, bool activate = true);
     // explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
 
@@ -304,10 +304,6 @@ private:
     bool getContoursInfo(int &level, double &lowerBound, double &upperBound);
     void setContoursInfo(const int &level, const double &lowerBound, const double &upperBound,
                          const bool &enabled);
-    QVector<double> xp_y_array;
-    QVector<double> xp_x_array;
-    QVector<double> yp_y_array;
-    QVector<double> yp_x_array;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendScaleActorImage;
     vtkSmartPointer<vtkLegendScaleActorWCS> legendScale3DActor;
     vtkSmartPointer<vtkScalarBarActor> scalarBar;
@@ -459,6 +455,7 @@ private slots:
     void on_actionLeft_triggered();
     void on_actionCAESAR_triggered();
     void on_actionProfile_triggered();
+    void setProfileLiveUpdateFlag(int status);
     void on_actionSave_session_triggered();
     void changeWCS_clicked(int wcs);
     void on_toolButton_2_clicked();

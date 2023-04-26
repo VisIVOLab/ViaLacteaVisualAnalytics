@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-class vtkwindow_new;
+class QCustomPlot;
 
 namespace Ui {
 class ProfileWindow;
@@ -14,17 +14,19 @@ class ProfileWindow : public QWidget
     Q_OBJECT
 
 public:
-    explicit ProfileWindow(vtkwindow_new *v, QWidget *parent = nullptr);
+    explicit ProfileWindow(const QString &bunit = QString(), QWidget *parent = nullptr);
     ~ProfileWindow();
-     Ui::ProfileWindow *ui;
 
-private slots:
-     void on_liveUpdate_stateChanged(int arg1);
+    void setLiveProfileFlag(bool flag);
+    void plotProfiles(const QVector<double> &xProfile, double xRef, const QVector<double> &yProfile,
+                      double yRef);
+
+signals:
+    void liveUpdateStateChanged(int status);
 
 private:
-    void closeEvent(QCloseEvent *event);
-    vtkwindow_new *vtkwin;
-
+    Ui::ProfileWindow *ui;
+    void plotProfile(const QVector<double> &profile, double ref, QCustomPlot *plot);
 };
 
 #endif // PROFILEWINDOW_H

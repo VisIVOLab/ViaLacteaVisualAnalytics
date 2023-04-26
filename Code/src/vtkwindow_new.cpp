@@ -697,7 +697,7 @@ public:
     {
         if (vtkwin->liveUpdateProfile) {
             vtkwin->liveUpdateProfile = false;
-            vtkwin->profileWin->ui->liveUpdate->setChecked(false);
+            vtkwin->profileWin->setLiveProfileFlag(false);
         }
 
         if (vtkwin->profileMode) {
@@ -4542,85 +4542,38 @@ void vtkwindow_new::createProfile(double ref_x, double ref_y)
     probe_x->SetInputConnection(lineSource_x->GetOutputPort());
     probe_x->SetSourceData(myfits->GetOutput());
     probe_x->Update();
-    float *x_data = static_cast<float *>(
-            vtkFloatArray::SafeDownCast(probe_x->GetOutput()->GetPointData()->GetAbstractArray(0))
-                    ->GetVoidPointer(0));
-    int count = probe_x->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
+    auto vtk_array_x =
+            vtkFloatArray::SafeDownCast(probe_x->GetOutput()->GetPointData()->GetAbstractArray(0));
+    QVector<double> xprofile(vtk_array_x->GetNumberOfValues());
+    std::copy(vtk_array_x->Begin(), vtk_array_x->End(), xprofile.begin());
 
     vtkNew<vtkImageProbeFilter> probe_y;
     probe_y->SetInputConnection(lineSource_y->GetOutputPort());
     probe_y->SetSourceData(myfits->GetOutput());
     probe_y->Update();
-    float *y_data = static_cast<float *>(
-            vtkFloatArray::SafeDownCast(probe_y->GetOutput()->GetPointData()->GetAbstractArray(0))
-                    ->GetVoidPointer(0));
-    count = probe_y->GetOutput()->GetPointData()->GetAbstractArray(0)->GetNumberOfValues();
+    auto vtk_array_y =
+            vtkFloatArray::SafeDownCast(probe_y->GetOutput()->GetPointData()->GetAbstractArray(0));
+    QVector<double> yprofile(vtk_array_y->GetNumberOfValues());
+    std::copy(vtk_array_y->Begin(), vtk_array_y->End(), yprofile.begin());
 
     if (!profileWin) {
-        profileWin = new ProfileWindow(this);
+        profileWin = new ProfileWindow(myfits->getBunit(), this);
         profileWin->show();
-        xp_y_array = QVector<double>(count);
-        xp_x_array = QVector<double>(count);
-        yp_y_array = QVector<double>(count);
-        yp_x_array = QVector<double>(count);
-        profileWin->ui->xPlotQt->addGraph();
-        profileWin->ui->xPlotQt->plotLayout()->insertRow(0);
-        profileWin->ui->xPlotQt->plotLayout()->addElement(
-                0, 0, new QCPTextElement(profileWin->ui->xPlotQt, "X Profile"));
-        profileWin->ui->xPlotQt->xAxis->setLabel("X Coordinate");
-        profileWin->ui->xPlotQt->yAxis->setLabel("Value (" + myfits->getBunit().toLocal8Bit()
-                                                 + ")");
 
-        profileWin->ui->yPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom
-                                                 | QCP::iSelectAxes);
-        profileWin->ui->xPlotQt->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom
-                                                 | QCP::iSelectAxes);
-        profileWin->ui->yPlotQt->addGraph();
-        profileWin->ui->yPlotQt->plotLayout()->insertRow(0);
-        profileWin->ui->yPlotQt->plotLayout()->addElement(
-                0, 0, new QCPTextElement(profileWin->ui->yPlotQt, "Y Profile"));
-        profileWin->ui->yPlotQt->xAxis->setLabel("X Coordinate");
-        profileWin->ui->yPlotQt->yAxis->setLabel("Value (" + myfits->getBunit().toLocal8Bit()
-                                                 + ")");
+        connect(profileWin, &ProfileWindow::liveUpdateStateChanged, this,
+                &vtkwindow_new::setProfileLiveUpdateFlag);
+
+        connect(profileWin, &QWidget::destroyed, this, [=]() {
+            setProfileLiveUpdateFlag(false);
+
+            auto renderer = ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
+            renderer->RemoveActor(actor_x);
+            renderer->RemoveActor(actor_y);
+            ui->qVTK1->renderWindow()->Render();
+        });
     }
 
-    for (int i = 0; i < xp_x_array.size(); ++i) {
-        xp_x_array[i] = i;
-        xp_y_array[i] = x_data[i];
-    }
-
-    double min = *std::min_element(xp_y_array.begin(), xp_y_array.end());
-    double max = *std::max_element(xp_y_array.begin(), xp_y_array.end());
-    profileWin->ui->xPlotQt->xAxis->setRange(0, myfits->GetNaxes(0));
-    profileWin->ui->xPlotQt->yAxis->setRange(min, max);
-
-    profileWin->ui->xPlotQt->graph(0)->setData(xp_x_array, xp_y_array);
-    profileWin->ui->xPlotQt->clearItems();
-    QCPItemStraightLine *line = new QCPItemStraightLine(profileWin->ui->xPlotQt);
-    line->setPen(QPen(Qt::red));
-    line->point1->setCoords(ref_x, 0); // location of point 1 in plot coordinate
-    line->point2->setCoords(ref_x, 1); // location of point 2 in plot coordinate
-
-    for (int i = 0; i < yp_x_array.size(); ++i) {
-        yp_x_array[i] = i;
-        yp_y_array[i] = y_data[i];
-    }
-
-    min = *std::min_element(yp_y_array.begin(), yp_y_array.end());
-    max = *std::max_element(yp_y_array.begin(), yp_y_array.end());
-
-    profileWin->ui->yPlotQt->graph(0)->setData(yp_x_array, yp_y_array);
-    profileWin->ui->yPlotQt->xAxis->setRange(0, myfits->GetNaxes(1));
-    profileWin->ui->yPlotQt->yAxis->setRange(min, max);
-    profileWin->ui->yPlotQt->clearItems();
-
-    line = new QCPItemStraightLine(profileWin->ui->yPlotQt);
-    line->setPen(QPen(Qt::red));
-    line->point1->setCoords(ref_y, 0);
-    line->point2->setCoords(ref_y, 1);
-
-    profileWin->ui->xPlotQt->replot();
-    profileWin->ui->yPlotQt->replot();
+    profileWin->plotProfiles(xprofile, ref_x, yprofile, ref_y);
 }
 
 void vtkwindow_new::on_actionProfile_triggered()
@@ -4684,6 +4637,11 @@ void vtkwindow_new::on_actionProfile_triggered()
         renderer->AddActor(actor_y);
         ui->qVTK1->renderWindow()->GetInteractor()->Render();
     }
+}
+
+void vtkwindow_new::setProfileLiveUpdateFlag(int status)
+{
+    this->liveUpdateProfile = status;
 }
 
 void vtkwindow_new::loadSession(const QString &sessionFile, const QDir &sessionRootFolder)
