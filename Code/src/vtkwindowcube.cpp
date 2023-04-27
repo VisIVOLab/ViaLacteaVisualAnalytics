@@ -3,11 +3,13 @@
 #include "ui_vtkwindowcube.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
+#include "interactors/vtkinteractorstyleprofile.h"
 
 #include "astroutils.h"
 #include "fitsimagestatisiticinfo.h"
 #include "lutcustomize.h"
 #include "luteditor.h"
+#include "profilewindow.h"
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
 #include "vtklegendscaleactorwcs.h"
@@ -228,7 +230,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     // Show cube slices by default
     currentVisOnSlicePanel = 0;
-    renWinSlice->AddRenderer(rendererSlice);
+    changeSliceView(currentVisOnSlicePanel);
 
     lutName = "Gray";
     lutSlice = vtkSmartPointer<vtkLookupTable>::New();
@@ -256,10 +258,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     legendActorSlice->setFitsFile(readerSlice->GetFileName());
     rendererSlice->AddActor(legendActorSlice);
 
-    auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
-    interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
-    interactorStyle->SetReader(readerSlice);
-    ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    setInteractorStyleImage();
 
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
@@ -279,7 +278,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
         ui->menuWCS->actions().at(2)->setChecked(true);
     }
 
-    QString bunit = fitsHeader.value("BUNIT");
+    bunit = fitsHeader.value("BUNIT");
     bunit.replace("'", QString());
     bunit.replace("\"", QString());
     bunit = bunit.simplified();
@@ -326,6 +325,23 @@ void vtkWindowCube::changeSliceView(int mode)
 
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
     ui->qVtkSlice->renderWindow()->Render();
+}
+
+void vtkWindowCube::setInteractorStyleImage()
+{
+    vtkNew<vtkInteractorStyleImageCustom> interactorStyle;
+    interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
+    interactorStyle->SetReader(readerSlice);
+    ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+}
+
+void vtkWindowCube::setInteractorStyleProfile()
+{
+    vtkNew<vtkInteractorStyleProfile> interactorStyle;
+    interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
+    interactorStyle->SetProfileCallback([this](double x, double y) { extractSpectrum(x, y); });
+    interactorStyle->SetReader(readerSlice);
+    ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
 }
 
 int vtkWindowCube::readFitsHeader()
@@ -533,6 +549,12 @@ void vtkWindowCube::resetCamera()
     camera->SetPosition(initialCameraPosition);
     camera->SetFocalPoint(initialCameraFocalPoint);
     renderer->ResetCamera();
+    //
+    auto interactorStyle = vtkSmartPointer<vtkInteractorStyleImageCustom>::New();
+    interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
+    interactorStyle->SetReader(readerSlice);
+    ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    //
 }
 
 void vtkWindowCube::setCameraAzimuth(double az)
@@ -767,4 +789,25 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
     }
 
     ui->qVtkSlice->renderWindow()->Render();
+}
+
+void vtkWindowCube::on_actionExtract_spectrum_triggered()
+{
+    setInteractorStyleProfile();
+}
+
+void vtkWindowCube::extractSpectrum(double x, double y)
+{
+    setInteractorStyleImage();
+
+    if (!profileWin) {
+        profileWin = new ProfileWindow(bunit, this);
+        profileWin->show();
+
+        connect(profileWin, &ProfileWindow::destroyed, this,
+                &vtkWindowCube::setInteractorStyleImage);
+    }
+
+    QVector<double> spectrum = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, 0);
+    profileWin->plotSpectrum(spectrum);
 }

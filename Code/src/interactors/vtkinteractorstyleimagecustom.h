@@ -24,18 +24,18 @@ public:
     void SetCoordsCallback(const std::function<void(std::string)> &callback);
 
 protected:
+    vtkSmartPointer<vtkFitsReader2> reader;
+    vtkSmartPointer<vtkCoordinate> Coordinate;
+
     vtkInteractorStyleImageCustom();
 
 private:
     vtkInteractorStyleImageCustom(const vtkInteractorStyleImageCustom &) = delete;
     void operator=(const vtkInteractorStyleImageCustom &) = delete;
 
-    vtkSmartPointer<vtkFitsReader2> reader;
-
     std::map<vtkImageProperty *, double> ColorLevel;
     std::map<vtkImageProperty *, double> ColorWindow;
 
-    vtkSmartPointer<vtkCoordinate> Coordinate;
     std::function<void(std::string)> CoordsCallback;
 };
 

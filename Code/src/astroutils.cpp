@@ -147,6 +147,45 @@ bool AstroUtils::checkSimCubeHeader(const std::string &file,
     return missingKeywords.empty();
 }
 
+QVector<double> AstroUtils::extractSpectrum(const char *fn, int x, int y, double nulval)
+{
+    fitsfile *fptr;
+    int status = 0;
+    char errtext[FLEN_ERRMSG];
+    if (fits_open_data(&fptr, fn, READONLY, &status)) {
+        fits_get_errstatus(status, errtext);
+        throw std::runtime_error(errtext);
+    }
+
+    int nlen = 3;
+    long naxes[3];
+    if (fits_get_img_size(fptr, nlen, naxes, &status)) {
+        fits_get_errstatus(status, errtext);
+        throw std::runtime_error(errtext);
+    }
+
+    QVector<double> spectrum(naxes[2]);
+    long fpixel[3] = { x, y, 0 };
+    float value;
+    for (long i = 1; i <= naxes[2]; ++i) {
+        fpixel[2] = i;
+        if (fits_read_pix(fptr, TFLOAT, fpixel, 1, 0, &value, 0, &status)) {
+            fits_get_errstatus(status, errtext);
+            throw std::runtime_error(errtext);
+        }
+
+        if (std::isnan(value)) {
+            value = nulval;
+        }
+
+        spectrum[i - 1] = value;
+    }
+
+    fits_close_file(fptr, &status);
+
+    return spectrum;
+}
+
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
 {
     double T1, B1, R1, L1;

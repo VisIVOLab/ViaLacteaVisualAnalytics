@@ -116,6 +116,7 @@ SOURCES += \
     src/higalselectedsources.cpp \
     src/histogram.cpp \
     src/interactors/vtkinteractorstyleimagecustom.cpp \
+    src/interactors/vtkinteractorstyleprofile.cpp \
     src/libwcs/cel.c \
     src/libwcs/dateutil.c \
     src/libwcs/distort.c \
@@ -232,6 +233,7 @@ HEADERS  += \
     src/higalselectedsources.h \
     src/histogram.h \
     src/interactors/vtkinteractorstyleimagecustom.h \
+    src/interactors/vtkinteractorstyleprofile.h \
     src/libwcs/fitsfile.h \
     src/libwcs/wcs.h \
     src/loadingwidget.h \

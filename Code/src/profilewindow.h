@@ -20,6 +20,7 @@ public:
     void setLiveProfileFlag(bool flag);
     void plotProfiles(const QVector<double> &xProfile, double xRef, const QVector<double> &yProfile,
                       double yRef);
+    void plotSpectrum(const QVector<double> &spectrum);
 
 signals:
     void liveUpdateStateChanged(int status);

@@ -23,6 +23,7 @@ class vtkLookupTable;
 class vtkScalarBarActor;
 class FitsImageStatisiticInfo;
 class LutCustomize;
+class ProfileWindow;
 
 namespace Ui {
 class vtkWindowCube;
@@ -73,14 +74,21 @@ private slots:
     void on_actionShowStats_triggered();
     void on_actionSlice_Lookup_Table_triggered();
     void changeSliceView(int mode);
+    void setInteractorStyleImage();
+    void setInteractorStyleProfile();
+
+    void on_actionExtract_spectrum_triggered();
+    void extractSpectrum(double x, double y);
 
 private:
     QString filepath;
+    QString bunit;
     int ScaleFactor;
     QPointer<vtkwindow_new> parentWindow;
     vtkSmartPointer<vtkFitsReader2> readerCube;
     FitsImageStatisiticInfo *fitsStatsWidget;
     QPointer<QDockWidget> dock;
+    QPointer<ProfileWindow> profileWin;
 
     FitsHeaderMap fitsHeader;
 
