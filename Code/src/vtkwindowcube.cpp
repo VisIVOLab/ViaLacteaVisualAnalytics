@@ -335,12 +335,14 @@ void vtkWindowCube::setInteractorStyleImage()
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
 }
 
-void vtkWindowCube::setInteractorStyleProfile()
+void vtkWindowCube::setInteractorStyleProfile(bool liveMode)
 {
     vtkNew<vtkInteractorStyleProfile> interactorStyle;
     interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
-    interactorStyle->SetProfileCallback([this](double x, double y) { extractSpectrum(x, y); });
+    interactorStyle->SetProfileCallback(
+            [this](double x, double y, bool live) { extractSpectrum(x, y, live); });
     interactorStyle->SetReader(readerSlice);
+    interactorStyle->SetLiveMode(liveMode);
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
 }
 
@@ -796,16 +798,27 @@ void vtkWindowCube::on_actionExtract_spectrum_triggered()
     setInteractorStyleProfile();
 }
 
-void vtkWindowCube::extractSpectrum(double x, double y)
+void vtkWindowCube::extractSpectrum(double x, double y, bool live)
 {
-    setInteractorStyleImage();
-
     if (!profileWin) {
         profileWin = new ProfileWindow(bunit, this);
         profileWin->show();
 
+        connect(profileWin, &ProfileWindow::liveUpdateStateChanged, this, [this](int status) {
+            if (status) {
+                setInteractorStyleProfile(status);
+            } else {
+                setInteractorStyleImage();
+            }
+        });
+
         connect(profileWin, &ProfileWindow::destroyed, this,
                 &vtkWindowCube::setInteractorStyleImage);
+    }
+
+    if (!live) {
+        setInteractorStyleImage();
+        profileWin->setLiveProfileFlag(live);
     }
 
     QVector<double> spectrum = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, 0);

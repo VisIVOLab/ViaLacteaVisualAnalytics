@@ -75,10 +75,10 @@ private slots:
     void on_actionSlice_Lookup_Table_triggered();
     void changeSliceView(int mode);
     void setInteractorStyleImage();
-    void setInteractorStyleProfile();
+    void setInteractorStyleProfile(bool liveMode = false);
 
     void on_actionExtract_spectrum_triggered();
-    void extractSpectrum(double x, double y);
+    void extractSpectrum(double x, double y, bool live = false);
 
 private:
     QString filepath;

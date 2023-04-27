@@ -17,10 +17,12 @@ public:
     vtkTypeMacro(vtkInteractorStyleProfile, vtkInteractorStyleImageCustom);
     void PrintSelf(std::ostream &os, vtkIndent indent) override;
 
+    vtkSetMacro(LiveMode, bool);
+
     void OnMouseMove() override;
     void OnLeftButtonDown() override;
 
-    void SetProfileCallback(const std::function<void(double, double)> &ProfileCb);
+    void SetProfileCallback(const std::function<void(double, double, bool)> &ProfileCb);
 
 protected:
     vtkInteractorStyleProfile();
@@ -30,7 +32,9 @@ private:
     vtkInteractorStyleProfile(const vtkInteractorStyleProfile &) = delete;
     void operator=(const vtkInteractorStyleProfile &) = delete;
 
-    std::function<void(double, double)> ProfileCb;
+    bool LiveMode;
+
+    std::function<void(double, double, bool)> ProfileCb;
 
     std::set<vtkRenderer *> renderers;
 

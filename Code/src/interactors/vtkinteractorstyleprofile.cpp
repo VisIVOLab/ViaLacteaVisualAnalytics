@@ -17,6 +17,8 @@ vtkStandardNewMacro(vtkInteractorStyleProfile);
 //----------------------------------------------------------------------------
 vtkInteractorStyleProfile::vtkInteractorStyleProfile()
 {
+    this->LiveMode = false;
+
     vtkNew<vtkNamedColors> colors;
 
     // Line X
@@ -82,6 +84,10 @@ void vtkInteractorStyleProfile::OnMouseMove()
         renderers.insert(renderer);
         renderer->AddActor(actorX);
         renderer->AddActor(actorY);
+
+        if (LiveMode) {
+            this->ProfileCb(worldCoords[0], worldCoords[1], LiveMode);
+        }
     }
 
     this->Interactor->GetRenderWindow()->Render();
@@ -91,16 +97,17 @@ void vtkInteractorStyleProfile::OnMouseMove()
 void vtkInteractorStyleProfile::OnLeftButtonDown()
 {
     Superclass::OnLeftButtonDown();
+    this->LiveMode = false;
     int *coords = this->Interactor->GetEventPosition();
     this->Coordinate->SetValue(coords[0], coords[1], 0);
     auto renderer = this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
     double *worldCoords = this->Coordinate->GetComputedWorldValue(renderer);
-    this->ProfileCb(worldCoords[0], worldCoords[1]);
+    this->ProfileCb(worldCoords[0], worldCoords[1], LiveMode);
 }
 
 //----------------------------------------------------------------------------
 void vtkInteractorStyleProfile::SetProfileCallback(
-        const std::function<void(double, double)> &ProfileCb)
+        const std::function<void(double, double, bool)> &ProfileCb)
 {
     this->ProfileCb = ProfileCb;
 }
