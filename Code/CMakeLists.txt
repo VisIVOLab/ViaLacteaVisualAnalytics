@@ -22,9 +22,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ParaView REQUIRED)
 find_package(CFITSIO REQUIRED)
-#find_package(OpenMP REQUIRED)
 find_package(Boost REQUIRED)
-find_package(CURL REQUIRED)
 
 set(qt_components Widgets Network NetworkAuth WebEngineWidgets Concurrent Xml PrintSupport)
 find_package(Qt5 QUIET REQUIRED COMPONENTS ${qt_components})
@@ -288,7 +286,6 @@ target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
         ParaView::pqApplicationComponents
         ParaView::RemotingViews
         CFITSIO::CFITSIO
-        CURL::libcurl
 )
 
 set_target_properties(ViaLacteaVisualAnalytics PROPERTIES
