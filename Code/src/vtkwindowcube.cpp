@@ -295,6 +295,10 @@ vtkWindowCube::~vtkWindowCube()
         parentWindow->removeActor(contoursActorForParent);
     }
 
+    if (profileWin) {
+        profileWin->deleteLater();
+    }
+
     delete ui;
 }
 
@@ -801,7 +805,7 @@ void vtkWindowCube::on_actionExtract_spectrum_triggered()
 void vtkWindowCube::extractSpectrum(double x, double y, bool live)
 {
     if (!profileWin) {
-        profileWin = new ProfileWindow(bunit, this);
+        profileWin = new ProfileWindow(bunit);
         profileWin->show();
 
         connect(profileWin, &ProfileWindow::liveUpdateStateChanged, this, [this](int status) {
