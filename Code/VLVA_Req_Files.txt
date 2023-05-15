@@ -1,0 +1,138 @@
+main.cpp //Keep
+    - mainwindow.h
+        - operationqueue.h //Standalone - keep
+        - treemodel.h //Keep
+            - treeitem.h //Keep
+                - treeitem.cpp //Keep
+                    - vispoint.h //Keep
+                        - observedobject.h //Keep
+                        - vispoint.cpp //Keep
+                            - treeitem.h //Already included, ignore.
+                            - vstabledesktop.h //Already included, ignore.
+
+                - vstabledesktop.h //Keep
+                    - vsobjectdesktop.h //Standalone - keep
+                    - vstabledesktop.cpp //Keep
+                        - base64.h //Keep
+                            - base64.cpp //Keep
+                        - visivoutilsdesktop.h //Keep
+                            - visivoutilsdesktop.cpp //Keep
+                            
+                - vtkfitsreader.h //Keep
+                    - vtkfitsreader.cpp //Keep                
+                    
+            - vtkfitsreader.h //Already included, ignore.
+            - treemodel.cpp //Keep
+                - treeitem.h //Already included, ignore.
+                - vispoint.h //Already included, ignore.
+                
+        - vispoint.h //Already included, ignore
+        - vstabledesktop.h //Already included, ignore.
+        
+        - mainwindow.cpp //Keep
+            - singleton.h //Already included, ignore.
+            - vialactea.h //Keep
+                - aboutform.h //Keep
+                - settingform.h //Keep
+                    - authwrapper.h //Keep
+                        - vlvaurlschemehandler.h //Keep
+                            - vlvaurlschemehandler.cpp //Keep
+                            
+                        - authwrapper.cpp //Keep
+                            - authkeys.h //Keep
+                    
+                    - settingform.cpp //Keep
+                        - caesarwindow.h //Keep
+                            - authwrapper.h //Already included, ignore.
+                            - caesarwindow.cpp //Keep
+                                - loadingwidget.h //Keep
+                                    - loadingwidget.cpp //Keep
+                                    
+                        - singleton.h //Already included, ignore.
+                        - vialactea.h //Already included, ignore.
+                
+                - vtkwindow_new.h //Keep
+                    - contour.h //Keep
+                        - vtkfitsreader.h //Already included, ignore.
+                        
+                        - contour.cpp //Keep
+                            - vtkwindow_new.h //Already included, ignore.
+                    
+                    - loadingwidget.h //Keep
+                        - loadingwidget.cpp //Keep
+                    - pointspipe.h //Keep
+                        - pipe.h //Keep
+                            - vstabledesktop.h //Already included, ignore.
+                            
+                            - pipe.cpp //Keep
+                                - vispoint.h //Already included, ignore.
+                                - vstabledesktop.h //Already included, ignore.
+                                - vtkwindow_new.h //Already included, ignore.
+                                
+                    - vialacteastringdictwidget.h //Keep
+                        - vialacteastringdictwidget.cpp // //Already included, ignore.
+                            - authkeys.h //Already included, ignore.
+                            - authwrapper.h //Already included, ignore.
+                            
+                    - vtkwindow_new.cpp //Keep
+                        - astroutils.h //Keep
+                        - authwrapper.h //Already included, ignore.
+                        - caesarwindow.h //Already included, ignore.
+                        - dbquery.h //Keep
+                            - loadingwidget.h //Already included, ignore.
+                            - vtkwindow_new.h //Already included, ignore.
+                            - xmlparser.h //Keep
+                                - xmlparser.cpp //Keep
+                            
+                            - dbquery.cpp //Keep
+                                - authwrapper.h //Already included, ignore.
+                                - downloadmanager.h //Keep
+                                    - loadingwidget.h //Already included, ignore.
+                                    - downloadmanager.cpp //Keep
+                                        - authwrapper.h //Already included, ignore.
+                                        - loadingwidget.h //Already included, ignore.
+                                - vtkwindow_new.h //Already included, ignore.
+                                - xmlparser.h //Already included, ignore.
+                                
+                        - filtercustomize.h //Keep
+                            - vtkwindow_new.h //Already included, ignore.
+                            - filtercustomize.cpp //Keep
+                                - vispoint.h //Already included, ignore.
+
+                        - fitsimagestatisiticinfo.h
+                        - higalselectedsources.h
+                        - lutcustomize.h
+                        - luteditor.h
+                        - singleton.h //Already included, ignore.
+                        - ui_higalselectedsources.h
+                        - vialactea.h //Already included, ignore.
+                        - vialactea_fileload.h
+                        - vialacteainitialquery.h
+                        - vispoint.h //Already included, ignore.
+                        - vlkbsimplequerycomposer.h
+                        - vtkfitstoolswidget.h
+                        - vtkfitstoolwidget_new.h
+                        - vtkfitstoolwidgetobject.h
+                        - vtklegendscaleactor.h
+                
+                - vialactea.cpp
+                    - aboutform.h //Already included, ignore.
+                    - astroutils.h //Already included, ignore.
+                    - pqwindowcube.h
+                    - sed.h
+                    - sedvisualizerplot.h
+                    - sessionloader.h
+                    - settingform.h //Already included, ignore.
+                    - singleton.h //Already included, ignore.
+                    - subsetselectordialog.h
+                    - usertablewindow.h
+                    - vialacteainitialquery.h
+                    - vialacteastringdictwidget.h
+                    - vlkbsimplequerycomposer.h
+            
+            - visivoimporterdesktop.h
+            - vispoint.h //Already included, ignore.
+            - vtkfitsreader.h //Already included, ignore.
+            - vtkwindow_new.h //Already included, ignore.
+        
+    - singleton.h //Standalone - keep

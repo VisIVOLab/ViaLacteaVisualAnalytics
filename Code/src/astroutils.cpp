@@ -3,7 +3,6 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/lwcs.h"
 #include "libwcs/wcs.h"
-#include "libwcs/wcscat.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>

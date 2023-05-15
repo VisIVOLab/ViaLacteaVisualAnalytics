@@ -19,7 +19,6 @@
  ***************************************************************************/
 
 #include "mainwindow.h"
-#include "sed.h"
 #include "singleton.h"
 #include "ui_mainwindow.h"
 #include "vialactea.h"
@@ -37,22 +36,10 @@
 #include <QIcon>
 #include <QThread>
 #include <QTreeView>
-//#include "vosamp.h"
-//#include "visivofilterdesktop.h"
-
-/*
-extern "C" {
-#include "visivo.h"
-}
-
-*/
-#include "vtkwindow_new.h"
 
 #include "pqAlwaysConnectedBehavior.h"
 #include "pqPersistentMainWindowStateBehavior.h"
 
-#include "pqApplicationCore.h"
-#include "pqObjectBuilder.h"
 #include "vtkSMProxyManager.h"
 #include "vtkSMReaderFactory.h"
 

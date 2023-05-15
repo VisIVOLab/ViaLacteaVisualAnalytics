@@ -35,12 +35,6 @@
 #include <string>
 #include <vector>
 
-/*
-extern "C" {
-    #include "visivo.h"
-}
-*/
-
 class VSTableDesktop : public VSObjectDesktop, QWidget
 {
 public:

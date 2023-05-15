@@ -3,7 +3,9 @@
 
 #include "singleton.h"
 #include "vialactea_fileload.h"
-#include "vtkInteractorStyleRubberBand2D.h"
+
+#include "vtkProperty.h"
+
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QDebug>

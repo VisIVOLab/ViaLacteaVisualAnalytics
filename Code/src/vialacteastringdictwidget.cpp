@@ -11,7 +11,6 @@
 
 #include "authkeys.h"
 #include "authwrapper.h"
-#include "singleton.h"
 
 VialacteaStringDictWidget::VialacteaStringDictWidget(QWidget *parent)
     : QWidget(parent), ui(new Ui::VialacteaStringDictWidget)

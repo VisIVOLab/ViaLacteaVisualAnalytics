@@ -25,7 +25,6 @@
 */
 
 #include "operationqueue.h"
-#include "treeitem.h"
 #include "treemodel.h"
 #include "vispoint.h"
 #include "vstabledesktop.h"

@@ -1,5 +1,6 @@
 #include "filtercustomize.h"
 #include "ui_filtercustomize.h"
+
 #include "vispoint.h"
 
 FilterCustomize::FilterCustomize(vtkwindow_new *v, QWidget *parent)

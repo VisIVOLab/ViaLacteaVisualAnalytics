@@ -3,7 +3,6 @@
 
 #include "authkeys.h"
 #include "authwrapper.h"
-#include "singleton.h"
 #include "vialactea_fileload.h"
 
 #include <QAuthenticator>

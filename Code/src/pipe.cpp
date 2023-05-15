@@ -20,36 +20,31 @@
  ***************************************************************************/
 
 #include "pipe.h"
-#include "visivoutilsdesktop.h"
+#include "vispoint.h"
 #include "vstabledesktop.h"
+#include "vtkwindow_new.h"
+
+#include "qdebug.h"
 #include "vtkCamera.h"
+#include "vtkCubeAxesActor2D.h"
+#include "vtkDataSet.h"
 #include "vtkLookupTable.h"
-#include "vtkPNGWriter.h"
+#include "vtkOutlineCornerFilter.h"
 #include "vtkPolyData.h"
+#include "vtkPolygon.h"
+#include "vtkProperty.h"
+#include "vtkPVLODActor.h"
 #include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
+#include "vtkScalarBarActor.h"
 #include "vtkWindowToImageFilter.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <map>
 #include <QString>
 #include <QStringList>
 #include <sstream>
-
-#include "vtkOutlineCornerFilter.h"
-#include "vtkProperty.h"
-#include "vtkScalarBarActor.h"
-
-#include "vstabledesktop.h"
-#include "vtkCubeAxesActor2D.h"
-#include "vtkDataSet.h"
-#include "vtkPVLODActor.h"
-
-#include "qdebug.h"
-#include "vispoint.h"
-#include "vtkwindow_new.h"
-
-#include "vtkPolygon.h"
 
 Pipe::Pipe(VSTableDesktop *table)
 {

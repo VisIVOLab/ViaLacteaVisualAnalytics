@@ -15,7 +15,6 @@
 #include "authkeys.h"
 #include "authwrapper.h"
 #include "downloadmanager.h"
-#include "mainwindow.h"
 #include "singleton.h"
 #include "vialactea.h"
 

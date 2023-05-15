@@ -18,7 +18,6 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-//#include "VisIVOFiltersConfigure.h"
 
 #define M_PI 3.14159265358979323846f
 #define M_PI_2 (M_PI / 2.F)

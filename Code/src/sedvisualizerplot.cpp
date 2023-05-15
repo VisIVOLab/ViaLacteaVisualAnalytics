@@ -1,12 +1,15 @@
 #include "sedvisualizerplot.h"
+
 #include "loadingwidget.h"
 #include "sedfitgrid_thin.h"
 #include "sedplotpointcustom.h"
 #include "ui_sedfitgrid_thick.h"
 #include "ui_sedfitgrid_thin.h"
 #include "ui_sedvisualizerplot.h"
-#include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
+
+#include "vtkProperty.h"
+
 #include <QCheckBox>
 #include <QFileDialog>
 #include <QInputDialog>
