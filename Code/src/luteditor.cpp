@@ -17,16 +17,17 @@
  *   Free Software Foundation, Inc->,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#include <cstdlib>
-#include <cstring>
+#include "luteditor.h"
 
 #include "color.h"
-#include "luteditor.h"
-#include "qdebug.h"
+
+#include "vtkLookupTable.h"
+
 #include <QString>
 #include <QStringList>
 
-#include "vtkLookupTable.h"
+#include <cstdlib>
+#include <cstring>
 
 //---------------------------------------------------------------------
 void SelectLookTable(QString palette, vtkLookupTable *lut)

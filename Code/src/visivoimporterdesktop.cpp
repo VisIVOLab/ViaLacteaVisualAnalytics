@@ -17,17 +17,22 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-
 #include "visivoimporterdesktop.h"
+
 #include "astroutils.h"
 #include "base64.h"
 #include "mainwindow.h"
+#include "sed.h"
+#include "sednode.h"
+#include "sedvisualizerplot.h"
 #include "singleton.h"
 #include "treemodel.h"
 #include "ui_mainwindow.h"
 #include "vialactea.h"
-#include "vtkColorTransferFunction.h"
+#include "vialacteasource.h"
 #include "vtkfitsreader.h"
+
+#include "vtkColorTransferFunction.h"
 #include "vtkFixedPointVolumeRayCastMapper.h"
 #include "vtkImageViewer2.h"
 #include "vtkPiecewiseFunction.h"
@@ -37,6 +42,7 @@
 #include "vtkwindow_new.h"
 #include "vtkXMLImageDataReader.h"
 #include "vtkXMLPolyDataReader.h"
+
 #include <QDebug>
 #include <QDialog>
 #include <QDir>
@@ -44,17 +50,10 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QProcess>
+#include <QtConcurrent>
 #include <QTreeView>
 
-#include "sed.h"
-#include "sednode.h"
-#include "vialacteasource.h"
-#include "vlkbquery.h"
 #include <math.h>
-
-#include "sedvisualizerplot.h"
-
-#include <QtConcurrent>
 
 /*
 extern "C" {

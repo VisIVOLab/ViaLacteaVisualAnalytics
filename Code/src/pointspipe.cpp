@@ -19,59 +19,51 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include <cstdlib>
-#include <cstring>
-
 #include "pointspipe.h"
 
+#include "extendedglyph3d.h"
 #include "luteditor.h"
 #include "visivoutilsdesktop.h"
+#include "vispoint.h"
+#include "vtkwindow_new.h"
 
-#include "extendedglyph3d.h"
-
-#include <algorithm>
-#include <sstream>
-
+#include "vtkAxesActor.h"
+#include "vtkCamera.h"
+#include "vtkCellArray.h"
+#include "vtkCellData.h"
 #include "vtkConeSource.h"
 #include "vtkCubeSource.h"
 #include "vtkCylinderSource.h"
-#include "vtkSphereSource.h"
-
-#include "vtkCamera.h"
-#include "vtkCellData.h"
-#include "vtkLookupTable.h"
-#include "vtkPointData.h"
-
-#include "vtkCellArray.h"
-#include "vtkFloatArray.h"
-#include "vtkGlyph3D.h"
-#include "vtkOutlineCornerFilter.h"
-#include "vtkProperty.h"
-#include "vtkScalarBarActor.h"
-
-#include "vtkAxesActor.h"
-#include "vtkGenericRenderWindowInteractor.h"
-#include "vtkPVLODActor.h"
-#include "vtkRenderer.h"
-#include "vtkRenderWindow.h"
-#include "vtkUnstructuredGrid.h"
-
-#include "qdebug.h"
-#include "vispoint.h"
-
-#include "vtkSmartPointer.h"
-#include "vtkTransform.h"
-#include "vtkTransformPolyDataFilter.h"
-
 #include "vtkDataSetSurfaceFilter.h"
+#include "vtkFloatArray.h"
+#include "vtkGenericRenderWindowInteractor.h"
+#include "vtkGlyph3D.h"
 #include "vtkIdFilter.h"
+#include "vtkLookupTable.h"
+#include "vtkOutlineCornerFilter.h"
 #include "vtkPlaneSource.h"
+#include "vtkPointData.h"
+#include "vtkProperty.h"
+#include "vtkPVLODActor.h"
 #include "vtkRectilinearGrid.h"
 #include "vtkRectilinearGridGeometryFilter.h"
+#include "vtkRenderer.h"
+#include "vtkRenderWindow.h"
+#include "vtkScalarBarActor.h"
+#include "vtkSmartPointer.h"
+#include "vtkSphereSource.h"
 #include "vtkStringArray.h"
-#include "vtkwindow_new.h"
+#include "vtkTransform.h"
+#include "vtkTransformPolyDataFilter.h"
+#include "vtkUnstructuredGrid.h"
 
+#include <QDebug>
+
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include "math.h"
+#include <sstream>
 
 //---------------------------------------------------------------------
 PointsPipe::PointsPipe(VSTableDesktop *table) : Pipe(table)

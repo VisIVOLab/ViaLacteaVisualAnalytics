@@ -1,18 +1,15 @@
 #ifndef VTKELLIPSE_H
 #define VTKELLIPSE_H
 
-#include "qstring.h"
 #include "vstabledesktop.h"
-#include "vtkActor.h"
-#include "vtkActor2D.h"
+
 #include "vtkImageActor.h"
-#include "vtkLODProp3D.h"
 #include "vtkPolyData.h"
-#include "vtkPVLODActor.h"
 #include "vtkRect.h"
-#include "vtkRotationFilter.h"
 #include "vtkSmartPointer.h"
 #include "vtkTransformPolyDataFilter.h"
+
+#include <QString>
 
 class vtkEllipse
 {

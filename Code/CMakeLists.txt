@@ -64,7 +64,6 @@ set(sources
         src/filtercustomize.cpp
         src/fitsimagestatisiticinfo.cpp
         src/higalselectedsources.cpp
-        src/histogram.cpp
         src/libwcs/cel.c
         src/libwcs/dateutil.c
         src/libwcs/distort.c
@@ -92,7 +91,6 @@ set(sources
         src/qcustomplot.cpp
         src/lutcustomize.cpp
         src/luteditor.cpp
-        src/lutselector.cpp
         src/main.cpp
         src/mainwindow.cpp
         src/mcutoutsummary.cpp
@@ -109,7 +107,6 @@ set(sources
         src/sedplotpointcustom.cpp
         src/sedvisualizerplot.cpp
         src/selectedsourcefieldsselect.cpp
-        src/selectedsourcesform.cpp
         src/sessionloader.cpp
         src/settingform.cpp
         src/subsetselectordialog.cpp
@@ -126,7 +123,6 @@ set(sources
         src/visivoutilsdesktop.cpp
         src/vispoint.cpp
         src/vlkbquery.cpp
-        src/vlkbquerycomposer.cpp
         src/vlkbsimplequerycomposer.cpp
         src/vlkbtable.cpp
         src/vlvaurlschemehandler.cpp
@@ -143,8 +139,6 @@ set(sources
         src/vtkwindow_new.cpp
         src/xmlparser.cpp
         src/interactors/vtkinteractorstyleimagecustom.cpp
-        src/vtkwindowimage.cpp
-        src/vtkwindowsources.cpp
         )
 
 set(headers
@@ -166,14 +160,12 @@ set(headers
         src/filtercustomize.h
         src/fitsimagestatisiticinfo.h
         src/higalselectedsources.h
-        src/histogram.h
         src/libwcs/fitsfile.h
         src/libwcs/wcs.h
         src/loadingwidget.h
         src/qcustomplot.h
         src/lutcustomize.h
         src/luteditor.h
-        src/lutselector.h
         src/mainwindow.h
         src/mcutoutsummary.h
         src/observedobject.h
@@ -190,7 +182,6 @@ set(headers
         src/sedplotpointcustom.h
         src/sedvisualizerplot.h
         src/selectedsourcefieldsselect.h
-        src/selectedsourcesform.h
         src/sessionloader.h
         src/settingform.h
         src/singleton.h
@@ -208,7 +199,6 @@ set(headers
         src/visivoutilsdesktop.h
         src/vispoint.h
         src/vlkbquery.h
-        src/vlkbquerycomposer.h
         src/vlkbsimplequerycomposer.h
         src/vlkbtable.h
         src/vlvaurlschemehandler.h
@@ -225,8 +215,6 @@ set(headers
         src/vtkwindow_new.h
         src/xmlparser.h
         src/interactors/vtkinteractorstyleimagecustom.h
-        src/vtkwindowimage.h
-        src/vtkwindowsources.h
         )
 
 set(ui_files
@@ -247,7 +235,6 @@ set(ui_files
         ui/sedfitgrid_thin.ui
         ui/sedvisualizerplot.ui
         ui/selectedsourcefieldsselect.ui
-        ui/selectedsourcesform.ui
         ui/sessionloader.ui
         ui/settingform.ui
         ui/subsetselectordialog.ui
@@ -259,11 +246,10 @@ set(ui_files
         ui/viewselectedsourcedataset.ui
         ui/lutcustomize.ui
         ui/vlkbquery.ui
-        ui/vlkbquerycomposer.ui
         ui/vlkbsimplequerycomposer.ui
         ui/vtkfitstoolswidget.ui
         ui/vtkfitstoolwidget_new.ui
-        ui/vtktoolswidget.ui
+       ui/vtktoolswidget.ui
         ui/vtkwindow_new.ui
         )
 

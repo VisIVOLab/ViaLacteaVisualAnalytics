@@ -6,7 +6,7 @@
 #include "caesarwindow.h"
 #include "dbquery.h"
 #include "filtercustomize.h"
-#include "fitsimagestatisiticinfo.h" //Start here next time
+#include "fitsimagestatisiticinfo.h"
 #include "higalselectedsources.h"
 #include "lutcustomize.h"
 #include "luteditor.h"
@@ -20,6 +20,7 @@
 #include "vtkfitstoolswidget.h"
 #include "vtkfitstoolwidget_new.h"
 #include "vtkfitstoolwidgetobject.h"
+#include "vtktoolswidget.h"
 #include "vtklegendscaleactor.h"
 
 #include "vtkAbstractPicker.h"
@@ -76,7 +77,6 @@
 #include "vtkSphereSource.h"
 #include "vtkTextActor.h"
 #include "vtkTextProperty.h"
-#include "vtktoolswidget.h"
 #include "vtkTransform.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkVertexGlyphFilter.h"
@@ -84,7 +84,7 @@
 #include "ds9region/DS9Region.h"
 #include "ds9region/DS9RegionParser.h"
 
-#include "qdebug.h"
+#include <QDebug>
 #include <QDir>
 #include <QSettings>
 #include <QSignalMapper>

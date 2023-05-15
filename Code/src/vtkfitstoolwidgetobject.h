@@ -2,6 +2,7 @@
 #define VTKFITSTOOLWIDGETOBJECT_H
 
 #include "vtkfitsreader.h"
+
 #include "vtkPVLODActor.h"
 #include "vtkSmartPointer.h"
 

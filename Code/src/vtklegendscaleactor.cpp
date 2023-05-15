@@ -13,14 +13,13 @@
  
  =========================================================================*/
 #include "vtklegendscaleactor.h"
+
 #include "astroutils.h"
-#include "qdebug.h"
+
 #include "vtkActor2D.h"
 #include "vtkAxisActor2D.h"
-#include "vtkCamera.h"
 #include "vtkCellArray.h"
 #include "vtkCellData.h"
-#include "vtkCommand.h"
 #include "vtkCoordinate.h"
 #include "vtkfitsreader.h"
 #include "vtkMath.h"
@@ -28,11 +27,12 @@
 #include "vtkPoints.h"
 #include "vtkPolyData.h"
 #include "vtkPolyDataMapper2D.h"
-#include "vtkRenderer.h"
+#include "vtkPropCollection.h"
 #include "vtkSmartPointer.h"
 #include "vtkTextMapper.h"
 #include "vtkTextProperty.h"
 #include "vtkUnsignedCharArray.h"
+#include "vtkViewport.h"
 #include "vtkWindow.h"
 
 vtkStandardNewMacro(vtkLegendScaleActor);

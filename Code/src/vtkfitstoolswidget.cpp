@@ -1,6 +1,7 @@
 #include "vtkfitstoolswidget.h"
 #include "ui_vtkfitstoolswidget.h"
 
+#include "dbquery.h"
 #include "singleton.h"
 #include "vialactea_fileload.h"
 
@@ -15,8 +16,6 @@
 #include <QSignalMapper>
 #include <QSlider>
 #include <vtkCallbackCommand.h>
-
-#include "dbquery.h"
 
 static void SelectionChangedCallbackFunction(vtkObject *caller, long unsigned int eventId,
                                              void *clientData, void *callData);

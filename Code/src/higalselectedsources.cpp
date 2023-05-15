@@ -1,9 +1,7 @@
 #include "higalselectedsources.h"
 #include "ui_higalselectedsources.h"
-//#include "ViaLactea.h"
+
 #include "plotwindow.h"
-#include "singleton.h"
-//#include "viewselectedsourcedataset.h"
 #include "astroutils.h"
 #include "selectedsourcefieldsselect.h"
 #include "vlkbquery.h"
@@ -12,7 +10,7 @@
 #include "vtkPolyData.h"
 #include "vtkProperty.h"
 
-#include "qdebug.h"
+#include <QDebug>
 #include <QListWidget>
 #include <QWidgetAction>
 

@@ -24,7 +24,6 @@
 #include "vtkInformationVector.h"
 #include "vtkIntArray.h"
 #include "vtkIOStream.h"
-#include "vtkMath.h"
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
 #include "vtkSmartPointer.h"

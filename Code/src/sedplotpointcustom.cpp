@@ -1,10 +1,12 @@
 #include "sedplotpointcustom.h"
+
 #include "singleton.h"
 #include "vialacteastringdictwidget.h"
 #include "vtkellipse.h"
 
 #include "vtkCleanPolyData.h"
 #include "vtkProperty.h"
+
 #include <QMouseEvent>
 #include <QToolTip>
 

@@ -1,10 +1,11 @@
 #include "selectedsourcefieldsselect.h"
-#include "qsignalmapper.h"
 #include "ui_selectedsourcefieldsselect.h"
-#include <QCheckBox>
-#include <QDebug>
 
 #include "viewselectedsourcedataset.h"
+
+#include "qsignalmapper.h"
+#include <QCheckBox>
+#include <QDebug>
 
 selectedSourceFieldsSelect::selectedSourceFieldsSelect(vtkwindow_new *v,
                                                        QList<QListWidgetItem *> sel,

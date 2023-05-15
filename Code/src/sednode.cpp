@@ -1,6 +1,7 @@
 #include "sednode.h"
+
 #include <QDataStream>
-#include <qdebug.h>
+#include <QDebug>
 
 SEDNode::SEDNode(QObject *parent) : QObject(parent) { }
 

@@ -2,6 +2,7 @@
 #include "ui_vtkfitstoolwidget_new.h"
 
 #include "vtkProperty.h"
+
 #include <QDebug>
 #include <QFileInfo>
 
