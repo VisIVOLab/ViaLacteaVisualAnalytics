@@ -4,6 +4,7 @@
 #include "aboutform.h"
 #include "astroutils.h"
 #include "pqwindowcube.h"
+#include "pqwindowimage.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
 #include "sessionloader.h"
@@ -196,6 +197,23 @@ void ViaLactea::onDataLoaded(const QString &filepath)
     subsetSelector->raise();
 }
 
+void ViaLactea::onImageDataLoaded(const QString &filepath)
+{
+    auto subsetSelector = new SubsetSelectorDialog(this);
+    subsetSelector->setAttribute(Qt::WA_DeleteOnClose);
+    connect(subsetSelector, &SubsetSelectorDialog::subsetSelected, this,
+            [=](const CubeSubset &subset) {
+                auto win = new pqwindowimage(filepath, subset);
+                win->showMaximized();
+                win->raise();
+                win->activateWindow();
+            });
+
+    subsetSelector->show();
+    subsetSelector->activateWindow();
+    subsetSelector->raise();
+}
+
 void ViaLactea::updateVLKBSetting()
 {
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
@@ -348,7 +366,24 @@ void ViaLactea::queryButtonStatusOnOff()
 
 void ViaLactea::on_openLocalImagePushButton_clicked()
 {
-    QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(),
+    if (!server) {
+        QMessageBox::warning(
+                this, "Not connected",
+                "Not connected to pvserver. Check the connection url in the settings.");
+        return;
+    }
+
+    vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    QString filters = readerFactory->GetSupportedFileTypes(server->session());
+
+    pqFileDialog dialog(server, this, QString(), QString(), filters);
+    dialog.setFileMode(pqFileDialog::ExistingFile);
+    if (dialog.exec() == pqFileDialog::Accepted) {
+        QString file = dialog.getSelectedFiles().first();
+        onImageDataLoaded(file);
+    }
+
+    /*QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(),
                                               "Fits images (*.fits)");
 
     if (!fn.isEmpty()) {
@@ -378,7 +413,7 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
                                  QObject::tr("The regions do not overlap, the file cannot be "
                                              "imported in the current session."));
         }
-    }
+    }*/
 }
 
 void ViaLactea::on_actionSettings_triggered()

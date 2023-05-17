@@ -100,6 +100,7 @@ set(sources
         src/plotwindow.cpp
         src/pointspipe.cpp
         src/pqwindowcube.cpp
+        src/pqwindowimage.cpp
         src/sed.cpp
         src/sedfitgrid_thick.cpp
         src/sedfitgrid_thin.cpp
@@ -175,6 +176,7 @@ set(headers
         src/plotwindow.h
         src/pointspipe.h
         src/pqwindowcube.h
+        src/pqwindowimage.h
         src/sed.h
         src/sedfitgrid_thick.h
         src/sedfitgrid_thin.h
@@ -231,6 +233,7 @@ set(ui_files
         ui/operationqueue.ui
         ui/plotwindow.ui
         ui/pqwindowcube.ui
+        ui/pqwindowimage.ui
         ui/sedfitgrid_thick.ui
         ui/sedfitgrid_thin.ui
         ui/sedvisualizerplot.ui
@@ -249,7 +252,7 @@ set(ui_files
         ui/vlkbsimplequerycomposer.ui
         ui/vtkfitstoolswidget.ui
         ui/vtkfitstoolwidget_new.ui
-       ui/vtktoolswidget.ui
+        ui/vtktoolswidget.ui
         ui/vtkwindow_new.ui
         )
 
