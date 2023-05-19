@@ -165,7 +165,7 @@ QVector<double> AstroUtils::extractSpectrum(const char *fn, int x, int y, double
     }
 
     QVector<double> spectrum(naxes[2]);
-    long fpixel[3] = { x, y, 0 };
+    long fpixel[3] = { x + 1, y + 1, 0 };
     float value;
     for (long i = 1; i <= naxes[2]; ++i) {
         fpixel[2] = i;

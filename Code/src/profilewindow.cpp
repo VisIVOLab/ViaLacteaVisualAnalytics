@@ -28,6 +28,12 @@ ProfileWindow::~ProfileWindow()
     delete ui;
 }
 
+void ProfileWindow::setupSpectrumPlot()
+{
+    ui->yPlotQt->hide();
+    ui->xPlotQt->xAxis->setLabel("Slice");
+}
+
 void ProfileWindow::setLiveProfileFlag(bool flag)
 {
     ui->liveUpdate->setChecked(flag);
@@ -40,15 +46,13 @@ void ProfileWindow::plotProfiles(const QVector<double> &xProfile, double xRef,
     plotProfile(yProfile, yRef, ui->yPlotQt);
 }
 
-void ProfileWindow::plotSpectrum(const QVector<double> &spectrum)
+void ProfileWindow::plotSpectrum(const QVector<double> &spectrum, int x, int y)
 {
-    ui->yPlotQt->hide();
-    auto title = qobject_cast<QCPTextElement *>(ui->xPlotQt->plotLayout()->element(0, 0));
-    title->setText("Z Profile");
-    ui->xPlotQt->xAxis->setLabel("Slice");
-
     QVector<double> key(spectrum.size());
     std::iota(key.begin(), key.end(), 0);
+
+    auto title = qobject_cast<QCPTextElement *>(ui->xPlotQt->plotLayout()->element(0, 0));
+    title->setText(QString("Z Profile (%1, %2)").arg(x).arg(y));
 
     ui->xPlotQt->graph()->setData(key, spectrum);
     ui->xPlotQt->rescaleAxes();

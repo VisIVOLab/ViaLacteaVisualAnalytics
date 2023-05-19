@@ -97,12 +97,19 @@ void vtkInteractorStyleProfile::OnMouseMove()
 void vtkInteractorStyleProfile::OnLeftButtonDown()
 {
     Superclass::OnLeftButtonDown();
-    this->LiveMode = false;
+
     int *coords = this->Interactor->GetEventPosition();
     this->Coordinate->SetValue(coords[0], coords[1], 0);
     auto renderer = this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
     double *worldCoords = this->Coordinate->GetComputedWorldValue(renderer);
-    this->ProfileCb(worldCoords[0], worldCoords[1], LiveMode);
+
+    double *bounds = this->reader->GetBounds();
+    bool xInside = worldCoords[0] >= bounds[0] && worldCoords[0] <= bounds[1];
+    bool yInside = worldCoords[1] >= bounds[2] && worldCoords[1] <= bounds[3];
+    if (xInside && yInside) {
+        this->LiveMode = false;
+        this->ProfileCb(worldCoords[0], worldCoords[1], LiveMode);
+    }
 }
 
 //----------------------------------------------------------------------------

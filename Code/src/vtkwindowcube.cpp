@@ -806,6 +806,7 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
 {
     if (!profileWin) {
         profileWin = new ProfileWindow(bunit);
+        profileWin->setupSpectrumPlot();
         profileWin->show();
 
         connect(profileWin, &ProfileWindow::liveUpdateStateChanged, this, [this](int status) {
@@ -826,5 +827,5 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
     }
 
     QVector<double> spectrum = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, 0);
-    profileWin->plotSpectrum(spectrum);
+    profileWin->plotSpectrum(spectrum, x, y);
 }
