@@ -147,7 +147,8 @@ bool AstroUtils::checkSimCubeHeader(const std::string &file,
     return missingKeywords.empty();
 }
 
-QVector<double> AstroUtils::extractSpectrum(const char *fn, int x, int y, double nulval)
+QPair<QVector<double>, QVector<double>> AstroUtils::extractSpectrum(const char *fn, int x, int y,
+                                                                    double nulval)
 {
     fitsfile *fptr;
     int status = 0;
@@ -165,6 +166,7 @@ QVector<double> AstroUtils::extractSpectrum(const char *fn, int x, int y, double
     }
 
     QVector<double> spectrum(naxes[2]);
+    QVector<double> nanIndices;
     long fpixel[3] = { x + 1, y + 1, 0 };
     float value;
     for (long i = 1; i <= naxes[2]; ++i) {
@@ -176,6 +178,7 @@ QVector<double> AstroUtils::extractSpectrum(const char *fn, int x, int y, double
 
         if (std::isnan(value)) {
             value = nulval;
+            nanIndices.append(i - 1);
         }
 
         spectrum[i - 1] = value;
@@ -183,7 +186,7 @@ QVector<double> AstroUtils::extractSpectrum(const char *fn, int x, int y, double
 
     fits_close_file(fptr, &status);
 
-    return spectrum;
+    return qMakePair(spectrum, nanIndices);
 }
 
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)

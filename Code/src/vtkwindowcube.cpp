@@ -826,6 +826,7 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
         profileWin->setLiveProfileFlag(live);
     }
 
-    QVector<double> spectrum = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, 0);
-    profileWin->plotSpectrum(spectrum, x, y);
+    double nulval = 0;
+    auto vectors = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, nulval);
+    profileWin->plotSpectrum(vectors.first, vectors.second, x, y, nulval);
 }
