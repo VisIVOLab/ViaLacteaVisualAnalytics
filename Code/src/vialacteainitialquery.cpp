@@ -1,6 +1,12 @@
 #include "vialacteainitialquery.h"
 #include "ui_vialacteainitialquery.h"
 
+#include "authkeys.h"
+#include "authwrapper.h"
+#include "downloadmanager.h"
+#include "singleton.h"
+#include "vialactea.h"
+
 #include <QAuthenticator>
 #include <QDebug>
 #include <QDir>
@@ -11,13 +17,6 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QXmlStreamReader>
-
-#include "authkeys.h"
-#include "authwrapper.h"
-#include "downloadmanager.h"
-#include "mainwindow.h"
-#include "singleton.h"
-#include "vialactea.h"
 
 VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     : QWidget(parent), ui(new Ui::VialacteaInitialQuery)

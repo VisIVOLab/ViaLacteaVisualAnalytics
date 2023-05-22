@@ -3,8 +3,11 @@
 
 #include "ui_vtkwindow_new.h"
 #include "vispoint.h"
-#include "vtkDoubleArray.h"
 #include "vtkextracthistogram.h"
+
+#include "vtkDataSetAttributes.h"
+#include "vtkDoubleArray.h"
+#include "vtkPointData.h"
 #include "vtkTable.h"
 
 LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)

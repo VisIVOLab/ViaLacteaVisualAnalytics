@@ -1,17 +1,19 @@
 #include "higalselectedsources.h"
-#include "qdebug.h"
 #include "ui_higalselectedsources.h"
-#include <QListWidget>
-//#include "ViaLactea.h"
+
 #include "plotwindow.h"
-#include "singleton.h"
-//#include "viewselectedsourcedataset.h"
 #include "astroutils.h"
 #include "selectedsourcefieldsselect.h"
 #include "vlkbquery.h"
+
 #include "vtkCleanPolyData.h"
 #include "vtkPolyData.h"
+#include "vtkProperty.h"
+
+#include <QDebug>
+#include <QListWidget>
 #include <QWidgetAction>
+
 HigalSelectedSources::HigalSelectedSources(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::HigalSelectedSources)
 {

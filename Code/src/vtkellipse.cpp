@@ -1,20 +1,12 @@
 #include "vtkellipse.h"
-#include "qdebug.h"
+
 #include "vtkCellArray.h"
-#include "vtkImageData.h"
-#include "vtkImageViewer2.h"
 #include "vtkMath.h"
 #include "vtkPoints.h"
 #include "vtkPolyData.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkProperty.h"
-#include "vtkRotationFilter.h"
 #include "vtkTransformPolyDataFilter.h"
+
 #include <cmath>
-#include <vtkImageStencil.h>
-#include <vtkPolyDataToImageStencil.h>
-#include <vtkTransform.h>
-#include <vtkWindowToImageFilter.h>
 
 vtkEllipse::vtkEllipse(float SemiMajorAxisLength, float SemiMinorAxisLength, float angle, float c_x,
                        float c_y, float arcpixel, int band, int row, QString name,

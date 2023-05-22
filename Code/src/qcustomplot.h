@@ -26,7 +26,6 @@
 #ifndef QCUSTOMPLOT_H
 #define QCUSTOMPLOT_H
 
-#include <limits>
 #include <QCache>
 #include <QDateTime>
 #include <QDebug>
@@ -53,6 +52,8 @@
 #    include <QtNumeric>
 #    include <QtPrintSupport>
 #endif
+
+#include <limits>
 
 class QCPPainter;
 class QCustomPlot;

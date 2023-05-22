@@ -21,8 +21,6 @@
 
 #include "vstabledesktop.h"
 #include "base64.h"
-#include "mainwindow.h"
-#include "singleton.h"
 #include "visivoutilsdesktop.h"
 #include <cstdlib>
 #include <cstring>

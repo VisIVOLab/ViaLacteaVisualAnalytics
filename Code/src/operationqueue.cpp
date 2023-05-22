@@ -1,5 +1,4 @@
 #include "operationqueue.h"
-#include "qdebug.h"
 #include "ui_operationqueue.h"
 
 OperationQueue::OperationQueue(QWidget *parent) : QWidget(parent), ui(new Ui::OperationQueue)

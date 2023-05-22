@@ -10,8 +10,6 @@
 #include <QPair>
 #include <QPointer>
 
-#include "pqPipelineSource.h"
-
 class pqServer;
 class pqPipelineSource;
 

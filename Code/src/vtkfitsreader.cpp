@@ -1,6 +1,5 @@
 #include "vtkfitsreader.h"
 #include "qdebug.h"
-#include "vtkCommand.h"
 #include "vtkFloatArray.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"

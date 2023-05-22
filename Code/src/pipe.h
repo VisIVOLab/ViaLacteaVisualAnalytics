@@ -28,7 +28,9 @@
 */
 
 #include "vstabledesktop.h"
-#include "vtkPolyDataMapper.h"
+
+#include "vtkDataObject.h"
+#include "vtkDataSet.h"
 #include "vtkScalarBarActor.h"
 
 #include <map>

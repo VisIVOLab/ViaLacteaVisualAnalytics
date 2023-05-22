@@ -17,17 +17,23 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-
 #include "mainwindow.h"
-#include "sed.h"
+
 #include "singleton.h"
 #include "ui_mainwindow.h"
 #include "vialactea.h"
 #include "visivoimporterdesktop.h"
 #include "vispoint.h"
 #include "vtkfitsreader.h"
-#include "vtkSmartPointer.h"
 #include "vtkwindow_new.h"
+
+#include "pqAlwaysConnectedBehavior.h"
+#include "pqPersistentMainWindowStateBehavior.h"
+
+#include "vtkSmartPointer.h"
+#include "vtkSMProxyManager.h"
+#include "vtkSMReaderFactory.h"
+
 #include <QDebug>
 #include <QFile>
 #include <QFileDialog>
@@ -37,24 +43,6 @@
 #include <QIcon>
 #include <QThread>
 #include <QTreeView>
-//#include "vosamp.h"
-//#include "visivofilterdesktop.h"
-
-/*
-extern "C" {
-#include "visivo.h"
-}
-
-*/
-#include "vtkwindow_new.h"
-
-#include "pqAlwaysConnectedBehavior.h"
-#include "pqPersistentMainWindowStateBehavior.h"
-
-#include "pqApplicationCore.h"
-#include "pqObjectBuilder.h"
-#include "vtkSMProxyManager.h"
-#include "vtkSMReaderFactory.h"
 
 /*
  *  type

@@ -3,8 +3,7 @@
 
 #include "mainwindow.h"
 #include "singleton.h"
-//#include "vialactea.h"
-#include "astroutils.h"
+
 #include <QDebug>
 #include <QSettings>
 

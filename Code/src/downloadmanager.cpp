@@ -2,7 +2,6 @@
 
 #include "authwrapper.h"
 #include "loadingwidget.h"
-#include "singleton.h"
 
 #include <QCoreApplication>
 #include <QDebug>

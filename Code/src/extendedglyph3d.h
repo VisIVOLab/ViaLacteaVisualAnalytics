@@ -27,7 +27,6 @@
         @author Ugo Becciani <ugo.becciani@oact.inaf.it>
 */
 
-#include "vtkFiltersCoreModule.h" // For export macro
 #include "vtkPolyDataAlgorithm.h"
 
 #define VTK_SCALE_BY_SCALAR 0

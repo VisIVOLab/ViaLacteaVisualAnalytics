@@ -28,6 +28,8 @@
 */
 
 #include "pipe.h"
+
+#include "vtkPolyDataMapper.h"
 #include "vtkSmartPointer.h"
 
 class vtkPVLODActor;

@@ -44,8 +44,6 @@
 
 #include "vstabledesktop.h"
 #include "vtkfitsreader.h"
-#include "vtkImageActor.h"
-#include "vtkImageViewer2.h"
 #include "vtkPVLODActor.h"
 #include "vtkSmartPointer.h"
 #include "vtkVolume.h"

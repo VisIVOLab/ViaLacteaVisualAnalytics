@@ -17,14 +17,13 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#include <cstdlib>
-#include <cstring>
-
 #include "vialacteasource.h"
 
 #include "base64.h"
 #include "visivoutilsdesktop.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>

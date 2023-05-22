@@ -3,8 +3,6 @@
 
 #include "aboutform.h"
 #include "astroutils.h"
-#include "authwrapper.h"
-#include "mainwindow.h"
 #include "pqwindowcube.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
@@ -23,16 +21,13 @@
 #include <QSettings>
 #include <QWebChannel>
 
-#include "pqActiveObjects.h"
+#include "pqActiveObjects.h" //Do not remove, it is used
 #include "pqApplicationCore.h"
-#include "pqLoadDataReaction.h"
 #include "pqObjectBuilder.h"
-#include "vtkSMProxy.h"
-#include "vtkSMStringVectorProperty.h"
+#include "pqServerResource.h"
 
 #include "vtkSMProxyManager.h"
 #include "vtkSMReaderFactory.h"
-#include "vtkSMSessionProxyManager.h"
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 

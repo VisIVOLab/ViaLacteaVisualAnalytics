@@ -1,18 +1,17 @@
 #include "dbquery.h"
 #include "ui_dbquery.h"
 
-#include "authkeys.h"
 #include "authwrapper.h"
 #include "downloadmanager.h"
-#include "qdebug.h"
-#include "QDir"
-#include "QObject"
 #include "vtkwindow_new.h"
 #include "xmlparser.h"
 
 #include <QCoreApplication>
+#include <QDebug>
+#include <QDir>
 #include <QDomElement>
 #include <QMessageBox>
+#include <QObject>
 #include <QSettings>
 #include <QSignalMapper>
 #include <QStringList>

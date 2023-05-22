@@ -34,12 +34,14 @@
 #ifndef vtkLegendScaleActor_h
 #define vtkLegendScaleActor_h
 
-#include "vtkCoordinate.h" // For vtkViewportCoordinateMacro
 #include "vtkfitsreader.h"
+
+#include "vtkCoordinate.h" // For vtkViewportCoordinateMacro
 #include "vtkImageActor.h"
 #include "vtkProp.h"
 #include "vtkRenderingAnnotationModule.h" // For export macro
 #include "vtkSmartPointer.h"
+
 #include <QMap>
 
 class vtkAxisActor2D;
