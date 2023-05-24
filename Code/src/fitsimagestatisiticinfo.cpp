@@ -1,5 +1,6 @@
 #include "fitsimagestatisiticinfo.h"
 #include "ui_fitsimagestatisiticinfo.h"
+
 #include <QDebug>
 
 FitsImageStatisiticInfo::FitsImageStatisiticInfo(vtkwindow_new *v, QWidget *parent)

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>pqwindowimage</class>
- <widget class="QMainWindow" name="pqwindowimage">
+ <class>pqWindowImage</class>
+ <widget class="QMainWindow" name="pqWindowImage">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -14,12 +14,83 @@
    <string/>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_3">
+   <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <layout class="QHBoxLayout" name="controls"/>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="PVlayout"/>
+     <layout class="QHBoxLayout" name="centralLayout">
+      <item>
+       <layout class="QVBoxLayout" name="ImagePanel">
+        <item>
+         <layout class="QHBoxLayout" name="controls">
+          <item>
+           <layout class="QVBoxLayout" name="LayerSettings">
+            <item>
+             <layout class="QHBoxLayout" name="SelectSettings">
+              <item>
+               <widget class="QComboBox" name="cmbxLUTSelect"/>
+              </item>
+              <item>
+               <widget class="QRadioButton" name="linearRadioButton">
+                <property name="text">
+                 <string>Linear</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QRadioButton" name="logRadioButton">
+                <property name="text">
+                 <string>Log</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <item>
+               <widget class="QSlider" name="opacitySlider">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="PVLayout"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="VLVAPanel">
+        <item>
+         <widget class="QTableWidget" name="elementListWidget">
+          <property name="columnCount">
+           <number>2</number>
+          </property>
+          <attribute name="horizontalHeaderVisible">
+           <bool>false</bool>
+          </attribute>
+          <column/>
+          <column/>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="listWidget">
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="tableWidget"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -29,24 +100,11 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>18</height>
+     <height>23</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuRendering">
-    <property name="title">
-     <string>Rendering</string>
-    </property>
-    <widget class="QMenu" name="menuColorMap">
-     <property name="title">
-      <string>Color Map</string>
-     </property>
-     <addaction name="separator"/>
-    </widget>
-    <addaction name="menuColorMap"/>
-   </widget>
-   <addaction name="menuRendering"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <resources/>
  <connections/>

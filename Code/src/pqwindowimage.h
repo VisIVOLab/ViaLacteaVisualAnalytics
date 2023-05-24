@@ -56,7 +56,11 @@ private:
     void changeColorMap(const QString &name);
     void showStatusBarMessage(const std::string &msg);
 
+    QString createFitsHeaderFile(const FitsHeaderMap &fitsHeader);
     void createView();
+    void readInfoFromSource();
+    void readHeaderFromSource();
+    void showLegendScaleActor();
 };
 
 #endif // PQWINDOWIMAGE_H

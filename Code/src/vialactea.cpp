@@ -203,7 +203,7 @@ void ViaLactea::onImageDataLoaded(const QString &filepath)
     subsetSelector->setAttribute(Qt::WA_DeleteOnClose);
     connect(subsetSelector, &SubsetSelectorDialog::subsetSelected, this,
             [=](const CubeSubset &subset) {
-                auto win = new pqwindowimage(filepath, subset);
+                auto win = new pqWindowImage(filepath, subset);
                 win->showMaximized();
                 win->raise();
                 win->activateWindow();
