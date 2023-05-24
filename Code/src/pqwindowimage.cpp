@@ -39,20 +39,15 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(FitsFileName);
 
-    // Create LUTs menu actions
-//    auto presets = vtkSMTransferFunctionPresets::GetInstance();
-//    auto lutGroup = new QActionGroup(this);
-//    for (int i = 0; i < presets->GetNumberOfPresets(); ++i) {
-//        QString name = QString::fromStdString(presets->GetPresetName(i));
-//        auto lut = new QAction(name, lutGroup);
-//        lut->setCheckable(true);
-//        if (name == "Grayscale")
-//            lut->setChecked(true);
-
-//        lutGroup->addAction(lut);
-//        connect(lut, &QAction::triggered, this, [=]() { changeColorMap(name); });
-//    }
-//    ui->menuColorMap->addActions(lutGroup->actions());
+    // Create the LUT combo box options
+    clmInit = true;
+    auto presets = vtkSMTransferFunctionPresets::GetInstance();
+    for (int i = 0; i < presets->GetNumberOfPresets(); ++i) {
+        QString name = QString::fromStdString(presets->GetPresetName(i));
+        ui->cmbxLUTSelect->addItem(name);
+    }
+    ui->cmbxLUTSelect->setCurrentIndex(ui->cmbxLUTSelect->findText("Grayscale"));
+    clmInit = false;
 
     // ParaView Init
     builder = pqApplicationCore::instance()->getObjectBuilder();
@@ -100,6 +95,7 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
             mgr->GetColorTransferFunction("FITSImage",
                                           imageProxy->GetSessionProxyManager()));
+
     changeColorMap("Grayscale");
 
     /*// Interactor to show pixel coordinates in the status bar
@@ -273,3 +269,10 @@ void pqWindowImage::readHeaderFromSource()
         }
     }
 }
+
+void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
+{
+    if (index >= 0 && !clmInit)
+        changeColorMap(ui->cmbxLUTSelect->itemText(index));
+}
+

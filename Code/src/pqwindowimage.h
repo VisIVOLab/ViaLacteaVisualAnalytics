@@ -28,6 +28,9 @@ public:
     explicit pqWindowImage(const QString &filepath, const CubeSubset &cubeSubset = CubeSubset());
     ~pqWindowImage();
 
+private slots:
+    void on_cmbxLUTSelect_currentIndexChanged(int index);
+
 private:
     Ui::pqWindowImage *ui;
 
@@ -42,6 +45,8 @@ private:
     pqRenderView *viewImage;
     vtkSMProxy *imageProxy;
     vtkSMTransferFunctionProxy *lutProxy;
+
+    bool clmInit;
 
     QString fitsHeaderPath;
     FitsHeaderMap fitsHeader;
