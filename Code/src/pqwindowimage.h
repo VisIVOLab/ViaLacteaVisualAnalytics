@@ -31,6 +31,8 @@ public:
 private slots:
     void on_cmbxLUTSelect_currentIndexChanged(int index);
 
+    void on_linearRadioButton_toggled(bool checked);
+
 private:
     Ui::pqWindowImage *ui;
 
@@ -66,6 +68,7 @@ private:
     void readInfoFromSource();
     void readHeaderFromSource();
     void showLegendScaleActor();
+    void rescaleForLog();
 };
 
 #endif // PQWINDOWIMAGE_H

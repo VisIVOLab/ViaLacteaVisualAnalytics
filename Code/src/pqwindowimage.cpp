@@ -19,6 +19,7 @@
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkSMCoreUtilities.h>
 #include <vtkSMPropertyHelper.h>
 #include <vtkSMPVRepresentationProxy.h>
 #include <vtkSMSessionProxyManager.h>
@@ -47,6 +48,7 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
         ui->cmbxLUTSelect->addItem(name);
     }
     ui->cmbxLUTSelect->setCurrentIndex(ui->cmbxLUTSelect->findText("Grayscale"));
+    ui->linearRadioButton->setChecked(true);
     clmInit = false;
 
     // ParaView Init
@@ -228,6 +230,21 @@ void pqWindowImage::showLegendScaleActor()
     vtkRenderer::SafeDownCast(rwImage->GetItemAsObject(1))->AddActor(legendActorCube);
 }
 
+void pqWindowImage::rescaleForLog()
+{
+    double range[2];
+
+    vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
+    std::cerr << "Range prior to adjustment: [" << range[0] << ", " << range[1] << "]." << std::endl;
+
+    if (vtkSMCoreUtilities::AdjustRangeForLog(range))
+    {
+        vtkGenericWarningMacro("Ranges not valid for log-space. Changed the range to ("
+            << range[0] << ", " << range[1] << ").");
+        vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
+    }
+}
+
 void pqWindowImage::createView()
 {
     viewImage = qobject_cast<pqRenderView *>(
@@ -274,5 +291,30 @@ void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
 {
     if (index >= 0 && !clmInit)
         changeColorMap(ui->cmbxLUTSelect->itemText(index));
+}
+
+void pqWindowImage::on_linearRadioButton_toggled(bool checked)
+{
+    if (clmInit) return;
+
+    std::string scale = (ui->linearRadioButton->isChecked()) ? "linear" : "log";
+    if (scale == "linear"){
+       if (vtkSMTransferFunctionProxy::MapControlPointsToLinearSpace(lutProxy))
+           std::cerr << "Successfully mapped data to linear space" << std::endl;
+       changeColorMap(ui->cmbxLUTSelect->currentText());
+    }
+    else{
+        rescaleForLog();
+        if (vtkSMTransferFunctionProxy::MapControlPointsToLogSpace(lutProxy))
+            std::cerr << "Successfully mapped data to log space" << std::endl;
+    }
+    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(lutProxy, false, false);
+    lutProxy->UpdateVTKObjects();
+
+    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
+    imageProxy->UpdateVTKObjects();
+
+    viewImage->resetDisplay();
+    viewImage->render();
 }
 
