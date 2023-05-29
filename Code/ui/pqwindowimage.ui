@@ -26,10 +26,38 @@
             <item>
              <layout class="QHBoxLayout" name="SelectSettings">
               <item>
+               <widget class="QLabel" name="label_2">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>100</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Colour Map:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QComboBox" name="cmbxLUTSelect"/>
               </item>
               <item>
                <widget class="QRadioButton" name="linearRadioButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>100</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Linear</string>
                 </property>
@@ -40,6 +68,12 @@
               </item>
               <item>
                <widget class="QRadioButton" name="logRadioButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>100</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Log</string>
                 </property>
@@ -50,7 +84,20 @@
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_3">
               <item>
+               <widget class="QLabel" name="label">
+                <property name="text">
+                 <string>Opacity:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QSlider" name="opacitySlider">
+                <property name="maximum">
+                 <number>100</number>
+                </property>
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
                 </property>

@@ -33,6 +33,12 @@ private slots:
 
     void on_linearRadioButton_toggled(bool checked);
 
+    void on_opacitySlider_actionTriggered(int action);
+
+    void on_opacitySlider_valueChanged(int value);
+
+    void on_opacitySlider_sliderReleased();
+
 private:
     Ui::pqWindowImage *ui;
 
@@ -49,6 +55,8 @@ private:
     vtkSMTransferFunctionProxy *lutProxy;
 
     bool clmInit;
+    bool logScaleActive;
+    bool loadOpacityChange;
 
     QString fitsHeaderPath;
     FitsHeaderMap fitsHeader;
@@ -69,6 +77,8 @@ private:
     void readHeaderFromSource();
     void showLegendScaleActor();
     void rescaleForLog();
+    void setLogScale(bool logScale);
+    void setOpacity(float value);
 };
 
 #endif // PQWINDOWIMAGE_H

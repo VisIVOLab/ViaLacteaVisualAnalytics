@@ -50,6 +50,10 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     ui->cmbxLUTSelect->setCurrentIndex(ui->cmbxLUTSelect->findText("Grayscale"));
     ui->linearRadioButton->setChecked(true);
     clmInit = false;
+    logScaleActive = false;
+
+    //Set default opacity
+    ui->opacitySlider->setSliderPosition(ui->opacitySlider->maximum());
 
     // ParaView Init
     builder = pqApplicationCore::instance()->getObjectBuilder();
@@ -235,13 +239,50 @@ void pqWindowImage::rescaleForLog()
     double range[2];
 
     vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
-    std::cerr << "Range prior to adjustment: [" << range[0] << ", " << range[1] << "]." << std::endl;
 
     if (vtkSMCoreUtilities::AdjustRangeForLog(range))
     {
         vtkGenericWarningMacro("Ranges not valid for log-space. Changed the range to ("
             << range[0] << ", " << range[1] << ").");
         vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
+    }
+}
+
+void pqWindowImage::setLogScale(bool logScale)
+{
+    if (clmInit) return;
+
+    if (logScale){
+        logScaleActive = true;
+        rescaleForLog();
+        if (!vtkSMTransferFunctionProxy::MapControlPointsToLogSpace(lutProxy))
+            std::cerr << "Error in mapping data to log space!" << std::endl;
+    }
+    else{
+        logScaleActive = false;
+        if (!vtkSMTransferFunctionProxy::MapControlPointsToLinearSpace(lutProxy))
+            std::cerr << "Error in mapping data to linear space!" << std::endl;
+        changeColorMap(ui->cmbxLUTSelect->currentText());
+    }
+    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(lutProxy, false, false);
+    lutProxy->UpdateVTKObjects();
+
+    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
+    imageProxy->UpdateVTKObjects();
+
+    viewImage->resetDisplay();
+    viewImage->render();
+}
+
+void pqWindowImage::setOpacity(float value)
+{
+    if (vtkSMProperty *opacityProperty = imageProxy->GetProperty("Opacity")) {
+
+        vtkSMPropertyHelper(opacityProperty).Set(value);
+        imageProxy->UpdateVTKObjects();
+
+        viewImage->resetDisplay();
+        viewImage->render();
     }
 }
 
@@ -291,30 +332,51 @@ void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
 {
     if (index >= 0 && !clmInit)
         changeColorMap(ui->cmbxLUTSelect->itemText(index));
+    if (logScaleActive)
+        setLogScale(logScaleActive);
 }
 
 void pqWindowImage::on_linearRadioButton_toggled(bool checked)
 {
-    if (clmInit) return;
+    setLogScale(!checked);
+}
 
-    std::string scale = (ui->linearRadioButton->isChecked()) ? "linear" : "log";
-    if (scale == "linear"){
-       if (vtkSMTransferFunctionProxy::MapControlPointsToLinearSpace(lutProxy))
-           std::cerr << "Successfully mapped data to linear space" << std::endl;
-       changeColorMap(ui->cmbxLUTSelect->currentText());
+
+void pqWindowImage::on_opacitySlider_actionTriggered(int action)
+{
+    // Set the slider to only update the image when released or changed by keyboard/mouse
+    switch (action) {
+    case QSlider::SliderNoAction:
+        loadOpacityChange = false;
+        break;
+    case QSlider::SliderMove:
+        loadOpacityChange = false;
+        break;
+    default:
+        loadOpacityChange = true;
+        break;
     }
-    else{
-        rescaleForLog();
-        if (vtkSMTransferFunctionProxy::MapControlPointsToLogSpace(lutProxy))
-            std::cerr << "Successfully mapped data to log space" << std::endl;
-    }
-    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(lutProxy, false, false);
-    lutProxy->UpdateVTKObjects();
+}
 
-    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
-    imageProxy->UpdateVTKObjects();
 
-    viewImage->resetDisplay();
-    viewImage->render();
+void pqWindowImage::on_opacitySlider_valueChanged(int value)
+{
+    // Check what caused the value to change, and don't update while sliding.
+    if (!loadOpacityChange)
+        return;
+
+    float opacityValue = ui->opacitySlider->value() / 100.0;
+
+    setOpacity(opacityValue);
+    loadOpacityChange = false;
+}
+
+
+void pqWindowImage::on_opacitySlider_sliderReleased()
+{
+    float opacityValue = ui->opacitySlider->value() / 100.0;
+
+    setOpacity(opacityValue);
+    loadOpacityChange = false;
 }
 
