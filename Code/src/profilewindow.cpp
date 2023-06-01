@@ -28,11 +28,20 @@ ProfileWindow::~ProfileWindow()
     delete ui;
 }
 
-void ProfileWindow::setupSpectrumPlot()
+void ProfileWindow::setupSpectrumPlot(int channels, double crval, double cdelt, double crpix,
+                                      const QString &cunit)
 {
     setWindowTitle("Z Profile");
+
+    key.resize(channels);
+    double initSlice = crval - (cdelt * (crpix - 1));
+    for (int i = 0; i < channels; ++i) {
+        double velocity = initSlice + cdelt * i;
+        key.replace(i, velocity);
+    }
+
     ui->yPlotQt->hide();
-    ui->xPlotQt->xAxis->setLabel("Slice");
+    ui->xPlotQt->xAxis->setLabel(cunit);
 
     ui->xPlotQt->legend->setVisible(true);
     ui->xPlotQt->graph(0)->setName("Z Profile");
@@ -41,6 +50,16 @@ void ProfileWindow::setupSpectrumPlot()
     ui->xPlotQt->graph(1)->setScatterStyle(QCPScatterStyle::ssPlus);
     ui->xPlotQt->graph(1)->setLineStyle(QCPGraph::lsNone);
     ui->xPlotQt->graph(1)->setPen(QPen(Qt::red));
+}
+
+void ProfileWindow::setupSpectrumPlot(int channels, double crval, double cdelt, double crpix,
+                                      double restfrq)
+{
+    setupSpectrumPlot(channels, crval, cdelt, crpix, "km/s");
+    std::for_each(key.begin(), key.end(), [restfrq](double &v) {
+        double c = 299792.458;
+        v = (restfrq - v) / restfrq * c;
+    });
 }
 
 void ProfileWindow::setLiveProfileFlag(bool flag)
@@ -61,13 +80,15 @@ void ProfileWindow::plotSpectrum(const QVector<double> &spectrum, const QVector<
     auto title = qobject_cast<QCPTextElement *>(ui->xPlotQt->plotLayout()->element(0, 0));
     title->setText(QString("Z Profile (%1, %2)").arg(x).arg(y));
 
-    QVector<double> key(spectrum.size());
-    std::iota(key.begin(), key.end(), 0);
     ui->xPlotQt->graph(0)->setData(key, spectrum);
 
     if (!nanIndices.isEmpty()) {
+        // Convert slice number to velocity value
+        QVector<double> nans(nanIndices);
+        std::for_each(nans.begin(), nans.end(), [this](double &v) { v = key.at(v); });
+
         ui->xPlotQt->legend->setVisible(true);
-        ui->xPlotQt->graph(1)->setData(nanIndices, QVector<double>(nanIndices.size(), nulval));
+        ui->xPlotQt->graph(1)->setData(nans, QVector<double>(nans.size(), nulval));
     } else {
         ui->xPlotQt->legend->setVisible(false);
         ui->xPlotQt->graph(1)->data()->clear();

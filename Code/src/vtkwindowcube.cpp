@@ -434,13 +434,23 @@ void vtkWindowCube::updateVelocityText()
     double crpix3 = fitsHeader.value("CRPIX3").toDouble();
 
     double initSlice = crval3 - (cdelt3 * (crpix3 - 1));
-    double velocity = initSlice + cdelt3 * currentSlice;
+    double value = initSlice + cdelt3 * currentSlice;
 
-    if (fitsHeader.value("CUNIT3").startsWith("m")) {
+    QString cunit3 = fitsHeader.value("CUNIT3");
+    cunit3.replace("'", QString());
+    cunit3.replace("\"", QString());
+    cunit3 = cunit3.simplified();
+
+    if (cunit3.startsWith("m")) {
         // Return value in km/s
-        velocity /= 1000;
+        value /= 1000;
+    } else if (cunit3.startsWith("Hz")) {
+        // Convert to velocity
+        double restfrq = fitsHeader.value("RESTFRQ").toDouble();
+        double c = 299792.458;
+        value = (restfrq - value) / restfrq * c;
     }
-    ui->velocityText->setText(QString::number(velocity).append(" Km/s"));
+    ui->velocityText->setText(QString::number(value).append(" Km/s"));
 }
 
 void vtkWindowCube::setThreshold(double threshold)
@@ -805,8 +815,22 @@ void vtkWindowCube::on_actionExtract_spectrum_triggered()
 void vtkWindowCube::extractSpectrum(double x, double y, bool live)
 {
     if (!profileWin) {
+        int naxis3 = fitsHeader.value("NAXIS3").toInt();
+        double crval3 = fitsHeader.value("CRVAL3").toDouble();
+        double cdelt3 = fitsHeader.value("CDELT3").toDouble();
+        double crpix3 = fitsHeader.value("CRPIX3").toDouble();
+        QString cunit3 = fitsHeader.value("CUNIT3");
+        cunit3.replace("'", QString());
+        cunit3.replace("\"", QString());
+        cunit3 = cunit3.simplified();
+
         profileWin = new ProfileWindow(bunit);
-        profileWin->setupSpectrumPlot();
+        if (cunit3.contains("m/s")) {
+            profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, cunit3);
+        } else {
+            double restfrq = fitsHeader.value("RESTFRQ").toDouble();
+            profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, restfrq);
+        }
         profileWin->show();
 
         connect(profileWin, &ProfileWindow::liveUpdateStateChanged, this, [this](int status) {
@@ -829,4 +853,5 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
     double nulval = 0;
     auto vectors = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, nulval);
     profileWin->plotSpectrum(vectors.first, vectors.second, x, y, nulval);
+    profileWin->raise();
 }

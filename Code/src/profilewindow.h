@@ -17,7 +17,9 @@ public:
     explicit ProfileWindow(const QString &bunit = QString(), QWidget *parent = nullptr);
     ~ProfileWindow();
 
-    void setupSpectrumPlot();
+    void setupSpectrumPlot(int channels, double crval, double cdelt, double crpix,
+                           const QString &cunit);
+    void setupSpectrumPlot(int channels, double crval, double cdelt, double crpix, double restfrq);
 
     void setLiveProfileFlag(bool flag);
     void plotProfiles(const QVector<double> &xProfile, double xRef, const QVector<double> &yProfile,
@@ -30,6 +32,8 @@ signals:
 
 private:
     Ui::ProfileWindow *ui;
+    QVector<double> key;
+
     void plotProfile(const QVector<double> &profile, double ref, QCustomPlot *plot);
 };
 
