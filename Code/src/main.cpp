@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");
-    a.setApplicationVersion("1.5.3");
+    a.setApplicationVersion("1.6");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
 
     setlocale(LC_NUMERIC, "C");
