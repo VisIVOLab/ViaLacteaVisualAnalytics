@@ -2,6 +2,7 @@
 #define PQWINDOWIMAGE_H
 
 #include "subsetselectordialog.h"
+#include "vtkImageStack.h"
 
 #include <QMainWindow>
 #include <QMap>
@@ -44,6 +45,7 @@ private:
 
     QString FitsFileName;
     pqPipelineSource *ImageSource;
+    vtkImageStack *imagestack;
 
     CubeSubset cubeSubset;
 
@@ -52,11 +54,14 @@ private:
     pqObjectBuilder *builder;
     pqRenderView *viewImage;
     vtkSMProxy *imageProxy;
+    vtkSMProxy *dataProxy;
     vtkSMTransferFunctionProxy *lutProxy;
 
     bool clmInit;
-    bool logScaleActive;
+
     bool loadOpacityChange;
+
+    bool logScaleActive;
 
     QString fitsHeaderPath;
     FitsHeaderMap fitsHeader;
