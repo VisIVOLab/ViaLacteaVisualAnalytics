@@ -315,10 +315,17 @@
      <string>WCS</string>
     </property>
    </widget>
+   <widget class="QMenu" name="menuAction">
+    <property name="title">
+     <string>Action</string>
+    </property>
+    <addaction name="actionExtract_spectrum"/>
+   </widget>
    <addaction name="menuCamera"/>
    <addaction name="menuWCS"/>
    <addaction name="menuView"/>
    <addaction name="menuMoment"/>
+   <addaction name="menuAction"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionFront">
@@ -445,6 +452,14 @@
    </property>
    <property name="text">
     <string>Show Moment Map</string>
+   </property>
+  </action>
+  <action name="actionExtract_spectrum">
+   <property name="text">
+    <string>Extract spectrum</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
    </property>
   </action>
  </widget>

@@ -17,9 +17,13 @@ public:
     explicit ProfileWindow(const QString &bunit = QString(), QWidget *parent = nullptr);
     ~ProfileWindow();
 
+    void setupSpectrumPlot();
+
     void setLiveProfileFlag(bool flag);
     void plotProfiles(const QVector<double> &xProfile, double xRef, const QVector<double> &yProfile,
                       double yRef);
+    void plotSpectrum(const QVector<double> &spectrum, const QVector<double> &nanIndices, int x,
+                      int y, double nulval);
 
 signals:
     void liveUpdateStateChanged(int status);

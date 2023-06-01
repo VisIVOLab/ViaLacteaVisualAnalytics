@@ -3,8 +3,12 @@
 
 #include "libwcs/wcs.h"
 
+#include <QPair>
+#include <QVector>
+
 #include <list>
 #include <string>
+#include <vector>
 
 class AstroUtils
 {
@@ -25,6 +29,8 @@ public:
     static int calculateResizeFactor(long size, long maxSize);
     static bool checkSimCubeHeader(const std::string &file,
                                    std::list<std::string> &missingKeywords);
+    static QPair<QVector<double>, QVector<double>> extractSpectrum(const char *fn, int x, int y,
+                                                                   double nulval);
 
 private:
     static WorldCoor *GetWCSFITS(char *filename, int verbose);
