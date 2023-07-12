@@ -57,6 +57,13 @@ message(STATUS "CFITSIO ${CFITSIO_VERSION}")
 find_package(Boost 1.78.0 QUIET REQUIRED)
 message(STATUS "BOOST ${Boost_VERSION}")
 
+include(FetchContent)
+FetchContent_Declare(pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG v2.10.4
+)
+FetchContent_MakeAvailable(pybind11)
+
 set(PROJECT_SOURCES
     src/aboutform.cpp
     src/aboutform.h
@@ -335,6 +342,7 @@ target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
     ${VTK_LIBRARIES}
     CFITSIO::CFITSIO
     Boost::headers
+    pybind11::embed
 )
 
 set_target_properties(ViaLacteaVisualAnalytics PROPERTIES
