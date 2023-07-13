@@ -11,6 +11,7 @@
 #include <pqObjectBuilder.h>
 #include <pqPipelineSource.h>
 #include <pqRenderView.h>
+#include <pqSMAdaptor.h>
 
 #include <vtkPVArrayInformation.h>
 #include <vtkPVDataInformation.h>
@@ -30,6 +31,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QDebug>
 
 pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubset)
     : ui(new Ui::pqWindowImage),
@@ -153,8 +155,11 @@ void pqWindowImage::changeColorMap(const QString &name)
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);
         lutProxy->UpdateVTKObjects();
         vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
+        
+        vtkSMPVRepresentationProxy::SetScalarBarVisibility(imageProxy,viewImage->getProxy(), true);
+        qDebug()<<vtkSMPVRepresentationProxy::GetEstimatedNumberOfAnnotationsOnScalarBar(imageProxy,viewImage->getProxy());
+        
         imageProxy->UpdateVTKObjects();
-
         viewImage->render();
     }
 }
@@ -252,15 +257,16 @@ void pqWindowImage::showLegendScaleActor()
  */
 void pqWindowImage::rescaleForLog()
 {
-    double range[2];
+    double range[2] = {0};
 
     vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
-
     if (vtkSMCoreUtilities::AdjustRangeForLog(range))
     {
         vtkGenericWarningMacro("Ranges not valid for log-space. Changed the range to ("
             << range[0] << ", " << range[1] << ").");
         vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
+        //vtkSMTransferFunctionProxy::RescaleTransferFunction(scalarOpacityFunctionProxy, range);
+
     }
 }
 
@@ -272,27 +278,22 @@ void pqWindowImage::rescaleForLog()
  */
 void pqWindowImage::setLogScale(bool logScale)
 {
+    qDebug()<<"log toggle";
+        
     //If in the process of initialising the UI, ignore this command.
     if (clmInit) return;
-
     if (logScale){
         logScaleActive = true;
-        rescaleForLog();
-        if (!vtkSMTransferFunctionProxy::MapControlPointsToLogSpace(lutProxy))
-            std::cerr << "Error in mapping data to log space!" << std::endl;
-    }
-    else{
-        logScaleActive = false;
-        if (!vtkSMTransferFunctionProxy::MapControlPointsToLinearSpace(lutProxy))
-            std::cerr << "Error in mapping data to linear space!" << std::endl;
+        vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(1);
         changeColorMap(ui->cmbxLUTSelect->currentText());
     }
-    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(lutProxy, false, false);
+    else{
+        logScaleActive = true;
+        vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
+        changeColorMap(ui->cmbxLUTSelect->currentText());
+    }
     lutProxy->UpdateVTKObjects();
-
-    vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
     imageProxy->UpdateVTKObjects();
-
     viewImage->render();
 }
 
