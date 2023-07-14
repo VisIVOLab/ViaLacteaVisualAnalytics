@@ -157,7 +157,6 @@ void pqWindowImage::changeColorMap(const QString &name)
         vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
         
         vtkSMPVRepresentationProxy::SetScalarBarVisibility(imageProxy,viewImage->getProxy(), true);
-        qDebug()<<vtkSMPVRepresentationProxy::GetEstimatedNumberOfAnnotationsOnScalarBar(imageProxy,viewImage->getProxy());
         
         imageProxy->UpdateVTKObjects();
         viewImage->render();
@@ -265,8 +264,6 @@ void pqWindowImage::rescaleForLog()
         vtkGenericWarningMacro("Ranges not valid for log-space. Changed the range to ("
             << range[0] << ", " << range[1] << ").");
         vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
-        //vtkSMTransferFunctionProxy::RescaleTransferFunction(scalarOpacityFunctionProxy, range);
-
     }
 }
 
@@ -278,8 +275,6 @@ void pqWindowImage::rescaleForLog()
  */
 void pqWindowImage::setLogScale(bool logScale)
 {
-    qDebug()<<"log toggle";
-        
     //If in the process of initialising the UI, ignore this command.
     if (clmInit) return;
     if (logScale){
@@ -288,7 +283,7 @@ void pqWindowImage::setLogScale(bool logScale)
         changeColorMap(ui->cmbxLUTSelect->currentText());
     }
     else{
-        logScaleActive = true;
+        logScaleActive = false;
         vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
         changeColorMap(ui->cmbxLUTSelect->currentText());
     }
