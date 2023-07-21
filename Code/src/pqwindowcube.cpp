@@ -59,6 +59,19 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     opacityGroup->addAction(ui->action50);
     opacityGroup->addAction(ui->action75);
     opacityGroup->addAction(ui->action100);
+    
+    logScaleActive=false;
+
+    auto scalingGroup = new QActionGroup(this);
+    auto scalingLinear = new QAction("Linear", scalingGroup);
+    scalingLinear->setCheckable(true);
+    scalingLinear->setChecked(true);
+    scalingGroup->addAction(scalingLinear);
+    auto scalingLog = new QAction("Logarithm", scalingGroup);
+    scalingLog->setCheckable(true);
+    connect(scalingLinear, &QAction::triggered, this, [=]() { setLogScale(false); });
+    connect(scalingLog, &QAction::triggered, this, [=]() { setLogScale(true); });
+    ui->menuScaling->addActions(scalingGroup->actions());
 
     // Create LUTs menu actions
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
@@ -73,7 +86,7 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
         lutGroup->addAction(lut);
         connect(lut, &QAction::triggered, this, [=]() { changeColorMap(name); });
     }
-    ui->menuColorMap->addActions(lutGroup->actions());
+    ui->menuPreset->addActions(lutGroup->actions());
 
     // ParaView Init
     builder = pqApplicationCore::instance()->getObjectBuilder();
@@ -589,10 +602,36 @@ void pqWindowCube::generateVolumeRendering()
     viewCube->render();
 }
 
+
+void pqWindowCube::setLogScale(bool logScale)
+{
+    //If in the process of initialising the UI, ignore this command.
+    if (logScale){
+        logScaleActive = true;
+        vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(1);
+        changeColorMap(currentColorMap);
+    }
+    else{
+        logScaleActive = false;
+        vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
+        changeColorMap(currentColorMap);
+    }
+    lutProxy->UpdateVTKObjects();
+    sliceProxy->UpdateVTKObjects();
+    cubeSliceProxy->UpdateVTKObjects();
+
+    viewSlice->resetDisplay();
+
+    viewSlice->render();
+    viewCube->render();
+    
+}
+
 void pqWindowCube::changeColorMap(const QString &name)
 {
     if (vtkSMProperty *lutProperty = sliceProxy->GetProperty("LookupTable")) {
 
+        currentColorMap=name;
         auto presets = vtkSMTransferFunctionPresets::GetInstance();
         lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()));
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);

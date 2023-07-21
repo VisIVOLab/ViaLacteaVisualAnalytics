@@ -419,7 +419,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>23</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">
@@ -462,7 +462,20 @@
       <property name="title">
        <string>Color Map</string>
       </property>
-      <addaction name="separator"/>
+      <widget class="QMenu" name="menuScaling">
+       <property name="title">
+        <string>Scaling</string>
+       </property>
+       <addaction name="separator"/>
+      </widget>
+      <widget class="QMenu" name="menuPreset">
+       <property name="title">
+        <string>Preset</string>
+       </property>
+       <addaction name="separator"/>
+      </widget>
+      <addaction name="menuScaling"/>
+      <addaction name="menuPreset"/>
      </widget>
      <addaction name="menuColorMap"/>
     </widget>
