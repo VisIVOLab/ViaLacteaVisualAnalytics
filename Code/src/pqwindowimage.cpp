@@ -260,15 +260,23 @@ void pqWindowImage::setLogScale(bool logScale)
     // If in the process of initialising the UI, ignore this command.
     if (clmInit)
         return;
+
     if (logScale) {
+        double range[2];
+        vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
+        vtkSMCoreUtilities::AdjustRangeForLog(range);
+
         logScaleActive = true;
+        vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
         vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(1);
         changeColorMap(ui->cmbxLUTSelect->currentText());
     } else {
         logScaleActive = false;
+        vtkSMTransferFunctionProxy::RescaleTransferFunctionToDataRange(lutProxy);
         vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
         changeColorMap(ui->cmbxLUTSelect->currentText());
     }
+
     lutProxy->UpdateVTKObjects();
     imageProxy->UpdateVTKObjects();
     viewImage->render();
