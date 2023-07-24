@@ -29,9 +29,9 @@
 #include <vtkSMTransferFunctionProxy.h>
 #include <vtkSMViewProxy.h>
 
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
-#include <QDebug>
 
 pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubset)
     : ui(new Ui::pqWindowImage),
@@ -54,7 +54,7 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     clmInit = false;
     logScaleActive = false;
 
-    //Set default opacity
+    // Set default opacity
     ui->opacitySlider->setSliderPosition(ui->opacitySlider->maximum());
 
     // ParaView Init
@@ -80,31 +80,30 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     setSubsetProperties(cubeSubset);
 
     createView();
-    imageProxy = builder->createDataRepresentation(this->ImageSource->getOutputPort(0), viewImage)->getProxy();
+    imageProxy = builder->createDataRepresentation(this->ImageSource->getOutputPort(0), viewImage)
+                         ->getProxy();
 
     // Fetch information from source and header and update UI
-//    readInfoFromSource(); //What does this do? Don't need for 2D apparently.
+    //    readInfoFromSource(); //What does this do? Don't need for 2D apparently.
     readHeaderFromSource();
-//    rms = getRMSFromHeader(fitsHeader);
-//    lowerBound = 3 * rms;
-//    upperBound = dataMax;
-//    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
-//    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
-//    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
-//    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
-//    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
+    //    rms = getRMSFromHeader(fitsHeader);
+    //    lowerBound = 3 * rms;
+    //    upperBound = dataMax;
+    //    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
+    //    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
+    //    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
+    //    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
+    //    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
 
     // Show Legend Scale Actors in image renderer
     fitsHeaderPath = createFitsHeaderFile(fitsHeader);
     showLegendScaleActor();
 
-
-    //Set up colour map controls
+    // Set up colour map controls
     vtkNew<vtkSMTransferFunctionManager> mgr;
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
-            mgr->GetColorTransferFunction("FITSImage",
-                                          imageProxy->GetSessionProxyManager()));
-    //Set default colour map
+            mgr->GetColorTransferFunction("FITSImage", imageProxy->GetSessionProxyManager()));
+    // Set default colour map
     changeColorMap("Grayscale");
 
     // Interactor to show pixel coordinates in the status bar
@@ -129,7 +128,7 @@ pqWindowImage::~pqWindowImage()
 
 void pqWindowImage::setSubsetProperties(const CubeSubset &subset)
 {
-    //Set subset limits for the image, to limit memory usage of large images
+    // Set subset limits for the image, to limit memory usage of large images
     auto sourceProxy = ImageSource->getProxy();
     vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Set(subset.ReadSubExtent);
     vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.SubExtent, 6);
@@ -155,9 +154,9 @@ void pqWindowImage::changeColorMap(const QString &name)
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);
         lutProxy->UpdateVTKObjects();
         vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(imageProxy, false, false);
-        
-        vtkSMPVRepresentationProxy::SetScalarBarVisibility(imageProxy,viewImage->getProxy(), true);
-        
+
+        vtkSMPVRepresentationProxy::SetScalarBarVisibility(imageProxy, viewImage->getProxy(), true);
+
         imageProxy->UpdateVTKObjects();
         viewImage->render();
     }
@@ -250,24 +249,6 @@ void pqWindowImage::showLegendScaleActor()
 }
 
 /**
- * @brief pqWindowImage::rescaleForLog
- * Rescales the data range to be in a format suitable for a log scaling.
- * Reused from the paraview/vtk source code.
- */
-void pqWindowImage::rescaleForLog()
-{
-    double range[2] = {0};
-
-    vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
-    if (vtkSMCoreUtilities::AdjustRangeForLog(range))
-    {
-        vtkGenericWarningMacro("Ranges not valid for log-space. Changed the range to ("
-            << range[0] << ", " << range[1] << ").");
-        vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
-    }
-}
-
-/**
  * @brief pqWindowImage::setLogScale
  * Sets the image visualization to use log10 scaling on the colour map.
  * @param logScale
@@ -275,14 +256,14 @@ void pqWindowImage::rescaleForLog()
  */
 void pqWindowImage::setLogScale(bool logScale)
 {
-    //If in the process of initialising the UI, ignore this command.
-    if (clmInit) return;
-    if (logScale){
+    // If in the process of initialising the UI, ignore this command.
+    if (clmInit)
+        return;
+    if (logScale) {
         logScaleActive = true;
         vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(1);
         changeColorMap(ui->cmbxLUTSelect->currentText());
-    }
-    else{
+    } else {
         logScaleActive = false;
         vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
         changeColorMap(ui->cmbxLUTSelect->currentText());
@@ -316,7 +297,7 @@ void pqWindowImage::setOpacity(float value)
 void pqWindowImage::createView()
 {
     viewImage = qobject_cast<pqRenderView *>(
-                builder->createView(pqRenderView::renderViewType(), server));
+            builder->createView(pqRenderView::renderViewType(), server));
     viewImage->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->PVLayout->addWidget(viewImage->widget());
 }
@@ -364,8 +345,8 @@ void pqWindowImage::readHeaderFromSource()
  */
 void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
 {
-    //If the UI is being initialised, ignore this command.
-    if (index >= 0 && !clmInit){
+    // If the UI is being initialised, ignore this command.
+    if (index >= 0 && !clmInit) {
         changeColorMap(ui->cmbxLUTSelect->itemText(index));
         if (logScaleActive)
             setLogScale(logScaleActive);
@@ -419,7 +400,8 @@ void pqWindowImage::on_opacitySlider_valueChanged(int value)
     if (!loadOpacityChange)
         return;
 
-    //Opacity is from 0 to 1, slider is from 0 to 100. So divide by 100 to get value to be sent to server.
+    // Opacity is from 0 to 1, slider is from 0 to 100. So divide by 100 to get value to be sent to
+    // server.
     float opacityValue = ui->opacitySlider->value() / 100.0;
 
     setOpacity(opacityValue);
@@ -433,10 +415,10 @@ void pqWindowImage::on_opacitySlider_valueChanged(int value)
  */
 void pqWindowImage::on_opacitySlider_sliderReleased()
 {
-    //Opacity is from 0 to 1, slider is from 0 to 100. So divide by 100 to get value to be sent to server.
+    // Opacity is from 0 to 1, slider is from 0 to 100. So divide by 100 to get value to be sent to
+    // server.
     float opacityValue = ui->opacitySlider->value() / 100.0;
 
     setOpacity(opacityValue);
     loadOpacityChange = false;
 }
-

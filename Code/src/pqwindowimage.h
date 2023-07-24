@@ -25,6 +25,7 @@ class pqWindowImage : public QMainWindow
     Q_OBJECT
 
     using FitsHeaderMap = QMap<QString, QString>;
+
 public:
     explicit pqWindowImage(const QString &filepath, const CubeSubset &cubeSubset = CubeSubset());
     ~pqWindowImage();
@@ -72,7 +73,7 @@ private:
     double lowerBound;
     double upperBound;
 
-    void setSubsetProperties(const CubeSubset& subset);
+    void setSubsetProperties(const CubeSubset &subset);
     void changeColorMap(const QString &name);
     void showStatusBarMessage(const std::string &msg);
 
@@ -81,7 +82,6 @@ private:
     void readInfoFromSource();
     void readHeaderFromSource();
     void showLegendScaleActor();
-    void rescaleForLog();
     void setLogScale(bool logScale);
     void setOpacity(float value);
 };
