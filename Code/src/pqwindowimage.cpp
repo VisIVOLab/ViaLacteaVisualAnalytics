@@ -105,6 +105,7 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
             mgr->GetColorTransferFunction("FITSImage", imageProxy->GetSessionProxyManager()));
     // Set default colour map
     changeColorMap("Grayscale");
+    setLogScale(false);
 
     // Interactor to show pixel coordinates in the status bar
     vtkNew<vtkInteractorStyleImageCustom> interactorStyle;
