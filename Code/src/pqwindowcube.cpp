@@ -20,6 +20,7 @@
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkSMCoreUtilities.h>
 #include <vtkSMPropertyHelper.h>
 #include <vtkSMPVRepresentationProxy.h>
 #include <vtkSMRenderViewProxy.h>
@@ -60,6 +61,19 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     opacityGroup->addAction(ui->action75);
     opacityGroup->addAction(ui->action100);
 
+    logScaleActive = false;
+
+    auto scalingGroup = new QActionGroup(this);
+    auto scalingLinear = new QAction("Linear", scalingGroup);
+    scalingLinear->setCheckable(true);
+    scalingLinear->setChecked(true);
+    scalingGroup->addAction(scalingLinear);
+    auto scalingLog = new QAction("Logarithm", scalingGroup);
+    scalingLog->setCheckable(true);
+    connect(scalingLinear, &QAction::triggered, this, [=]() { setLogScale(false); });
+    connect(scalingLog, &QAction::triggered, this, [=]() { setLogScale(true); });
+    ui->menuScaling->addActions(scalingGroup->actions());
+
     // Create LUTs menu actions
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     auto lutGroup = new QActionGroup(this);
@@ -73,7 +87,7 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
         lutGroup->addAction(lut);
         connect(lut, &QAction::triggered, this, [=]() { changeColorMap(name); });
     }
-    ui->menuColorMap->addActions(lutGroup->actions());
+    ui->menuPreset->addActions(lutGroup->actions());
 
     // ParaView Init
     builder = pqApplicationCore::instance()->getObjectBuilder();
@@ -121,6 +135,8 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     showSlice();
     setSliceDatacube(1);
     changeColorMap("Grayscale");
+    setLogScale(false);
+    vtkSMPVRepresentationProxy::SetScalarBarVisibility(sliceProxy, viewSlice->getProxy(), true);
 
     // Interactor to show pixel coordinates in the status bar
     vtkNew<vtkInteractorStyleImageCustom> interactorStyle;
@@ -589,10 +605,38 @@ void pqWindowCube::generateVolumeRendering()
     viewCube->render();
 }
 
+void pqWindowCube::setLogScale(bool logScale)
+{
+    if (logScale) {
+        double range[2];
+        vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
+        vtkSMCoreUtilities::AdjustRangeForLog(range);
+
+        logScaleActive = true;
+        vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
+        vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(1);
+        changeColorMap(currentColorMap);
+    } else {
+        logScaleActive = false;
+        vtkSMTransferFunctionProxy::RescaleTransferFunctionToDataRange(lutProxy);
+        vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
+        changeColorMap(currentColorMap);
+    }
+    lutProxy->UpdateVTKObjects();
+    sliceProxy->UpdateVTKObjects();
+    cubeSliceProxy->UpdateVTKObjects();
+
+    viewSlice->resetDisplay();
+
+    viewSlice->render();
+    viewCube->render();
+}
+
 void pqWindowCube::changeColorMap(const QString &name)
 {
     if (vtkSMProperty *lutProperty = sliceProxy->GetProperty("LookupTable")) {
 
+        currentColorMap = name;
         auto presets = vtkSMTransferFunctionPresets::GetInstance();
         lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()));
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);

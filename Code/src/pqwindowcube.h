@@ -89,6 +89,8 @@ private:
     double lowerBound;
     double upperBound;
     int currentSlice;
+    bool logScaleActive;
+    QString currentColorMap;
 
     void showStatusBarMessage(const std::string &msg);
 
@@ -104,6 +106,7 @@ private:
     void showLegendScaleActors();
     void showSlice();
     void changeColorMap(const QString &name);
+    void setLogScale(bool logScale);
 
     void setSliceDatacube(int value);
     void updateVelocityText();
