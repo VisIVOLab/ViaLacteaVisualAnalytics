@@ -1,3 +1,5 @@
+#include <pybind11/embed.h>
+
 #include "mainwindow.h"
 #include "singleton.h"
 
@@ -18,6 +20,9 @@ int main(int argc, char *argv[])
     QWebEngineUrlScheme::registerScheme(vlvaUrlScheme);
 
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+
+    // Init python interpreter
+    pybind11::scoped_interpreter guard;
 
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");

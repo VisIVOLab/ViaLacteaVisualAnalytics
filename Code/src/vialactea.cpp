@@ -9,6 +9,7 @@
 #include "sedvisualizerplot.h"
 #include "sessionloader.h"
 #include "settingform.h"
+#include "simpleconesearchform.h"
 #include "singleton.h"
 #include "usertablewindow.h"
 #include "vialacteainitialquery.h"
@@ -506,6 +507,17 @@ void ViaLactea::on_actionAbout_triggered()
     aboutForm->show();
     aboutForm->activateWindow();
     aboutForm->raise();
+}
+
+void ViaLactea::on_actionConeSearch_triggered()
+{
+    if (!coneForm) {
+        coneForm = new SimpleConeSearchForm(this);
+    }
+
+    coneForm->show();
+    coneForm->activateWindow();
+    coneForm->raise();
 }
 
 void ViaLactea::on_select3dPushButton_clicked()

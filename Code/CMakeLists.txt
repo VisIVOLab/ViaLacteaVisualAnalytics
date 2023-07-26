@@ -201,6 +201,8 @@ set(PROJECT_SOURCES
     src/simcube/simcube_projection-galactic/fits_simimg.cpp
     src/simcube/simcube_projection-galactic/fits_simimg.hpp
     src/simcube/simcube_projection.hpp
+    src/simpleconesearchform.cpp
+    src/simpleconesearchform.h
     src/singleton.h
     src/source.cpp
     src/source.h
@@ -296,6 +298,7 @@ set(PROJECT_UI
     ui/settingform.ui
     ui/sfilterdialog.ui
     ui/simcollapsedialog.ui
+    ui/simpleconesearchform.ui
     ui/sourcewidget.ui
     ui/usertablewindow.ui
     ui/vialactea.ui
