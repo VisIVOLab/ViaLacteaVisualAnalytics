@@ -20,99 +20,140 @@
       <item>
        <layout class="QVBoxLayout" name="ImagePanel">
         <item>
-         <widget class="QGroupBox" name="LayerControlPanel">
-          <property name="title">
-           <string>Layer Controls</string>
-          </property>
-          <layout class="QHBoxLayout" name="controls">
-           <item>
-            <layout class="QVBoxLayout" name="LayerSettings">
+         <layout class="QHBoxLayout" name="ControlPanel">
+          <item>
+           <widget class="QGroupBox" name="StackControlBox">
+            <property name="title">
+             <string>Stack Controls</string>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
              <item>
-              <layout class="QHBoxLayout" name="SelectSettings">
-               <item>
-                <widget class="QLabel" name="label_2">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>100</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
+              <layout class="QGridLayout" name="gridLayout">
+               <item row="0" column="0">
+                <widget class="QPushButton" name="btnAddImageToStack">
                  <property name="text">
-                  <string>Colour Map:</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  <string>Add Image</string>
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QComboBox" name="cmbxLUTSelect"/>
-               </item>
-               <item>
-                <widget class="QRadioButton" name="linearRadioButton">
-                 <property name="maximumSize">
-                  <size>
-                   <width>100</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
+               <item row="0" column="1">
+                <widget class="QPushButton" name="btnRemoveImageFromStack">
                  <property name="text">
-                  <string>Linear</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
+                  <string>Remove Image</string>
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QRadioButton" name="logRadioButton">
-                 <property name="maximumSize">
-                  <size>
-                   <width>100</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Log</string>
-                 </property>
-                </widget>
+               <item row="1" column="1">
+                <widget class="QSpinBox" name="sbxStackActiveLayer"/>
                </item>
-              </layout>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_3">
-               <item>
-                <widget class="QLabel" name="label">
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_3">
                  <property name="text">
-                  <string>Opacity:</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSlider" name="opacitySlider">
-                 <property name="maximum">
-                  <number>100</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <string>Active layer index:</string>
                  </property>
                 </widget>
                </item>
               </layout>
              </item>
             </layout>
-           </item>
-          </layout>
-         </widget>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="LayerControlPanel">
+            <property name="title">
+             <string>Layer Controls</string>
+            </property>
+            <layout class="QHBoxLayout" name="controls">
+             <item>
+              <layout class="QVBoxLayout" name="LayerSettings">
+               <item>
+                <layout class="QHBoxLayout" name="SelectSettings">
+                 <item>
+                  <widget class="QLabel" name="label_2">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>100</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Colour Map:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QComboBox" name="cmbxLUTSelect"/>
+                 </item>
+                 <item>
+                  <widget class="QRadioButton" name="linearRadioButton">
+                   <property name="maximumSize">
+                    <size>
+                     <width>100</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Linear</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QRadioButton" name="logRadioButton">
+                   <property name="maximumSize">
+                    <size>
+                     <width>100</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Log</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_3">
+                 <item>
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>Opacity:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSlider" name="opacitySlider">
+                   <property name="maximum">
+                    <number>100</number>
+                   </property>
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
         </item>
         <item>
          <layout class="QHBoxLayout" name="PVLayout"/>
@@ -155,7 +196,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>23</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

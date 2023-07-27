@@ -1,4 +1,5 @@
 #include "pqwindowimage.h"
+#include "pqFileDialog.h"
 #include "ui_pqwindowimage.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
@@ -21,8 +22,11 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSMCoreUtilities.h>
+#include <vtkSMProperty.h>
 #include <vtkSMPropertyHelper.h>
+#include "vtkSMProxyManager.h"
 #include <vtkSMPVRepresentationProxy.h>
+#include "vtkSMReaderFactory.h"
 #include <vtkSMSessionProxyManager.h>
 #include <vtkSMTransferFunctionManager.h>
 #include <vtkSMTransferFunctionPresets.h>
@@ -51,6 +55,7 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     }
     ui->cmbxLUTSelect->setCurrentIndex(ui->cmbxLUTSelect->findText("Grayscale"));
     ui->linearRadioButton->setChecked(true);
+    this->images = std::vector<Images>();
     clmInit = false;
     logScaleActive = false;
 
@@ -74,16 +79,18 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     vtkSMPropertyHelper(renderingSettings, "CompressorConfig").Set("vtkLZ4Compressor 0 5");
 
     // Load Reactions
-    ImageSource = pqLoadDataReaction::loadData({ filepath });
+    BaseImageSource = pqLoadDataReaction::loadData({ filepath });
 
     // Handle Subset selection
     setSubsetProperties(cubeSubset);
 
     createView();
-    imageProxy = builder->createDataRepresentation(this->ImageSource->getOutputPort(0), viewImage)->getProxy();
+    imageProxy = builder->createDataRepresentation(this->BaseImageSource->getOutputPort(0), viewImage)->getProxy();
+    vtkSMPropertyHelper(imageProxy, "Representation").Set("VLVA Image Stack");
+    addImageToStack(filepath.toStdString());
 
     // Fetch information from source and header and update UI
-//    readInfoFromSource(); //What does this do? Don't need for 2D apparently.
+    readInfoFromSource();
     readHeaderFromSource();
 //    rms = getRMSFromHeader(fitsHeader);
 //    lowerBound = 3 * rms;
@@ -97,7 +104,6 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     // Show Legend Scale Actors in image renderer
     fitsHeaderPath = createFitsHeaderFile(fitsHeader);
     showLegendScaleActor();
-
 
     //Set up colour map controls
     vtkNew<vtkSMTransferFunctionManager> mgr;
@@ -121,16 +127,16 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
 
 pqWindowImage::~pqWindowImage()
 {
-    builder->destroy(ImageSource);
+    builder->destroy(BaseImageSource);
     builder->destroySources(server);
-    ImageSource = NULL;
+    BaseImageSource = NULL;
     delete ui;
 }
 
 void pqWindowImage::setSubsetProperties(const CubeSubset &subset)
 {
     //Set subset limits for the image, to limit memory usage of large images
-    auto sourceProxy = ImageSource->getProxy();
+    auto sourceProxy = BaseImageSource->getProxy();
     vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Set(subset.ReadSubExtent);
     vtkSMPropertyHelper(sourceProxy, "SubExtent").Set(subset.SubExtent, 6);
     vtkSMPropertyHelper(sourceProxy, "AutoScale").Set(subset.AutoScale);
@@ -309,6 +315,36 @@ void pqWindowImage::setOpacity(float value)
     }
 }
 
+int pqWindowImage::addImageToStack(std::string file)
+{
+    std::cerr << "Adding image " << file << " to stack via proxy call." << std::endl;
+    if (vtkSMProperty *addImageProperty = imageProxy->GetProperty("AddImage")){
+        vtkSMPropertyHelper(addImageProperty).Set(file.c_str());
+        imageProxy->UpdateVTKObjects();
+        std::cerr << "Added image " << file << " to stack via proxy call." << std::endl;
+        int index;
+        vtkSMPropertyHelper(imageProxy->GetProperty("StackLayerCount")).Get(&index);
+        auto im = Images(file, index, false);
+        images.push_back(im);
+        return 1;
+    }
+    std::cerr << "Failed to retrieve property from proxy." << std::endl;
+    return 0;
+}
+
+int pqWindowImage::removeImageFromStack(const int index)
+{
+    std::cerr << "Removing image at pos " << index << " from stack via proxy call." << std::endl;
+    if (vtkSMProperty *remImageProperty = imageProxy->GetProperty("RemoveImage")){
+        vtkSMPropertyHelper(remImageProperty).Set(index);
+        imageProxy->UpdateVTKObjects();
+        std::cerr << "Removed image at pos " << index << " from stack via proxy call." << std::endl;
+        return 1;
+    }
+    std::cerr << "Failed to retrieve property from proxy." << std::endl;
+    return 0;
+}
+
 /**
  * @brief pqWindowImage::createView
  * Function that creates the window in which the data is visualized.
@@ -324,7 +360,7 @@ void pqWindowImage::createView()
 void pqWindowImage::readInfoFromSource()
 {
     // Bounds
-    auto fitsInfo = this->ImageSource->getOutputPort(0)->getDataInformation();
+    auto fitsInfo = this->BaseImageSource->getOutputPort(0)->getDataInformation();
     fitsInfo->GetBounds(bounds);
 
     // Data range
@@ -338,7 +374,7 @@ void pqWindowImage::readInfoFromSource()
 void pqWindowImage::readHeaderFromSource()
 {
     auto dataMoverProxy = vtk::TakeSmartPointer(serverProxyManager->NewProxy("misc", "DataMover"));
-    vtkSMPropertyHelper(dataMoverProxy, "Producer").Set(this->ImageSource->getProxy());
+    vtkSMPropertyHelper(dataMoverProxy, "Producer").Set(this->BaseImageSource->getProxy());
     vtkSMPropertyHelper(dataMoverProxy, "PortNumber").Set(1);
     vtkSMPropertyHelper(dataMoverProxy, "SkipEmptyDataSets").Set(1);
     dataMoverProxy->UpdateVTKObjects();
@@ -438,5 +474,22 @@ void pqWindowImage::on_opacitySlider_sliderReleased()
 
     setOpacity(opacityValue);
     loadOpacityChange = false;
+}
+
+void pqWindowImage::on_btnAddImageToStack_clicked()
+{
+    vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
+    QString filters = readerFactory->GetSupportedFileTypes(server->session());
+    pqFileDialog dialog(server, this, QString(), QString(), filters);
+    dialog.setFileMode(pqFileDialog::ExistingFile);
+    if (dialog.exec() == pqFileDialog::Accepted) {
+        QString file = dialog.getSelectedFiles().first();
+        addImageToStack(file.toStdString());
+    }
+}
+
+void pqWindowImage::on_btnRemoveImageFromStack_clicked()
+{
+    removeImageFromStack(ui->sbxStackActiveLayer->value() + 1); //Plus 1 to compensate for the base layer that is present in the image stack.
 }
 
