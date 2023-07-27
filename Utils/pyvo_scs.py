@@ -2,28 +2,6 @@ import pyvo as vo
 from pyvo_utils import *
 
 
-def columns(cone_url):
-    """Returns the available columns in this service
-
-    Parameters
-    ----------
-    cone_url : str
-        Cone Search URL
-
-    Returns
-    -------
-    list
-        List of tuples (name, description)
-    """
-    cone_search = vo.dal.SCSService(cone_url)
-    try:
-        cols = [(col.name, col.description or str())
-                for col in cone_search.columns]
-        return make_response(exit_code=0, payload=cols)
-    except Exception as ex:
-        return make_response(exit_code=1, payload=str(ex))
-
-
 def search(cone_url, ra, dec, radius, verbosity=2):
     """Submit a Simple Cone Search query
 
