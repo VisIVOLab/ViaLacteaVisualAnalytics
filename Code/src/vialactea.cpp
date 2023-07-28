@@ -29,6 +29,7 @@
 
 #include "vtkSMProxyManager.h"
 #include "vtkSMReaderFactory.h"
+#include "vtkSMPluginManager.h"
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -173,6 +174,9 @@ bool ViaLactea::connectToPVServer()
 
     server = pqApplicationCore::instance()->getObjectBuilder()->createServer(
             pqServerResource(serverUrl), 3);
+    
+    vtkSMPluginManager* pluginManager = vtkSMProxyManager::GetProxyManager()->GetPluginManager();
+    pluginManager->LoadLocalPlugin("VLVAImageStackRepresentation.so");
 
     vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
     readerFactory->RegisterPrototype("sources", "FitsReader");
