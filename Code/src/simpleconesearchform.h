@@ -21,9 +21,11 @@ public:
 
 private slots:
     void search();
+    void requestCutout();
 
 private:
     Ui::SimpleConeSearchForm *ui;
+    int idxAccessURL;
 
     bool checkInputs();
     void updateTable(const pybind11::dict &dict);
