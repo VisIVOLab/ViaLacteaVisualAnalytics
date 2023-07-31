@@ -234,8 +234,6 @@ set(PROJECT_SOURCES
     src/vispoint.h
     src/vlkbquery.cpp
     src/vlkbquery.h
-    src/vlkbquerycomposer.cpp
-    src/vlkbquerycomposer.h
     src/vlkbsimplequerycomposer.cpp
     src/vlkbsimplequerycomposer.h
     src/vlkbtable.cpp
@@ -307,7 +305,6 @@ set(PROJECT_UI
     ui/vialacteastringdictwidget.ui
     ui/viewselectedsourcedataset.ui
     ui/vlkbquery.ui
-    ui/vlkbquerycomposer.ui
     ui/vlkbsimplequerycomposer.ui
     ui/vtkfitstoolswidget.ui
     ui/vtkfitstoolwidget_new.ui
