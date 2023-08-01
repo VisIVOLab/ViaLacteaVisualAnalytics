@@ -41,12 +41,25 @@ private slots:
 
     void on_opacitySlider_sliderReleased();
 
+    void on_btnAddImageToStack_clicked();
+
+    void on_btnRemoveImageFromStack_clicked();
+
 private:
+    struct Images
+    {
+        std::string fileName;
+        int index;
+        bool logScale, active;
+        Images(std::string f, int i, bool log) : fileName(f), index(i), logScale(log), active(true){}
+    };
+
     Ui::pqWindowImage *ui;
 
     QString FitsFileName;
-    pqPipelineSource *ImageSource;
-    vtkImageStack *imagestack;
+    pqPipelineSource *BaseImageSource;
+
+    std::vector<Images> images;
 
     CubeSubset cubeSubset;
 
@@ -55,7 +68,6 @@ private:
     pqObjectBuilder *builder;
     pqRenderView *viewImage;
     vtkSMProxy *imageProxy;
-    vtkSMProxy *dataProxy;
     vtkSMTransferFunctionProxy *lutProxy;
 
     bool clmInit;
@@ -77,6 +89,8 @@ private:
     void changeColorMap(const QString &name);
     void showStatusBarMessage(const std::string &msg);
 
+    void updateUI();
+
     QString createFitsHeaderFile(const FitsHeaderMap &fitsHeader);
     void createView();
     void readInfoFromSource();
@@ -84,6 +98,8 @@ private:
     void showLegendScaleActor();
     void setLogScale(bool logScale);
     void setOpacity(float value);
+    int addImageToStack(std::string file);
+    int removeImageFromStack(const int index);
 };
 
 #endif // PQWINDOWIMAGE_H
