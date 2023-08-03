@@ -308,12 +308,12 @@ void pqWindowImage::setOpacity(float value)
 int pqWindowImage::addImageToStack(std::string file)
 {
     std::cerr << "Adding image " << file << " to stack via proxy call." << std::endl;
-    if (vtkSMProperty *addImageProperty = imageProxy->GetProperty("AddImage")){
+    int index;
+    vtkSMPropertyHelper(imageProxy->GetProperty("StackActiveLayerInfo")).Get(&index);
+    if (auto addImageProperty = imageProxy->GetProperty("AddImage")){
         vtkSMPropertyHelper(addImageProperty).Set(file.c_str());
         imageProxy->UpdateVTKObjects();
         std::cerr << "Added image " << file << " to stack via proxy call." << std::endl;
-        int index;
-        vtkSMPropertyHelper(imageProxy->GetProperty("StackLayerCount")).Get(&index);
         auto im = Images(file, index, false);
         images.push_back(im);
         return 1;
