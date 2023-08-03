@@ -11,6 +11,8 @@
 
 #include <clocale>
 
+namespace py = pybind11;
+
 int main(int argc, char *argv[])
 {
     QWebEngineUrlScheme vlvaUrlScheme("vlva");
@@ -21,13 +23,15 @@ int main(int argc, char *argv[])
 
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
-    // Init python interpreter
-    pybind11::scoped_interpreter guard;
-
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion("1.6");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
+
+    // Init python interpreter
+    py::scoped_interpreter guard;
+    py::module_ sys = py::module_::import("sys");
+    sys.attr("path").attr("append")(QApplication::applicationDirPath().toStdString());
 
     setlocale(LC_NUMERIC, "C");
     QLocale::setDefault(QLocale::c());
