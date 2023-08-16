@@ -174,11 +174,6 @@ bool ViaLactea::connectToPVServer()
 
     server = pqApplicationCore::instance()->getObjectBuilder()->createServer(
             pqServerResource(serverUrl), 3);
-    
-    vtkSMPluginManager* pluginManager = vtkSMProxyManager::GetProxyManager()->GetPluginManager();
-    struct stat buffer;
-    std::string pluginFile = (stat ("./bin/Debug/VLVAImageStackRepresentation.so", &buffer) == 0) ? "./bin/Debug/VLVAImageStackRepresentation.so" : "./Debug/VLVAImageStackRepresentation.so";
-    pluginManager->LoadLocalPlugin(pluginFile.c_str());
 
     vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
     readerFactory->RegisterPrototype("sources", "FitsReader");

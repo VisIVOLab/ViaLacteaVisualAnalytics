@@ -2,7 +2,7 @@
 #define PQWINDOWIMAGE_H
 
 #include "subsetselectordialog.h"
-#include "vtkImageStack.h"
+#include "vlvastackimage.h"
 
 #include <QMainWindow>
 #include <QMap>
@@ -46,22 +46,9 @@ private slots:
     void on_btnRemoveImageFromStack_clicked();
 
 private:
-    struct Images
-    {
-        std::string fileName;
-        int index;
-        bool logScale, active;
-        Images(std::string f, int i, bool log) : fileName(f), index(i), logScale(log), active(true){}
-    };
-
     Ui::pqWindowImage *ui;
 
-    QString FitsFileName;
-    pqPipelineSource *BaseImageSource;
-
-    std::vector<Images> images;
-
-    CubeSubset cubeSubset;
+    std::vector<vlvaStackImage> images;
 
     pqServer *server;
     vtkSMSessionProxyManager *serverProxyManager;
@@ -76,16 +63,8 @@ private:
 
     bool logScaleActive;
 
-    QString fitsHeaderPath;
-    FitsHeaderMap fitsHeader;
-    double bounds[6];
-    double dataMin;
-    double dataMax;
-    double rms;
-    double lowerBound;
-    double upperBound;
+    int activeIndex;
 
-    void setSubsetProperties(const CubeSubset &subset);
     void changeColorMap(const QString &name);
     void showStatusBarMessage(const std::string &msg);
 
@@ -98,7 +77,8 @@ private:
     void showLegendScaleActor();
     void setLogScale(bool logScale);
     void setOpacity(float value);
-    int addImageToStack(std::string file);
+    int addImageToStack(QString file);
+    int addImageToStack(QString file, const CubeSubset& subset);
     int removeImageFromStack(const int index);
 };
 
