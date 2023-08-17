@@ -31,9 +31,12 @@ public:
         int setOpacity(float value, bool updateVal = true);
         int setPosition();
         int init(QString f, CubeSubset subset);
+        size_t getIndex() const;
 
         const std::string getFitsHeaderPath() const;
         const QString getFitsFileName() const;
+
+        bool operator<(const vlvaStackImage& other) const;
     private:
         int index;
         bool logScale, active;

@@ -45,6 +45,8 @@ private slots:
 
     void on_btnRemoveImageFromStack_clicked();
 
+    void on_sbxStackActiveLayer_valueChanged(int arg1);
+
 private:
     Ui::pqWindowImage *ui;
 

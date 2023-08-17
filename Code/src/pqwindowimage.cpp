@@ -146,6 +146,7 @@ void pqWindowImage::showStatusBarMessage(const std::string &msg)
 
 void pqWindowImage::updateUI()
 {
+    clmInit = true;
     setWindowTitle(this->images[activeIndex].getFitsFileName());
 
     // Interactor to show pixel coordinates in the status bar
@@ -156,6 +157,24 @@ void pqWindowImage::updateUI()
     viewImage->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
             interactorStyle);
     this->ui->sbxStackActiveLayer->setValue(this->activeIndex);
+    this->ui->lstImageList->clear();
+//    std::sort(images.begin(), images.end());
+
+    for (vlvaStackImage& i : images)
+    {
+        i.setPosition();
+        this->ui->lstImageList->addItem(i.getFitsFileName());
+    }
+    this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
+    int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex].getColourMap());
+    this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
+    this->ui->sbxStackActiveLayer->setValue(activeIndex);
+    this->ui->sbxStackActiveLayer->setMaximum(images.size() - 1);
+    this->ui->opacitySlider->setValue(this->images.at(activeIndex).getOpacity() * 100);
+    this->ui->logRadioButton->setChecked(this->images.at(activeIndex).getLogScale());
+    this->ui->linearRadioButton->setChecked(!this->images.at(activeIndex).getLogScale());
+    viewImage->render();
+    clmInit = false;
 }
 
 void pqWindowImage::showLegendScaleActor()
@@ -228,13 +247,17 @@ int pqWindowImage::addImageToStack(QString file)
         return 1;
     } else
     {
-        std::cerr << "Failed to retrieve property from proxy." << std::endl;
+        std::cerr << "Failed to initialise image for file " << file.toStdString() << "." << std::endl;
+        removeImageFromStack(activeIndex);
         return 0;
     }
 }
 
 int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
 {
+    // If in the process of initialising the UI, ignore this command.
+    if (clmInit)
+        return 1;
     std::cerr << "Adding image " << file.toStdString() << " to stack via proxy call." << std::endl;
     int index = images.size();
     auto im = vlvaStackImage(file, index, logScaleDefault, builder, viewImage, serverProxyManager);
@@ -248,22 +271,20 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
         return 1;
     } else
     {
-        std::cerr << "Failed to retrieve property from proxy." << std::endl;
+        std::cerr << "Failed to initialise image for file " << file.toStdString() << "." << std::endl;
+        removeImageFromStack(activeIndex);
         return 0;
     }
 }
 
 int pqWindowImage::removeImageFromStack(const int index)
 {
-    std::cerr << "Removing image at pos " << index << " from stack via proxy call." << std::endl;
-    if (vtkSMProperty *remImageProperty = imageProxy->GetProperty("RemoveImage")){
-        vtkSMPropertyHelper(remImageProperty).Set(index);
-        imageProxy->UpdateVTKObjects();
-        std::cerr << "Removed image at pos " << index << " from stack via proxy call." << std::endl;
+    // If in the process of initialising the UI, ignore this command.
+    if (clmInit)
         return 1;
-    }
-    std::cerr << "Failed to retrieve property from proxy." << std::endl;
-    return 0;
+    std::cerr << "Removing image at pos " << index << " from stack via proxy call." << std::endl;
+    images.erase(images.begin() + index);
+    return 1;
 }
 
 /**
@@ -290,8 +311,7 @@ void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
     // If the UI is being initialised, ignore this command.
     if (index >= 0 && !clmInit) {
         changeColorMap(ui->cmbxLUTSelect->itemText(index));
-        if (logScaleActive)
-            setLogScale(logScaleActive);
+        setLogScale(this->images.at(activeIndex).getLogScale());
     }
 }
 
@@ -303,6 +323,9 @@ void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
  */
 void pqWindowImage::on_linearRadioButton_toggled(bool checked)
 {
+    // If in the process of initialising the UI, ignore this command.
+    if (clmInit)
+        return;
     setLogScale(!checked);
 }
 
@@ -338,6 +361,9 @@ void pqWindowImage::on_opacitySlider_actionTriggered(int action)
  */
 void pqWindowImage::on_opacitySlider_valueChanged(int value)
 {
+    // If in the process of initialising the UI, ignore this command.
+    if (clmInit)
+        return;
     // Check what caused the value to change, and don't update while sliding.
     if (!loadOpacityChange)
         return;
@@ -379,6 +405,15 @@ void pqWindowImage::on_btnAddImageToStack_clicked()
 
 void pqWindowImage::on_btnRemoveImageFromStack_clicked()
 {
-    removeImageFromStack(ui->sbxStackActiveLayer->value() + 1); //Plus 1 to compensate for the base layer that is present in the image stack.
+    removeImageFromStack(ui->sbxStackActiveLayer->value() + 1);
+}
+
+
+void pqWindowImage::on_sbxStackActiveLayer_valueChanged(int arg1)
+{
+    if (clmInit)
+        return;
+    this->activeIndex = this->ui->sbxStackActiveLayer->value();
+    updateUI();
 }
 

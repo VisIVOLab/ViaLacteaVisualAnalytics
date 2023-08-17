@@ -33,7 +33,7 @@ vlvaStackImage::vlvaStackImage(QString filePath, int i, bool log, pqObjectBuilde
 
 vlvaStackImage::~vlvaStackImage()
 {
-    if (initialised) builder->destroy(imageSource);
+//    if (initialised) builder->destroy(imageSource); //Destructor causes issues, don't know why.
     imageSource = NULL;
 }
 
@@ -70,6 +70,11 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
     return 1;
 }
 
+size_t vlvaStackImage::getIndex() const
+{
+    return index;
+}
+
 const std::string vlvaStackImage::getFitsHeaderPath() const
 {
     if (initialised) return fitsHeaderPath.toStdString();
@@ -82,6 +87,11 @@ const QString vlvaStackImage::getFitsFileName() const
     if (initialised) return FitsFileName;
     std::cerr << "StackImage not initialised, returning default value." << std::endl;
     return "";
+}
+
+bool vlvaStackImage::operator<(const vlvaStackImage &other) const
+{
+    return this->getIndex() < other.getIndex();
 }
 
 int vlvaStackImage::setSubsetProperties(CubeSubset& subset)
@@ -129,6 +139,11 @@ int vlvaStackImage::setActive(bool act)
     }
     std::cerr << "StackImage not initialised, returning default value." << std::endl;
     return 0;
+}
+
+const QString vlvaStackImage::getColourMap() const
+{
+    return this->colourMap;
 }
 
 void vlvaStackImage::readInfoFromSource()
@@ -288,6 +303,11 @@ int vlvaStackImage::changeColorMap(const QString &name)
     }
 }
 
+const bool vlvaStackImage::getLogScale() const
+{
+    return logScale;
+}
+
 /**
  * @brief vlvaStackImage::setLogScale
  * Sets the image visualization to use log10 scaling on the colour map.
@@ -299,28 +319,55 @@ int vlvaStackImage::setLogScale(bool useLog)
     if (initialised)
     {
         if (useLog) {
-            double range[2];
-            vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
-            vtkSMCoreUtilities::AdjustRangeForLog(range);
+            if (auto logProperty = lutProxy->GetProperty("UseLogScale"))
+            {
+                double range[2];
+                vtkSMTransferFunctionProxy::GetRange(lutProxy, range);
+                vtkSMCoreUtilities::AdjustRangeForLog(range);
 
-            this->logScale = true;
-            vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
-            vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(1);
+                this->logScale = true;
+                vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
+                vtkSMPropertyHelper(logProperty).Set(1);
+                changeColorMap(this->getColourMap());
+
+                lutProxy->UpdateVTKObjects();
+                imageProxy->UpdateVTKObjects();
+                return 1;
+            }
+            else
+            {
+                std::cerr << "Error with logscale proxy: not found correctly." << std::endl;
+                return 0;
+            }
         } else {
-            this->logScale = false;
-            vtkSMTransferFunctionProxy::RescaleTransferFunctionToDataRange(lutProxy);
-            vtkSMPropertyHelper(lutProxy, "UseLogScale").Set(0);
-        }
+            if (auto logProperty = lutProxy->GetProperty("UseLogScale"))
+            {
+                this->logScale = false;
+                vtkSMTransferFunctionProxy::RescaleTransferFunctionToDataRange(lutProxy);
+                vtkSMPropertyHelper(logProperty).Set(0);
+                changeColorMap(this->getColourMap());
 
-        lutProxy->UpdateVTKObjects();
-        imageProxy->UpdateVTKObjects();
-        return 1;
+                lutProxy->UpdateVTKObjects();
+                imageProxy->UpdateVTKObjects();
+                return 1;
+            }
+            else
+            {
+                std::cerr << "Error with logscale proxy: not found correctly." << std::endl;
+                return 0;
+            }
+        }
     }
     else
     {
         std::cerr << "StackImage not initialised, returning default value." << std::endl;
         return 0;
     }
+}
+
+const double vlvaStackImage::getOpacity() const
+{
+    return this->opacity;
 }
 
 /**
@@ -345,6 +392,31 @@ int vlvaStackImage::setOpacity(float value, bool updateVal)
 
             return 1;
         }
+        return 0;
+    }
+    else
+    {
+        std::cerr << "StackImage not initialised, returning default value." << std::endl;
+        return 0;
+    }
+}
+
+int vlvaStackImage::setPosition()
+{
+    if (initialised)
+    {
+        if (auto positionProperty = imageProxy->GetProperty("Position"))
+        {
+            double* val = new double[3];
+            val[0] = 0;
+            val[1] = 0;
+            val[2] = static_cast<double>(index);
+            vtkSMPropertyHelper(positionProperty).Set(val, 3);
+            imageProxy->UpdateVTKObjects();
+            delete[] val;
+            return 1;
+        }
+        std::cerr << "Error with position proxy: not found correctly." << std::endl;
         return 0;
     }
     else
