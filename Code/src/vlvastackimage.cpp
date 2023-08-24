@@ -1,4 +1,5 @@
 #include "vlvastackimage.h"
+#include "vtkSMProperty.h"
 
 #include <pqDataRepresentation.h>
 #include <pqLoadDataReaction.h>
@@ -46,16 +47,20 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
         // Handle Subset selection
         setSubsetProperties(subset);
 
-        imageProxy = builder->createDataRepresentation(this->imageSource->getOutputPort(0), viewImage)->getProxy();
+        imageRep = builder->createDataRepresentation(this->imageSource->getOutputPort(0), viewImage);
+        imageProxy = imageRep->getProxy();
+        vtkSMPropertyHelper(imageProxy, "Representation").Set("Slice");
+        auto separateProperty = vtkSMPVRepresentationProxy::SafeDownCast(imageProxy)->GetProperty("UseSeparateColorMap");
+        vtkSMPropertyHelper(separateProperty).Set(1);
+        vtkSMPVRepresentationProxy::SetScalarColoring(imageProxy, "FITSImage", vtkDataObject::POINT);
 
         readInfoFromSource();
         readHeaderFromSource();
         fitsHeaderPath = createFitsHeaderFile(fitsHeader);
 
-               // Set up colour map controls
+        // Set up colour map controls
         vtkNew<vtkSMTransferFunctionManager> mgr;
-        lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
-                mgr->GetColorTransferFunction("FITSImage", imageProxy->GetSessionProxyManager()));
+        lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(mgr->GetColorTransferFunction("FITSImage", imageProxy->GetSessionProxyManager()));
         // Set default colour map
         changeColorMap("Grayscale");
         setLogScale(false);
@@ -282,7 +287,6 @@ int vlvaStackImage::changeColorMap(const QString &name)
         if (vtkSMProperty *lutProperty = imageProxy->GetProperty("LookupTable")) {
 
             auto presets = vtkSMTransferFunctionPresets::GetInstance();
-
             lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()));
             vtkSMPropertyHelper(lutProperty).Set(lutProxy);
             lutProxy->UpdateVTKObjects();

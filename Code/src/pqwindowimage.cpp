@@ -146,6 +146,9 @@ void pqWindowImage::showStatusBarMessage(const std::string &msg)
 
 void pqWindowImage::updateUI()
 {
+    if (images.size() == 0)
+        return;
+
     clmInit = true;
     setWindowTitle(this->images[activeIndex].getFitsFileName());
 

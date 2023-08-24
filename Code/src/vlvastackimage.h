@@ -47,6 +47,7 @@ public:
         vtkSMSessionProxyManager* serverProxyManager;
         pqObjectBuilder* builder;
         pqPipelineSource* imageSource;
+        pqDataRepresentation* imageRep;
         vtkSMProxy* imageProxy;
         vtkSMTransferFunctionProxy* lutProxy;
         pqRenderView* viewImage;
