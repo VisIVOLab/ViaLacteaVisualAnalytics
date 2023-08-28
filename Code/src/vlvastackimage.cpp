@@ -36,6 +36,7 @@ vlvaStackImage::~vlvaStackImage()
 {
 //    if (initialised) builder->destroy(imageSource); //Destructor causes issues, don't know why.
     imageSource = NULL;
+    setActive(false);
 }
 
 int vlvaStackImage::init(QString f, CubeSubset subset)
@@ -65,6 +66,8 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
         changeColorMap("Grayscale");
         setLogScale(false);
         setOpacity(1);
+        setActive(true);
+        type = 0;
     }
     catch (std::exception& e)
     {
@@ -130,20 +133,29 @@ int vlvaStackImage::setActive(bool act)
     {
         try
         {
-            if (act)
+            if (act){
+                vtkSMPropertyHelper(imageProxy->GetProperty("Visibility")).Set(1);
                 setOpacity(opacity, false);
-            else
+            }
+            else{
+                vtkSMPropertyHelper(imageProxy->GetProperty("Visibility")).Set(0);
                 setOpacity(0, false);
+            }
         }
         catch (std::exception& e)
         {
-            std::cerr << "Error when loading vlvaStackImage! Error: " << e.what() << std::endl;
+            std::cerr << "Error when attempting to set visibility of vlvaStackImage! Error: " << e.what() << std::endl;
             return 0;
         }
         return 1;
     }
     std::cerr << "StackImage not initialised, returning default value." << std::endl;
     return 0;
+}
+
+const bool vlvaStackImage::isEnabled() const
+{
+    return active;
 }
 
 const QString vlvaStackImage::getColourMap() const
@@ -428,4 +440,9 @@ int vlvaStackImage::setPosition()
         std::cerr << "StackImage not initialised, returning default value." << std::endl;
         return 0;
     }
+}
+
+void vlvaStackImage::setIndex(const size_t val)
+{
+    index = val;
 }

@@ -33,9 +33,11 @@
 #include <vtkSMTransferFunctionProxy.h>
 #include <vtkSMViewProxy.h>
 
+#include <QCheckBox>
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
+#include <QSignalMapper>
 
 #define logScaleDefault true
 
@@ -53,11 +55,18 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     }
     ui->cmbxLUTSelect->setCurrentIndex(ui->cmbxLUTSelect->findText("Grayscale"));
     ui->linearRadioButton->setChecked(true);
-    this->images = std::vector<vlvaStackImage>();
-    clmInit = false;
+    this->images = std::vector<vlvaStackImage*>();
+
+    ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->lstImageList->setDragDropMode(QAbstractItemView::InternalMove);
+    connect(ui->lstImageList->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)),
+            this, SLOT(movedLayersRow(QModelIndex, int, int, QModelIndex, int)));
 
     // Set default opacity
     ui->opacitySlider->setSliderPosition(ui->opacitySlider->maximum());
+
+    clmInit = false;
 
     // ParaView Init
     builder = pqApplicationCore::instance()->getObjectBuilder();
@@ -130,7 +139,7 @@ pqWindowImage::~pqWindowImage()
  */
 void pqWindowImage::changeColorMap(const QString &name)
 {
-    this->images[activeIndex].changeColorMap(name);
+    this->images[activeIndex]->changeColorMap(name);
     viewImage->render();
 }
 
@@ -150,32 +159,40 @@ void pqWindowImage::updateUI()
         return;
 
     clmInit = true;
-    setWindowTitle(this->images[activeIndex].getFitsFileName());
+    setWindowTitle(this->images[activeIndex]->getFitsFileName());
 
     // Interactor to show pixel coordinates in the status bar
     vtkNew<vtkInteractorStyleImageCustom> interactorStyle;
     interactorStyle->SetCoordsCallback(
             [this](const std::string &str) { showStatusBarMessage(str); });
-    interactorStyle->SetLayerFitsReaderFunc(this->images[activeIndex].getFitsHeaderPath());
+    interactorStyle->SetLayerFitsReaderFunc(this->images[activeIndex]->getFitsHeaderPath());
     viewImage->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
             interactorStyle);
     this->ui->sbxStackActiveLayer->setValue(this->activeIndex);
     this->ui->lstImageList->clear();
-//    std::sort(images.begin(), images.end());
+    std::sort(images.begin(), images.end(), [](vlvaStackImage* a, vlvaStackImage* b){ return a->getIndex() < b->getIndex();});
 
-    for (vlvaStackImage& i : images)
+    for (vlvaStackImage* i : images)
     {
-        i.setPosition();
-        this->ui->lstImageList->addItem(i.getFitsFileName());
+        if (!i->isEnabled())
+            continue;
+        i->setPosition();
+        this->ui->lstImageList->addItem(i->getFitsFileName());
     }
+
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
-    int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex].getColourMap());
+
+    int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex]->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
-    this->ui->sbxStackActiveLayer->setValue(activeIndex);
+
+    this->ui->sbxStackActiveLayer->setValue(this->activeIndex);
     this->ui->sbxStackActiveLayer->setMaximum(images.size() - 1);
-    this->ui->opacitySlider->setValue(this->images.at(activeIndex).getOpacity() * 100);
-    this->ui->logRadioButton->setChecked(this->images.at(activeIndex).getLogScale());
-    this->ui->linearRadioButton->setChecked(!this->images.at(activeIndex).getLogScale());
+
+    this->ui->opacitySlider->setValue(this->images.at(activeIndex)->getOpacity() * 100);
+    this->ui->logRadioButton->setChecked(this->images.at(activeIndex)->getLogScale());
+    this->ui->linearRadioButton->setChecked(!this->images.at(activeIndex)->getLogScale());
+
+    this->ui->tableWidget->resizeColumnsToContents();
     viewImage->render();
     clmInit = false;
 }
@@ -185,7 +202,7 @@ void pqWindowImage::showLegendScaleActor()
     // Show Legend Scale Actor in image renderer
     auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorCube->LegendVisibilityOff();
-    legendActorCube->setFitsHeader(this->images[activeIndex].getFitsHeaderPath());
+    legendActorCube->setFitsHeader(this->images[activeIndex]->getFitsHeaderPath());
     auto rwImage = viewImage->getViewProxy()->GetRenderWindow()->GetRenderers();
     vtkRenderer::SafeDownCast(rwImage->GetItemAsObject(1))->AddActor(legendActorCube);
 }
@@ -202,7 +219,7 @@ void pqWindowImage::setLogScale(bool logScale)
     if (clmInit)
         return;
 
-    this->images[activeIndex].setLogScale(logScale);
+    this->images[activeIndex]->setLogScale(logScale);
     viewImage->render();
 }
 
@@ -214,46 +231,8 @@ void pqWindowImage::setLogScale(bool logScale)
  */
 void pqWindowImage::setOpacity(float value)
 {
-    this->images[activeIndex].setOpacity(value);
+    this->images[activeIndex]->setOpacity(value);
     viewImage->render();
-}
-
-int pqWindowImage::addImageToStack(QString file)
-{
-    std::cerr << "Adding image " << file.toStdString() << " to stack via proxy call." << std::endl;
-
-    /** TODO: use subset as intended
-    auto subsetSelector = new SubsetSelectorDialog(this);
-    subsetSelector->setAttribute(Qt::WA_DeleteOnClose);
-    connect(subsetSelector, &SubsetSelectorDialog::subsetSelected, this,
-            [=](const CubeSubset &subset) {
-                auto win = new pqWindowImage(filepath, subset);
-                win->showMaximized();
-                win->raise();
-                win->activateWindow();
-            });
-
-    subsetSelector->show();
-    subsetSelector->activateWindow();
-    subsetSelector->raise();*/
-
-    auto subset = CubeSubset();
-    int index = images.size();
-    auto im = vlvaStackImage(file, index, logScaleDefault, builder, viewImage, serverProxyManager);
-    images.push_back(im);
-    this->activeIndex = images.size() - 1;
-
-    if (images[activeIndex].init(file, subset))
-    {
-        this->updateUI();
-        viewImage->render();
-        return 1;
-    } else
-    {
-        std::cerr << "Failed to initialise image for file " << file.toStdString() << "." << std::endl;
-        removeImageFromStack(activeIndex);
-        return 0;
-    }
 }
 
 int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
@@ -263,12 +242,13 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
         return 1;
     std::cerr << "Adding image " << file.toStdString() << " to stack via proxy call." << std::endl;
     int index = images.size();
-    auto im = vlvaStackImage(file, index, logScaleDefault, builder, viewImage, serverProxyManager);
+    auto im = new vlvaStackImage(file, index, logScaleDefault, builder, viewImage, serverProxyManager);
     images.push_back(im);
     this->activeIndex = images.size() - 1;
 
-    if (images[activeIndex].init(file, subset))
+    if (images[activeIndex]->init(file, subset))
     {
+        addImageToLists(images[activeIndex]);
         this->updateUI();
         viewImage->render();
         return 1;
@@ -290,6 +270,60 @@ int pqWindowImage::removeImageFromStack(const int index)
     return 1;
 }
 
+int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
+{
+    QSignalMapper *mapper = new QSignalMapper(this);
+    QSignalMapper *mapper_slider = new QSignalMapper(this);
+
+    int row = ui->tableWidget->model()->rowCount();
+    ui->tableWidget->insertRow(row);
+
+    QCheckBox *cb1 = new QCheckBox();
+
+    if (stackImage->isEnabled())
+        cb1->setChecked(true);
+    else
+        cb1->setChecked(false);
+
+    if (stackImage->getType() != 3) {
+        double r, g, b;
+//        double r = stackImage->getActor()->GetProperty()->GetColor()[0] * 255;
+//        double g = stackImage->getActor()->GetProperty()->GetColor()[1] * 255;
+//        double b = stackImage->getActor()->GetProperty()->GetColor()[2] * 255;
+        r = g = b = 160;
+
+        cb1->setStyleSheet("background-color: rgb(" + QString::number(r) + "," + QString::number(g)
+                           + " ," + QString::number(b) + ")");
+
+
+//         //FV MODIFICARE PER AGGIUNGERE COLORE E GESTIONE CHECKBOX
+//         QListWidgetItem* item = new QListWidgetItem(o->getName());
+//         item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // set checkable flag
+//         item->setCheckState(Qt::Checked); // AND initialize check state
+//         QColor c1(r,g,b);
+//         QBrush b1(c1);
+//         item->setForeground(b1);
+//         ui->listWidget->addItem(item);
+
+
+    }
+    ui->tableWidget->setCellWidget(row, 0, cb1);
+
+    connect(cb1, SIGNAL(stateChanged(int)), mapper, SLOT(map()));
+    mapper->setMapping(cb1, row);
+
+    QTableWidgetItem *item_1 = new QTableWidgetItem();
+    item_1->setFlags(item_1->flags() ^ Qt::ItemIsEditable);
+
+    item_1->setText(stackImage->getFitsFileName());
+
+    ui->tableWidget->setItem(row, 1, item_1);
+
+    connect(mapper, SIGNAL(mapped(int)), this, SLOT(tableCheckboxClicked(int)));
+
+    return 1;
+}
+
 /**
  * @brief pqWindowImage::createView
  * Function that creates the window in which the data is visualized.
@@ -300,6 +334,41 @@ void pqWindowImage::createView()
             builder->createView(pqRenderView::renderViewType(), server));
     viewImage->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->PVLayout->addWidget(viewImage->widget());
+}
+
+
+
+void pqWindowImage::tableCheckboxClicked(int cb, bool status)
+{
+    auto im = images.at(cb);
+    if (im->isEnabled()){
+        im->setActive(false);
+    }
+    else{
+        im->setActive(true);
+    }
+    updateUI();
+}
+
+void pqWindowImage::movedLayersRow(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow)
+{
+    if (sourceStart > destinationRow) { // down
+
+        for (int i = sourceStart - 1; i >= destinationRow; i--) {
+            images.at(i)->setIndex(i + 1);
+        }
+
+        images.at(sourceStart)->setIndex(destinationRow);
+        this->activeIndex = destinationRow;
+    } else { // up
+
+        for (int i = sourceStart + 1; i < destinationRow; i++) {
+            images.at(i)->setIndex(i - 1);
+        }
+        images.at(sourceStart)->setIndex(destinationRow - 1);
+        this->activeIndex = destinationRow - 1;
+    }
+    updateUI();
 }
 
 /**
@@ -314,7 +383,7 @@ void pqWindowImage::on_cmbxLUTSelect_currentIndexChanged(int index)
     // If the UI is being initialised, ignore this command.
     if (index >= 0 && !clmInit) {
         changeColorMap(ui->cmbxLUTSelect->itemText(index));
-        setLogScale(this->images.at(activeIndex).getLogScale());
+        setLogScale(this->images.at(activeIndex)->getLogScale());
     }
 }
 
@@ -402,7 +471,12 @@ void pqWindowImage::on_btnAddImageToStack_clicked()
     dialog.setFileMode(pqFileDialog::ExistingFile);
     if (dialog.exec() == pqFileDialog::Accepted) {
         QString file = dialog.getSelectedFiles().first();
-        addImageToStack(file);
+        auto subsetSelector = new SubsetSelectorDialog(this);
+        subsetSelector->setAttribute(Qt::WA_DeleteOnClose);
+        connect(subsetSelector, &SubsetSelectorDialog::subsetSelected, this, [=](const CubeSubset &subset){this->addImageToStack(file, subset);});
+        subsetSelector->show();
+        subsetSelector->activateWindow();
+        subsetSelector->raise();
     }
 }
 
@@ -417,6 +491,17 @@ void pqWindowImage::on_sbxStackActiveLayer_valueChanged(int arg1)
     if (clmInit)
         return;
     this->activeIndex = this->ui->sbxStackActiveLayer->value();
+    updateUI();
+}
+
+
+void pqWindowImage::on_lstImageList_itemClicked(QListWidgetItem *item)
+{
+    auto imName = item->text();
+    for (auto i : images){
+        if (imName == i->getFitsFileName())
+            activeIndex = i->getIndex();
+    }
     updateUI();
 }
 

@@ -4,6 +4,7 @@
 #include "subsetselectordialog.h"
 #include "vlvastackimage.h"
 
+#include <QListWidgetItem>
 #include <QMainWindow>
 #include <QMap>
 #include <QPointer>
@@ -31,6 +32,13 @@ public:
     ~pqWindowImage();
 
 private slots:
+    int addImageToStack(QString file, const CubeSubset& subset);
+
+    void tableCheckboxClicked(int cb, bool status = false);
+
+    void movedLayersRow(const QModelIndex &sourceParent, int sourceStart, int sourceEnd,
+                        const QModelIndex &destinationParent, int destinationRow);
+
     void on_cmbxLUTSelect_currentIndexChanged(int index);
 
     void on_linearRadioButton_toggled(bool checked);
@@ -47,10 +55,12 @@ private slots:
 
     void on_sbxStackActiveLayer_valueChanged(int arg1);
 
+    void on_lstImageList_itemClicked(QListWidgetItem *item);
+
 private:
     Ui::pqWindowImage *ui;
 
-    std::vector<vlvaStackImage> images;
+    std::vector<vlvaStackImage*> images;
 
     pqServer *server;
     vtkSMSessionProxyManager *serverProxyManager;
@@ -79,9 +89,9 @@ private:
     void showLegendScaleActor();
     void setLogScale(bool logScale);
     void setOpacity(float value);
-    int addImageToStack(QString file);
-    int addImageToStack(QString file, const CubeSubset& subset);
     int removeImageFromStack(const int index);
+
+    int addImageToLists(vlvaStackImage* stackImage);
 };
 
 #endif // PQWINDOWIMAGE_H
