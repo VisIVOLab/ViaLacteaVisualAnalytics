@@ -1,5 +1,4 @@
 #include "pqwindowimage.h"
-#include "pqFileDialog.h"
 #include "ui_pqwindowimage.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
@@ -8,6 +7,7 @@
 #include <pqActiveObjects.h>
 #include <pqAlwaysConnectedBehavior.h>
 #include <pqApplicationCore.h>
+#include <pqFileDialog.h>
 #include <pqLoadDataReaction.h>
 #include <pqObjectBuilder.h>
 #include <pqPipelineSource.h>
@@ -24,9 +24,9 @@
 #include <vtkSMCoreUtilities.h>
 #include <vtkSMProperty.h>
 #include <vtkSMPropertyHelper.h>
-#include "vtkSMProxyManager.h"
+#include <vtkSMProxyManager.h>
 #include <vtkSMPVRepresentationProxy.h>
-#include "vtkSMReaderFactory.h"
+#include <vtkSMReaderFactory.h>
 #include <vtkSMSessionProxyManager.h>
 #include <vtkSMTransferFunctionManager.h>
 #include <vtkSMTransferFunctionPresets.h>
@@ -88,40 +88,6 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     addImageToStack(filepath, cubeSubset);
     updateUI();
 
-    /*    // Load Reactions
-
-    BaseImageSource = pqLoadDataReaction::loadData({ filepath });
-
-    // Handle Subset selection
-    setSubsetProperties(cubeSubset);
-
-    imageProxy = builder->createDataRepresentation(this->BaseImageSource->getOutputPort(0), viewImage)->getProxy();
-    addImageToStack(filepath.toStdString());
-
-    // Fetch information from source and header and update UI
-    readInfoFromSource();
-    readHeaderFromSource();
-    //    rms = getRMSFromHeader(fitsHeader);
-    //    lowerBound = 3 * rms;
-    //    upperBound = dataMax;
-    //    ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
-    //    ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
-    //    ui->minCubeText->setText(QString::number(dataMin, 'f', 4));
-    //    ui->maxCubeText->setText(QString::number(dataMax, 'f', 4));
-    //    ui->rmsCubeText->setText(QString::number(rms, 'f', 4));
-
-    // Show Legend Scale Actors in image renderer
-    fitsHeaderPath = createFitsHeaderFile(fitsHeader);
-    showLegendScaleActor();
-
-    // Set up colour map controls
-    vtkNew<vtkSMTransferFunctionManager> mgr;
-    lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
-            mgr->GetColorTransferFunction("FITSImage", imageProxy->GetSessionProxyManager()));
-    // Set default colour map
-    changeColorMap("Grayscale");
-    setLogScale(false);*/
-
     viewImage->resetDisplay();
     viewImage->render();
 }
@@ -140,6 +106,9 @@ pqWindowImage::~pqWindowImage()
 void pqWindowImage::changeColorMap(const QString &name)
 {
     this->images[activeIndex]->changeColorMap(name);
+    int row = this->ui->tableWidget->currentRow();
+    this->ui->tableWidget->item(row, 2)->setText(name);
+
     viewImage->render();
 }
 
@@ -153,6 +122,9 @@ void pqWindowImage::showStatusBarMessage(const std::string &msg)
     ui->statusBar->showMessage(QString::fromStdString(msg));
 }
 
+/**
+ * @brief pqWindowImage::updateUI
+ */
 void pqWindowImage::updateUI()
 {
     if (images.size() == 0)
@@ -181,6 +153,9 @@ void pqWindowImage::updateUI()
     }
 
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
+
+    auto twItem = this->ui->tableWidget->findItems(images.at(this->activeIndex)->getFitsFileName(), Qt::MatchExactly);
+    this->ui->tableWidget->setCurrentItem(twItem.first());
 
     int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex]->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
@@ -235,6 +210,12 @@ void pqWindowImage::setOpacity(float value)
     viewImage->render();
 }
 
+/**
+ * @brief pqWindowImage::addImageToStack
+ * @param file
+ * @param subset
+ * @return
+ */
 int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
 {
     // If in the process of initialising the UI, ignore this command.
@@ -260,6 +241,11 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
     }
 }
 
+/**
+ * @brief pqWindowImage::removeImageFromStack
+ * @param index
+ * @return
+ */
 int pqWindowImage::removeImageFromStack(const int index)
 {
     // If in the process of initialising the UI, ignore this command.
@@ -267,15 +253,30 @@ int pqWindowImage::removeImageFromStack(const int index)
         return 1;
     std::cerr << "Removing image at pos " << index << " from stack via proxy call." << std::endl;
     images.erase(images.begin() + index);
+    updateUI();
     return 1;
 }
 
+/**
+ * @brief pqWindowImage::addImageToLists
+ * @param stackImage
+ * @return
+ */
 int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
 {
     QSignalMapper *mapper = new QSignalMapper(this);
-    QSignalMapper *mapper_slider = new QSignalMapper(this);
 
-    int row = ui->tableWidget->model()->rowCount();
+    int row = ui->tableWidget->rowCount();
+    if (ui->tableWidget->columnCount() == 0){
+        QTableWidgetItem *header_0 = new QTableWidgetItem("Active?");
+        QTableWidgetItem *header_1 = new QTableWidgetItem("Name");
+        QTableWidgetItem *header_2 = new QTableWidgetItem("Colour Map");
+
+        ui->tableWidget->setColumnCount(3);
+        ui->tableWidget->setHorizontalHeaderItem(0, header_0);
+        ui->tableWidget->setHorizontalHeaderItem(1, header_1);
+        ui->tableWidget->setHorizontalHeaderItem(2, header_2);
+    }
     ui->tableWidget->insertRow(row);
 
     QCheckBox *cb1 = new QCheckBox();
@@ -290,7 +291,7 @@ int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
 //        double r = stackImage->getActor()->GetProperty()->GetColor()[0] * 255;
 //        double g = stackImage->getActor()->GetProperty()->GetColor()[1] * 255;
 //        double b = stackImage->getActor()->GetProperty()->GetColor()[2] * 255;
-        r = g = b = 160;
+        r = g = b = 240;
 
         cb1->setStyleSheet("background-color: rgb(" + QString::number(r) + "," + QString::number(g)
                            + " ," + QString::number(b) + ")");
@@ -314,10 +315,13 @@ int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
 
     QTableWidgetItem *item_1 = new QTableWidgetItem();
     item_1->setFlags(item_1->flags() ^ Qt::ItemIsEditable);
+    QTableWidgetItem *item_2 = new QTableWidgetItem();
+    item_2->setFlags(item_2->flags() ^ Qt::ItemIsEditable);
 
     item_1->setText(stackImage->getFitsFileName());
-
+    item_2->setText(stackImage->getColourMap());
     ui->tableWidget->setItem(row, 1, item_1);
+    ui->tableWidget->setItem(row, 2, item_2);
 
     connect(mapper, SIGNAL(mapped(int)), this, SLOT(tableCheckboxClicked(int)));
 
@@ -336,8 +340,11 @@ void pqWindowImage::createView()
     ui->PVLayout->addWidget(viewImage->widget());
 }
 
-
-
+/**
+ * @brief pqWindowImage::tableCheckboxClicked
+ * @param cb The index of the checkbox in the table
+ * @param status
+ */
 void pqWindowImage::tableCheckboxClicked(int cb, bool status)
 {
     auto im = images.at(cb);
@@ -350,6 +357,15 @@ void pqWindowImage::tableCheckboxClicked(int cb, bool status)
     updateUI();
 }
 
+/**
+ * @brief pqWindowImage::movedLayersRow
+ * This slot catches the signal that is sent out when the user rearranges items in the list view.
+ * @param sourceParent The parent object for the source (always the same as destination in our case).
+ * @param sourceStart The index where the item started
+ * @param sourceEnd
+ * @param destinationParent The parent object for the destination (always the same as source in our case).
+ * @param destinationRow The index where the item ended.
+ */
 void pqWindowImage::movedLayersRow(const QModelIndex &sourceParent, int sourceStart, int sourceEnd, const QModelIndex &destinationParent, int destinationRow)
 {
     if (sourceStart > destinationRow) { // down
@@ -463,6 +479,9 @@ void pqWindowImage::on_opacitySlider_sliderReleased()
     loadOpacityChange = false;
 }
 
+/**
+ * @brief pqWindowImage::on_btnAddImageToStack_clicked
+ */
 void pqWindowImage::on_btnAddImageToStack_clicked()
 {
     vtkSMReaderFactory *readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
@@ -480,12 +499,18 @@ void pqWindowImage::on_btnAddImageToStack_clicked()
     }
 }
 
+/**
+ * @brief pqWindowImage::on_btnRemoveImageFromStack_clicked
+ */
 void pqWindowImage::on_btnRemoveImageFromStack_clicked()
 {
-    removeImageFromStack(ui->sbxStackActiveLayer->value() + 1);
+    removeImageFromStack(this->activeIndex);
 }
 
-
+/**
+ * @brief pqWindowImage::on_sbxStackActiveLayer_valueChanged
+ * @param arg1
+ */
 void pqWindowImage::on_sbxStackActiveLayer_valueChanged(int arg1)
 {
     if (clmInit)
@@ -494,14 +519,34 @@ void pqWindowImage::on_sbxStackActiveLayer_valueChanged(int arg1)
     updateUI();
 }
 
-
+/**
+ * @brief pqWindowImage::on_lstImageList_itemClicked
+ * @param item
+ */
 void pqWindowImage::on_lstImageList_itemClicked(QListWidgetItem *item)
 {
     auto imName = item->text();
     for (auto i : images){
         if (imName == i->getFitsFileName())
-            activeIndex = i->getIndex();
+            this->activeIndex = i->getIndex();
     }
     updateUI();
 }
 
+/**
+ * @brief pqWindowImage::on_tableWidget_currentItemChanged
+ * @param current
+ * @param previous
+ */
+void pqWindowImage::on_tableWidget_currentItemChanged(QTableWidgetItem *current, QTableWidgetItem *previous)
+{
+    if (!current)
+        return;
+    auto row = this->ui->tableWidget->row(current);
+    auto imName = this->ui->tableWidget->item(row, 1)->text();
+    for (auto i : images){
+        if (imName == i->getFitsFileName())
+            this->activeIndex = i->getIndex();
+    }
+    updateUI();
+}

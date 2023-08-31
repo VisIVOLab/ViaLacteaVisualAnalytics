@@ -136,10 +136,12 @@ int vlvaStackImage::setActive(bool act)
             if (act){
                 vtkSMPropertyHelper(imageProxy->GetProperty("Visibility")).Set(1);
                 setOpacity(opacity, false);
+                this->active = true;
             }
             else{
                 vtkSMPropertyHelper(imageProxy->GetProperty("Visibility")).Set(0);
                 setOpacity(0, false);
+                this->active = false;
             }
         }
         catch (std::exception& e)

@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <layout class="QHBoxLayout" name="centralLayout" stretch="2,1">
+     <layout class="QHBoxLayout" name="centralLayout" stretch="3,1">
       <item>
        <layout class="QVBoxLayout" name="ImagePanel" stretch="1,3">
         <item>
@@ -184,6 +184,16 @@
          </widget>
         </item>
         <item>
+         <widget class="QTableWidget" name="tableWidget">
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QListWidget" name="lstImageList">
           <property name="maximumSize">
            <size>
@@ -193,16 +203,6 @@
           </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QTableWidget" name="tableWidget">
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
           </property>
          </widget>
         </item>

@@ -4,6 +4,7 @@
 #include "subsetselectordialog.h"
 #include "vlvastackimage.h"
 
+#include <QTableWidgetItem>
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QMap>
@@ -56,6 +57,8 @@ private slots:
     void on_sbxStackActiveLayer_valueChanged(int arg1);
 
     void on_lstImageList_itemClicked(QListWidgetItem *item);
+
+    void on_tableWidget_currentItemChanged(QTableWidgetItem *current, QTableWidgetItem *previous);
 
 private:
     Ui::pqWindowImage *ui;
