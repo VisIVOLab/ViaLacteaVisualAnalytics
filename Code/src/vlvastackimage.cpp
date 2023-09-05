@@ -80,7 +80,7 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
 
 size_t vlvaStackImage::getIndex() const
 {
-    return index;
+    return this->index;
 }
 
 const std::string vlvaStackImage::getFitsHeaderPath() const
@@ -157,7 +157,7 @@ int vlvaStackImage::setActive(bool act)
 
 const bool vlvaStackImage::isEnabled() const
 {
-    return active;
+    return this->active;
 }
 
 const QString vlvaStackImage::getColourMap() const
@@ -323,7 +323,7 @@ int vlvaStackImage::changeColorMap(const QString &name)
 
 const bool vlvaStackImage::getLogScale() const
 {
-    return logScale;
+    return this->logScale;
 }
 
 /**
@@ -419,15 +419,30 @@ int vlvaStackImage::setOpacity(float value, bool updateVal)
     }
 }
 
-int vlvaStackImage::setPosition()
+int vlvaStackImage::setPosition(double x, double y)
+{
+    if (initialised)
+    {
+        xyPosition.first = x;
+        xyPosition.second = y;
+        return this->setZPosition();
+    }
+    else
+    {
+        std::cerr << "StackImage not initialised, returning default value." << std::endl;
+        return 0;
+    }
+}
+
+int vlvaStackImage::setZPosition()
 {
     if (initialised)
     {
         if (auto positionProperty = imageProxy->GetProperty("Position"))
         {
             double* val = new double[3];
-            val[0] = 0;
-            val[1] = 0;
+            val[0] = xyPosition.first;
+            val[1] = xyPosition.second;
             val[2] = static_cast<double>(index);
             vtkSMPropertyHelper(positionProperty).Set(val, 3);
             imageProxy->UpdateVTKObjects();
@@ -444,7 +459,65 @@ int vlvaStackImage::setPosition()
     }
 }
 
+int vlvaStackImage::setScale(double x, double y, double z)
+{
+    if (initialised)
+    {
+        if (auto scaleProperty = imageProxy->GetProperty("Scale"))
+        {
+            double* val = new double[3];
+            val[0] = x;
+            val[1] = y;
+            val[2] = z;
+            vtkSMPropertyHelper(scaleProperty).Set(val, 3);
+            imageProxy->UpdateVTKObjects();
+            delete[] val;
+            return 1;
+        }
+        std::cerr << "Error with scale proxy: not found correctly." << std::endl;
+        return 0;
+    }
+    else
+    {
+        std::cerr << "StackImage not initialised, returning default value." << std::endl;
+        return 0;
+    }
+}
+
+int vlvaStackImage::setOrientation(double phi, double theta, double psi)
+{
+    if (initialised)
+    {
+        if (auto orientationProperty = imageProxy->GetProperty("Orientation"))
+        {
+            double* val = new double[3];
+            val[0] = phi;
+            val[1] = theta;
+            val[2] = psi;
+            vtkSMPropertyHelper(orientationProperty).Set(val, 3);
+            std::get<0>(this->angle) = phi;
+            std::get<1>(this->angle) = theta;
+            std::get<2>(this->angle) = psi;
+            imageProxy->UpdateVTKObjects();
+            delete[] val;
+            return 1;
+        }
+        std::cerr << "Error with orientation proxy: not found correctly." << std::endl;
+        return 0;
+    }
+    else
+    {
+        std::cerr << "StackImage not initialised, returning default value." << std::endl;
+        return 0;
+    }
+}
+
+const std::tuple<double, double, double> vlvaStackImage::getOrientation() const
+{
+    return this->angle;
+}
+
 void vlvaStackImage::setIndex(const size_t val)
 {
-    index = val;
+    this->index = val;
 }

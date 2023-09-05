@@ -148,7 +148,7 @@ void pqWindowImage::updateUI()
     {
         if (!i->isEnabled())
             continue;
-        i->setPosition();
+        i->setZPosition();
         this->ui->lstImageList->addItem(i->getFitsFileName());
     }
 
@@ -229,8 +229,13 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
 
     if (images[activeIndex]->init(file, subset))
     {
-        addImageToLists(images[activeIndex]);
+        this->addImageToLists(images[activeIndex]);
+        if (images.size() == 1)
+            this->positionImage(images[activeIndex], true);
+        else
+            this->positionImage(images[activeIndex], false);
         this->updateUI();
+        viewImage->resetCamera();
         viewImage->render();
         return 1;
     } else
@@ -328,6 +333,61 @@ int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
     return 1;
 }
 
+int pqWindowImage::positionImage(vlvaStackImage *stackImage, bool setBasePos)
+{
+    auto skyCoords = new double[2];
+    auto *coord = new double[3];
+    double angle = 0, x1, y1;
+    auto fitsPath = stackImage->getFitsHeaderPath();
+    if (setBasePos)
+        refImageFits = fitsPath;
+    try {
+        AstroUtils().xy2sky(fitsPath, 0, 0, skyCoords, 3);
+        AstroUtils().sky2xy(refImageFits, skyCoords[0],
+                            skyCoords[1], coord);
+
+        x1 = coord[0];
+        y1 = coord[1];
+        if (setBasePos){
+            refImageBottomLeftCornerCoords.first = x1;
+            refImageBottomLeftCornerCoords.second = y1;
+        }
+
+        AstroUtils().xy2sky(fitsPath, 0, 100, skyCoords, 3);
+        AstroUtils().sky2xy(refImageFits, skyCoords[0],
+                            skyCoords[1], coord);
+
+        if (x1 != coord[0]) {
+            double m = std::fabs((coord[1] - y1) / (coord[0] - x1));
+            angle = 90 - std::atan(m) * 180 / M_PI;
+        }
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Error when trying to extract WCS position from FITS header file!" << std::endl;
+        return 0;
+    }
+
+    try
+    {
+        double scaledPixel;
+        if (setBasePos){
+            refImagePixScaling = AstroUtils().arcsecPixel(fitsPath);
+        }
+        scaledPixel = AstroUtils().arcsecPixel(fitsPath) / refImagePixScaling;
+//        stackImage->setOrientation(0, 0, angle);
+//        stackImage->setScale(scaledPixel, scaledPixel);
+//        stackImage->setPosition(x1, y1);
+
+        return stackImage->setOrientation(0, 0, angle) && stackImage->setScale(scaledPixel, scaledPixel) && stackImage->setPosition(x1, y1);
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Error when trying to position image via proxies!" << std::endl;
+        return 0;
+    }
+}
+
 /**
  * @brief pqWindowImage::createView
  * Function that creates the window in which the data is visualized.
@@ -355,6 +415,7 @@ void pqWindowImage::tableCheckboxClicked(int cb, bool status)
         im->setActive(true);
     }
     updateUI();
+    this->viewImage->resetCamera();
 }
 
 /**

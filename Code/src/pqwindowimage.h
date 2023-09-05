@@ -1,6 +1,7 @@
 #ifndef PQWINDOWIMAGE_H
 #define PQWINDOWIMAGE_H
 
+#include "astroutils.h"
 #include "subsetselectordialog.h"
 #include "vlvastackimage.h"
 
@@ -72,6 +73,10 @@ private:
     vtkSMProxy *imageProxy;
     vtkSMTransferFunctionProxy *lutProxy;
 
+    std::pair<double, double> refImageBottomLeftCornerCoords;
+    double refImagePixScaling;
+    std::string refImageFits;
+
     bool clmInit;
 
     bool loadOpacityChange;
@@ -95,6 +100,7 @@ private:
     int removeImageFromStack(const int index);
 
     int addImageToLists(vlvaStackImage* stackImage);
+    int positionImage(vlvaStackImage* stackImage, bool setBasePos = false);
 };
 
 #endif // PQWINDOWIMAGE_H

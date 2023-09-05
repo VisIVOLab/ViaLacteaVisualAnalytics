@@ -18,9 +18,10 @@ class vlvaStackImage
 public:
         vlvaStackImage(QString f, int i, bool log, pqObjectBuilder* bldr, pqRenderView *viewImage, vtkSMSessionProxyManager* spm);
         ~vlvaStackImage();
-        const vtkSMProxy* getProxy() const;
-        const vtkSMTransferFunctionProxy* getLutProxy() const;
-        pqPipelineSource* getSource();
+
+        vtkSMProxy* getProxy() const { return imageProxy; };
+        vtkSMTransferFunctionProxy* getLutProxy() const { return lutProxy; };
+        pqPipelineSource* getSource() const { return imageSource; };
 
         int setActive(bool act);
         const bool isEnabled() const;
@@ -34,7 +35,11 @@ public:
         const double getOpacity() const;
         int setOpacity(float value, bool updateVal = true);
 
-        int setPosition();
+        int setPosition(double x, double y);
+        int setZPosition();
+        int setScale(double x, double y, double z = 1);
+        int setOrientation(double phi, double theta, double psi);
+        const std::tuple<double, double, double> getOrientation() const;
         void setIndex(const size_t val);
         size_t getIndex() const;
 
@@ -52,6 +57,9 @@ public:
         bool initialised;
         QString colourMap;
         double opacity;
+        std::tuple<double, double, double> angle;
+
+        std::pair<double, double> xyPosition;
 
         vtkSMSessionProxyManager* serverProxyManager;
         pqObjectBuilder* builder;
