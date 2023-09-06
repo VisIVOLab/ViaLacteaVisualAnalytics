@@ -755,3 +755,31 @@ void ViaLactea::on_loadTableButton_clicked()
     win->activateWindow();
     win->raise();
 }
+
+/**
+ * @brief ViaLactea::on_actionInspectMemory_triggered
+ * Create a memory inspector panel if one isn't created yet.
+ * Show the memory inspector. Can be resized or dragged around.
+ */
+void ViaLactea::on_actionInspectMemory_triggered()
+{
+    if (!server) {
+        QMessageBox::warning(
+                this, "Not connected",
+                "Server not connected. Check the connection url in the settings.");
+        return;
+    }
+    if (memInspectWin != nullptr)
+    {
+        memInspectWin->show();
+        memInspectWin->raise();
+    }
+    else
+    {
+        memInspectWin = new pqMemInspector(this);
+        memInspectWin->setAttribute(Qt::WA_Hover);
+        memInspectWin->show();
+        memInspectWin->activateWindow();
+        memInspectWin->raise();
+    }
+}
