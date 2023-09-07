@@ -32,7 +32,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWebEngineView" name="webView">
+      <widget class="QWebEngineView" name="webView" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -45,7 +45,7 @@
          <height>0</height>
         </size>
        </property>
-       <property name="url">
+       <property name="url" stdset="0">
         <url>
          <string>about:blank</string>
         </url>
@@ -577,7 +577,7 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>29</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -595,8 +595,15 @@
     </property>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuServer">
+    <property name="title">
+     <string>Server</string>
+    </property>
+    <addaction name="actionInspectMemory"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuAiuto"/>
+   <addaction name="menuServer"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSettings">
@@ -627,6 +634,14 @@
   <action name="actionLoad_session">
    <property name="text">
     <string>Load session</string>
+   </property>
+  </action>
+  <action name="actionInspectMemory">
+   <property name="text">
+    <string>Inspect Memory</string>
+   </property>
+   <property name="toolTip">
+    <string>Open a display of the connected server's memory usage</string>
    </property>
   </action>
  </widget>

@@ -2,6 +2,7 @@
 #define VIALACTEA_H
 
 #include "aboutform.h"
+#include "pqmeminspector.h"
 #include "settingform.h"
 #include "vtkwindow_new.h"
 
@@ -76,8 +77,10 @@ private slots:
     void on_dbLineEdit_textChanged(const QString &arg1);
     void updateVLKBSetting();
     void on_actionLoad_session_triggered();
+    void on_actionInspectMemory_triggered();
 
     void on_loadTableButton_clicked();
+
 
 private:
     Ui::ViaLactea *ui;
@@ -93,6 +96,8 @@ private:
     QMap<int, QPair<QString, QString>> mapSurvey;
     vtkwindow_new *masterWin = nullptr;
     QPointer<pqServer> server;
+
+    pqMemInspector* memInspectWin = nullptr;
 
     bool connectToPVServer();
 

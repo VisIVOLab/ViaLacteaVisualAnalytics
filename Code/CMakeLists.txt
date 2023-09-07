@@ -99,6 +99,7 @@ set(sources
         src/pipe.cpp
         src/plotwindow.cpp
         src/pointspipe.cpp
+        src/pqmeminspector.cpp
         src/pqwindowcube.cpp
         src/sed.cpp
         src/sedfitgrid_thick.cpp
@@ -174,6 +175,7 @@ set(headers
         src/pipe.h
         src/plotwindow.h
         src/pointspipe.h
+        src/pqmeminspector.h
         src/pqwindowcube.h
         src/sed.h
         src/sedfitgrid_thick.h
@@ -230,6 +232,7 @@ set(ui_files
         ui/mcutoutsummary.ui
         ui/operationqueue.ui
         ui/plotwindow.ui
+        ui/pqmeminspector.ui
         ui/pqwindowcube.ui
         ui/sedfitgrid_thick.ui
         ui/sedfitgrid_thin.ui
@@ -249,7 +252,7 @@ set(ui_files
         ui/vlkbsimplequerycomposer.ui
         ui/vtkfitstoolswidget.ui
         ui/vtkfitstoolwidget_new.ui
-       ui/vtktoolswidget.ui
+        ui/vtktoolswidget.ui
         ui/vtkwindow_new.ui
         )
 
