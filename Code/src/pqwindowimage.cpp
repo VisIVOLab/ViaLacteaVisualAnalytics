@@ -144,18 +144,23 @@ void pqWindowImage::updateUI()
     this->ui->lstImageList->clear();
     std::sort(images.begin(), images.end(), [](vlvaStackImage* a, vlvaStackImage* b){ return a->getIndex() < b->getIndex();});
 
-    for (vlvaStackImage* i : images)
+    for (int i = 0; i < images.size(); ++i)
     {
-        if (!i->isEnabled())
+        auto item = images.at(i);
+        this->ui->tableWidget->item(i, 1)->setText(item->getFitsFileName());
+        this->ui->tableWidget->item(i, 2)->setText(item->getColourMap());
+        auto cb = static_cast<QCheckBox*>(this->ui->tableWidget->cellWidget(i, 0));
+        if (!item->isEnabled()){
+            cb->setCheckState(Qt::Unchecked);
             continue;
-        i->setZPosition();
-        this->ui->lstImageList->addItem(i->getFitsFileName());
+        }
+        cb->setCheckState(Qt::Checked);
+        item->setZPosition();
+        this->ui->lstImageList->addItem(item->getFitsFileName());
     }
 
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
-
-    auto twItem = this->ui->tableWidget->findItems(images.at(this->activeIndex)->getFitsFileName(), Qt::MatchExactly);
-    this->ui->tableWidget->setCurrentItem(twItem.first());
+    this->ui->tableWidget->setCurrentItem(this->ui->tableWidget->item(this->activeIndex, 1));
 
     int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex]->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
@@ -167,7 +172,9 @@ void pqWindowImage::updateUI()
     this->ui->logRadioButton->setChecked(this->images.at(activeIndex)->getLogScale());
     this->ui->linearRadioButton->setChecked(!this->images.at(activeIndex)->getLogScale());
 
-    this->ui->tableWidget->resizeColumnsToContents();
+    this->ui->tableWidget->resizeColumnToContents(0);
+    this->ui->tableWidget->resizeColumnToContents(1);
+    this->ui->tableWidget->resizeColumnToContents(2);
     viewImage->render();
     clmInit = false;
 }
@@ -293,25 +300,10 @@ int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
 
     if (stackImage->getType() != 3) {
         double r, g, b;
-//        double r = stackImage->getActor()->GetProperty()->GetColor()[0] * 255;
-//        double g = stackImage->getActor()->GetProperty()->GetColor()[1] * 255;
-//        double b = stackImage->getActor()->GetProperty()->GetColor()[2] * 255;
         r = g = b = 240;
 
         cb1->setStyleSheet("background-color: rgb(" + QString::number(r) + "," + QString::number(g)
                            + " ," + QString::number(b) + ")");
-
-
-//         //FV MODIFICARE PER AGGIUNGERE COLORE E GESTIONE CHECKBOX
-//         QListWidgetItem* item = new QListWidgetItem(o->getName());
-//         item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // set checkable flag
-//         item->setCheckState(Qt::Checked); // AND initialize check state
-//         QColor c1(r,g,b);
-//         QBrush b1(c1);
-//         item->setForeground(b1);
-//         ui->listWidget->addItem(item);
-
-
     }
     ui->tableWidget->setCellWidget(row, 0, cb1);
 
