@@ -28,7 +28,7 @@ set(CMAKE_AUTOUIC ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-set(qt_components Widgets Concurrent Xml Network NetworkAuth WebEngineWidgets)
+set(qt_components Widgets Concurrent Xml Network NetworkAuth WebEngineWidgets PrintSupport)
 
 find_package(Qt5 5.15 REQUIRED QUIET COMPONENTS ${qt_components})
 message(STATUS "Qt ${Qt5_VERSION} - ${qt_components}")
