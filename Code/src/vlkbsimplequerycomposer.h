@@ -2,7 +2,6 @@
 #define VLKBSIMPLEQUERYCOMPOSER_H
 
 #include "loadingwidget.h"
-#include "vlkbtable.h"
 #include "vtkwindow_new.h"
 
 #include <QNetworkAccessManager>
@@ -29,29 +28,19 @@ public:
 
 private slots:
     void on_connectPushButton_clicked();
-    void availReplyFinished(QNetworkReply *reply);
-    void tableReplyFinished(QNetworkReply *reply);
-    void queryReplyFinished(QNetworkReply *reply);
-    void onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator);
     void on_queryPushButton_clicked();
-    QUrl redirectUrl(const QUrl &possibleRedirectUrl, const QUrl &oldRedirectUrl) const;
     void on_tableComboBox_currentIndexChanged(int index);
     void on_savedatasetCheckBox_clicked(bool checked);
     void on_navigateFSButtono_clicked();
-    void closeSlot();
     void closeEvent(QCloseEvent *event);
 
 private:
     Ui::VLKBSimpleQueryComposer *ui;
-    QNetworkAccessManager *manager;
     QString url;
     QString m_sSettingsFile;
     QString vlkbtype;
     QString table_prefix;
 
-    bool available;
-    QList<VlkbTable *> table_list;
-    QUrl urlRedirectedTo;
     LoadingWidget *loading;
     vtkwindow_new *vtkwin;
     void doQuery(QString band);
@@ -60,6 +49,10 @@ private:
     bool isFilament;
     bool isBubble;
     bool is3dSelections;
+
+    void updateUI(bool enabled);
+    void fetchBandTables();
+    QString generateQuery();
 };
 
 #endif // VLKBSIMPLEQUERYCOMPOSER_H

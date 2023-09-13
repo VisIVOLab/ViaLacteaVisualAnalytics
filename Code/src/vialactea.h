@@ -1,8 +1,6 @@
 #ifndef VIALACTEA_H
 #define VIALACTEA_H
 
-#include "aboutform.h"
-#include "settingform.h"
 #include "vtkwindow_new.h"
 
 #include <QMainWindow>
@@ -10,6 +8,10 @@
 #include <QPair>
 #include <QPointer>
 #include <QSettings>
+
+class AboutForm;
+class SettingForm;
+class SimpleConeSearchForm;
 
 namespace Ui {
 class ViaLactea;
@@ -72,13 +74,14 @@ private slots:
     void on_dbLineEdit_textChanged(const QString &arg1);
     void updateVLKBSetting();
     void on_actionLoad_session_triggered();
-
     void on_loadTableButton_clicked();
+    void on_actionConeSearch_triggered();
 
 private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
+    QPointer<SimpleConeSearchForm> coneForm;
 
     // for javascript communication procedures
     WebProcess *webobj;

@@ -1,9 +1,9 @@
+#include <pybind11/embed.h>
+
 #include "vlkbsimplequerycomposer.h"
 #include "ui_vlkbsimplequerycomposer.h"
 
 #include "authkeys.h"
-#include "authwrapper.h"
-#include "singleton.h"
 #include "vialactea_fileload.h"
 
 #include <QAuthenticator>
@@ -17,6 +17,8 @@
 #include <QtDebug>
 #include <QUrl>
 #include <QUuid>
+
+namespace py = pybind11;
 
 VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::VLKBSimpleQueryComposer)
@@ -35,9 +37,10 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
             .append("/setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
     url = settings.value("vlkbtableurl", "").toString();
+    ui->vlkbUrlLineEdit->setText(url);
+    url.replace("http://", QString("http://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));
     vlkbtype = settings.value("vlkbtype", "ia2").toString();
     table_prefix = (vlkbtype == "neanias") ? "" : "vlkb_";
-    ui->vlkbUrlLineEdit->setText(url);
     on_connectPushButton_clicked();
 }
 
@@ -94,149 +97,33 @@ void VLKBSimpleQueryComposer::setLatitude(float lat1, float lat2)
 
 void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (!isConnected) {
+    try {
+        if (!isConnected) {
+            // Check TAP availability
+            py::module_ tap = py::module_::import("pyvo_tap");
+            py::dict res = tap.attr("availability")(url.toStdString());
 
-        loading = new LoadingWidget();
-        loading->init();
-        loading->setText("Connecting to VLKB...");
-        loading->show();
-        loading->activateWindow();
-        loading->setFocus();
-        manager = new QNetworkAccessManager(this);
-        connect(manager, SIGNAL(finished(QNetworkReply *)), this,
-                SLOT(availReplyFinished(QNetworkReply *)));
-        QNetworkRequest request(QUrl(url + "/availability"));
-        auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                               : &NeaniasVlkbAuth::Instance();
-        auth->putAccessToken(request);
-        QNetworkReply *reply = manager->get(request);
-        loading->setLoadingProcess(reply);
-    } else {
+            if (res["exit_code"].cast<int>() != 0) {
+                throw std::runtime_error(res["error"].cast<std::string>());
+            }
 
-        ui->connectPushButton->setText("Connect");
-        ui->vlkbUrlLineEdit->setEnabled(true);
-        ui->tableComboBox->setEnabled(false);
-        ui->longMaxLineEdit->setEnabled(false);
-        ui->longMaxLineEdit->setEnabled(false);
-        ui->latMinLineEdit->setEnabled(false);
-        ui->latMaxLineEdit->setEnabled(false);
-        ui->queryPushButton->setEnabled(false);
-        ui->outputNameLineEdit->setEnabled(false);
-        isConnected = false;
-    }
-}
+            if (!res["result"].cast<bool>()) {
+                throw std::runtime_error("TAP is not available.");
+            }
 
-void VLKBSimpleQueryComposer::availReplyFinished(QNetworkReply *reply)
-{
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (reply->error()) {
-
-        QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
-        ui->tableComboBox->setEnabled(false);
-        ui->longMaxLineEdit->setEnabled(false);
-        ui->longMaxLineEdit->setEnabled(false);
-        ui->latMinLineEdit->setEnabled(false);
-        ui->latMaxLineEdit->setEnabled(false);
-        ui->queryPushButton->setEnabled(false);
-        ui->outputNameLineEdit->setEnabled(false);
-        available = false;
-    } else {
-        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
-        QDomDocument doc;
-        doc.setContent(reply->readAll());
-        QDomNodeList list = doc.elementsByTagName(tag);
-        if (list.at(0).toElement().text() == "true") {
-            available = true;
+            isConnected = true;
             if (!isFilament) {
-                QNetworkAccessManager *manager = new QNetworkAccessManager(this);
-                connect(manager, SIGNAL(finished(QNetworkReply *)), this,
-                        SLOT(tableReplyFinished(QNetworkReply *)));
-                QNetworkRequest req(QUrl(url + "/tables"));
-                auto auth = settings.value("vlkbtype", "ia2") == "ia2"
-                        ? &IA2VlkbAuth::Instance()
-                        : &NeaniasVlkbAuth::Instance();
-                auth->putAccessToken(req);
-                QNetworkReply *r = manager->get(req);
-                loading->setLoadingProcess(r);
-            } else {
-                ui->tableComboBox->setEnabled(true);
-                ui->longMaxLineEdit->setEnabled(true);
-                ui->longMinLineEdit->setEnabled(true);
-                ui->latMinLineEdit->setEnabled(true);
-                ui->latMaxLineEdit->setEnabled(true);
-                ui->queryPushButton->setEnabled(true);
-                ui->connectPushButton->setText("Disconnect");
-                ui->vlkbUrlLineEdit->setEnabled(false);
-                isConnected = true;
-                loading->close();
+                fetchBandTables();
             }
+        } else {
+            isConnected = false;
         }
+    } catch (const std::exception &e) {
+        isConnected = false;
+        QMessageBox::critical(this, QString(), e.what());
     }
-    reply->deleteLater();
-}
 
-void VLKBSimpleQueryComposer::tableReplyFinished(QNetworkReply *reply)
-{
-    if (reply->error()) {
-        QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
-    } else {
-        QDomDocument doc;
-        doc.setContent(reply->readAll());
-        QDomNodeList list = doc.elementsByTagName("table");
-        ui->tableComboBox->clear();
-        QString table_name = table_prefix + "compactsources.band";
-        for (int i = 0; i < list.size(); i++) {
-            VlkbTable *table = new VlkbTable();
-            QDomElement node = list.at(i).toElement();
-            QString bandTableName;
-            for (int j = 0; j < node.childNodes().size(); j++) {
-                if (node.childNodes().at(j).toElement().tagName() == "name") {
-                    table->setName(node.childNodes().at(j).toElement().text());
-                    if (table->getName().contains(table_name)
-                            && (table->getName().right(2).compare("um") == 0)) {
-                        bandTableName = table->getName().mid(table->getName().lastIndexOf(".") + 1);
-                        table->setShortname(bandTableName);
-                        ui->tableComboBox->addItem(table->getShortName());
-                    }
-                } else if (node.childNodes().at(j).toElement().tagName() == "column") {
-                    table->addColumn(node.childNodes()
-                                     .at(j)
-                                     .toElement()
-                                     .childNodes()
-                                     .at(0)
-                                     .toElement()
-                                     .text(),
-                                     node.childNodes()
-                                     .at(j)
-                                     .toElement()
-                                     .childNodes()
-                                     .at(1)
-                                     .toElement()
-                                     .text());
-                }
-            }
-
-            table_list.append(table);
-        }
-        ui->tableComboBox->addItem("bandmerged");
-        int index = ui->tableComboBox->findText("bandmerged");
-        if (index != -1) { // -1 for not found
-            ui->tableComboBox->setCurrentIndex(index);
-        }
-        ui->tableComboBox->setEnabled(true);
-        ui->longMaxLineEdit->setEnabled(true);
-        ui->longMinLineEdit->setEnabled(true);
-        ui->latMinLineEdit->setEnabled(true);
-        ui->latMaxLineEdit->setEnabled(true);
-        ui->queryPushButton->setEnabled(true);
-        ui->connectPushButton->setText("Disconnect");
-        ui->vlkbUrlLineEdit->setEnabled(false);
-        isConnected = true;
-    }
-    loading->close();
-
-    reply->deleteLater();
+    updateUI(isConnected);
 }
 
 void VLKBSimpleQueryComposer::on_queryPushButton_clicked()
@@ -247,192 +134,125 @@ void VLKBSimpleQueryComposer::on_queryPushButton_clicked()
 
 void VLKBSimpleQueryComposer::doQuery(QString band)
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    loading->init();
-    loading->setText("Retrieving dataset from VLKB");
-    loading->show();
-    manager = new QNetworkAccessManager(this);
-    QByteArray postData;
-    postData.append("REQUEST=doQuery&");
-    postData.append("VERSION=1.0&");
-    postData.append("LANG=ADQL&");
-    postData.append("FORMAT=tsv&");
-    if (isFilament) {
-        QString tab1 = table_prefix + "filaments.filaments";
-        QString tab2 = table_prefix + "filaments.branches";
-
-        QString query =
-                "SELECT f.idfil_mos as idfil_mos, f.contour as contour, f.glon as glon, f.glat as "
-                "glat, b.contour as branches_contour, b.contour1d as branches_contour1d, "
-                "b.contour_new as branches_contour_new, b.flagspine as flagspine_branches  FROM "
-                + tab1 + " as f JOIN " + tab2 + " as b on f.idfil_mos = b.idfil_mos";
-        query += " WHERE( glon>=" + ui->longMinLineEdit->text()
-                + " and glon<=" + ui->longMaxLineEdit->text() + ") AND ";
-        query += "(glat>=" + ui->latMinLineEdit->text() + " and glat<=" + ui->latMaxLineEdit->text()
-                + ")";
-        postData.append("QUERY=" + QUrl::toPercentEncoding(query));
-    } else if (isBubble) {
-        QString tab = table_prefix + "filaments.bubbles";
-        QString query = "SELECT * FROM " + tab + " WHERE ( glon_cen>=" + ui->longMinLineEdit->text()
-                + " and glon_cen<=" + ui->longMaxLineEdit->text() + ") AND ";
-        query += "(glat_cen>=" + ui->latMinLineEdit->text()
-                + " and glat_cen<=" + ui->latMaxLineEdit->text() + ")";
-        postData.append("QUERY=" + QUrl::toPercentEncoding(query));
-    } else if (is3dSelections) {
-        QString tab = table_prefix + "compactsources.props_dist";
-        QString query =
-                "SELECT dist*cos(radians(glon)+3.14159265359/2) as x, "
-                "dist*sin(radians(glon)+3.14159265359/2) as y,dist*tan(radians(glat)) as z, * FROM "
-                + tab + " WHERE ";
-        query += "(( glon>=" + ui->longMinLineEdit->text()
-                + " and glon<=" + ui->longMaxLineEdit->text() + ") AND ";
-        query += "(glat>=" + ui->latMinLineEdit->text() + " and glat<=" + ui->latMaxLineEdit->text()
-                + "))";
-        postData.append("QUERY=" + QUrl::toPercentEncoding(query));
-
+    QString output_file;
+    if (ui->savedatasetCheckBox->isChecked()) {
+        output_file = ui->outputNameLineEdit->text();
     } else {
-        if (band.compare("bandmerged") == 0) {
-            isBandmerged = true;
-            QString tab = table_prefix + "compactsources.sed_view_final";
-            QString query = "SELECT DISTINCT * FROM " + tab + " WHERE ";
-            query += "(( glonft>=" + ui->longMinLineEdit->text()
-                    + " and glonft<=" + ui->longMaxLineEdit->text() + ") AND ";
-            query += "(glatft>=" + ui->latMinLineEdit->text()
-                    + " and glatft<=" + ui->latMaxLineEdit->text() + "))";
-            postData.append("QUERY=" + QUrl::toPercentEncoding(query));
-        } else {
-            isBandmerged = false;
-            // aggiungo al table name 'vlkb_compactsources.'
-            QString tab = table_prefix + "compactsources." + band;
-            QString query = "SELECT * FROM " + tab + " WHERE ( glon>=" + ui->longMinLineEdit->text()
-                    + " and glon<=" + ui->longMaxLineEdit->text() + ") AND ";
-            query += "(glat>=" + ui->latMinLineEdit->text()
-                    + " and glat<=" + ui->latMaxLineEdit->text() + ")";
-            postData.append("QUERY=" + QUrl::toPercentEncoding(query));
+        output_file = QString("%1/tmp_download/%2.dat")
+                              .arg(QDir::home().absoluteFilePath("VisIVODesktopTemp"),
+                                   QUuid::createUuid().toString(QUuid::WithoutBraces));
+    }
+
+    try {
+        py::module_ tap = py::module_::import("pyvo_tap");
+        std::string query = generateQuery().toStdString();
+        std::string out_format = "ascii.tab";
+
+        py::dict res =
+                tap.attr("search")(url.toStdString(), query, output_file.toStdString(), out_format);
+        if (res["exit_code"].cast<int>() != 0) {
+            throw std::runtime_error(res["error"].cast<std::string>());
         }
-    }
-    connect(manager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
-            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
-    connect(manager, SIGNAL(finished(QNetworkReply *)), this,
-            SLOT(queryReplyFinished(QNetworkReply *)));
-    QNetworkRequest req(url + "/sync");
-    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
-    QNetworkReply *r = manager->post(req, postData);
-    loading->setLoadingProcess(r);
-}
 
-void VLKBSimpleQueryComposer::onAuthenticationRequestSlot(QNetworkReply *aReply,
-                                                          QAuthenticator *aAuthenticator)
-{
-    Q_UNUSED(aReply);
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
-        aAuthenticator->setUser(IA2_TAP_USER);
-        aAuthenticator->setPassword(IA2_TAP_PASS);
-    }
-}
+        if (res["result"]["nels"].cast<int>() == 0) {
+            throw std::runtime_error("Empty table. Table contained no rows.");
+        }
 
-void VLKBSimpleQueryComposer::queryReplyFinished(QNetworkReply *reply)
-{
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    if (reply->error()) {
-        QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
-        loading->loadingEnded();
-        loading->hide();
-    } else {
-        QVariant possibleRedirectUrl =
-                reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
-
-        /* We'll deduct if the redirection is valid in the redirectUrl function */
-        urlRedirectedTo = redirectUrl(possibleRedirectUrl.toUrl(), urlRedirectedTo);
-        /* If the URL is not empty, we're being redirected. */
-        if (!urlRedirectedTo.isEmpty()) {
-            /* We'll do another request to the redirection url. */
-            QNetworkRequest req(urlRedirectedTo);
-            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                                   : &NeaniasVlkbAuth::Instance();
-            auth->putAccessToken(req);
-            manager->get(req);
+        auto fileload = new Vialactea_FileLoad(output_file, true);
+        fileload->setVtkWin(vtkwin);
+        if (isFilament) {
+            fileload->importFilaments();
+        } else if (isBubble) {
+            fileload->importBubbles();
+        } else if (is3dSelections) {
+            fileload->import3dSelection();
         } else {
-            QByteArray bytes = reply->readAll();
-            QString s_data = QString::fromLatin1(bytes.data());
-            // se inizia per '<' è un xml, se è xml c'e' stato un errore
-            if (QString::compare(s_data.at(0), "<", Qt::CaseInsensitive) == 0) {
-                QMessageBox::critical(this, "Error", "Error: \n" + bytes);
+            fileload->setCatalogueActive();
+            if (!isBandmerged) {
+                QString w = ui->tableComboBox->currentText().replace("band", "").replace("um", "");
+                fileload->setWavelength(w);
             } else {
-                QString output_file;
-                if (ui->savedatasetCheckBox->isChecked()) {
-                    output_file = ui->outputNameLineEdit->text();
-                } else {
-                    output_file =
-                            QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp");
-                    output_file.append("/tmp_download/")
-                            .append(QUuid::createUuid().toString(QUuid::WithoutBraces))
-                            .append(".dat");
-                }
-                QFile file(output_file);
-                file.open(QIODevice::WriteOnly);
-                file.write(bytes);
-                file.close();
-                QFile fileRead(output_file);
-                fileRead.open(QIODevice::ReadOnly);
-                fileRead.readLine();
-                QString check = fileRead.readLine();
-                fileRead.close();
-                if (check != "") {
-                    Vialactea_FileLoad *fileload = new Vialactea_FileLoad(output_file, true);
-                    fileload->setVtkWin(vtkwin);
-                    if (isFilament) {
-                        fileload->importFilaments();
-                    } else if (isBubble) {
-                        fileload->importBubbles();
-                    } else if (is3dSelections) {
-                        fileload->import3dSelection();
-                    } else {
-                        if (!isBandmerged) {
-                            fileload->setCatalogueActive();
-
-                            QString w = ui->tableComboBox->currentText()
-                                    .replace("band", "")
-                                    .replace("um", "");
-                            fileload->setWavelength(w);
-                            fileload->on_okPushButton_clicked();
-                        } else {
-                            fileload->setCatalogueActive();
-                            fileload->setWavelength("all");
-                            fileload->on_okPushButton_clicked();
-                        }
-                    }
-                } else {
-                    QMessageBox::critical(this, "Error", "Empty table. Table contained no rows");
-                }
+                fileload->setWavelength("all");
             }
-            loading->loadingEnded();
-            loading->hide();
+            fileload->on_okPushButton_clicked();
         }
+
+    } catch (const std::exception &e) {
+        QMessageBox::critical(this, QString(), e.what());
     }
-    /* Clean up. */
-    reply->deleteLater();
 }
 
-QUrl VLKBSimpleQueryComposer::redirectUrl(const QUrl &possibleRedirectUrl,
-                                          const QUrl &oldRedirectUrl) const
+void VLKBSimpleQueryComposer::updateUI(bool enabled)
 {
-    QUrl redirectUrl;
-    /*
-     * Check if the URL is empty and
-     * that we aren't being fooled into a infinite redirect loop.
-     * We could also keep track of how many redirects we have been to
-     * and set a limit to it, but we'll leave that to you.
-     */
-    if (!possibleRedirectUrl.isEmpty() && possibleRedirectUrl != oldRedirectUrl) {
-        redirectUrl = possibleRedirectUrl;
+    QString btnText = enabled ? "Disconnect" : "Connect";
+    ui->connectPushButton->setText(btnText);
+    ui->vlkbUrlLineEdit->setEnabled(!enabled);
+    ui->tableComboBox->setEnabled(enabled);
+    ui->longMinLineEdit->setEnabled(enabled);
+    ui->longMaxLineEdit->setEnabled(enabled);
+    ui->latMinLineEdit->setEnabled(enabled);
+    ui->latMaxLineEdit->setEnabled(enabled);
+    ui->queryPushButton->setEnabled(enabled);
+    ui->outputNameLineEdit->setEnabled(enabled);
+}
+
+void VLKBSimpleQueryComposer::fetchBandTables()
+{
+    ui->tableComboBox->clear();
+
+    py::module_ tap = py::module_::import("pyvo_tap");
+    py::dict res = tap.attr("band_tables")(url.toStdString());
+    if (res["exit_code"].cast<int>() != 0) {
+        throw std::runtime_error(res["error"].cast<std::string>());
     }
 
-    return redirectUrl;
+    py::list tables = res["result"];
+    for (const auto &table : tables) {
+        ui->tableComboBox->addItem(QString::fromStdString(table.cast<std::string>()));
+    }
+    ui->tableComboBox->addItem("bandmerged");
+    ui->tableComboBox->setCurrentIndex(ui->tableComboBox->count() - 1);
+}
+
+QString VLKBSimpleQueryComposer::generateQuery()
+{
+    if (isFilament) {
+        return QString("SELECT f.idfil_mos AS idfil_mos, f.contour AS contour, f.glon AS glon, "
+                       "f.glat "
+                       "AS glat, b.contour AS branches_contour, b.contour1d AS branches_contour1d, "
+                       "b.contour_new AS branches_contour_new, b.flagspine AS flagspine_branches "
+                       "FROM "
+                       "vlkb_filaments.filaments AS f JOIN vlkb_filaments.branches AS b on "
+                       "f.idfil_mos = b.idfil_mos WHERE (glon >= %1 AND glon <= %2) AND "
+                       "(glat >= %3 AND glat <= %4)")
+                .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
+                     ui->latMinLineEdit->text(), ui->latMaxLineEdit->text());
+    }
+
+    if (is3dSelections) {
+        return QString("SELECT dist * cos(radians(glon)+ 3.14159265359 / 2) AS x, dist * "
+                       "sin(radians(glon)+ 3.14159265359 / 2) AS y, dist * tan(radians(glat)) AS "
+                       "z, * FROM vlkb_compactsources.props_dist WHERE ((glon >= %1 AND "
+                       "glon <= %2) AND (glat >= %3 AND glat <= %4))")
+                .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
+                     ui->latMinLineEdit->text(), ui->latMaxLineEdit->text());
+    }
+
+    QString band = ui->tableComboBox->currentText();
+    if (band == "bandmerged") {
+        isBandmerged = true;
+        return QString("SELECT DISTINCT * FROM vlkb_compactsources.sed_view_final WHERE ((glonft "
+                       ">= "
+                       "%1 AND glonft <= %2) AND (glatft >= %3 AND glatft <= %4))")
+                .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
+                     ui->latMinLineEdit->text(), ui->latMaxLineEdit->text());
+    }
+
+    isBandmerged = false;
+    return QString("SELECT * FROM vlkb_compactsources.%5 WHERE (glon >= %1 AND "
+                   "glon <= %2) AND (glat >= %3 AND glat <= %4)")
+            .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
+                 ui->latMinLineEdit->text(), ui->latMaxLineEdit->text(), band);
 }
 
 void VLKBSimpleQueryComposer::on_tableComboBox_currentIndexChanged(int index)
@@ -463,13 +283,11 @@ void VLKBSimpleQueryComposer::on_navigateFSButtono_clicked()
     ui->outputNameLineEdit->setText(fn);
 }
 
-void VLKBSimpleQueryComposer::closeSlot()
-{
-}
-
 void VLKBSimpleQueryComposer::closeEvent(QCloseEvent *event)
 {
     if (vtkwin != 0) {
         vtkwin->activateWindow();
     }
+
+    QWidget::closeEvent(event);
 }

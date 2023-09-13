@@ -577,7 +577,7 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -595,7 +595,14 @@
     </property>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuVO">
+    <property name="title">
+     <string>VO</string>
+    </property>
+    <addaction name="actionConeSearch"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuVO"/>
    <addaction name="menuAiuto"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -627,6 +634,11 @@
   <action name="actionLoad_session">
    <property name="text">
     <string>Load session</string>
+   </property>
+  </action>
+  <action name="actionConeSearch">
+   <property name="text">
+    <string>Cone Search</string>
    </property>
   </action>
  </widget>

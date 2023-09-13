@@ -1,6 +1,6 @@
 # Dependencies installation
 Prerequisites:
-- CMake (>= 3.19.4).
+- CMake (>= 3.16).
 - Qt 5.15.2 - Additional modules: Qt WebEngine and Qt Network Authorization.
 
 ## CFITSIO 4.1.0
@@ -34,8 +34,18 @@ Prerequisites:
 1. `$ cd boost_1_78_0`
 1. `$ sudo cp -r boost /usr/local/include`
 
+## Python
+Python3 is required for certain functionalities using specific Python packages. Install the following packages:
+- `jmespath`
+- `pyvo`
+- `numpy`
+- `scipy` 
+
 # Building ViaLacteaVisualAnalytics
-1. `$ git clone https://github.com/NEANIAS-Space/ViaLacteaVisualAnalytics.git`
-1. `$ cd ViaLacteaVisualAnalytics/Code`
-1. `$ qmake ViaLacteaVisualAnalytics.pro`
-1. `$ make`
+Build the project using CMake with your preferred generator. You may need to specify the following CMake variables:
+- `BOOST_ROOT`: Boost installation prefix.
+- `CFITSIO_ROOT_DIR`: CFITSIO non-standard installation path.
+- `VTK_DIR`: The directory containing a CMake configuration file for VTK.
+- `PYTHON_EXECUTABLE`: Path to python3 executable.
+
+After a successful build, copy the contents of [Utils](Utils) next to the ViaLacteaVisualAnalytics executable.

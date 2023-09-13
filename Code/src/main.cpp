@@ -1,3 +1,5 @@
+#include <pybind11/embed.h>
+
 #include "mainwindow.h"
 #include "singleton.h"
 
@@ -8,6 +10,8 @@
 #include <QWebEngineUrlScheme>
 
 #include <clocale>
+
+namespace py = pybind11;
 
 int main(int argc, char *argv[])
 {
@@ -23,6 +27,11 @@ int main(int argc, char *argv[])
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion("1.6");
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
+
+    // Init python interpreter
+    py::scoped_interpreter guard;
+    py::module_ sys = py::module_::import("sys");
+    sys.attr("path").attr("append")(QApplication::applicationDirPath().toStdString());
 
     setlocale(LC_NUMERIC, "C");
     QLocale::setDefault(QLocale::c());
