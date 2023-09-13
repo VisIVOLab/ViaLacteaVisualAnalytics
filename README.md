@@ -1,7 +1,9 @@
-# ViaLactea Visual Analytics 
+# ViaLactea Visual Analytics <img align="right" src="Code/icons/logo_256.png" width="40">
 
 [![DOI](https://zenodo.org/badge/269041293.svg)](https://zenodo.org/badge/latestdoi/269041293)
-
+[![GitHub release](https://img.shields.io/github/v/release/VisIVOLab/ViaLacteaVisualAnalytics)](https://github.com/VisIVOLab/ViaLacteaVisualAnalytics/releases/latest)
+[![RTD](https://img.shields.io/badge/docs-online-blue)](https://vlva.readthedocs.io/en/latest)
+![License](https://img.shields.io/github/license/VisIVOLab/ViaLacteaVisualAnalytics)
 
 The ViaLactea Visual Analytics (VLVA) tool, based on the VisIVO suite, is aimed to exploit a combination of all 
 new-generation surveys of the Galactic Plane to study the star formation process of the Milky Way. 
