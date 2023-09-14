@@ -21,6 +21,9 @@
        <layout class="QVBoxLayout" name="ImagePanel" stretch="1,3">
         <item>
          <layout class="QHBoxLayout" name="ControlPanel">
+          <property name="spacing">
+           <number>6</number>
+          </property>
           <item>
            <widget class="QGroupBox" name="StackControlBox">
             <property name="title">
@@ -29,13 +32,6 @@
             <layout class="QHBoxLayout" name="horizontalLayout_4">
              <item>
               <layout class="QGridLayout" name="gridLayout">
-               <item row="0" column="0">
-                <widget class="QPushButton" name="btnAddImageToStack">
-                 <property name="text">
-                  <string>Add Image</string>
-                 </property>
-                </widget>
-               </item>
                <item row="0" column="1">
                 <widget class="QPushButton" name="btnRemoveImageFromStack">
                  <property name="text">
@@ -43,13 +39,10 @@
                  </property>
                 </widget>
                </item>
-               <item row="1" column="1">
-                <widget class="QSpinBox" name="sbxStackActiveLayer"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_3">
+               <item row="0" column="0">
+                <widget class="QPushButton" name="btnAddImageToStack">
                  <property name="text">
-                  <string>Active layer index:</string>
+                  <string>Add Image</string>
                  </property>
                 </widget>
                </item>
@@ -184,7 +177,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QTableWidget" name="tableWidget">
+         <widget class="QTableWidget" name="tblCompactSourcesTable">
           <property name="maximumSize">
            <size>
             <width>16777215</width>

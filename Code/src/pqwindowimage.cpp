@@ -57,8 +57,8 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     ui->linearRadioButton->setChecked(true);
     this->images = std::vector<vlvaStackImage*>();
 
-    ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tblCompactSourcesTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tblCompactSourcesTable->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->lstImageList->setDragDropMode(QAbstractItemView::InternalMove);
     connect(ui->lstImageList->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)),
             this, SLOT(movedLayersRow(QModelIndex, int, int, QModelIndex, int)));
@@ -106,8 +106,7 @@ pqWindowImage::~pqWindowImage()
 void pqWindowImage::changeColorMap(const QString &name)
 {
     this->images[activeIndex]->changeColorMap(name);
-    int row = this->ui->tableWidget->currentRow();
-    this->ui->tableWidget->item(row, 2)->setText(name);
+    int row = this->ui->tblCompactSourcesTable->currentRow();
 
     viewImage->render();
 }
@@ -140,43 +139,47 @@ void pqWindowImage::updateUI()
     interactorStyle->SetLayerFitsReaderFunc(this->images[activeIndex]->getFitsHeaderPath());
     viewImage->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
             interactorStyle);
-    this->ui->sbxStackActiveLayer->setValue(this->activeIndex);
     this->ui->lstImageList->clear();
     std::sort(images.begin(), images.end(), [](vlvaStackImage* a, vlvaStackImage* b){ return a->getIndex() < b->getIndex();});
 
     for (int i = 0; i < images.size(); ++i)
     {
         auto item = images.at(i);
-        this->ui->tableWidget->item(i, 1)->setText(item->getFitsFileName());
-        this->ui->tableWidget->item(i, 2)->setText(item->getColourMap());
-        auto cb = static_cast<QCheckBox*>(this->ui->tableWidget->cellWidget(i, 0));
-        if (!item->isEnabled()){
-            cb->setCheckState(Qt::Unchecked);
-            continue;
-        }
-        cb->setCheckState(Qt::Checked);
         item->setZPosition();
-        this->ui->lstImageList->addItem(item->getFitsFileName());
+        auto lstItem = new QListWidgetItem(this->ui->lstImageList);
+        Qt::CheckState checked = (item->isEnabled()) ? Qt::Checked : Qt::Unchecked;
+        lstItem->setText(item->getFitsFileName());
+        lstItem->setFlags(lstItem->flags() | Qt::ItemIsUserCheckable);
+        lstItem->setCheckState(checked);
+        this->ui->lstImageList->addItem(lstItem);
     }
 
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
-    this->ui->tableWidget->setCurrentItem(this->ui->tableWidget->item(this->activeIndex, 1));
+    this->ui->tblCompactSourcesTable->setCurrentItem(this->ui->tblCompactSourcesTable->item(this->activeIndex, 1));
 
     int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex]->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
-
-    this->ui->sbxStackActiveLayer->setValue(this->activeIndex);
-    this->ui->sbxStackActiveLayer->setMaximum(images.size() - 1);
 
     this->ui->opacitySlider->setValue(this->images.at(activeIndex)->getOpacity() * 100);
     this->ui->logRadioButton->setChecked(this->images.at(activeIndex)->getLogScale());
     this->ui->linearRadioButton->setChecked(!this->images.at(activeIndex)->getLogScale());
 
-    this->ui->tableWidget->resizeColumnToContents(0);
-    this->ui->tableWidget->resizeColumnToContents(1);
-    this->ui->tableWidget->resizeColumnToContents(2);
+    this->ui->tblCompactSourcesTable->resizeColumnToContents(0);
+    this->ui->tblCompactSourcesTable->resizeColumnToContents(1);
+    this->ui->tblCompactSourcesTable->resizeColumnToContents(2);
     viewImage->render();
     clmInit = false;
+}
+
+void pqWindowImage::setImageListCheckbox(int row, Qt::CheckState checked)
+{
+    auto im = images.at(row);
+    if (checked == Qt::Checked){
+        im->setActive(true);
+    }
+    else{
+        im->setActive(false);
+    }
 }
 
 void pqWindowImage::showLegendScaleActor()
@@ -265,6 +268,7 @@ int pqWindowImage::removeImageFromStack(const int index)
         return 1;
     std::cerr << "Removing image at pos " << index << " from stack via proxy call." << std::endl;
     images.erase(images.begin() + index);
+    this->activeIndex = activeIndex > 0 ? index - 1 : 0;
     updateUI();
     return 1;
 }
@@ -276,52 +280,6 @@ int pqWindowImage::removeImageFromStack(const int index)
  */
 int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
 {
-    QSignalMapper *mapper = new QSignalMapper(this);
-
-    int row = ui->tableWidget->rowCount();
-    if (ui->tableWidget->columnCount() == 0){
-        QTableWidgetItem *header_0 = new QTableWidgetItem("Active?");
-        QTableWidgetItem *header_1 = new QTableWidgetItem("Name");
-        QTableWidgetItem *header_2 = new QTableWidgetItem("Colour Map");
-
-        ui->tableWidget->setColumnCount(3);
-        ui->tableWidget->setHorizontalHeaderItem(0, header_0);
-        ui->tableWidget->setHorizontalHeaderItem(1, header_1);
-        ui->tableWidget->setHorizontalHeaderItem(2, header_2);
-    }
-    ui->tableWidget->insertRow(row);
-
-    QCheckBox *cb1 = new QCheckBox();
-
-    if (stackImage->isEnabled())
-        cb1->setChecked(true);
-    else
-        cb1->setChecked(false);
-
-    if (stackImage->getType() != 3) {
-        double r, g, b;
-        r = g = b = 240;
-
-        cb1->setStyleSheet("background-color: rgb(" + QString::number(r) + "," + QString::number(g)
-                           + " ," + QString::number(b) + ")");
-    }
-    ui->tableWidget->setCellWidget(row, 0, cb1);
-
-    connect(cb1, SIGNAL(stateChanged(int)), mapper, SLOT(map()));
-    mapper->setMapping(cb1, row);
-
-    QTableWidgetItem *item_1 = new QTableWidgetItem();
-    item_1->setFlags(item_1->flags() ^ Qt::ItemIsEditable);
-    QTableWidgetItem *item_2 = new QTableWidgetItem();
-    item_2->setFlags(item_2->flags() ^ Qt::ItemIsEditable);
-
-    item_1->setText(stackImage->getFitsFileName());
-    item_2->setText(stackImage->getColourMap());
-    ui->tableWidget->setItem(row, 1, item_1);
-    ui->tableWidget->setItem(row, 2, item_2);
-
-    connect(mapper, SIGNAL(mapped(int)), this, SLOT(tableCheckboxClicked(int)));
-
     return 1;
 }
 
@@ -561,23 +519,16 @@ void pqWindowImage::on_btnRemoveImageFromStack_clicked()
 }
 
 /**
- * @brief pqWindowImage::on_sbxStackActiveLayer_valueChanged
- * @param arg1
- */
-void pqWindowImage::on_sbxStackActiveLayer_valueChanged(int arg1)
-{
-    if (clmInit)
-        return;
-    this->activeIndex = this->ui->sbxStackActiveLayer->value();
-    updateUI();
-}
-
-/**
  * @brief pqWindowImage::on_lstImageList_itemClicked
  * @param item
  */
 void pqWindowImage::on_lstImageList_itemClicked(QListWidgetItem *item)
 {
+    // If in the process of initialising or updating the UI, ignore this command.
+    if (clmInit)
+        return;
+    if (!item)
+        return;
     auto imName = item->text();
     for (auto i : images){
         if (imName == i->getFitsFileName())
@@ -586,20 +537,13 @@ void pqWindowImage::on_lstImageList_itemClicked(QListWidgetItem *item)
     updateUI();
 }
 
-/**
- * @brief pqWindowImage::on_tableWidget_currentItemChanged
- * @param current
- * @param previous
- */
-void pqWindowImage::on_tableWidget_currentItemChanged(QTableWidgetItem *current, QTableWidgetItem *previous)
+void pqWindowImage::on_lstImageList_itemChanged(QListWidgetItem *item)
 {
-    if (!current)
+    // If in the process of initialising or updating the UI, ignore this command.
+    if (clmInit)
         return;
-    auto row = this->ui->tableWidget->row(current);
-    auto imName = this->ui->tableWidget->item(row, 1)->text();
-    for (auto i : images){
-        if (imName == i->getFitsFileName())
-            this->activeIndex = i->getIndex();
-    }
+
+    setImageListCheckbox(item->listWidget()->row(item), item->checkState());
     updateUI();
 }
+

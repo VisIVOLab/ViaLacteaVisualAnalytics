@@ -55,11 +55,9 @@ private slots:
 
     void on_btnRemoveImageFromStack_clicked();
 
-    void on_sbxStackActiveLayer_valueChanged(int arg1);
-
     void on_lstImageList_itemClicked(QListWidgetItem *item);
 
-    void on_tableWidget_currentItemChanged(QTableWidgetItem *current, QTableWidgetItem *previous);
+    void on_lstImageList_itemChanged(QListWidgetItem *item);
 
 private:
     Ui::pqWindowImage *ui;
@@ -89,6 +87,8 @@ private:
     void showStatusBarMessage(const std::string &msg);
 
     void updateUI();
+
+    void setImageListCheckbox(int row, Qt::CheckState checked);
 
     QString createFitsHeaderFile(const FitsHeaderMap &fitsHeader);
     void createView();
