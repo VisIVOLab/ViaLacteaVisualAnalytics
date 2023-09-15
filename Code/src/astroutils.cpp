@@ -109,7 +109,7 @@ bool AstroUtils::checkSimCubeHeader(const std::string &file,
                                     std::list<std::string> &missingKeywords)
 {
     // Set of required header's keywords to handle simcubes
-    std::set<std::string> requiredKeywords = { "CTYPE", "CUNIT", "CDELT" };
+    std::set<std::string> requiredKeywords = { "CTYPE", "CDELT" };
 
     // Clear return list
     missingKeywords.clear();

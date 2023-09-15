@@ -825,11 +825,11 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
         cunit3 = cunit3.simplified();
 
         profileWin = new ProfileWindow(bunit);
-        if (cunit3.contains("m/s")) {
-            profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, cunit3);
-        } else {
+        if (cunit3.contains("Hz")) {
             double restfrq = fitsHeader.value("RESTFRQ").toDouble();
             profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, restfrq);
+        } else {
+            profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, cunit3);
         }
         profileWin->show();
 
