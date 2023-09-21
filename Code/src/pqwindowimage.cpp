@@ -155,8 +155,6 @@ void pqWindowImage::updateUI()
     }
 
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
-    this->ui->tblCompactSourcesTable->setCurrentItem(this->ui->tblCompactSourcesTable->item(this->activeIndex, 1));
-
     int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex]->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
 
@@ -164,9 +162,6 @@ void pqWindowImage::updateUI()
     this->ui->logRadioButton->setChecked(this->images.at(activeIndex)->getLogScale());
     this->ui->linearRadioButton->setChecked(!this->images.at(activeIndex)->getLogScale());
 
-    this->ui->tblCompactSourcesTable->resizeColumnToContents(0);
-    this->ui->tblCompactSourcesTable->resizeColumnToContents(1);
-    this->ui->tblCompactSourcesTable->resizeColumnToContents(2);
     viewImage->render();
     clmInit = false;
 }
