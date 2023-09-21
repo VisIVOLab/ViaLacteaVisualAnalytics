@@ -51,9 +51,10 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
         imageRep = builder->createDataRepresentation(this->imageSource->getOutputPort(0), viewImage);
         imageProxy = imageRep->getProxy();
         vtkSMPropertyHelper(imageProxy, "Representation").Set("Slice");
-        auto separateProperty = vtkSMPVRepresentationProxy::SafeDownCast(imageProxy)->GetProperty("UseSeparateColorMap");
+        vtkSMProperty* separateProperty = vtkSMPVRepresentationProxy::SafeDownCast(imageProxy)->GetProperty("UseSeparateColorMap");
         vtkSMPropertyHelper(separateProperty).Set(1);
         vtkSMPVRepresentationProxy::SetScalarColoring(imageProxy, "FITSImage", vtkDataObject::POINT);
+        imageProxy->UpdateVTKObjects();
 
         readInfoFromSource();
         readHeaderFromSource();
@@ -299,6 +300,10 @@ int vlvaStackImage::changeColorMap(const QString &name)
     if (initialised)
     {
         if (vtkSMProperty *lutProperty = imageProxy->GetProperty("LookupTable")) {
+            int sep;
+            vtkSMPropertyHelper(vtkSMPVRepresentationProxy::SafeDownCast(imageProxy)->GetProperty("UseSeparateColorMap")).Get(&sep);
+            if (sep == 1)
+                std::cerr << "Setting colour map with \"UseSeparateColourMap\" set to true!" << std::endl;
 
             auto presets = vtkSMTransferFunctionPresets::GetInstance();
             lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()));
