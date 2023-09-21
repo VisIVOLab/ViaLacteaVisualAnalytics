@@ -30,6 +30,12 @@ vlvaStackImage::vlvaStackImage(QString filePath, int i, bool log, pqObjectBuilde
 {
     initialised = false;
     FitsFileName = QFileInfo(filePath).fileName();
+    
+    // Create a unique color map proxy for each instance
+    vtkNew<vtkSMTransferFunctionManager> mgr;
+    // Generate a unique name for the color map proxy
+    std::string colorMapName = "ColorMap_" + std::to_string(index);
+    lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(mgr->GetColorTransferFunction(colorMapName.c_str(), spm));
 }
 
 vlvaStackImage::~vlvaStackImage()
@@ -58,10 +64,6 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
         readInfoFromSource();
         readHeaderFromSource();
         fitsHeaderPath = createFitsHeaderFile(fitsHeader);
-
-        // Set up colour map controls
-        vtkNew<vtkSMTransferFunctionManager> mgr;
-        lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(mgr->GetColorTransferFunction("FITSImage", imageProxy->GetSessionProxyManager()));
         // Set default colour map
         changeColorMap("Grayscale");
         setLogScale(false);
