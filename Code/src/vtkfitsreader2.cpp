@@ -84,14 +84,14 @@ int vtkFitsReader2::RequestInformation(vtkInformation *vtkNotUsed(request),
     }
 
     int dataExtent[6] = { 0, 0, 0, 0, 0, 0 };
-    this->NumberOfSlices = naxes[2];
+    this->NumberOfSlices = naxis > 2 ? naxes[2] : 1;
     dataExtent[1] = (naxes[0] - 1) / this->ScaleFactor;
     dataExtent[3] = (naxes[1] - 1) / this->ScaleFactor;
     if (this->SliceMode) {
         dataExtent[4] = this->Slice;
         dataExtent[5] = this->Slice;
     } else {
-        dataExtent[5] = (naxes[2] - 1) / this->ScaleFactor;
+        dataExtent[5] = (this->NumberOfSlices - 1) / this->ScaleFactor;
     }
 
     vtkInformation *outInfo = outputVector->GetInformationObject(0);
@@ -137,23 +137,20 @@ int vtkFitsReader2::RequestData(vtkInformation *vtkNotUsed(request),
     // First Pixel coords
     long *fP = new long[naxis];
     std::fill_n(fP, naxis, 1);
-    fP[0] = dataExtent[0] + 1;
-    fP[1] = dataExtent[2] + 1;
-    fP[2] = dataExtent[4] + 1;
+    for (int i = 0; i < std::min(naxis, 3); ++i)
+        fP[i] = dataExtent[i * 2] + 1;
 
     // Last Pixel coords
     long *lP = new long[naxis];
     std::fill_n(lP, naxis, 1);
-    lP[0] = ScaleFactor * dataExtent[1] + 1;
-    lP[1] = ScaleFactor * dataExtent[3] + 1;
-    lP[2] = ScaleFactor * dataExtent[5] + 1;
+    for (int i = 0; i < std::min(naxis, 3); ++i)
+        lP[i] = ScaleFactor * dataExtent[i * 2 + 1] + 1;
 
     // Increments
     long *inc = new long[naxis];
     std::fill_n(inc, naxis, 1);
-    inc[0] = ScaleFactor;
-    inc[1] = ScaleFactor;
-    inc[2] = ScaleFactor;
+    for (int i = 0; i < std::min(naxis, 3); ++i)
+        inc[i] = ScaleFactor;
 
     float nulval = 1e-30;
     int anynul = 0;
@@ -162,6 +159,9 @@ int vtkFitsReader2::RequestData(vtkInformation *vtkNotUsed(request),
     if (fits_read_subset(fptr, TFLOAT, fP, lP, inc, &nulval, ptr, &anynul, &ReadStatus)) {
         std::cerr << "vtkFitsReader2::RequestData [CFITSIO] Error fits_read_subset";
         fits_report_error(stderr, ReadStatus);
+        delete[] fP;
+        delete[] lP;
+        delete[] inc;
         delete[] ptr;
         return 0;
     }
@@ -171,6 +171,10 @@ int vtkFitsReader2::RequestData(vtkInformation *vtkNotUsed(request),
                              &ReadStatus)) {
         std::cerr << "vtkFitsReader2::RequestData [CFITSIO] Error fits_img_stats_float";
         fits_report_error(stderr, ReadStatus);
+        delete[] fP;
+        delete[] lP;
+        delete[] inc;
+        delete[] ptr;
         return 0;
     }
 
@@ -186,6 +190,10 @@ int vtkFitsReader2::RequestData(vtkInformation *vtkNotUsed(request),
     scalars->SetVoidArray(ptr, nels, 0, vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
     outData->GetPointData()->SetScalars(scalars);
     outData->GetBounds(this->Bounds);
+
+    delete[] fP;
+    delete[] lP;
+    delete[] inc;
 
     return 1;
 }

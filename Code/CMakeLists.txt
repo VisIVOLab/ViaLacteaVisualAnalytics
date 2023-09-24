@@ -104,6 +104,9 @@ set(PROJECT_SOURCES
     src/higalselectedsources.h
     src/histogram.cpp
     src/histogram.h
+    src/interactors/vtkinteractorstyledrawarrow.h
+    src/interactors/vtkinteractorstyledrawarrow.cpp
+    src/interactors/vtkinteractorstyleimagecustom.h
     src/interactors/vtkinteractorstyleimagecustom.cpp
     src/interactors/vtkinteractorstyleimagecustom.h
     src/interactors/vtkinteractorstyleprofile.cpp
@@ -266,6 +269,8 @@ set(PROJECT_SOURCES
     src/vtkwindow_new.h
     src/vtkwindowcube.cpp
     src/vtkwindowcube.h
+    src/vtkwindowpv.cpp
+    src/vtkwindowpv.h
     src/xmlparser.cpp
     src/xmlparser.h
 )
@@ -311,6 +316,7 @@ set(PROJECT_UI
     ui/vtktoolswidget.ui
     ui/vtkwindow_new.ui
     ui/vtkwindowcube.ui
+    ui/vtkwindowpv.ui
 )
 
 qt_add_resources(PROJECT_RESOURCES visivo.qrc)
