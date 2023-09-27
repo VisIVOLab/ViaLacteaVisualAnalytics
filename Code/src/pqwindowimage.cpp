@@ -2,7 +2,6 @@
 #include "ui_pqwindowimage.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
-#include "vtklegendscaleactor.h"
 
 #include <pqActiveObjects.h>
 #include <pqAlwaysConnectedBehavior.h>
@@ -28,6 +27,7 @@
 #include <vtkSMPVRepresentationProxy.h>
 #include <vtkSMReaderFactory.h>
 #include <vtkSMSessionProxyManager.h>
+#include <vtkSMStringVectorProperty.h>
 #include <vtkSMTransferFunctionManager.h>
 #include <vtkSMTransferFunctionPresets.h>
 #include <vtkSMTransferFunctionProxy.h>
@@ -39,8 +39,6 @@
 #include <QFileInfo>
 #include <QSignalMapper>
 
-#define logScaleDefault true
-
 pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubset) : ui(new Ui::pqWindowImage)
 {
     ui->setupUi(this);
@@ -48,6 +46,7 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
 
     // Create the LUT combo box options
     clmInit = true;
+    imgCounter = 0;
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     for (int i = 0; i < presets->GetNumberOfPresets(); ++i) {
         QString name = QString::fromStdString(presets->GetPresetName(i));
@@ -105,9 +104,8 @@ pqWindowImage::~pqWindowImage()
  */
 void pqWindowImage::changeColorMap(const QString &name)
 {
-    this->images[activeIndex]->changeColorMap(name);
-    int row = this->ui->tblCompactSourcesTable->currentRow();
-
+    this->images.at(activeIndex)->changeColorMap(name);
+    this->ui->lstImageList->item(activeIndex)->setText(name);
     viewImage->render();
 }
 
@@ -123,6 +121,8 @@ void pqWindowImage::showStatusBarMessage(const std::string &msg)
 
 /**
  * @brief pqWindowImage::updateUI
+ * Function that updates the interface with the newest values.
+ * Called whenever something changes, such as user selecting another image.
  */
 void pqWindowImage::updateUI()
 {
@@ -130,13 +130,13 @@ void pqWindowImage::updateUI()
         return;
 
     clmInit = true;
-    setWindowTitle(this->images[activeIndex]->getFitsFileName());
+    setWindowTitle(this->images.at(activeIndex)->getFitsFileName());
 
     // Interactor to show pixel coordinates in the status bar
     vtkNew<vtkInteractorStyleImageCustom> interactorStyle;
     interactorStyle->SetCoordsCallback(
             [this](const std::string &str) { showStatusBarMessage(str); });
-    interactorStyle->SetLayerFitsReaderFunc(this->images[activeIndex]->getFitsHeaderPath());
+    interactorStyle->SetLayerFitsReaderFunc(this->images.at(activeIndex)->getFitsHeaderPath());
     viewImage->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
             interactorStyle);
     this->ui->lstImageList->clear();
@@ -155,7 +155,7 @@ void pqWindowImage::updateUI()
     }
 
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
-    int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images[activeIndex]->getColourMap());
+    int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images.at(activeIndex)->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
 
     this->ui->opacitySlider->setValue(this->images.at(activeIndex)->getOpacity() * 100);
@@ -166,6 +166,12 @@ void pqWindowImage::updateUI()
     clmInit = false;
 }
 
+/**
+ * @brief pqWindowImage::setImageListCheckbox
+ * Function that sets images active or not if the user checks the checkbox.
+ * @param row The index of the image the user selected.
+ * @param checked The state of the checkbox (checked, not checked).
+ */
 void pqWindowImage::setImageListCheckbox(int row, Qt::CheckState checked)
 {
     auto im = images.at(row);
@@ -177,12 +183,16 @@ void pqWindowImage::setImageListCheckbox(int row, Qt::CheckState checked)
     }
 }
 
+/**
+ * @brief pqWindowImage::showLegendScaleActor
+ * Function that adds colour map legend to the render view.
+ */
 void pqWindowImage::showLegendScaleActor()
 {
     // Show Legend Scale Actor in image renderer
     auto legendActorCube = vtkSmartPointer<vtkLegendScaleActor>::New();
     legendActorCube->LegendVisibilityOff();
-    legendActorCube->setFitsHeader(this->images[activeIndex]->getFitsHeaderPath());
+    legendActorCube->setFitsHeader(this->images.at(activeIndex)->getFitsHeaderPath());
     auto rwImage = viewImage->getViewProxy()->GetRenderWindow()->GetRenderers();
     vtkRenderer::SafeDownCast(rwImage->GetItemAsObject(1))->AddActor(legendActorCube);
 }
@@ -195,11 +205,11 @@ void pqWindowImage::showLegendScaleActor()
  */
 void pqWindowImage::setLogScale(bool logScale)
 {
-    // If in the process of initialising the UI, ignore this command.
+    // If in the process of initialising or updating the UI, ignore this command.
     if (clmInit)
         return;
 
-    this->images[activeIndex]->setLogScale(logScale);
+    this->images.at(activeIndex)->setLogScale(logScale);
     viewImage->render();
 }
 
@@ -211,15 +221,16 @@ void pqWindowImage::setLogScale(bool logScale)
  */
 void pqWindowImage::setOpacity(float value)
 {
-    this->images[activeIndex]->setOpacity(value);
+    this->images.at(activeIndex)->setOpacity(value);
     viewImage->render();
 }
 
 /**
  * @brief pqWindowImage::addImageToStack
- * @param file
- * @param subset
- * @return
+ * Function that adds a new image to the image stack.
+ * @param file The file name (on the server) of the new image.
+ * @param subset The subset variables selected (used to limit resolution for big images)
+ * @return True if successful, false if unsuccessful
  */
 int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
 {
@@ -228,20 +239,25 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
         return 1;
     std::cerr << "Adding image " << file.toStdString() << " to stack via proxy call." << std::endl;
     int index = images.size();
-    auto im = new vlvaStackImage(file, index, logScaleDefault, builder, viewImage, serverProxyManager);
+    auto im = new vlvaStackImage(file, imgCounter, this->logScaleDefault, builder, viewImage, serverProxyManager);
+    im->setIndex(index);
     images.push_back(im);
     this->activeIndex = images.size() - 1;
 
-    if (images[activeIndex]->init(file, subset))
+    // Initialise image on server side
+    if (images.at(activeIndex)->init(file, subset))
     {
-        this->addImageToLists(images[activeIndex]);
-        if (images.size() == 1)
-            this->positionImage(images[activeIndex], true);
-        else
-            this->positionImage(images[activeIndex], false);
+        if (images.size() == 1){
+            this->positionImage(images.at(activeIndex), true);
+            images.at(activeIndex)->setOpacity(1);
+        }
+        else{
+            this->positionImage(images.at(activeIndex), false);
+            images.at(activeIndex)->setOpacity(defaultMultiOpacity);
+        }
         this->updateUI();
-        viewImage->resetCamera();
         viewImage->render();
+        imgCounter++;
         return 1;
     } else
     {
@@ -253,15 +269,38 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
 
 /**
  * @brief pqWindowImage::removeImageFromStack
- * @param index
- * @return
+ * Function that removes an image from the stack
+ * @param index The index of the image to be removed
+ * @return True if successful, false if unsuccessful
  */
 int pqWindowImage::removeImageFromStack(const int index)
 {
     // If in the process of initialising the UI, ignore this command.
     if (clmInit)
         return 1;
-    std::cerr << "Removing image at pos " << index << " from stack via proxy call." << std::endl;
+    /*
+    auto reps = this->viewImage->getRepresentations();
+    auto fName = this->images.at(activeIndex)->getFitsFileName();
+    for (int i = 0; i < reps.size(); ++i){
+        auto r = reps.at(i);
+        r->getProxy()->UpdatePropertyInformation();
+        auto fNProp = vtkSMStringVectorProperty::SafeDownCast(r->getProxy()->GetProperty("ImageFileNameInfo"));
+        std::string pName;
+        if (fNProp)
+            pName = fNProp->GetElement(0);
+        else
+            continue;
+
+        if (fName.toStdString().compare(pName) == 0){
+            this->images.at(activeIndex)->setActive(false);
+            break;
+        }
+        else
+            continue;
+    }*/
+    std::cerr << "Removing representation of " << this->images.at(activeIndex)->getFitsFileName().toStdString() << " (index " << activeIndex << ") in spirit since Paraview somehow doesn't allow it." << std::endl;
+    this->images.at(activeIndex)->setActive(false);
+    auto fitsHeadPath = this->images.at(activeIndex)->getFitsHeaderPath();
     images.erase(images.begin() + index);
     this->activeIndex = activeIndex > 0 ? index - 1 : 0;
     updateUI();
@@ -269,15 +308,12 @@ int pqWindowImage::removeImageFromStack(const int index)
 }
 
 /**
- * @brief pqWindowImage::addImageToLists
- * @param stackImage
- * @return
+ * @brief pqWindowImage::positionImage
+ * Function that positions and scales an image in the view according to its WCS coordinates, as determined by the first image to be uploaded.
+ * @param stackImage The image that is to be positioned
+ * @param setBasePos If true, this is the first image in the stack and all others should use this as reference position
+ * @return True if everything is successful, false if any unsuccessful
  */
-int pqWindowImage::addImageToLists(vlvaStackImage *stackImage)
-{
-    return 1;
-}
-
 int pqWindowImage::positionImage(vlvaStackImage *stackImage, bool setBasePos)
 {
     auto skyCoords = new double[2];
@@ -320,9 +356,6 @@ int pqWindowImage::positionImage(vlvaStackImage *stackImage, bool setBasePos)
             refImagePixScaling = AstroUtils().arcsecPixel(fitsPath);
         }
         scaledPixel = AstroUtils().arcsecPixel(fitsPath) / refImagePixScaling;
-//        stackImage->setOrientation(0, 0, angle);
-//        stackImage->setScale(scaledPixel, scaledPixel);
-//        stackImage->setPosition(x1, y1);
 
         return stackImage->setOrientation(0, 0, angle) && stackImage->setScale(scaledPixel, scaledPixel) && stackImage->setPosition(x1, y1);
     }
@@ -360,7 +393,6 @@ void pqWindowImage::tableCheckboxClicked(int cb, bool status)
         im->setActive(true);
     }
     updateUI();
-    this->viewImage->resetCamera();
 }
 
 /**
@@ -487,6 +519,9 @@ void pqWindowImage::on_opacitySlider_sliderReleased()
 
 /**
  * @brief pqWindowImage::on_btnAddImageToStack_clicked
+ * Function that creates a file dialog to select a file on the server,
+ * and a subset selector dialog if a file is selected. The subset selector
+ * dialog calls the addImageToStack function on close.
  */
 void pqWindowImage::on_btnAddImageToStack_clicked()
 {
@@ -507,6 +542,7 @@ void pqWindowImage::on_btnAddImageToStack_clicked()
 
 /**
  * @brief pqWindowImage::on_btnRemoveImageFromStack_clicked
+ * UI function that fires when user selecte
  */
 void pqWindowImage::on_btnRemoveImageFromStack_clicked()
 {
@@ -515,6 +551,7 @@ void pqWindowImage::on_btnRemoveImageFromStack_clicked()
 
 /**
  * @brief pqWindowImage::on_lstImageList_itemClicked
+ * Function that fires if the user clicks on an item in the item list.
  * @param item
  */
 void pqWindowImage::on_lstImageList_itemClicked(QListWidgetItem *item)
@@ -524,11 +561,12 @@ void pqWindowImage::on_lstImageList_itemClicked(QListWidgetItem *item)
         return;
     if (!item)
         return;
-    auto imName = item->text();
-    for (auto i : images){
-        if (imName == i->getFitsFileName())
-            this->activeIndex = i->getIndex();
-    }
+    int index = this->ui->lstImageList->row(item);
+    // If clicking on an already selected image, do nothing.
+    if (this->activeIndex == index) return;
+
+    // Switch to image at index and update the UI.
+    this->activeIndex = index;
     updateUI();
 }
 

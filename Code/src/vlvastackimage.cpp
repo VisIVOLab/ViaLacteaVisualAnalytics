@@ -23,9 +23,7 @@
 
 #include <fitsio.h>
 
-#define logScaleDefault = true;
-
-vlvaStackImage::vlvaStackImage(QString filePath, int i, bool log, pqObjectBuilder* bldr, pqRenderView *vwImg, vtkSMSessionProxyManager *spm) : index(i), logScale(log),
+vlvaStackImage::vlvaStackImage(QString filePath, int counter, bool log, pqObjectBuilder* bldr, pqRenderView *vwImg, vtkSMSessionProxyManager *spm) : logScale(log),
                                                                                                            active(true), builder(bldr), viewImage(vwImg), serverProxyManager(spm)
 {
     initialised = false;
@@ -34,7 +32,7 @@ vlvaStackImage::vlvaStackImage(QString filePath, int i, bool log, pqObjectBuilde
     // Create a unique color map proxy for each instance
     vtkNew<vtkSMTransferFunctionManager> mgr;
     // Generate a unique name for the color map proxy
-    std::string colorMapName = "ColorMap_" + std::to_string(index);
+    std::string colorMapName = "ColorMap_" + std::to_string(counter);
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(mgr->GetColorTransferFunction(colorMapName.c_str(), spm));
 }
 
@@ -67,7 +65,7 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
         fitsHeaderPath = createFitsHeaderFile(fitsHeader);
         // Set default colour map
         changeColorMap("Grayscale");
-        setLogScale(false);
+        setLogScale(this->logScale);
         setOpacity(1);
         setActive(true);
         type = 0;
@@ -302,11 +300,6 @@ int vlvaStackImage::changeColorMap(const QString &name)
     if (initialised)
     {
         if (vtkSMProperty *lutProperty = imageProxy->GetProperty("LookupTable")) {
-            int sep;
-            vtkSMPropertyHelper(vtkSMPVRepresentationProxy::SafeDownCast(imageProxy)->GetProperty("UseSeparateColorMap")).Get(&sep);
-            if (sep == 1)
-                std::cerr << "Setting colour map with \"UseSeparateColourMap\" set to true!" << std::endl;
-
             auto presets = vtkSMTransferFunctionPresets::GetInstance();
             lutProxy->ApplyPreset(presets->GetFirstPresetWithName(name.toStdString().c_str()));
             vtkSMPropertyHelper(lutProperty).Set(lutProxy);
@@ -353,7 +346,6 @@ int vlvaStackImage::setLogScale(bool useLog)
                 this->logScale = true;
                 vtkSMTransferFunctionProxy::RescaleTransferFunction(lutProxy, range);
                 vtkSMPropertyHelper(logProperty).Set(1);
-                changeColorMap(this->getColourMap());
 
                 lutProxy->UpdateVTKObjects();
                 imageProxy->UpdateVTKObjects();

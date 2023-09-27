@@ -2,6 +2,7 @@
 #define PQWINDOWIMAGE_H
 
 #include "astroutils.h"
+#include "src/vtklegendscaleactor.h"
 #include "subsetselectordialog.h"
 #include "vlvastackimage.h"
 
@@ -74,6 +75,7 @@ private:
     std::pair<double, double> refImageBottomLeftCornerCoords;
     double refImagePixScaling;
     std::string refImageFits;
+    int imgCounter;
 
     bool clmInit;
 
@@ -97,10 +99,13 @@ private:
     void showLegendScaleActor();
     void setLogScale(bool logScale);
     void setOpacity(float value);
+    void extracted(QList<pqRepresentation *> &reps, QString &fName);
     int removeImageFromStack(const int index);
 
-    int addImageToLists(vlvaStackImage* stackImage);
     int positionImage(vlvaStackImage* stackImage, bool setBasePos = false);
+
+    static constexpr float defaultMultiOpacity = 0.5;
+    static constexpr bool logScaleDefault = true;
 };
 
 #endif // PQWINDOWIMAGE_H
