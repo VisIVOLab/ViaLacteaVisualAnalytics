@@ -1,4 +1,6 @@
 #include "pqwindowcube.h"
+#include "QVTKInteractor.h"
+#include "qpainter.h"
 #include "ui_pqwindowcube.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
@@ -34,6 +36,7 @@
 
 #include <QDebug>
 #include <QDir>
+#include <QMouseEvent>
 
 #include <cmath>
 #include <cstring>
@@ -146,6 +149,9 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     interactorStyle->SetPixelZCompFunc([this]() { return currentSlice; });
     viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
             interactorStyle);
+
+    startPVSliceLine = endPVSliceLine = QPoint(0, 0);
+    isDrawingPVSliceLine = false;
 
     viewSlice->resetDisplay();
     viewCube->resetDisplay();
@@ -295,6 +301,17 @@ void pqWindowCube::createViews()
             builder->createView(pqRenderView::renderViewType(), server));
     viewSlice->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
+    bool a, b, c;
+    auto asdf = viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor();
+    a = QObject::connect(viewSlice->widget(), SIGNAL(clicked(QMouseEvent*)), this, SLOT(sliceMousePressEvent(QMouseEvent*)));
+    b = QObject::connect(viewSlice->widget(), SIGNAL(mouseMoveEvent(QMouseEvent*)), this, SLOT(sliceMouseMoveEvent(QMouseEvent*)));
+    c = QObject::connect(viewSlice->widget(), SIGNAL(mouseReleaseEvent(QMouseEvent*)), this, SLOT(sliceMouseReleaseEvent(QMouseEvent*)));
+    if (a && b && c){
+        std::cerr << "View mouse signal and slot connection successful" << std::endl;
+    }
+    else
+        std::cerr << "View mouse signal and slot connections failed!" << std::endl;
+
     ui->PVLayout->addWidget(viewCube->widget());
     ui->PVLayout->addWidget(viewSlice->widget());
 }
@@ -364,6 +381,12 @@ void pqWindowCube::showSlice()
 
     ui->sliceSlider->setRange(1, bounds[5] + 1);
     ui->sliceSpinBox->setRange(1, bounds[5] + 1);
+}
+
+void pqWindowCube::drawLine()
+{
+    QPainter painter(this->viewSlice->widget());
+    painter.drawLine(startPVSliceLine, endPVSliceLine);
 }
 
 void pqWindowCube::showStatusBarMessage(const std::string &msg)

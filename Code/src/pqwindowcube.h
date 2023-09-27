@@ -92,6 +92,10 @@ private:
     bool logScaleActive;
     QString currentColorMap;
 
+    bool isDrawingPVSliceLine;
+    QPointF startPVSliceLine;
+    QPointF endPVSliceLine;
+
     void showStatusBarMessage(const std::string &msg);
 
     void setSubsetProperties(const CubeSubset &subset);
@@ -105,6 +109,7 @@ private:
     void showOutline();
     void showLegendScaleActors();
     void showSlice();
+    void drawLine();
     void changeColorMap(const QString &name);
     void setLogScale(bool logScale);
 
@@ -118,6 +123,7 @@ private:
     void removeContours();
 
     bool loadChange = false;
+
 };
 
 #endif // PQWINDOWCUBE_H

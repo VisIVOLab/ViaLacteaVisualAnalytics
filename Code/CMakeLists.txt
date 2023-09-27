@@ -140,6 +140,7 @@ set(sources
         src/vtkwindow_new.cpp
         src/xmlparser.cpp
         src/interactors/vtkinteractorstyleimagecustom.cpp
+        src/interactors/vtkdrawlineinteractorstyleimage.cpp
         )
 
 set(headers
@@ -217,6 +218,7 @@ set(headers
         src/vtkwindow_new.h
         src/xmlparser.h
         src/interactors/vtkinteractorstyleimagecustom.h
+        src/interactors/vtkdrawlineinteractorstyleimage.h
         )
 
 set(ui_files
