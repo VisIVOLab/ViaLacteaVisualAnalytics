@@ -419,7 +419,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">
@@ -482,8 +482,15 @@
     <addaction name="menuVolume"/>
     <addaction name="menuSlice"/>
    </widget>
+   <widget class="QMenu" name="menuPV_Slice">
+    <property name="title">
+     <string>PV Slice</string>
+    </property>
+    <addaction name="actionDraw_PV_line"/>
+   </widget>
    <addaction name="menuCamera"/>
    <addaction name="menuRendering"/>
+   <addaction name="menuPV_Slice"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionFront">
@@ -586,6 +593,17 @@
    </property>
    <property name="text">
     <string>75%</string>
+   </property>
+  </action>
+  <action name="actionDraw_PV_line">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Draw PV line</string>
+   </property>
+   <property name="toolTip">
+    <string>Draw line along which to generate the PV plot</string>
    </property>
   </action>
  </widget>

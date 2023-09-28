@@ -1,6 +1,8 @@
 #ifndef PQWINDOWCUBE_H
 #define PQWINDOWCUBE_H
 
+#include "src/interactors/vtkdrawlineinteractorstyleimage.h"
+#include "src/interactors/vtkinteractorstyleimagecustom.h"
 #include "subsetselectordialog.h"
 
 #include <QMainWindow>
@@ -58,6 +60,8 @@ private slots:
 
     void generateVolumeRendering();
 
+    void on_actionDraw_PV_line_triggered();
+
 private:
     Ui::pqWindowCube *ui;
 
@@ -92,10 +96,6 @@ private:
     bool logScaleActive;
     QString currentColorMap;
 
-    bool isDrawingPVSliceLine;
-    QPointF startPVSliceLine;
-    QPointF endPVSliceLine;
-
     void showStatusBarMessage(const std::string &msg);
 
     void setSubsetProperties(const CubeSubset &subset);
@@ -109,7 +109,6 @@ private:
     void showOutline();
     void showLegendScaleActors();
     void showSlice();
-    void drawLine();
     void changeColorMap(const QString &name);
     void setLogScale(bool logScale);
 
@@ -122,8 +121,18 @@ private:
     void showContours();
     void removeContours();
 
+    QPointF pvStart, pvEnd;
+    vtkNew<vtkLineSource> line;
+    vtkNew<vtkActor> actor;
+    int zDepth;
+    void sendLineEndPoints(QPointF start, QPointF end);
+    void endDrawLine();
+    bool drawing;
+
     bool loadChange = false;
 
+    vtkNew<vtkInteractorStyleImageCustom> pixCoordInteractorStyle;
+    vtkNew<vtkDrawLineInteractorStyleImage> drawPVLineInteractorStyle;
 };
 
 #endif // PQWINDOWCUBE_H

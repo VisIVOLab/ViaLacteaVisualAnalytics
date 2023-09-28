@@ -1,9 +1,10 @@
 #include "pqwindowcube.h"
-#include "QVTKInteractor.h"
-#include "qpainter.h"
 #include "ui_pqwindowcube.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
+#include "vtkNamedColors.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkProperty.h"
 #include "vtklegendscaleactor.h"
 
 #include <pqActiveObjects.h>
@@ -55,6 +56,8 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     setWindowTitle(FitsFileName);
     connect(ui->actionVolGenerate, &QAction::triggered, this,
             &pqWindowCube::generateVolumeRendering);
+
+    connect(ui->menuPV_Slice, SIGNAL(aboutToShow()), this, SLOT(pqWindowCube::pvMenuClicked()));
 
     // Opacity menu actions
     auto opacityGroup = new QActionGroup(this);
@@ -141,17 +144,31 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     setLogScale(false);
     vtkSMPVRepresentationProxy::SetScalarBarVisibility(sliceProxy, viewSlice->getProxy(), true);
 
-    // Interactor to show pixel coordinates in the status bar
-    vtkNew<vtkInteractorStyleImageCustom> interactorStyle;
-    interactorStyle->SetCoordsCallback(
+    // Set up interactor to show pixel coordinates in the status bar
+    pixCoordInteractorStyle->SetCoordsCallback(
             [this](const std::string &str) { showStatusBarMessage(str); });
-    interactorStyle->SetLayerFitsReaderFunc(fitsHeaderPath.toStdString());
-    interactorStyle->SetPixelZCompFunc([this]() { return currentSlice; });
-    viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
-            interactorStyle);
+    pixCoordInteractorStyle->SetLayerFitsReaderFunc(fitsHeaderPath.toStdString());
+    pixCoordInteractorStyle->SetPixelZCompFunc([this]() { return currentSlice; });
 
-    startPVSliceLine = endPVSliceLine = QPoint(0, 0);
-    isDrawingPVSliceLine = false;
+    // Set up interactor for drawing PV slice line
+    drawPVLineInteractorStyle->setLineValsCallback([this](QPointF start, QPointF end){sendLineEndPoints(start, end);});
+    drawPVLineInteractorStyle->setLineDrawnCallback([this](){endDrawLine();});
+    drawPVLineInteractorStyle->setCoordLocCallback(
+            [this](const std::string &str) { showStatusBarMessage(str); });
+
+    // Set up rules to draw line with
+    this->line->SetPoint1(0, 0, 0);
+    this->line->SetPoint2(0, 0, 0);
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputConnection(this->line->GetOutputPort());
+    this->actor->SetMapper(mapper);
+    this->actor->GetProperty()->SetLineWidth(2);
+    vtkNew<vtkNamedColors> colors;
+    this->actor->GetProperty()->SetColor(colors->GetColor3d("Red").GetData());
+
+    // Set initial interactor
+    viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
+            pixCoordInteractorStyle);
 
     viewSlice->resetDisplay();
     viewCube->resetDisplay();
@@ -301,17 +318,6 @@ void pqWindowCube::createViews()
             builder->createView(pqRenderView::renderViewType(), server));
     viewSlice->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    bool a, b, c;
-    auto asdf = viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor();
-    a = QObject::connect(viewSlice->widget(), SIGNAL(clicked(QMouseEvent*)), this, SLOT(sliceMousePressEvent(QMouseEvent*)));
-    b = QObject::connect(viewSlice->widget(), SIGNAL(mouseMoveEvent(QMouseEvent*)), this, SLOT(sliceMouseMoveEvent(QMouseEvent*)));
-    c = QObject::connect(viewSlice->widget(), SIGNAL(mouseReleaseEvent(QMouseEvent*)), this, SLOT(sliceMouseReleaseEvent(QMouseEvent*)));
-    if (a && b && c){
-        std::cerr << "View mouse signal and slot connection successful" << std::endl;
-    }
-    else
-        std::cerr << "View mouse signal and slot connections failed!" << std::endl;
-
     ui->PVLayout->addWidget(viewCube->widget());
     ui->PVLayout->addWidget(viewSlice->widget());
 }
@@ -381,12 +387,7 @@ void pqWindowCube::showSlice()
 
     ui->sliceSlider->setRange(1, bounds[5] + 1);
     ui->sliceSpinBox->setRange(1, bounds[5] + 1);
-}
-
-void pqWindowCube::drawLine()
-{
-    QPainter painter(this->viewSlice->widget());
-    painter.drawLine(startPVSliceLine, endPVSliceLine);
+    this->zDepth = bounds[5] + 2;
 }
 
 void pqWindowCube::showStatusBarMessage(const std::string &msg)
@@ -475,6 +476,26 @@ void pqWindowCube::removeContours()
         contourFilter2D = nullptr;
         viewSlice->render();
     }
+}
+
+void pqWindowCube::sendLineEndPoints(QPointF start, QPointF end)
+{
+    pvStart = start;
+    pvEnd = end;
+    this->line->SetPoint1(pvStart.x(), pvStart.y(), zDepth);
+    this->line->SetPoint2(pvEnd.x(), pvEnd.y(), zDepth);
+    viewSlice->resetDisplay();
+    viewSlice->render();
+    // TODO: yell at server
+}
+
+void pqWindowCube::endDrawLine()
+{
+    viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
+            pixCoordInteractorStyle);
+    this->ui->actionDraw_PV_line->setChecked(false);
+    drawing = false;
+    viewSlice->getRenderViewProxy()->GetRenderer()->RemoveActor(this->actor);
 }
 
 void pqWindowCube::on_sliceSlider_valueChanged()
@@ -807,3 +828,16 @@ void pqWindowCube::setVolumeRenderingOpacity(double opacity)
     contourProxy->UpdateVTKObjects();
     viewCube->render();
 }
+
+void pqWindowCube::on_actionDraw_PV_line_triggered()
+{
+    if (!drawing){
+        viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
+                drawPVLineInteractorStyle);
+        drawing = true;
+        viewSlice->getRenderViewProxy()->GetRenderer()->AddActor(this->actor);
+    }
+    else
+        endDrawLine();
+}
+
