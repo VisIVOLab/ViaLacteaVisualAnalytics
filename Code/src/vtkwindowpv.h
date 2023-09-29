@@ -29,14 +29,13 @@ private slots:
     void changeLutScale();
     void changeOpacity(int opacity);
     void changeLut(const QString &lutName);
+    void saveAsImage();
 
 private:
     Ui::vtkWindowPV *ui;
     QString filepath;
     vtkNew<vtkFitsReader2> reader;
     vtkNew<vtkLookupTable> lut;
-    vtkNew<vtkImageMapToColors> colors;
-    vtkNew<vtkImageSliceMapper> mapper;
     vtkNew<vtkImageSlice> image;
 };
 

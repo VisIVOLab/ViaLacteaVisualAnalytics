@@ -14,10 +14,13 @@
 #include <vtkLegendScaleActor.h>
 #include <vtkLookupTable.h>
 #include <vtkNew.h>
+#include <vtkPNGWriter.h>
 #include <vtkRenderer.h>
 #include <vtkScalarBarActor.h>
+#include <vtkWindowToImageFilter.h>
 
-#include <QDebug>
+#include <QFileDialog>
+#include <QMessageBox>
 
 vtkWindowPV::vtkWindowPV(const QString &filepath, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::vtkWindowPV), filepath(filepath)
@@ -33,14 +36,12 @@ vtkWindowPV::vtkWindowPV(const QString &filepath, QWidget *parent)
     renderer->SetBackground(0.21, 0.23, 0.25);
     renderWin->AddRenderer(renderer);
 
-    // vtkNew<vtkFitsReader2> reader;
     reader->SetFileName(filepath.toStdString().c_str());
     reader->Update();
 
     float range[2];
     reader->GetValueRange(range);
 
-    // vtkNew<vtkLookupTable> lut;
     lut->SetTableRange(range[0], range[1]);
     lut->SetScaleToLinear();
     SelectLookTable(ui->comboLut->currentText(), lut);
@@ -57,7 +58,6 @@ vtkWindowPV::vtkWindowPV(const QString &filepath, QWidget *parent)
     vtkNew<vtkImageSliceMapper> imageMapper;
     imageMapper->SetInputConnection(scalarsToColors->GetOutputPort());
 
-    // vtkNew<vtkImageSlice> image;
     image->SetMapper(imageMapper);
     image->GetProperty()->SetInterpolationTypeToNearest();
 
@@ -80,6 +80,7 @@ vtkWindowPV::vtkWindowPV(const QString &filepath, QWidget *parent)
     connect(ui->radioLinear, &QRadioButton::toggled, this, &vtkWindowPV::changeLutScale);
     connect(ui->sliderOpacity, &QSlider::valueChanged, this, &vtkWindowPV::changeOpacity);
     connect(ui->comboLut, &QComboBox::currentTextChanged, this, &vtkWindowPV::changeLut);
+    connect(ui->actionSaveImage, &QAction::triggered, this, &vtkWindowPV::saveAsImage);
 }
 
 vtkWindowPV::~vtkWindowPV()
@@ -113,4 +114,27 @@ void vtkWindowPV::changeLut(const QString &lutName)
 {
     SelectLookTable(lutName, lut);
     ui->qVtk->renderWindow()->Render();
+}
+
+void vtkWindowPV::saveAsImage()
+{
+    QString filepath =
+            QFileDialog::getSaveFileName(this, "Save as PNG...", QString(), "PNG image (*.png)");
+    if (filepath.isEmpty()) {
+        return;
+    }
+
+    vtkNew<vtkWindowToImageFilter> filter;
+    filter->SetInput(ui->qVtk->renderWindow());
+    filter->SetScale(2);
+    filter->Update();
+
+    vtkNew<vtkPNGWriter> writer;
+    writer->SetFileName(filepath.toStdString().c_str());
+    writer->SetInputConnection(filter->GetOutputPort());
+    writer->Write();
+
+    ui->qVtk->renderWindow()->Render();
+
+    QMessageBox::information(this, "Image saved", "Image saved: " + filepath);
 }
