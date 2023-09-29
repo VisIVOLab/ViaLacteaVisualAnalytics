@@ -11,13 +11,16 @@ matplotlib.use('Agg')
 plt.rcParams['figure.facecolor'] = 'w'
 plt.rcParams['image.cmap'] = 'gray'
 
-def extract_pv_plot(fin, line, outdir):
+
+def extract_pv_plot(fin, slice, line, outdir):
     """Extract Position-Velocity Slice from a cube
 
     Parameters
     ----------
     fin : str
         Input filepath
+    slice: int
+        Slice number
     line : list
         List of tuples
     outdir : str
@@ -30,9 +33,18 @@ def extract_pv_plot(fin, line, outdir):
     """
     name = pathlib.Path(fin).stem
     cube = SpectralCube.read(fin)
+    path = Path(line)
+
+    # Path on slice
+    ax = plt.subplot(111, projection=cube.wcs.celestial)
+    ax.imshow(cube[slice].value)
+    path.show_on_axis(ax, spacing=1, color='r')
+    ax.set_xlabel(cube.wcs.wcs.lngtyp)
+    ax.set_ylabel(cube.wcs.wcs.lattyp)
+    plt.savefig(pathlib.Path(outdir) / (f'path_{name}.png'))
 
     # PV as FITS
-    pvdiagram = extract_pv_slice(cube=cube, path=Path(line), spacing=1)
+    pvdiagram = extract_pv_slice(cube=cube, path=path, spacing=1)
     fout = pathlib.Path(outdir) / (f'pv_{name}.fits')
     pvdiagram.writeto(fout, overwrite=True)
 

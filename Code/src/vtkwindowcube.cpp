@@ -593,7 +593,8 @@ void vtkWindowCube::generatePositionVelocityPlot(int x1, int y1, int x2, int y2)
         std::string outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp").toStdString();
 
         py::module_ pvplot = py::module_::import("pvplot");
-        std::string fout = pvplot.attr("extract_pv_plot")(fin, line, outDir).cast<std::string>();
+        std::string fout = pvplot.attr("extract_pv_plot")(fin, this->currentSlice, line, outDir)
+                                   .cast<std::string>();
         auto win = new vtkWindowPV(QString::fromStdString(fout));
         win->show();
     } catch (const std::exception &e) {
