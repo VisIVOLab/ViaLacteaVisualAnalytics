@@ -131,7 +131,7 @@ private:
     void showContours();
     void removeContours();
     void calculateAndShowMomentMap(int order);
-    void generatePositionVelocityPlot(int x1, int y1, int x2, int y2);
+    void generatePositionVelocityPlot(float x1, float y1, float x2, float y2);
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);

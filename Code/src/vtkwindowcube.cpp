@@ -367,7 +367,7 @@ void vtkWindowCube::setInteractorStyleDrawLine()
 {
     vtkNew<vtkInteractorStyleDrawArrow> interactorStyle;
     interactorStyle->SetAbortCallback([this]() { setInteractorStyleImage(); });
-    interactorStyle->SetCallback([this](int x1, int y1, int x2, int y2) {
+    interactorStyle->SetCallback([this](float x1, float y1, float x2, float y2) {
         setInteractorStyleImage();
         generatePositionVelocityPlot(x1, y1, x2, y2);
     });
@@ -583,7 +583,7 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     this->raise();
 }
 
-void vtkWindowCube::generatePositionVelocityPlot(int x1, int y1, int x2, int y2)
+void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, float y2)
 {
     try {
         std::string fin = this->filepath.toStdString();
@@ -595,7 +595,7 @@ void vtkWindowCube::generatePositionVelocityPlot(int x1, int y1, int x2, int y2)
         py::module_ pvplot = py::module_::import("pvplot");
         std::string fout = pvplot.attr("extract_pv_plot")(fin, this->currentSlice, line, outDir)
                                    .cast<std::string>();
-        auto win = new vtkWindowPV(QString::fromStdString(fout));
+        auto win = new vtkWindowPV(QString::fromStdString(fout), this->filepath, x1, y1, x2, y2);
         win->show();
     } catch (const std::exception &e) {
         qDebug() << Q_FUNC_INFO << "Error" << e.what();

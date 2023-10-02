@@ -153,7 +153,8 @@ void vtkInteractorStyleDrawArrow::SetAbortCallback(const std::function<void()> &
 }
 
 //----------------------------------------------------------------------------
-void vtkInteractorStyleDrawArrow::SetCallback(const std::function<void(int, int, int, int)> &cb)
+void vtkInteractorStyleDrawArrow::SetCallback(
+        const std::function<void(float, float, float, float)> &cb)
 {
     this->Callback = cb;
 }

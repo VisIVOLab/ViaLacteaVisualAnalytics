@@ -5,13 +5,11 @@
 
 #include "vtkfitsreader2.h"
 
-#include <vtkGenericOpenGLRenderWindow.h>
-#include <vtkImageMapToColors.h>
-#include <vtkImageSlice.h>
-#include <vtkImageSliceMapper.h>
-#include <vtkLookupTable.h>
 #include <vtkNew.h>
-#include <vtkRenderer.h>
+
+class vtkCoordinate;
+class vtkImageSlice;
+class vtkLookupTable;
 
 namespace Ui {
 class vtkWindowPV;
@@ -22,7 +20,8 @@ class vtkWindowPV : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit vtkWindowPV(const QString &filepath, QWidget *parent = nullptr);
+    explicit vtkWindowPV(const QString &filepath, const QString &cubepath, float x1, float y1,
+                         float x2, float y2, QWidget *parent = nullptr);
     ~vtkWindowPV();
 
 private slots:
@@ -34,9 +33,17 @@ private slots:
 private:
     Ui::vtkWindowPV *ui;
     QString filepath;
+    QString cubepath;
+    float x1;
+    float x2;
+    float m;
+    float q;
+    vtkNew<vtkCoordinate> coordinate;
     vtkNew<vtkFitsReader2> reader;
     vtkNew<vtkLookupTable> lut;
     vtkNew<vtkImageSlice> image;
+
+    void coordsCallback();
 };
 
 #endif // VTKWINDOWPV_H

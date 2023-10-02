@@ -22,7 +22,7 @@ public:
     void OnKeyPress() override;
 
     void SetAbortCallback(const std::function<void(void)> &cb);
-    void SetCallback(const std::function<void(int, int, int, int)> &cb);
+    void SetCallback(const std::function<void(float, float, float, float)> &cb);
 
 protected:
     vtkInteractorStyleDrawArrow();
@@ -33,7 +33,7 @@ private:
     void operator=(const vtkInteractorStyleDrawArrow &) = delete;
 
     std::function<void()> AbortCallback;
-    std::function<void(int, int, int, int)> Callback;
+    std::function<void(float, float, float, float)> Callback;
 
     std::set<vtkRenderer *> Renderers;
 
