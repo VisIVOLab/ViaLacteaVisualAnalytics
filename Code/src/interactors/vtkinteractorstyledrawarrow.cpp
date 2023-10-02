@@ -1,28 +1,27 @@
 #include "vtkinteractorstyledrawarrow.h"
 
-#include <vtkActor.h>
-#include <vtkArrowSource.h>
 #include <vtkCoordinate.h>
-#include <vtkMath.h>
-#include <vtkMinimalStandardRandomSequence.h>
+#include <vtkLeaderActor2D.h>
 #include <vtkNamedColors.h>
 #include <vtkObjectFactory.h>
-#include <vtkPolyDataMapper.h>
-#include <vtkProperty.h>
+#include <vtkProperty2D.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkTransform.h>
 
 vtkStandardNewMacro(vtkInteractorStyleDrawArrow);
 
 //----------------------------------------------------------------------------
-vtkInteractorStyleDrawArrow::vtkInteractorStyleDrawArrow() : Drawing(false)
+vtkInteractorStyleDrawArrow::vtkInteractorStyleDrawArrow()
+    : Drawing(false), Start { 0, 0, 0 }, End { 0, 0, 0 }
 {
     vtkNew<vtkNamedColors> colors;
     this->Coordinate->SetCoordinateSystemToDisplay();
+    this->Actor->SetArrowPlacementToPoint2();
     this->Actor->GetProperty()->SetColor(colors->GetColor3d("Red").GetData());
+    this->Actor->GetPositionCoordinate()->SetCoordinateSystemToWorld();
+    this->Actor->GetPosition2Coordinate()->SetCoordinateSystemToWorld();
 }
 
 //----------------------------------------------------------------------------
@@ -40,6 +39,12 @@ vtkInteractorStyleDrawArrow::~vtkInteractorStyleDrawArrow()
 void vtkInteractorStyleDrawArrow::PrintSelf(std::ostream &os, vtkIndent indent)
 {
     Superclass::PrintSelf(os, indent);
+    os << indent << "Drawing:" << std::boolalpha << this->Drawing << '\n';
+    os << indent << "Start:\n";
+    os << indent << indent << this->Start[0] << ' ' << this->Start[1] << ' ' << this->Start[2]
+       << '\n';
+    os << indent << "End:\n";
+    os << indent << indent << this->End[0] << ' ' << this->End[1] << ' ' << this->End[2];
 }
 
 //----------------------------------------------------------------------------
@@ -52,6 +57,7 @@ void vtkInteractorStyleDrawArrow::OnLeftButtonDown()
     auto renderer = this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
     double *worldCoords = this->Coordinate->GetComputedWorldValue(renderer);
     std::copy_n(worldCoords, 3, this->Start);
+    this->Actor->GetPositionCoordinate()->SetValue(this->Start);
     this->Drawing = true;
 }
 
@@ -69,55 +75,10 @@ void vtkInteractorStyleDrawArrow::OnMouseMove()
     auto renderer = this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
     double *worldCoords = this->Coordinate->GetComputedWorldValue(renderer);
     std::copy_n(worldCoords, 3, this->End);
-
-    // Compute a basis
-    double normalizedX[3];
-    double normalizedY[3];
-    double normalizedZ[3];
-
-    vtkNew<vtkMinimalStandardRandomSequence> rng;
-    // The X axis is a vector from start to end
-    vtkMath::Subtract(this->End, this->Start, normalizedX);
-    double length = vtkMath::Norm(normalizedX);
-    vtkMath::Normalize(normalizedX);
-
-    // The Z axis is an arbitrary vector cross X
-    double arbitrary[3];
-    for (auto i = 0; i < 3; ++i) {
-        rng->Next();
-        arbitrary[i] = rng->GetRangeValue(-10, 10);
-    }
-    vtkMath::Cross(normalizedX, arbitrary, normalizedZ);
-    vtkMath::Normalize(normalizedZ);
-
-    // The Y axis is Z cross X
-    vtkMath::Cross(normalizedZ, normalizedX, normalizedY);
-    vtkNew<vtkMatrix4x4> matrix;
-
-    // Create the direction cosine matrix
-    matrix->Identity();
-    for (auto i = 0; i < 3; i++) {
-        matrix->SetElement(i, 0, normalizedX[i]);
-        matrix->SetElement(i, 1, normalizedY[i]);
-        matrix->SetElement(i, 2, normalizedZ[i]);
-    }
-
-    // Apply the transforms
-    vtkNew<vtkTransform> transform;
-    transform->Translate(this->Start);
-    transform->Concatenate(matrix);
-    transform->Scale(length, length, length);
-
-    vtkNew<vtkArrowSource> arrow;
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(arrow->GetOutputPort());
-
-    this->Actor->SetMapper(mapper);
-    this->Actor->SetUserMatrix(transform->GetMatrix());
+    this->Actor->GetPosition2Coordinate()->SetValue(this->End);
 
     this->Renderers.insert(renderer);
     renderer->AddActor(this->Actor);
-
     this->Interactor->GetRenderWindow()->Render();
 }
 

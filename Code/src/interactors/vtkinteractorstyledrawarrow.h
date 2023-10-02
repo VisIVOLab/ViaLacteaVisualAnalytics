@@ -8,6 +8,7 @@
 #include <set>
 
 class vtkCoordinate;
+class vtkLeaderActor2D;
 
 class vtkInteractorStyleDrawArrow : public vtkInteractorStyleUser
 {
@@ -41,7 +42,7 @@ private:
     double Start[3];
     double End[3];
     vtkNew<vtkCoordinate> Coordinate;
-    vtkNew<vtkActor> Actor;
+    vtkNew<vtkLeaderActor2D> Actor;
 };
 
 #endif // VTKINTERACTORSTYLEDRAWARROW_H
