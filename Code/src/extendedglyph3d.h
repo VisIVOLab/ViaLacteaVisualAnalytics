@@ -202,7 +202,7 @@ public:
 
     // Description:
     // Overridden to include SourceTransform's MTime.
-    virtual unsigned long GetMTime();
+    virtual vtkMTimeType GetMTime();
     vtkSetMacro(ScalarVisibility, int);
     vtkBooleanMacro(ScalarVisibility, int);
     vtkGetMacro(ScalarVisibility, int);

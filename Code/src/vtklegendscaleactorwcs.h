@@ -51,7 +51,7 @@ class vtkTextMapper;
 class vtkPoints;
 class vtkCoordinate;
 
-class VTKRENDERINGANNOTATION_EXPORT vtkLegendScaleActorWCS : public vtkProp
+class vtkLegendScaleActorWCS : public vtkProp
 {
 public:
     // Description:

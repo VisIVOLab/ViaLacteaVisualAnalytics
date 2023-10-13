@@ -7,6 +7,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
+#include <stdexcept>
+
 FitsHeaderModifierDialog::FitsHeaderModifierDialog(const QString &filepath,
                                                    const QStringList &missingKeywords,
                                                    QWidget *parent)

@@ -378,12 +378,14 @@ int vtkWindowCube::readFitsHeader()
         }
 
         // Skip empty names, HISTORY and COMMENT keyworks
-        if ((strlen(name) == 0) || (strcasecmp(name, "HISTORY") == 0)
-            || (strcasecmp(name, "COMMENT") == 0)) {
+        QString s_name(QString::fromUtf8(name));
+        QString s_value(QString::fromUtf8(value));
+        if (s_name.isEmpty() || (s_name.compare("HISTORY", Qt::CaseInsensitive) == 0)
+            || (s_name.compare("COMMENT", Qt::CaseInsensitive) == 0)) {
             continue;
         }
 
-        this->fitsHeader.insert(QString::fromUtf8(name), QString::fromUtf8(value));
+        this->fitsHeader.insert(s_name, s_value);
     }
 
     fits_close_file(fptr, &status);

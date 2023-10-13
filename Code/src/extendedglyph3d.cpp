@@ -69,10 +69,10 @@ ExtendedGlyph3D::~ExtendedGlyph3D()
 }
 
 //----------------------------------------------------------------------------
-unsigned long ExtendedGlyph3D::GetMTime()
+vtkMTimeType ExtendedGlyph3D::GetMTime()
 {
-    unsigned long mTime = this->Superclass::GetMTime();
-    unsigned long time;
+    vtkMTimeType mTime = this->Superclass::GetMTime();
+    vtkMTimeType time;
     if (this->SourceTransform != NULL) {
         time = this->SourceTransform->GetMTime();
         mTime = (time > mTime ? time : mTime);

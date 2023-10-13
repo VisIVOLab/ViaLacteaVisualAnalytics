@@ -1,19 +1,11 @@
 #include "astroutils.h"
 
-#include <fitsio.h>
-
 #include "libwcs/fitsfile.h"
 #include "libwcs/lwcs.h"
-#include "libwcs/wcs.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <fitsio.h>
 
+#include <cmath>
 #include <exception>
 #include <iostream>
 #include <set>
@@ -24,13 +16,9 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 
-#include <QDebug>
-
 using namespace boost::algorithm;
 
-extern void setsys();
-
-AstroUtils::AstroUtils() { }
+AstroUtils::AstroUtils() = default;
 
 void AstroUtils::GetCenterCoords(std::string file, double *coords)
 {
@@ -384,7 +372,7 @@ void AstroUtils::getRotationAngle(std::string file, double *rot, int wcs_type)
 void AstroUtils::sky2xy_t(std::string map, double xpos, double ypos, int wcs_type, double *xpix,
                           double *ypix)
 {
-    char fn[map.size() + 1];
+    char fn[map.length() + 1];
     strncpy(fn, map.c_str(), map.size());
     fn[map.size()] = 0;
 
