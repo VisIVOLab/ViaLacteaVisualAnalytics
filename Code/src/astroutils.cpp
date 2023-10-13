@@ -372,7 +372,7 @@ void AstroUtils::getRotationAngle(std::string file, double *rot, int wcs_type)
 void AstroUtils::sky2xy_t(std::string map, double xpos, double ypos, int wcs_type, double *xpix,
                           double *ypix)
 {
-    char fn[map.length() + 1];
+    char *fn = new char[map.length() + 1];
     strncpy(fn, map.c_str(), map.size());
     fn[map.size()] = 0;
 
@@ -395,6 +395,7 @@ void AstroUtils::sky2xy_t(std::string map, double xpos, double ypos, int wcs_typ
     wcsc2pix(wcs, xpos, ypos, type, xpix, ypix, &offset);
 
     wcsfree(wcs);
+    delete[] fn;
 }
 
 bool AstroUtils::sky2xy(std::string map, double ra, double dec, double *coord)

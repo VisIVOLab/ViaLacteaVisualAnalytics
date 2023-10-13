@@ -83,7 +83,7 @@ void image::writeimage(string fits_filename)
     fitsfile *fptr; /* pointer to the FITS file, defined in fitsio.h */
     int status, ii, jj;
     long fpixel, nelements;
-    double *array[m_Nrows];
+    double **array = new double*[m_Nrows];
 
     /* initialize FITS image parameters */
     int bitpix = DOUBLE_IMG;
@@ -156,6 +156,7 @@ void image::writeimage(string fits_filename)
         throw_on_error(status, array[0]);
 
     free(array[0]); /* free previously allocated memory */
+    delete[] array;
 
     if (fits_close_file(fptr, &status)) /* close the file */
         throw_on_error(status, nullptr);
