@@ -42,6 +42,72 @@ extern "C" {
 #endif
 #endif
 
+#define MAXPV 100
+
+#define	WCS_NGRIDPOINTS	12      /* Number of WCS grid points / axis */
+#define	WCS_NGRIDPOINTS2        (WCS_NGRIDPOINTS*WCS_NGRIDPOINTS)
+#define	WCS_INVMAXDEG	9       /* Maximum inversion polynom degree */
+#define	WCS_INVACCURACY	0.04    /* Maximum inversion error (pixels) */
+#define	WCS_NRANGEPOINTS 32     /* Number of WCS range points / axis */
+#ifndef	PI
+#define	PI	3.1415926535898 /* never met before? */
+#endif
+/* DEG/ARCSEC is now D2S and ARCSEC/DEG is S2D */
+/* #define	DEG	(PI/180.0)      1 deg in radians */
+/* #define	ARCSEC	(DEG/3600.0)    1 arcsec in radians */
+#define	NAXISPV	2
+
+/* poly.h
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*       Part of:        A program using polynomial fits
+*       Author:         E.BERTIN (IAP) 
+*       Contents:       Include for poly.c
+*       Last modified:  03/03/2004
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*/
+
+#ifndef _POLY_H_
+#define _POLY_H_
+
+/*--------------------------------- constants -------------------------------*/
+
+#define POLY_MAXDIM             4       /* Max dimensionality of polynom */
+#define POLY_MAXDEGREE          10      /* Max degree of the polynom */
+
+/*---------------------------------- macros ---------------------------------*/
+
+/*--------------------------- structure definitions -------------------------*/
+
+typedef struct poly
+  {
+  double        *basis;         /* Current values of the basis functions */
+  double        *coeff;         /* Polynom coefficients */
+  int           ncoeff;         /* Number of coefficients */
+  int           *group;         /* Groups */
+  int           ndim;           /* dimensionality of the polynom */
+  int           *degree;        /* Degree in each group */
+  int           ngroup;         /* Number of different groups */
+  }     polystruct;
+
+/*---------------------------------- protos --------------------------------*/
+
+extern polystruct       *poly_init(int *group,int ndim,int *degree,int ngroup);
+
+extern double                   poly_func(polystruct *poly, double *pos);
+
+extern int              cholsolve(double *a, double *b, int n),
+                        *poly_powers(polystruct *poly);
+
+extern void             poly_addcste(polystruct *poly, double *cste),
+                        poly_end(polystruct *poly),
+                        poly_fit(polystruct *poly, double *x, double *y,
+                                double *w, int ndata, double *extbasis),
+                        poly_solve(double *a, double *b, int n),
+                        svdsolve(double *a, double *b, int m, int n,
+                                double *vmat, double *wmat);
+
+#endif
+
 extern int npcode;
 extern char pcodes[26][4];
 
@@ -53,6 +119,10 @@ struct prjprm {
    double p[10];
    double w[20];
    int    n;
+   int npv;
+   double ppv[2*MAXPV];
+   struct poly           *inv_x;
+   struct poly           *inv_y;
 
 #if __STDC__  || defined(__cplusplus)
    int (*prjfwd)(const double, const double,
@@ -149,6 +219,7 @@ struct prjprm {
    int qscset(struct prjprm *);
    int qscfwd(const double, const double, struct prjprm *, double *, double *);
    int qscrev(const double, const double, struct prjprm *, double *, double *);
+   int raw_to_pv(struct prjprm *prj, double x, double y, double *xo, double *yo);
 #else
    int prjset(), prjfwd(), prjrev();
    int azpset(), azpfwd(), azprev();
@@ -177,7 +248,10 @@ struct prjprm {
    int tscset(), tscfwd(), tscrev();
    int cscset(), cscfwd(), cscrev();
    int qscset(), qscfwd(), qscrev();
+   int raw_to_pv();
 #endif
+
+
 
 extern const char *prjset_errmsg[];
 extern const char *prjfwd_errmsg[];
@@ -252,11 +326,11 @@ struct wcsprm {
 };
 
 #if __STDC__ || defined(__cplusplus)
-   int wcsset(const int,
-              const char[][9],
+   int libwcsset(const int,
+              const char[][16],
               struct wcsprm *);
 
-   int wcsfwd(const char[][9],
+   int wcsfwd(const char[][16],
               struct wcsprm *,
               const double[],
               const double[],
@@ -268,7 +342,7 @@ struct wcsprm {
               struct linprm *,
               double[]);
 
-   int wcsrev(const char[][9],
+   int libwcsrev(const char[][16],
               struct wcsprm *,
               const double[], 
               struct linprm *,
@@ -280,7 +354,7 @@ struct wcsprm {
               struct celprm *, 
               double[]);
 
-   int wcsmix(const char[][9],
+   int wcsmix(const char[][16],
               struct wcsprm *,
               const int,
               const int,
@@ -298,7 +372,7 @@ struct wcsprm {
               double[]);
 
 #else
-   int wcsset(), wcsfwd(), wcsrev(), wcsmix();
+   int libwcsset(), wcsfwd(), libwcsrev(), wcsmix();
 #endif
 
 extern const char *wcsset_errmsg[];
@@ -340,10 +414,20 @@ extern const char *wcsmix_errmsg[];
 #undef SQRT2INV
 #endif
 
-#define PI 3.141592653589793238462643
-#define D2R PI/180.0
-#define R2D 180.0/PI
-#define SQRT2 1.4142135623730950488
+#ifdef D2S
+#undef D2S
+#endif
+
+#ifdef S2D
+#undef S2D
+#endif
+
+#define PI	3.141592653589793238462643
+#define D2R	PI/180.0
+#define R2D	180.0/PI
+#define S2D	1.0/3600.0
+#define D2S	3600.0
+#define SQRT2	1.4142135623730950488
 #define SQRT2INV 1.0/SQRT2
 
 #if !defined(__STDC__) && !defined(__cplusplus)
@@ -387,4 +471,8 @@ extern const char *wcsmix_errmsg[];
  * Mar 12 2002	Doug Mink - Update for WCSLIB 2.8.2, especially proj.h
  * Nov 29 2006	Doug Mink - Drop semicolon at end of C++ ifdef
  * Jan  4 2007	Doug Mink - Drop extra declarations of SZP subroutines
- */
+ *
+ * Mar 30 2011	Doug Mink - Add raw_to_pv() subroutine for SCAMP from Ed Los
+ *
+ * Jun 22 2016	Jessica Mink - Increase length of ctype to 16 to handle distortion
+*/

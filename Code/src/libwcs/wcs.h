@@ -1,9 +1,7 @@
 /*** File libwcs/wcs.h
- *** July 25, 2007
- *** By Doug Mink, dmink@cfa.harvard.edu
- *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2007
- *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+ *** February 1, 2022
+ *** By Jessica Mink, SAO Telescope Data Center
+ *** Copyright (C) 1994-2022
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -20,8 +18,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -32,6 +30,9 @@
 
 #include "wcslib.h"
 #include "fitshead.h"
+#include "fitsfile.h"
+
+#define MAXNKWD	500
 
 /* SIRTF distortion matrix coefficients */
 #define DISTMAX 10
@@ -80,6 +81,10 @@ struct WorldCoor {
   double	cdelt[9];	/* Values of CDELTn keywords */
   double	pc[81];		/* Values of PCiiijjj keywords */
   double	projp[10];	/* Constants for various projections */
+  int		pvfail;		/* If non-zero, significant inaccuracy likely to occur in projection */
+  double	projppv[2*MAXPV]; /* SCAMP constants for the PV coordinates */
+  struct poly	*inv_x;		/* SCAMP projection correction polynom in x */
+  struct poly	*inv_y;		/* SCAMP projection correction polynom in y */
   double	longpole;	/* Longitude of North Pole in degrees */
   double	latpole;	/* Latitude of North Pole in degrees */
   double	rodeg;		/* Radius of the projection generating sphere */
@@ -88,11 +93,14 @@ struct WorldCoor {
   double	pa_east;	/* Position angle of east (0=horizontal) */
   double	radvel;		/* Radial velocity (km/sec away from observer)*/
   double	zvel;		/* Radial velocity (v/c away from observer)*/
+  double	zpzd;		/* Colat of FIP (degs) */
+  double	zpr;		/* Radius of FIP (degs) */
   int		imflip;		/* If not 0, image is reflected around axis */
   int		prjcode;	/* projection code (-1-32) */
   int		latbase;	/* Latitude base 90 (NPA), 0 (LAT), -90 (SPA) */
   int		ncoeff1;	/* Number of x-axis plate fit coefficients */
   int		ncoeff2;	/* Number of y-axis plate fit coefficients */
+  int		zpnp;		 /* ZP polynomial order (0-9) */
   int		changesys;	/* 1 for FK4->FK5, 2 for FK5->FK4 */
   				/* 3 for FK4->galactic, 4 for FK5->galactic */
   int		printsys;	/* 1 to print coordinate system, else 0 */
@@ -112,12 +120,12 @@ struct WorldCoor {
   int		linmode;	/* 0=system only, 1=units, 2=system+units */
   int		detector;	/* Instrument detector number */
   char		instrument[32];	/* Instrument name */
-  char		ctype[9][9];	/* Values of CTYPEn keywords */
-  char		c1type[9];	/*  1st coordinate type code:
+  char		ctype[9][16];	/* Values of CTYPEn keywords */
+  char		c1type[8];	/*  1st coordinate type code:
 					RA--, GLON, ELON */
-  char		c2type[9];	/*  2nd coordinate type code:
+  char		c2type[8];	/*  2nd coordinate type code:
 					DEC-, GLAT, ELAT */
-  char		ptype[9];	/*  projection type code:
+  char		ptype[8];	/*  projection type code:
 				    SIN, TAN, ARC, NCP, GLS, MER, AIT, etc */
   char		units[9][32];	/* Units if LINEAR */
   char		radecsys[32];	/* Reference frame: FK4, FK4-NO-E, FK5, GAPPT*/
@@ -183,11 +191,14 @@ struct WorldCoor {
 #define WCS_CSC 24	/* COBE quadrilateralized Spherical Cube */
 #define WCS_QSC 25	/* Quadrilateralized Spherical Cube */
 #define WCS_TSC 26	/* Tangential Spherical Cube */
-#define WCS_NCP 27	/* Special case of SIN */
-#define WCS_GLS 28	/* Same as SFL */
+#define WCS_NCP 27	/* Special case of SIN from AIPS*/
+#define WCS_GLS 28	/* Same as SFL from AIPS*/
 #define WCS_DSS 29	/* Digitized Sky Survey plate solution */
 #define WCS_PLT 30	/* Plate fit polynomials (SAO) */
-#define WCS_TNX 31	/* Gnomonic = Tangent Plane (NOAO with corrections) */
+#define WCS_TNX 31	/* Tangent Plane (NOAO corrections) */
+#define WCS_ZPX 32	/* Zenithal Azimuthal Polynomial (NOAO corrections) */
+#define WCS_TPV 33	/* Tangent Plane (SCAMP corrections) */
+#define NWCSTYPE 34	/* Number of WCS types (-1 really means no WCS) */
 
 /* Coordinate systems */
 #define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
@@ -228,7 +239,7 @@ struct WorldCoor {
 #define radhr(x)	deghr(raddeg(x))
 #define secrad(x)	((x)*AS2R)
 
-/* TNX surface fitting structure and flags */
+/* TNX/ZPX surface fitting structure and flags */
 struct IRAFsurface {
   double xrange;	/* 2. / (xmax - xmin), polynomials */
   double xmaxmin;	/* - (xmax + xmin) / 2., polynomials */
@@ -244,12 +255,12 @@ struct IRAFsurface {
   double *ybasis;	/* pointer to basis functions (all y) */
 };
 
-/* TNX permitted types of surfaces */
+/* TNX/ZPX permitted types of surfaces */
 #define  TNX_CHEBYSHEV    1
 #define  TNX_LEGENDRE     2
 #define  TNX_POLYNOMIAL   3
 
-/* TNX cross-terms flags */
+/* TNX/ZPX cross-terms flags */
 #define	TNX_XNONE	0	/* no x-terms (old no) */
 #define	TNX_XFULL	1	/* full x-terms (new yes) */
 #define	TNX_XHALF	2	/* half x-terms (new) */
@@ -285,6 +296,8 @@ extern "C" {
 	const char* hstring,	/* FITS header */
 	int len,		/* Length of FITS header */
 	char *wcschar);		/* WCS character (A-Z) */
+    char *uppercase (		/* Convert string of any case to uppercase */
+	const char *string);		/* String to convert */
 
     /* WCS subroutines in wcs.c */
     void wcsfree (		/* Free a WCS structure and its contents */
@@ -332,6 +345,12 @@ extern "C" {
         int *offscl);
 
     double wcsdist(	/* Compute angular distance between 2 sky positions */
+	double ra1,	/* First longitude/right ascension in degrees */
+	double dec1,	/* First latitude/declination in degrees */
+	double ra2,	/* Second longitude/right ascension in degrees */
+	double dec2);	/* Second latitude/declination in degrees */
+
+    double wcsdist1(	/* Compute angular distance between 2 sky positions */
 	double ra1,	/* First longitude/right ascension in degrees */
 	double dec1,	/* First latitude/declination in degrees */
 	double ra2,	/* Second longitude/right ascension in degrees */
@@ -691,50 +710,68 @@ extern "C" {
 	double *xpix,	/* Image X coordinate (returned) */
 	double *ypix);	/* Image Y coordinate (returned) */
 
+/* IRAF ZPN projection with higher order terms (zpxpos.c) */
+    int zpxinit (	/* initialize the zenithal forward or inverse transform */
+	const char *header, /* FITS header */
+	struct WorldCoor *wcs); /* pointer to WCS structure */
+    int zpxpos (	/* forward transform (physical to world) */
+	double xpix,	/* Image X coordinate */
+	double ypix,	/* Image Y coordinate */
+	struct WorldCoor *wcs, /* pointer to WCS descriptor */
+	double *xpos,	/* Right ascension (returned) */
+	double *ypos);	/* Declination (returned) */
+    int zpxpix (	/* Inverse transform (world to physical) */
+	double xpos,	/* Right ascension */
+	double ypos,	/* Declination */
+	struct WorldCoor *wcs, /* Pointer to WCS descriptor */
+	double *xpix,	/* Image X coordinate (returned) */
+	double *ypix);	/* Image Y coordinate (returned) */
 
 #else /* K&R prototypes */
 
 /* WCS subroutines in wcs.c */
 struct WorldCoor *wcsinit(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsninit(); /* set up a WCS structure from a FITS image header */
-struct WorldCoor *wcsinitn(); /* set up a WCS structure from a FITS image header */
-struct WorldCoor *wcsninitn(); /* set up a WCS structure from a FITS image header */
+struct WorldCoor* wcsinitn(const char* hstring, const char* wcsname);
+struct WorldCoor *wcsninitn();	/* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsinitc(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsninitc(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsxinit(); /* set up a WCS structure from arguments */
 struct WorldCoor *wcskinit(); /* set up a WCS structure from keyword values */
-void wcsfree(void);		/* Free a WCS structure and its contents */
+char *uppercase();	/* Convert string of any case to uppercase */
+void wcsfree(struct WorldCoor* wcs);
 int wcstype();		/* Set projection type from header CTYPEs */
 void wcscdset();	/* Set scaling and rotation from CD matrix */
 void wcsdeltset();	/* set scaling and rotation from CDELTs and CROTA2 */
 void wcspcset();	/* set scaling and rotation from CDELTs and PC matrix */
 int iswcs();		/* Return 1 if WCS structure is filled, else 0 */
-int nowcs();		/* Return 0 if WCS structure is filled, else 1 */
+int nowcs(struct WorldCoor *);
 void wcsshift();	/* Reset the center of a WCS structure */
 void wcscent();		/* Print the image center and size in WCS units */
 void wcssize();		/* Return RA and Dec of image center, size in RA and Dec */
 void wcsfull();		/* Return RA and Dec of image center, size in degrees */
 void wcsrange();	/* Return min and max RA and Dec of image in degrees */
-double wcsdist();	/* Distance in degrees between two sky coordinates */
+double wcsdist(double ra1, double dec1, double ra2, double dec2);
+double wcsdist1();	/* Compute angular distance between 2 sky positions */
 double wcsdiff();	/* Distance in degrees between two sky coordinates */
 void wcscominit();	/* Initialize catalog search command set by -wcscom */
 void wcscom();		/* Execute catalog search command set by -wcscom */
 char *getradecsys();	/* Return current value of coordinate system */
-void wcsoutinit();	/* Initialize WCS output coordinate system for use by pix2wcs */
+void wcsoutinit(struct WorldCoor* wcs, char* coorsys);
 char *getwcsout();	/* Return current value of WCS output coordinate system */
-void wcsininit();	/* Initialize WCS input coordinate system for use by wcs2pix */
+void wcsininit(struct WorldCoor* wcs, char* coorsys);
 char *getwcsin();	/* Return current value of WCS input coordinate system */
-int setwcsdeg();	/* Set WCS output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
+int setwcsdeg(struct WorldCoor* wcs, int degout);	/* Set WCS output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 int wcsndec();		/* Set or get number of output decimal places */
 int wcsreset();		/* Change WCS using arguments */
 void wcseqset();	/* Change equinox of reference pixel coordinates in WCS */
-void wcscstr();		/* Return system string from system code, equinox, epoch */
+void wcscstr(char* cstr, int syswcs, double equinox, double epoch);
 void setwcslin();	/* Set output string mode for LINEAR coordinates */
-int pix2wcst();		/* Convert pixel coordinates to World Coordinate string */
-void pix2wcs();		/* Convert pixel coordinates to World Coordinates */
-void wcsc2pix();	/* Convert World Coordinates to pixel coordinates */
-void wcs2pix();		/* Convert World Coordinates to pixel coordinates */
-void setdefwcs();	/* Call to use AIPS classic WCS (also not PLT or TNX */
+int pix2wcst(struct WorldCoor* wcs, double xpix, double ypix, char* wcstring, int lstr);
+void pix2wcs(struct WorldCoor* wcs, double xpix, double ypix, double* xpos, double* ypos);
+void wcs2pix(struct WorldCoor* wcs, double xpos, double ypos, double* xpix, double* ypix, int* offscl);
+void wcsc2pix(struct WorldCoor* wcs, double xpos, double ypos, char* coorsys, double* xpix, double* ypix, int* offscl);
+void setdefwcs();	/* Call to use AIPS classic WCS (also not PLT/TNX/ZPX */
 int getdefwcs();	/* Call to get flag for AIPS classic WCS */
 int wcszin();		/* Set coordinate in third dimension (face) */
 int wcszout();		/* Return coordinate in third dimension */
@@ -746,17 +783,17 @@ void savewcscom();	/* Save WCS shell command */
 char *getwcscom();	/* Return WCS shell command */
 void setwcscom();	/* Set WCS shell commands from stored values */
 void freewcscom();	/* Free memory used to store WCS shell commands */
-void setwcsfile();	/* Set filename for WCS error message */
+void setwcsfile(char* filename);
 int cpwcs();		/* Copy WCS keywords with no suffix to ones with suffix */
 
 /* Coordinate conversion subroutines in wcscon.c */
-void wcscon();		/* Convert between coordinate systems and equinoxes */
+void wcscon(int sys1, int sys2, double eq1, double eq2, double* dtheta, double* dphi, double epoch);
 void wcsconp();		/* Convert between coordinate systems and equinoxes */
 void wcsconv();		/* Convert between coordinate systems and equinoxes */
 void fk425e();		/* Convert B1950(FK4) to J2000(FK5) coordinates */
 void fk524e();		/* Convert J2000(FK5) to B1950(FK4) coordinates */
-int wcscsys();		/* Set coordinate system from string */
-double wcsceq();	/* Set equinox from string (return 0.0 if not obvious) */
+int wcscsys(char* coorsys);
+double wcsceq(char* wcstring);
 void d2v3();		/* Convert RA and Dec in degrees and distance to vector */
 void s2v3();		/* Convert RA and Dec in radians and distance to vector */
 void v2d3();		/* Convert vector to RA and Dec in degrees and distance */
@@ -791,6 +828,11 @@ extern int GetPlate();	/* Return plate fit coefficients from structure in argume
 extern int tnxinit();	/* initialize the gnomonic forward or inverse transform */
 extern int tnxpos();	/* forward transform (physical to world) gnomonic projection. */
 extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projection */
+
+/* IRAF ZPN projection with higher order terms (zpxpos.c) */
+extern int zpxinit();	/* initialize the gnomonic forward or inverse transform */
+extern int zpxpos();	/* forward transform (physical to world) gnomonic projection. */
+extern int zpxpix();	/* Inverse transform (world to physical) gnomonic projection */
 
 #endif	/* __STDC__ */
 
@@ -914,4 +956,22 @@ extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projectio
  * Jan 10 2007	Add ANSI prototypes for all subroutines
  * Feb  1 2007	Add wcs.wcslog for log wavelength
  * Jul 25 2007	Add v2s3(), s2v3(), d2v3(), v2d3() for coordinate-vector conversion
+ *
+ * Mar 31 2010	Add wcsdist1(), an alternate method
+ * Apr 07 2010	Add NWCSTYPE to keep it aligned with actual number of WCS types
+ *
+ * Mar 11 2011	Add NOAO ZPX projection parameters and subroutines (Frank Valdes)
+ * Mar 14 2011	Add SCAMP polynomial projection coefficients
+ * Sep  1 2011	Add TPV TAN projectioin with SCAT PV terms
+ * Sep  9 2011	Fix comment on TPV declaration
+ *
+ * Feb  1 2013	Add uppercase() from wcsinit()
+ * Feb 25 2013	Pass const string to uppercase()
+ *
+ * Jun  8 2016	Increase projection code from 9 to 16 characters for SIP distortion
+ * Jun 23 2016	Set MAXNKWD here; used for copying keywords in cpwcs()
+ *
+ * Aug  2 2021	Add range, string-parsing, and polynomial-fitting subroutines from wcscat.h
+ *
+ * Feb  1 2022	Move range, string parsing, and polynomial-fitting subroutines to fitsfile.h
  */

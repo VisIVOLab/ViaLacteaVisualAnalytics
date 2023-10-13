@@ -1,6 +1,6 @@
 /*** File fitshead.h  FITS header access subroutines
  *** January 9, 2007
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 
-#ifdef __STDC__   /* Full ANSI prototypes */
+#if defined(__STDC__) || defined(_WIN32)
 
 /* Subroutines in hget.c */
     int hgeti2(			/* Extract short value from FITS header */

@@ -781,6 +781,8 @@ int tanset(prj)
 struct prjprm *prj;
 
 {
+  int k;
+
    strcpy(prj->code, "TAN");
    prj->flag   = copysgni (TAN, prj->flag);
    prj->phi0   =  0.0;
@@ -790,6 +792,11 @@ struct prjprm *prj;
 
    prj->prjfwd = tanfwd;
    prj->prjrev = tanrev;
+
+   for (k = (MAXPV-1); k >= 0 && prj->ppv[k] == 0.0 && prj->ppv[k+MAXPV] == 0.0; k--);
+   if (k < 0)
+      k = 0;
+   prj->npv = k;
 
    return 0;
 }
@@ -804,6 +811,7 @@ double *x, *y;
 
 {
    double r, s;
+   double xp[2];
 
    if (abs(prj->flag) != TAN) {
       if(tanset(prj)) return 1;
@@ -815,8 +823,10 @@ double *x, *y;
    }
 
    r =  prj->r0*cosdeg (theta)/s;
-   *x =  r*sindeg (phi);
-   *y = -r*cosdeg (phi);
+   xp[0] =  r*sindeg (phi);
+   xp[1] = -r*cosdeg (phi);
+   *x = prj->inv_x? poly_func(prj->inv_x, xp) : xp[0];
+   *y = prj->inv_y? poly_func(prj->inv_y, xp) : xp[1];
 
    if (prj->flag > 0 && s < 0.0) {
       return 2;
@@ -835,17 +845,27 @@ double *phi, *theta;
 
 {
    double r;
+   double xp;
+   double yp;
 
    if (abs(prj->flag) != TAN) {
       if (tanset(prj)) return 1;
    }
 
-   r = sqrt(x*x + y*y);
+   if (prj->npv) {
+      raw_to_pv(prj, x,y, &xp, &yp);
+   } else {
+      xp = x;
+      yp = y;
+   }
+
+   r = sqrt(xp*xp + yp*yp);
    if (r == 0.0) {
       *phi = 0.0;
    } else {
-      *phi = atan2deg (x, -y);
+      *phi = atan2deg (xp, -yp);
    }
+
    *theta = atan2deg (prj->r0, r);
 
    return 0;
@@ -1269,10 +1289,23 @@ struct prjprm *prj;
    if (prj->r0 == 0.0) prj->r0 = R2D;
 
    /* Find the highest non-zero coefficient. */
-   for (k = 9; k >= 0 && prj->p[k] == 0.0; k--);
-   if (k < 0) return 1;
+   for (k = 9; k >= 0 && prj->p[k] == 0.0; k--){
+	i = 0; }
+   /* if (k < 0) return 1; */
+
+   /* if (k < 0 switch to ARC projection */
+   if (k < 0) {
+	return (arcset (prj));
+	}
 
    prj->n = k;
+
+   /* No negative derivative -> no point of inflection. */
+   zd = PI;
+
+   /* Processing subroutines */
+   prj->prjfwd = zpnfwd;
+   prj->prjrev = zpnrev;
 
    if (k >= 3) {
       /* Find the point of inflection closest to the pole. */
@@ -1327,9 +1360,6 @@ struct prjprm *prj;
       prj->w[0] = zd;
       prj->w[1] = r;
    }
-
-   prj->prjfwd = zpnfwd;
-   prj->prjrev = zpnrev;
 
    return 0;
 }
@@ -4333,6 +4363,149 @@ double *phi, *theta;
 
    return 0;
 }
+
+/* This routine comes from E. Bertin  sextractor-2.8.6 */
+
+int
+raw_to_pv(struct prjprm *prj, double x, double y, double *xo, double *yo)
+
+{
+   int		k;
+   double	*a,*b,
+		r,r3,r5,r7,xy,x2,x3,x4,x5,x6,x7,y2,y3,y4,y5,y6,y7,xp,yp;
+
+
+   k=prj->npv;
+   a = prj->ppv+MAXPV;		/* Latitude comes first for compatibility */
+   b = prj->ppv;			/* Longitude */
+   xp = *(a++);
+   xp += *(a++)*x;
+   yp = *(b++);
+   yp += *(b++)*y;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y;
+   yp += *(b++)*x;
+   if (!--k) goto poly_end;
+   r = sqrt(x*x + y*y);
+   xp += *(a++)*r;
+   yp += *(b++)*r;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(x2=x*x);
+   yp += *(b++)*(y2=y*y);
+   if (!--k) goto poly_end;
+   xp += *(a++)*(xy=x*y);
+   yp += *(b++)*xy;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y2;
+   yp += *(b++)*x2;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(x3=x*x2);
+   yp += *(b++)*(y3=y*y2);
+   if (!--k) goto poly_end;
+   xp += *(a++)*x2*y;
+   yp += *(b++)*y2*x;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x*y2;
+   yp += *(b++)*y*x2;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y3;
+   yp += *(b++)*x3;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(r3=r*r*r);
+   yp += *(b++)*r3;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(x4=x2*x2);
+   yp += *(b++)*(y4=y2*y2);
+   if (!--k) goto poly_end;
+   xp += *(a++)*x3*y;
+   yp += *(b++)*y3*x;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x2*y2;
+   yp += *(b++)*x2*y2;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x*y3;
+   yp += *(b++)*y*x3;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y4;
+   yp += *(b++)*x4;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(x5=x4*x);
+   yp += *(b++)*(y5=y4*y);
+   if (!--k) goto poly_end;
+   xp += *(a++)*x4*y;
+   yp += *(b++)*y4*x;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x3*y2;
+   yp += *(b++)*y3*x2;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x2*y3;
+   yp += *(b++)*y2*x3;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x*y4;
+   yp += *(b++)*y*x4;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y5;
+   yp += *(b++)*x5;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(r5=r3*r*r);
+   yp += *(b++)*r5;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(x6=x5*x);
+   yp += *(b++)*(y6=y5*y);
+   if (!--k) goto poly_end;
+   xp += *(a++)*x5*y;
+   yp += *(b++)*y5*x;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x4*y2;
+   yp += *(b++)*y4*x2;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x3*y3;
+   yp += *(b++)*y3*x3;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x2*y4;
+   yp += *(b++)*y2*x4;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x*y5;
+   yp += *(b++)*y*x5;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y6;
+   yp += *(b++)*x6;
+   if (!--k) goto poly_end;
+   xp += *(a++)*(x7=x6*x);
+   yp += *(b++)*(y7=y6*y);
+   if (!--k) goto poly_end;
+   xp += *(a++)*x6*y;
+   yp += *(b++)*y6*x;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x5*y2;
+   yp += *(b++)*y5*x2;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x4*y3;
+   yp += *(b++)*y4*x3;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x3*y4;
+   yp += *(b++)*y3*x4;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x2*y5;
+   yp += *(b++)*y2*x5;
+   if (!--k) goto poly_end;
+   xp += *(a++)*x*y6;
+   yp += *(b++)*y*x6;
+   if (!--k) goto poly_end;
+   xp += *(a++)*y7;
+   yp += *(b++)*x7;
+   if (!--k) goto poly_end;
+   xp += *a*(r7=r5*r*r);
+   yp += *b*r7;
+
+poly_end:
+
+  *xo = xp;
+  *yo = yp;
+
+   return 0;
+}
+
 /* Dec 20 1999  Doug Mink - Change cosd() and sind() to cosdeg() and sindeg()
  * Dec 20 1999  Doug Mink - Include wcslib.h, which includes proj.h, wcsmath.h
  * Dec 20 1999  Doug Mink - Define copysign only if it is not defined
@@ -4348,4 +4521,7 @@ double *phi, *theta;
  * Feb  3 2003	Doug Mink - Use locally defined copysgn() and copysgni(),
  *		            not copysign()
  * Apr  1 2003	Doug Mink - include string.h for strcpy() and strcmp()
+ *
+ * Mar 14 2011	Doug Mink - If no coefficients in ZPN, make ARC
+ * Mar 14 2011	Doug Mink - Add Emmanuel Bertin's TAN polynomial from Ed Los
  */

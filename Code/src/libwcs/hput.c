@@ -1,8 +1,8 @@
 /*** File libwcs/hput.c
- *** August 22, 2007
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** August 28, 2018
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1995-2007
+ *** Copyright (C) 1995-2018
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -49,7 +49,9 @@
  * Subroutine:  getltime () returns current local time as ISO-style string
  * Subroutine:  getutime () returns current UT as ISO-style string
  */
+#ifndef _WIN32
 #include <sys/time.h>
+#endif
 #include <string.h>             /* NULL, strlen, strstr, strcpy */
 #include <stdio.h>
 #include <stdlib.h>
@@ -282,8 +284,10 @@ const char *cval;	/* character string containing the value for variable
     /*  If COMMENT or HISTORY, use the same keyword on every line */
     lkw = (int) strlen (keyword);
     if (lkw == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
-	strncmp (keyword,"HISTORY",7) == 0))
+	strncmp (keyword,"HISTORY",7) == 0)) {
 	comment = 1;
+	lroot = 0;
+	}
 
     /* Set up keyword root, shortening it to 6 characters, if necessary */
     else {
@@ -542,9 +546,14 @@ const char *value; /* character string containing the value for variable
     strncpy (v1, keyword, lkeyword);
 
     /*  Add parameter value in the appropriate place */
-    vp = v1 + 8;
+    if (lkeyword < 9)
+	vp = v1 + 8;
+    else if (lkeyword < 28) 
+	vp = v1 + 28;
+    else
+	vp = v1 + lkeyword;
     *vp = '=';
-    vp = v1 + 9;
+    vp = vp + 1;
     *vp = ' ';
     vp = vp + 1;
     if (*value == squot) {
@@ -687,6 +696,7 @@ hputcom (hstring,keyword,comment)
 		}
 	    else
 		q1 = NULL;
+		q2 = NULL;
 	    }
 
 	else
@@ -1308,4 +1318,8 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jan 16 2007	Fix bugs in ra2str() and dec2str() so ndec=0 works
  * Aug 20 2007	Fix bug so comments after quoted keywords work
  * Aug 22 2007	If closing quote not found, make one up
- */
+ *
+ * Sep  9 2011	Always initialize q2 and lroot
+ *
+ * Aug 28 2018	Allow arbitrary length keywords up to 64 characters 
+*/

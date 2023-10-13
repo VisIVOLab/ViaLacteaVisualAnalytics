@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** July 25, 2007
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** December 12, 2017
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2007
+ *** Copyright (C) 1994-2017
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -108,6 +108,12 @@ struct WorldCoor *wcs;	/* WCS structure */
 	return;
 	}
 
+    /* Free WCS on which this WCS depends */
+    if (wcs->wcs) {
+	wcsfree (wcs->wcs);
+	wcs->wcs = NULL;
+	}
+
     freewcscom (wcs);
     if (wcs->wcsname != NULL)
 	free (wcs->wcsname);
@@ -115,6 +121,10 @@ struct WorldCoor *wcs;	/* WCS structure */
 	free (wcs->lin.imgpix);
     if (wcs->lin.piximg != NULL)
 	free (wcs->lin.piximg);
+    if (wcs->inv_x != NULL)
+	poly_end (wcs->inv_x);
+    if (wcs->inv_y != NULL)
+	poly_end (wcs->inv_y);
     free (wcs);
     return;
 }
@@ -140,6 +150,7 @@ char	*proj;	/* Projection */
 {
     struct WorldCoor *wcs;
     double cdelt1, cdelt2;
+    int lproj;
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -177,11 +188,15 @@ char	*proj;	/* Projection */
 /* Allan Brighton: 28.4.98: for backward compat., remove leading "--" */
     while (proj && *proj == '-')
 	proj++;
-    strcpy (wcs->ptype,proj);
+    strncpy (wcs->ptype,proj, 3);
+    wcs->ptype[3] = (char) 0;
     strcpy (wcs->ctype[0],"RA---");
     strcpy (wcs->ctype[1],"DEC--");
-    strcat (wcs->ctype[0],proj);
-    strcat (wcs->ctype[1],proj);
+    lproj = strlen (proj);
+    if (lproj > 15)
+	lproj = 15; 
+    strncat (wcs->ctype[0],proj, lproj);
+    strncat (wcs->ctype[1],proj, lproj);
 
     if (wcstype (wcs, wcs->ctype[0], wcs->ctype[1])) {
 	wcsfree (wcs);
@@ -332,9 +347,10 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 
 {
     int i, iproj;
-    int nctype = 32;
-    char ctypes[32][4];
+    int nctype = NWCSTYPE;
+    char ctypes[NWCSTYPE][4];
     char dtypes[10][4];
+    int lctype1;
 
     /* Initialize projection types */
     strcpy (ctypes[0], "LIN");
@@ -369,6 +385,8 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     strcpy (ctypes[29], "DSS");
     strcpy (ctypes[30], "PLT");
     strcpy (ctypes[31], "TNX");
+    strcpy (ctypes[32], "ZPX");
+    strcpy (ctypes[33], "TPV");
 
     /* Initialize distortion types */
     strcpy (dtypes[1], "SIP");
@@ -376,21 +394,33 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     if (!strncmp (ctype1, "LONG",4))
 	strncpy (ctype1, "XLON",4);
 
-    strcpy (wcs->ctype[0], ctype1);
-    strcpy (wcs->c1type, ctype1);
-    strcpy (wcs->ptype, ctype1);
+    lctype1 = strlen (ctype1) + 1;
+    strncpy (wcs->ctype[0], ctype1, lctype1);
+
+    /* This is only to catch special non-standard projections */
+    strncpy (wcs->ptype, ctype1, 3);
+    wcs->ptype[3] = 0;
 
     /* Linear coordinates */
-    if (!strncmp (ctype1,"LINEAR",6))
+    if (!strncmp (ctype1,"LINEAR",6)) {
 	wcs->prjcode = WCS_LIN;
+	strcpy (wcs->c1type, "LIN");
+	strcpy (wcs->ptype, "LIN");
+	}
 
     /* Pixel coordinates */
-    else if (!strncmp (ctype1,"PIXEL",6))
+    else if (!strncmp (ctype1,"PIXEL",6)) {
 	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c1type, "PIX");
+	strcpy (wcs->ptype, "PIX");
+	}
 
     /*Detector pixel coordinates */
-    else if (strsrch (ctype1,"DET"))
+    else if (strsrch (ctype1,"DET")) {
 	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c1type, "PIX");
+	strcpy (wcs->ptype, "PIX");
+	}
 
     /* Set up right ascension, declination, latitude, or longitude */
     else if (ctype1[0] == 'R' || ctype1[0] == 'D' ||
@@ -420,7 +450,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	wcs->ptype[1] = ctype1[iproj+1];
 	wcs->ptype[2] = ctype1[iproj+2];
 	wcs->ptype[3] = 0;
-	sprintf (wcs->ctype[0],"%-4s%4s",wcs->c1type,wcs->ptype);
+	sprintf (wcs->ctype[0],"%-4s %3s",wcs->c1type,wcs->ptype);
 	for (i = 0; i < 8; i++)
 	    if (wcs->ctype[0][i] == ' ') wcs->ctype[0][i] = '-';
 
@@ -469,7 +499,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->prjcode != WCS_TNX && wcs->prjcode != WCS_SIN &&
 	    wcs->prjcode != WCS_PIX && wcs->prjcode != WCS_LIN &&
 	    wcs->prjcode != WCS_CAR && wcs->prjcode != WCS_COE &&
-	    wcs->prjcode != WCS_NCP))
+	    wcs->prjcode != WCS_NCP && wcs->prjcode != WCS_ZPX))
 	    wcs->wcsproj = WCS_NEW; */
 
 	/* Handle NOAO corrected TNX as uncorrected TAN if oldwcs is set */
@@ -478,11 +508,20 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->ctype[0][7] = 'N';
 	    wcs->prjcode = WCS_TAN;
 	    }
+
+	/* Handle NOAO corrected ZPX as uncorrected ZPN if oldwcs is set */
+	if (wcs->wcsproj == WCS_OLD && wcs->prjcode == WCS_ZPX) {
+	    wcs->ctype[0][6] = 'P';
+	    wcs->ctype[0][7] = 'N';
+	    wcs->prjcode = WCS_ZPN;
+	    }
 	}
 
     /* If not sky coordinates, assume linear */
     else {
 	wcs->prjcode = WCS_LIN;
+	strcpy (wcs->c1type, "LIN");
+	strcpy (wcs->ptype, "LIN");
 	return (0);
 	}
 
@@ -504,15 +543,24 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     else
 	wcs->latbase = 0;
     strcpy (wcs->ctype[1], ctype2);
-    strcpy (wcs->c2type, ctype2);
 
     /* Linear coordinates */
-    if (!strncmp (ctype2,"LINEAR",6))
+    if (!strncmp (ctype2,"LINEAR",6)) {
 	wcs->prjcode = WCS_LIN;
+	strcpy (wcs->c2type, "LIN");
+	}
 
     /* Pixel coordinates */
-    else if (!strncmp (ctype2,"PIXEL",6))
+    else if (!strncmp (ctype2,"PIXEL",6)) {
 	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c2type, "PIX");
+	}
+
+    /* Detector coordinates */
+    else if (!strncmp (ctype2,"DET",3)) {
+	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c2type, "PIX");
+	}
 
     /* Set up right ascension, declination, latitude, or longitude */
     else if (ctype2[0] == 'R' || ctype2[0] == 'D' ||
@@ -538,10 +586,6 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	if (ctype2[iproj] == '-') iproj = iproj + 1;
 	if (ctype2[iproj] == '-') iproj = iproj + 1;
 	if (ctype2[iproj] == '-') iproj = iproj + 1;
-	wcs->ptype[0] = ctype2[iproj];
-	wcs->ptype[1] = ctype2[iproj+1];
-	wcs->ptype[2] = ctype2[iproj+2];
-	wcs->ptype[3] = 0;
 
 	if (!strncmp (ctype1, "DEC", 3) ||
 	    !strncmp (ctype1+1, "LAT", 3))
@@ -556,13 +600,14 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->degout = 0;
 	    wcs->ndec = 3;
 	    }
-	sprintf (wcs->ctype[1],"%-4s%4s",wcs->c2type,wcs->ptype);
+	sprintf (wcs->ctype[1],"%-4s %3s",wcs->c2type,wcs->ptype);
 	for (i = 0; i < 8; i++)
 	    if (wcs->ctype[1][i] == ' ') wcs->ctype[1][i] = '-';
 	}
 
     /* If not sky coordinates, assume linear */
     else {
+	strcpy (wcs->c2type, "LIN");
 	wcs->prjcode = WCS_LIN;
 	}
 
@@ -630,8 +675,8 @@ double *cd;			/* Rotation matrix, used if not NULL */
 	}
 
     /* Coordinate reference frame, equinox, and epoch */
-    if (!strncmp (wcs->ptype,"LINEAR",6) ||
-	!strncmp (wcs->ptype,"PIXEL",5))
+    if (!strncmp (wcs->ptype,"LIN",3) ||
+	!strncmp (wcs->ptype,"PIX",3))
 	wcs->degout = -1;
 
     wcs->wcson = 1;
@@ -1308,8 +1353,8 @@ double	*height;	/* Height in degrees (returned) */
 	(void) pix2wcs (wcs,xpix,ycpix,&xpos1,&ypos1);
 	xpix = wcs->nxpix + 0.499999;
 	(void) pix2wcs (wcs,xpix,ycpix,&xpos2,&ypos2);
-	if (strncmp (wcs->ptype,"LINEAR",6) &&
-	    strncmp (wcs->ptype,"PIXEL",5)) {
+	if (strncmp (wcs->ptype,"LIN",3) &&
+	    strncmp (wcs->ptype,"PIX",3)) {
 	    *width = wcsdist (xpos1,ypos1,xpos2,ypos2);
 	    }
 	else
@@ -1321,8 +1366,8 @@ double	*height;	/* Height in degrees (returned) */
 	(void) pix2wcs (wcs,xcpix,ypix,&xpos1,&ypos1);
 	ypix = wcs->nypix + 0.5;
 	(void) pix2wcs (wcs,xcpix,ypix,&xpos2,&ypos2);
-	if (strncmp (wcs->ptype,"LINEAR",6) &&
-	    strncmp (wcs->ptype,"PIXEL",5))
+	if (strncmp (wcs->ptype,"LIN",3) &&
+	    strncmp (wcs->ptype,"PIX",3))
 	    *height = wcsdist (xpos1,ypos1,xpos2,ypos2);
 	else
 	    *height = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
@@ -1415,7 +1460,7 @@ double	x1,y1;	/* (RA,Dec) or (Long,Lat) in degrees */
 double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 
 {
-	double d1, d2, r, diffi;
+	double r, diffi;
 	double pos1[3], pos2[3], w, diff;
 	int i;
 
@@ -1436,6 +1481,28 @@ double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 	/* Angle beween the vectors */
 	diff = 2.0 * atan2 (sqrt (w), sqrt (1.0 - w));
 	diff = raddeg (diff);
+	return (diff);
+}
+
+
+
+/* Compute distance in degrees between two sky coordinates */
+
+double
+wcsdist1 (x1,y1,x2,y2)
+
+double	x1,y1;	/* (RA,Dec) or (Long,Lat) in degrees */
+double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
+
+{
+	double d1, d2, r;
+	double pos1[3], pos2[3], w, diff;
+	int i;
+
+	/* Convert two vectors to direction cosines */
+	r = 1.0;
+	d2v3 (x1, y1, r, pos1);
+	d2v3 (x2, y2, r, pos2);
 
 	w = 0.0;
 	d1 = 0.0;
@@ -2099,6 +2166,12 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	    wcs->offscl = 1;
 	}
 
+    /* Use NOAO IRAF corrected zenithal projection */
+    else if (wcs->prjcode == WCS_ZPX) {
+	if (zpxpos (xpi, ypi, wcs, &xp, &yp))
+	    wcs->offscl = 1;
+	}
+
     /* Use Classic AIPS projections */
     else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
 	if (worldpos (xpi, ypi, wcs, &xp, &yp))
@@ -2176,7 +2249,6 @@ char	*coorsys;	/* Input world coordinate system:
 double	*xpix,*ypix;	/* Image coordinates in pixels */
 int	*offscl;	/* 0 if within bounds, else off scale */
 {
-    struct WorldCoor *depwcs;	/* Dependent WCS structure */
     double xp, yp, xpi, ypi;
     double eqin, eqout;
     int sysin;
@@ -2228,6 +2300,12 @@ int	*offscl;	/* 0 if within bounds, else off scale */
 	    *offscl = 1;
 	}
 
+    /* Use NOAO IRAF corrected zenithal projection */
+    else if (wcs->prjcode == WCS_ZPX) {
+	if (zpxpix (xp, yp, wcs, &xpi, &ypi))
+	    *offscl = 1;
+	}
+
     /* Use Classic AIPS projections */
     else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
 	if (worldpix (xp, yp, wcs, &xpi, &ypi))
@@ -2261,13 +2339,6 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     wcs->xpix = *xpix;
     wcs->ypix = *ypix;
 
-    /* If this WCS is converted to another WCS rather than pixels, convert now */
-    if (wcs->wcsdep != NULL) {
-	xpos = *xpix;
-	ypos = *ypix;
-	depwcs = wcs->wcsdep;
-	wcsc2pix (wcs->wcsdep, xpos, ypos, depwcs->radecin, xpix, ypix, offscl);
-	}
     return;
 }
 
@@ -2286,7 +2357,7 @@ double  *ypos;           /* y (dec) coordinate (deg) */
 {
     int offscl;
     int i;
-    int wcsrev();
+    int libwcsrev();
     double wcscrd[4], imgcrd[4], pixcrd[4];
     double phi, theta;
     
@@ -2303,12 +2374,13 @@ double  *ypos;           /* y (dec) coordinate (deg) */
     pixcrd[3] = 1.0;
     for (i = 0; i < 4; i++)
 	imgcrd[i] = 0.0;
-    offscl = wcsrev ((void *)&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
+    offscl = libwcsrev ((void *)&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
 		    &wcs->prj, &phi, &theta, wcs->crval, &wcs->cel, wcscrd);
     if (offscl == 0) {
 	*xpos = wcscrd[wcs->wcsl.lng];
 	*ypos = wcscrd[wcs->wcsl.lat];
 	}
+
     return (offscl);
 }
 
@@ -2333,7 +2405,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
     *xpix = 0.0;
     *ypix = 0.0;
     if (wcs->wcsl.flag != WCSSET) {
-	if (wcsset (wcs->lin.naxis, (void *)&wcs->ctype, &wcs->wcsl) )
+	if (libwcsset (wcs->lin.naxis, (void *)&wcs->ctype, &wcs->wcsl) )
 	    return (1);
 	}
 
@@ -2402,10 +2474,14 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
 void
 setwcsfile (filename)
 char *filename;	/* FITS or IRAF file with WCS */
-{   if (strlen (filename) < 256)
-	strcpy (wcsfile, filename);
-    else
+{  
+    int lfn = strlen (filename) + 1;
+    if (lfn < 257)
+	strncpy (wcsfile, filename, lfn);
+    else {
 	strncpy (wcsfile, filename, 255);
+	wcsfile[255] = (char) 0;
+	}
     return; }
 
 /* Set error message */
@@ -2534,7 +2610,7 @@ char **header;	/* Pointer to start of FITS header */
 char *cwcs;	/* Keyword suffix character for output WCS */
 {
     double tnum;
-    int dkwd[100];
+    int dkwd[MAXNKWD];
     int i, maxnkwd, ikwd, nleft, lbuff, lhead, nkwd, nbytes;
     int nkwdw;
     char **kwd;
@@ -2543,7 +2619,7 @@ char *cwcs;	/* Keyword suffix character for output WCS */
     char tstr[80];
 
     /* Allocate array of keywords to be transferred */
-    maxnkwd = 100;
+    maxnkwd = MAXNKWD;
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
     for (ikwd = 0; ikwd < maxnkwd; ikwd++)
 	kwd[ikwd] = (char *) calloc (16, 1);
@@ -2619,12 +2695,12 @@ char *cwcs;	/* Keyword suffix character for output WCS */
 	strcpy (kwd[++nkwd], keyword);
 	dkwd[nkwd] = 1;
 	}
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < MAXPV; i++) {
 	sprintf (keyword,"PV1_%d", i);
 	strcpy (kwd[++nkwd], keyword);
 	dkwd[nkwd] = 1;
 	}
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < MAXPV; i++) {
 	sprintf (keyword,"PV2_%d", i);
 	strcpy (kwd[++nkwd], keyword);
 	dkwd[nkwd] = 1;
@@ -2934,4 +3010,21 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Feb 23 2007	Fix bug when checking for "DET" in CTYPEi
  * Apr  2 2007	Fix PC to CD matrix conversion
  * Jul 25 2007	Compute distance between two coordinates using d2v3()
+ *
+ * Apr  7 2010	In wcstype() set number of WCS projections from NWCSTYPE
+ *
+ * Mar 11 2011	Add NOAO ZPX projection (Frank Valdes)
+ * Mar 14 2011	Delete j<=MAXPV PVi_j parameters (for SCAMP polynomials via Ed Los)
+ * Mar 17 2011	Fix WCSDEP bug found by Ed Los
+ * May  9 2011	Free WCS structure recursively if WCSDEP is used
+ * Sep  1 2011	Add TPV projection type for SCAMP TAN with PVs
+ *
+ * Oct 19 2012	Drop d1 and d2 from wcsdist(); diffi from wcsdist1()
+ * Oct 19 2012	Drop depwcs; it's in main wcs structure
+ *
+ * Jun  8 2016	Increase ctype, ctype1, and ctype2 to 16 characters for distortion
+ * Jun 23 2016	Set initial allocation of keyword arrays to MAXNKWD instead of 100 in cpwcs()
+ * Jun 24 2016	wcs->ptype contains only 3-letter projection code
+ *
+ * Dec 12 2017	Change strcpy() to strncpy() where destination variable shorter than origin
  */

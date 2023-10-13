@@ -1,8 +1,8 @@
 /*** File imhfile.c
- *** January 8, 2007
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** March 27, 2012
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2012
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -78,12 +78,39 @@
 
 #include <stdio.h>		/* define stderr, FD, and NULL */
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
 #include "fitsfile.h"
+
+#ifdef _WIN32
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#define ftruncate _chsize
+
+ // File descriptor associated with stdin, stdout, stderr
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
+#define R_OK 4
+
+// Includes for open, close, access, read and write
+#include <io.h>
+
+#define _CRT_INTERNAL_NONSTDC_NAMES 1
+#include <sys/stat.h>
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
+#if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
+#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
+#else
+#include <unistd.h>
+#include <sys/file.h>
+#endif
 
 /* Parameters from iraf/lib/imhdr.h for IRAF version 1 images */
 #define SZ_IMPIXFILE	 79		/* name of pixel storage file */
@@ -951,6 +978,7 @@ char	*image;		/* IRAF image */
 	if (strncmp(pixn, "HDR", 3) == 0 ) {
 	    newpixname = same_path (pixn, hdrname);
 	    strcpy (pixname, newpixname);
+	    free (newpixname);
 	    }
 	else {
 	    if ((bang = strchr (pixn, '!')) != NULL )
@@ -1019,7 +1047,6 @@ char	*image;		/* IRAF image */
     nbw = write (fd, image, nbimage);
     close (fd);
 
-    free (pixname);
     return (nbw);
 }
 
@@ -1033,7 +1060,7 @@ char	*pixname;	/* IRAF pixel file pathname */
 char	*hdrname;	/* IRAF image header file pathname */
 
 {
-    int len;
+    int len, plen;
     char *newpixname;
 
     newpixname = (char *) calloc (SZ_IM2PIXFILE, 1);
@@ -1053,7 +1080,11 @@ char	*hdrname;	/* IRAF image header file pathname */
 
 	/* add name */
 	newpixname[len] = '\0';
-	(void)strncat (newpixname, &pixname[4], SZ_IM2PIXFILE);
+	plen = strlen (pixname) - 4;
+	if (len + plen > SZ_IM2PIXFILE)
+	    (void)strncat (newpixname, &pixname[4], SZ_IM2PIXFILE - len);
+	else
+	    (void)strncat (newpixname, &pixname[4], plen);
 	}
 
     /* Bare pixel file with no path is assumed to be same as HDR$filename */
@@ -1929,5 +1960,9 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  *
  * Jan  4 2007	Change hputr4() calls to send pointer to value
  * Jan  8 2007	Drop unused variable nbx in irafrimage()
- * Jan  8 2006	Align header and image buffers properly by 4 and by BITPIX
+ * Jan  8 2007	Align header and image buffers properly by 4 and by BITPIX
+ *
+ * May 20 2011	Free newpixname, not pixname in irafwimage()
+ *
+ * Mar 27 2012	Fix pixname's appending to newpixname to avoid overflow
  */

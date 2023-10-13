@@ -115,25 +115,31 @@ set(PROJECT_SOURCES
     src/libwcs/fileutil.c
     src/libwcs/fitsfile.c
     src/libwcs/fitsfile.h
-    src/libwcs/fitswcs.c
+    src/libwcs/fitshead.h
     src/libwcs/hget.c
     src/libwcs/hput.c
     src/libwcs/iget.c
     src/libwcs/imhfile.c
     src/libwcs/imio.c
+    src/libwcs/imio.h
     src/libwcs/imutil.c
     src/libwcs/lin.c
+    src/libwcs/lwcs.h
     src/libwcs/platepos.c
+    src/libwcs/poly.c
     src/libwcs/proj.c
     src/libwcs/sph.c
     src/libwcs/tnxpos.c
     src/libwcs/wcs.c
-    src/libwcs/wcs.h
+    src/libwcs/wcscat.h
     src/libwcs/wcscon.c
+    src/libwcs/wcs.h
     src/libwcs/wcsinit.c
     src/libwcs/wcslib.c
+    src/libwcs/wcslib.h
     src/libwcs/wcstrig.c
     src/libwcs/worldpos.c
+    src/libwcs/zpxpos.c
     src/loadingwidget.cpp
     src/loadingwidget.h
     src/lutcustomize.cpp
@@ -269,6 +275,9 @@ set(PROJECT_SOURCES
     src/xmlparser.cpp
     src/xmlparser.h
 )
+if(WIN32)
+    list(APPEND PROJECT_SOURCES src/libwcs/win_time.h)
+endif()
 
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 set(PROJECT_UI
@@ -350,6 +359,7 @@ set_target_properties(ViaLacteaVisualAnalytics PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}
     MACOSX_BUNDLE ON
+    WIN32_EXECUTABLE ON
 )
 
 vtk_module_autoinit(

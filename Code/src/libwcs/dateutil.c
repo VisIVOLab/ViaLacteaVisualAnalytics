@@ -1,8 +1,8 @@
 /*** File libwcs/dateutil.c
- *** September 24, 2009
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** July 27, 2021
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2009
+ *** Copyright (C) 1999-2021
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -42,6 +42,9 @@
 	dd-mm-yy (nonstandard FITS use before 2000)
 	yyyy-mm-dd (FITS standard after 1999)
 	yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999)
+  mfd = New FITS date string with month as name not number
+	yyyy-mmm-dd or
+	yyyy-mmm-ddThh:mm:ss.ss
    hr = Sexigesimal hours as hh:mm:dd.ss
    jd = Julian Date
    lt = Local time
@@ -53,12 +56,15 @@
   tsu = UT seconds since 1970-01-01T00:00 (used as Unix system time)
   tsd = UT seconds of current day
    ut = Universal Time (UTC)
-   et = Ephemeris Time (or TDB or TT)
+   et = Ephemeris Time (or TDB or TT) = TAI + 32.184 seconds
+  tai = International Atomic Time (Temps Atomique International) = ET - 32.184 seconds
+  gps = GPS time = TAI - 19 seconds
   mst = Mean Greenwich Sidereal Time
   gst = Greenwich Sidereal Time (includes nutation)
   lst = Local Sidereal Time (includes nutation) (longitude must be set)
   hjd = Heliocentric Julian Date
  mhjd = modified Heliocentric Julian Date = HJD - 2400000.5
+  sec = seconds of angle
 
  * ang2hr (angle)
  *	Convert angle in decimal floating point degrees to hours as hh:mm:ss.ss
@@ -122,25 +128,31 @@
  *	Convert date (yyyy.ddmm) and time (hh.mmsss) to ephemeris time
  * edt2dt (date, time)
  *	Convert ephemeris date (yyyy.ddmm) and time (hh.mmsss) to UT
+ * dt2tai (date, time)
+ *	Convert date (yyyy.ddmm) and time (hh.mmsss) to TAI date and time
+ * tai2dt (date, time)
+ *	Convert TAI date (yyyy.ddmm) and time (hh.mmsss) to UT
  * ts2ets (tsec)
  *	Convert from UT in seconds since 1950-01-01 to ET in same format
  * ets2ts (tsec)
  *	Convert from ET in seconds since 1950-01-01 to UT in same format
  *
- * fd2ep, fd2epb, fd2epj (string)
- *	Convert FITS date string to fractional year
- *	Convert time alone to fraction of Besselian year
  * fd2doy (string, year, doy)
  *	Convert FITS standard date string to year and day of year
  * fd2dt (string, date, time)
  *	Convert FITS date string to date as yyyy.ddmm and time as hh.mmsss
  *	Convert time alone to hh.mmssss with date set to 0.0
+ * fd2ep, fd2epb, fd2epj (string)
+ *	Convert FITS date string to fractional year
+ *	Convert time alone to fraction of Besselian year
  * fd2i (string,iyr,imon,iday,ihr,imn,sec, ndsec)
  *	Convert FITS standard date string to year month day hours min sec
  *	Convert time alone to hours min sec, year month day are zero
  * fd2jd (string)
  *	Convert FITS standard date string to Julian date
  *	Convert time alone to fraction of day
+ * fd2mfd (string)
+ *	Convert from FITS date to FITS date string with month name
  * fd2mjd (string)
  *	Convert FITS standard date string to modified Julian date
  * fd2ts (string)
@@ -172,6 +184,8 @@
  *
  * lt2dt()
  *	Return local time as yyyy.mmdd and time as hh.mmssss
+ * lt2mfd ()
+ *	Return local time as ISO date string with month name
  * lt2fd()
  *	Return local time as FITS ISO date string
  * lt2tsi()
@@ -225,7 +239,7 @@
  *	Convert seconds since start of day to hh.mmssss
  *
  * fd2gst (string)
- *      convert from FITS date Greenwich Sidereal Time
+ *      convert from FITS date to Greenwich Sidereal Time
  * dt2gst (date, time)
  *      convert from UT as yyyy.mmdd hh.mmssss to Greenwich Sidereal Time
  * ts2gst (tsec)
@@ -244,6 +258,8 @@
  *	convert to current UT in FITS format given Greenwich Mean Sidereal Time
  * mst2jd (dj)
  *	convert to current UT as Julian Date given Greenwich Mean Sidereal Time
+ * hjd2lst (dj)
+ *	Calculate Local Sidereal Time from heliocentric Julian Date
  * jd2lst (dj)
  *	Calculate Local Sidereal Time from Julian Date
  * ts2lst (tsec)
@@ -303,7 +319,39 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+
+#ifdef _WIN32
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#define ftruncate _chsize
+
+#include "win_time.h"
+char* fd2mfd(char*);
+
+ // File descriptor associated with stdin, stdout, stderr
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
+#define R_OK 4
+
+// Includes for open, close, access, read and write
+#include <io.h>
+
+#define _CRT_INTERNAL_NONSTDC_NAMES 1
+#include <sys/stat.h>
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
+#if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
+#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
+#else
+#include <unistd.h>
+#include <sys/file.h>
 #include <sys/time.h>
+#endif
+
 #include "wcs.h"
 #include "fitsfile.h"
 
@@ -381,6 +429,48 @@ char *angle;	/* Angle in sexigesimal hours (hh:mm:ss.sss) */
     deg = str2dec (angle);
     deg = deg * 15.0;
     return (deg);
+}
+
+
+/* HR2SEC -- Convert angle in hours as hh:mm:ss.ss to fractional arcseconds */
+
+double
+hr2sec (angle)
+
+char *angle;	/* Angle as dd:mm:ss.ss */
+{
+    double sec;
+
+    sec = 15.0 * (str2dec (angle) * 3600.0);
+    return (sec);
+}
+
+
+/* DEG2SEC -- Convert angle in degrees as dd:mm:ss.ss to fractional arcseconds */
+
+double
+deg2sec (angle)
+
+char *angle;	/* Angle as dd:mm:ss.ss */
+{
+    double sec;
+
+    sec = str2dec (angle) * 3600.0;
+    return (sec);
+}
+
+
+/* ANG2SEC -- Convert angle in fractional degrees to fractional arcseconds */
+
+double
+ang2sec (angle)
+
+double angle;	/* Angle in degrees */
+{
+    double sec;
+
+    sec = angle * 3600.0;
+    return (sec);
 }
 
 
@@ -522,6 +612,50 @@ int	sys;	/* J2000, B1950, GALACTIC, ECLIPTIC */
     return (dj - lt);
 }
 
+/* HJD2LST-- convert Heliocentric Julian Date to local sidereal time in radians */
+
+double
+hjd2lst (dj)
+
+double dj;     /* Julian Date */
+
+{
+double dlong;   /* Longitude in degrees */
+double dtpi, dj0, dst0, dut, dt;
+double d1, d2, d3;
+double dpi, df, dct0, dcjul;
+double dst;	/* Local sidereal time in radians (returned) */
+
+    dpi = 3.141592653589793;
+    dtpi = 2.0 * dpi;
+    df = 1.00273790934;
+    dct0 = 2415020.0;
+    dcjul = 36525.0;
+
+/* Convert longitude from degrees to radians */
+    dlong = longitude * dpi / 180.0;
+
+/* Constants D1,D2,D3 for calculating Greenwich Mean Sidereal Time at 0 UT */
+    d1 = 1.739935934667999;
+    d2 = 628.3319509909095;
+    d3 = 0.000006755878646261384;
+
+    dj0 = floor (dj) + 0.5;
+    if (dj0 > dj) {
+	dj0 = dj0 - 1.0;
+	}
+    dut = (dj - dj0) * dtpi;
+
+    dt = (dj0 - dct0) / dcjul;
+    dst0 = d1 + (d2 * dt) + (d3 * dt * dt);
+    dst0 = fmod (dst0, dtpi);
+    dst = (df * dut) + dst0 - dlong;
+    dst = fmod (dst + (2.0 * dtpi) , dtpi);
+
+return (dst);
+
+
+}
 
 /* JD2HJD-- convert (geocentric) Julian date to Heliocentric Julian Date */
 
@@ -846,6 +980,20 @@ double	*time;	/* Time as hh.mmssxxxx (returned) */
     *time = *time + (0.0001 * (double) ts->tm_sec);
 
     return;
+}
+
+
+/* LT2MFD-- Convert local time to ISO date with month name */
+
+char *
+lt2mfd ()
+
+{
+    char *datestring;
+
+    datestring = lt2fd();
+
+    return (fd2mfd (datestring));
 }
 
 
@@ -1952,6 +2100,80 @@ char *string;	/* FITS date string, which may be:
 }
 
 
+/* FD2MFD-- convert any FITS standard date to ISO date with month name */
+
+char *
+fd2mfd (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    int iyr,imon,iday,ihr,imn;
+    double sec, date, time;
+    int nf;
+    char tstring[32], dstring[32], *fstring;
+    char outform[64];
+    char month[13][4];
+    strcpy (month[1],"Jan");
+    strcpy (month[2],"Feb");
+    strcpy (month[3],"Mar");
+    strcpy (month[4],"Apr");
+    strcpy (month[5],"May");
+    strcpy (month[6],"Jun");
+    strcpy (month[7],"Jul");
+    strcpy (month[8],"Aug");
+    strcpy (month[9],"Sep");
+    strcpy (month[10],"Oct");
+    strcpy (month[11],"Nov");
+    strcpy (month[12],"Dec");
+
+    fd2dt (string, &date, &time);
+    fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
+
+    /* Convert to ISO date format */
+    string = (char *) calloc (32, sizeof (char));
+
+    /* Make time string */
+    if (time != 0.0 || ndec > 0) {
+	if (ndec == 0)
+	    nf = 2;
+	else
+	    nf = 3 + ndec;
+	if (ndec > 0) {
+	    sprintf (outform, "%%02d:%%02d:%%0%d.%df", nf, ndec);
+	    sprintf (tstring, outform, ihr, imn, sec);
+	    }
+	else {
+	    sprintf (outform, "%%02d:%%02d:%%0%dd", nf);
+	    sprintf (tstring, outform, ihr, imn, (int)(sec+0.5));
+	    }
+	}
+    else
+	sprintf (tstring, "");
+
+    /* Make date string */
+    if (date != 0.0)
+	sprintf (dstring, "%4d-%3s-%02d", iyr, month[imon], iday);
+    else
+	sprintf (dstring, "");
+
+    /* Make ISOish date string */
+    fstring = (char *) calloc (32, sizeof (char));
+    if (date == 0.0)
+	strcpy (fstring, tstring);
+    else if (time == 0.0 && ndec < 1)
+	strcpy (fstring, dstring);
+    else
+	sprintf (fstring, "%sT%s", dstring, tstring);
+
+    return (fstring);
+}
+
+
 /* FD2FD-- convert any FITS standard date to ISO FITS standard date */
 
 char *
@@ -2005,12 +2227,14 @@ char *string;	/* FITS date string, which may be:
 
 /* TAI-UTC from the U.S. Naval Observatory */
 /* ftp://maia.usno.navy.mil/ser7/tai-utc.dat */
-static double taijd[23]={2441317.5, 2441499.5, 2441683.5, 2442048.5, 2442413.5,
+static double taijd[26]={2441317.5, 2441499.5, 2441683.5, 2442048.5, 2442413.5,
 	      2442778.5, 2443144.5, 2443509.5, 2443874.5, 2444239.5, 2444786.5,
 	      2445151.5, 2445516.5, 2446247.5, 2447161.5, 2447892.5, 2448257.5,
-	      2448804.5, 2449169.5, 2449534.5, 2450083.5, 2450630.5, 2451179.5};
-static double taidt[23]={10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,
-	   20.0,21.0,22.0,23.0,24.0,25.0,26.0,27.0,28.0,29.0,30.0,31.0,32.0};
+	      2448804.5, 2449169.5, 2449534.5, 2450083.5, 2450630.5, 2451179.5,
+	      2453736.5, 2454832.5, 2456293.5};
+static double taidt[26]={10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,
+	   20.0,21.0,22.0,23.0,24.0,25.0,26.0,27.0,28.0,29.0,30.0,31.0,32.0,
+	   33.0,34.0,35.0};
 static double dttab[173]={13.7,13.4,13.1,12.9,12.7,12.6,12.5,12.5,12.5,12.5,
 	   12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.4,12.3,12.2,12.0,11.7,11.4,
 	   11.1,10.6,10.2, 9.6, 9.1, 8.6, 8.0, 7.5, 7.0, 6.6, 6.3, 6.0, 5.8,
@@ -2027,6 +2251,93 @@ static double dttab[173]={13.7,13.4,13.1,12.9,12.7,12.6,12.5,12.5,12.5,12.5,
 	  29.15,29.57,29.97,30.36,30.72,31.07,31.35,31.68,32.18,32.68,33.15,
 	  33.59,34.00,34.47,35.03,35.73,36.54,37.43,38.29,39.20,40.18,41.17,
 	  42.23};
+
+
+/* TAI2FD-- convert from TAI in FITS format to UT in FITS format */
+
+char *
+tai2fd (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double dj0, dj, tsec, dt;
+
+    dj0 = fd2jd (string);
+    dt = utdt (dj0);
+    dj = dj0 - (dt / 86400.0);
+    dt = utdt (dj);
+    tsec = fd2ts (string);
+    tsec = tsec - dt + 32.184;
+    return (ts2fd (tsec));
+}
+
+
+/* FD2TAI-- convert from UT in FITS format to TAI in FITS format */
+
+char *
+fd2tai (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double dj, tsec, dt;
+
+    dj = fd2jd (string);
+    dt = utdt (dj);
+    tsec = fd2ts (string);
+    tsec = tsec + dt - 32.184;
+    return (ts2fd (tsec));
+}
+
+
+/* DT2TAI-- convert from UT as yyyy.mmdd hh.mmssss to TAI in same format */
+
+void
+dt2tai (date, time)
+double	*date;	/* Date as yyyy.mmdd */
+double	*time;	/* Time as hh.mmssxxxx
+		 *if time<0, it is time as -(fraction of a day) */
+{
+    double dj, dt, tsec;
+
+    dj = dt2jd (*date, *time);
+    dt = utdt (dj);
+    tsec = dt2ts (*date, *time);
+    tsec = tsec + dt - 32.184;
+    ts2dt (tsec, date, time);
+    return;
+}
+
+
+/* TAI2DT-- convert from TAI as yyyy.mmdd hh.mmssss to UT in same format */
+
+void
+tai2dt (date, time)
+double	*date;	/* Date as yyyy.mmdd */
+double	*time;	/* Time as hh.mmssxxxx
+		 *if time<0, it is time as -(fraction of a day) */
+{
+    double dj, dt, tsec, tsec0;
+
+    dj = dt2jd (*date, *time);
+    dt = utdt (dj);
+    tsec0 = dt2ts (*date, *time);
+    tsec = tsec0 + dt;
+    dj = ts2jd (tsec);
+    dt = utdt (dj);
+    tsec = tsec0 + dt + 32.184;
+    ts2dt (tsec, date, time);
+    return;
+}
 
 
 /* ET2FD-- convert from ET (or TDT or TT) in FITS format to UT in FITS format */
@@ -2196,7 +2507,7 @@ double dj;	/* Julian Date (UT) */
 	    if (dj >= taijd[i])
 		dt = taidt[i];
 	    }
-	dt = dt + 32.84;
+	dt = dt + 32.184;
 	}
 
     /* For 1800-01-01 to 1972-01-01, use table of ET-UT from AE */
@@ -2238,7 +2549,7 @@ double dj;	/* Julian Date (UT) */
 }
 
 
-/* FD2OFD-- convert any FITS standard date to old FITS standard date */
+/* FD2OFD-- convert any FITS standard datetime string to old FITS standard date */
 
 char *
 fd2ofd (string)
@@ -2252,20 +2563,21 @@ char *string;	/* FITS date string, which may be:
 {
     int iyr,imon,iday,ihr,imn;
     double sec;
+    char *dstr;
 
     fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
 
     /* Convert to old FITS date format */
-    string = (char *) calloc (32, sizeof (char));
+    dstr = (char *) calloc (32, sizeof (char));
     if (iyr < 1900)
-	sprintf (string, "*** date out of range ***");
+	sprintf (dstr, "*** date out of range ***");
     else if (iyr < 2000)
-	sprintf (string, "%02d/%02d/%02d", iday, imon, iyr-1900);
+	sprintf (dstr, "%02d/%02d/%02d", iday, imon, iyr-1900);
     else if (iyr < 2900.0)
-	sprintf (string, "%02d/%02d/%3d", iday, imon, iyr-1900);
+	sprintf (dstr, "%02d/%02d/%3d", iday, imon, iyr-1900);
     else
-	sprintf (string, "*** date out of range ***");
-    return (string);
+	sprintf (dstr, "*** date out of range ***");
+    return (dstr);
 }
 
 
@@ -2283,13 +2595,14 @@ char *string;	/* FITS date string, which may be:
 {
     int iyr,imon,iday,ihr,imn;
     double sec;
+    char *tstr;
 
     fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
 
     /* Convert to old FITS date format */
-    string = (char *) calloc (32, sizeof (char));
-    sprintf (string, "%02d:%02d:%06.3f", ihr, imn, sec);
-    return (string);
+    tstr = (char *) calloc (32, sizeof (char));
+    sprintf (tstr, "%02d:%02d:%06.3f", ihr, imn, sec);
+    return (tstr);
 }
 
 
@@ -3199,7 +3512,7 @@ jd2lst (dj)
 
 double dj;	/* Julian Date */
 {
-    double gst, lst, l0;
+    double gst, lst;
 
     /* Compute Greenwich Sidereal Time at this epoch */
     gst = jd2gst (dj);
@@ -3742,7 +4055,6 @@ jd2mst (dj)
 double	dj;	/* Julian Date */
 {
     double dt, t, mst;
-    double ts2ss = 1.00273790935;
 
     dt = dj - 2451545.0;
     t = dt / 36525.0;
@@ -3773,7 +4085,7 @@ double	dj;	/* Julian Date */
 
 /*  COMPNUT - Compute nutation using the IAU 2000b model */
 /*  Translated from Pat Wallace's Fortran subroutine iau_nut00b (June 26 2007)
-    into C by Doug Mink on September 5, 2008 */
+    into C by Jessica Mink on September 5, 2008 */
 
 #define NLS	77 /* number of terms in the luni-solar nutation model */
 
@@ -4454,4 +4766,15 @@ double	dnum, dm;
  * Oct  8 2008	Clean up sidereal time computations
  *
  * Sep 24 2009	Add end to comment "Coefficients for fundamental arguments"
+ *
+ * Jan 11 2012	Add TAI, TT, GPS time
+ * Oct 19 2012	Unused l0 dropped from jd2lst(); ts2ss from jd2mst()
+ *
+ * May  2 2017	Allocate new output string for fd2ofd() and fd2oft()
+ *
+ * Sep 24 2019	Add ang2sec() and deg2sec() to convert to arcseconds
+ *
+ * Jun 11 2021	Add fd2mfd() to replace month number with month name
+ * Jul 13 2021	Add hjd2lst() for rvtools.
+ * Jul 27 2021	Add lt2mfd() for logging time in RVTools
  */

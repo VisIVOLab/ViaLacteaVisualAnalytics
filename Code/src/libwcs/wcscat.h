@@ -1,8 +1,7 @@
 /*** File libwcs/wcscat.h
- *** November 2, 2009
- *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2009
- *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+ *** August 2, 2021
+ *** By Jessica Mink, SAO Telescope Data Center
+ *** Copyright (C) 1998-2021
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -19,8 +18,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -58,6 +57,7 @@ struct Star {
     int ncat;		/* Number of catalogs for catalog proper motion */
     char *entry;	/* Line copied from input catalog */
     char objname[80];	/* Object name */
+    char datapath[80];	/* File pathname to data */
     int peak;		/* Peak flux per pixel in star image */
 };
 
@@ -133,6 +133,7 @@ struct StarCat {
     int entrv;		/* Entry number for radial velocity */
     int enttype;	/* Entry number for spectral type */
     int entsize;	/* Entry number for size of object */
+    int entpath;	/* Entry number for object data pathname */
     int rpmunit;	/* Units for RA proper motion (PM_x) */
     int dpmunit;	/* Units for DEC proper motion (PM_x) */
     char *caturl;	/* set if web search, else NULL */
@@ -206,30 +207,18 @@ struct TabTable {
 #define SKY2K		30	/* SKY2000 Master Catalog */
 #define SKYBOT		31	/* SKYBOT Solar System Objects */
 #define UCAC3		32	/* USNO CCD Astrograph Catalog 3.0 (2009) */
+#define UCAC4		33	/* USNO CCD Astrograph Catalog 4.0 (2013) */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		31	/* Number of predefined catalogs */
+#define NUMCAT		33	/* Number of predefined catalogs */
 
 #define EP_EP   1	/* Output epoch as fractional year */
 #define EP_JD   2	/* Output epoch as Julian Date */
 #define EP_MJD  3	/* Ouput epoch as Modified Julian Date */
 #define EP_FD   4	/* Output epoch in FITS format (yyyy-mm-dd) */
 #define EP_ISO  5	/* Output epoch in ISO format (yyyy-mm-ddThh:mm:ss) */
-
-/* Structure for dealing with ranges */
-#define MAXRANGE 20
-struct Range {
-    double first;	/* Current minimum value */
-    double last;	/* Current maximum value */
-    double step;	/* Current step in value */
-    double value;	/* Current value */
-    double ranges[MAXRANGE*3];	/* nranges sets of first, last, step */
-    int nvalues;	/* Total number of values in all ranges */
-    int nranges;	/* Number of ranges */
-    int irange;		/* Index of current range */
-};
 
 /* Flags for sorting catalog search results */
 #define SORT_UNSET	-1	/* Catalog sort flag not set yet */
@@ -311,6 +300,7 @@ extern "C" {
 	double **tmag,	/* 2-D Array of magnitudes (returned) */
 	int *tpeak,	/* Array of peak counts (returned) */
 	char **tkey,	/* Array of values of additional keyword */
+	char **tpath,	/* Array of values of data pathnames */
 	int nlog);	/* Verbose mode if > 1, number of sources per log line */
     int ctgrdate(	/* Read sources by date from SAO TDC ASCII format catalog */
 	char *catfile,	/* Name of reference star catalog file */
@@ -400,7 +390,8 @@ extern "C" {
 	double magscale, /* Scaling factor for magnitude to pixel flux
 			 * (image of number of catalog objects per bin if 0) */
 	int nlog);	/* Verbose mode if >1, number of sources per log line */
-    void setgsclass( int clas);		/* Set GSC object class to return (<0=all) */ /* Class of objects to return */
+    void setgsclass(	/* Set GSC object class to return (<0=all) */
+	int class);	/* Class of objects to return */
 
 /* Subroutine to read GSC II catalog over the web */
     int gsc2read(	/* Read sources by sky region from GSC II Catalog */
@@ -1297,40 +1288,6 @@ extern "C" {
 	int offs,	/* Offset in bytes in source from which to start copying */
 	int offd);	/* Offset in bytes in destination to which to start copying */
 
-/* Subroutines for dealing with ranges */
-    struct Range *RangeInit(	/* Initialize range structure from string */
-	char *string,	/* String containing numbers separated by , and - */
-	int ndef);	/* Maximum allowable range value */
-    int isrange(	/* Return 1 if string is a range of numbers, else 0 */
-	char *string);	/* String which might be a range of numbers */
-    void rstart(	/* Restart range */
-	struct Range *range); /* Range structure */
-    int rgetn(		/* Return number of values in all ranges */
-	struct Range *range); /* Range structure */
-    int rgeti4(		/* Return next number in range as integer */
-	struct Range *range); /* Range structure */
-    double rgetr8(	/* Return next number in range as double */
-	struct Range *range); /* Range structure */
-
-/* Subroutines for read values from keyword=value in blocks of text */
-    int ageti4(		/* Extract int value from keyword= value in string */
-	char *string,	/* character string containing <keyword>= <value> */
-	char *keyword,	/* character string containing the name of the keyword
-			 * the value of which is returned.  hget searches for a
-			 * line beginning with this string.  if "[n]" or ",n" is
-			 * present, the n'th token in the value is returned. */
-	int *ival);	/* Integer value, returned */
-    int agetr8(		/* Extract double value from keyword= value in string */
-	char *string,	/* character string containing <keyword>= <value> */
-	char *keyword,	/* character string containing the name of the keyword */
-	double *dval);	/* Double value, returned */
-    int agets(		/* Extract value from keyword= value in string */
-	char *string,	/* character string containing <keyword>= <value> */
-	char *keyword,	/* character string containing the name of the keyword */
-	int lval,	/* Size of value in characters
-			 * If negative, value ends at end of line */
-	char *value);	/* String (returned) */
-
     int tmcid(		/* Return 1 if string is 2MASS ID, else 0 */
 	char *string,	/* Character string to check */
 	double *ra,	/* Right ascension (returned) */
@@ -1352,21 +1309,6 @@ extern "C" {
     void setrevmsg(	/* Set version/date string */
 	char *revmsg);	/* Version/date string */
     char *getrevmsg(void); /* Return version/date string */
-
-/* Subroutines for fitting and evaluating polynomials */
-    void polfit(	/* Fit polynomial coefficients */
-	double *x,	/* Array of independent variable points */
-	double *y,	/* Array of dependent variable points */
-	double x0,	/* Offset to independent variable */
-	int npts,	/* Number of data points to fit */
-	int nterms,	/* Number of parameters to fit */
-	double *a,	/* Vector containing current fit values */
-	double *stdev);	/* Standard deviation of fit (returned) */
-    double polcomp(	/* Evaluate polynomial from polfit coefficients */
-	double xi,	/* Independent variable */
-	double x0,	/* Offset to independent variable */
-	int norder,	/* Number of coefficients */
-	double *a);	/* Vector containing coeffiecients */
 
 #else /* K&R prototypes */
 
@@ -1519,19 +1461,8 @@ void setlimdeg();	/* Limit output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 char *DateString();		/* Convert epoch to output format */
 void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
-int ageti4();		/* Extract int value from keyword= value in string */
-int agetr8();		/* Extract double value from keyword= value in string */
-int agets();		/* Extract value from keyword= value in string */
 void bv2sp();		/* Approximate main sequence spectral type from B - V */
-void moveb();		/* Copy nbytes bytes from source+offs to dest+offd */
-
-/* Subroutines for dealing with ranges */
-struct Range *RangeInit();	/* Initialize range structure from string */
-int isrange();		/* Return 1 if string is a range of numbers, else 0 */
-int rgetn();		/* Return number of values in all ranges */
-int rgeti4();		/* Return next number in range as integer */
-double rgetr8();	/* Return next number in range as double */
-void rstart();		/* Restart range */
+void movebuff();	/* Copy nbytes bytes from source+offs to dest+offd */
 
 /* Subroutines for VOTable output */
 int vothead();		/* Print heading for VOTable SCAT output */
@@ -1540,10 +1471,6 @@ void vottail();		/* Terminate VOTable SCAT output */
 /* Subroutines for version/date string */
 void setrevmsg();	/* Set version/date string */
 char *getrevmsg();	/* Return version/date string */
-
-/* Subroutines for fitting and evaluating polynomials */
-void polfit();		/* Fit polynomial coefficients */
-double polcomp();	/* Evaluate polynomial from polfit coefficients */
 
 #endif  /* __STDC__ */
 
@@ -1681,12 +1608,19 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jul 18 2007	Add tabccol() and PM_ARCSECHR for SkyBot
  * Nov 28 2007	Add moveb() which used to be local to binread()
  *
- * Oct 24 2008	Add gsct2t() to clean up tab-separated table from STScI
-CASB
+ * Oct 24 2008	Add gsct2t() to clean up tab-separated table from STScI CASB
  *
  * Sep 25 2009	Rename moveb() to movebuff()
  * Sep 25 2009	Add UCAC3 as catalog code 32
  * Oct 30 2009	Add position and proper motion error to star structure
  * Nov  2 2009	Add numbers of images and catalogs to star structure
  * Nov  3 2009	Parameterize as MAXNMAG the maximum number of magnitudes
+ *
+ * Apr 06 2010	Add fillblank argument to agets()
+ *
+ * May 16 2012	Add valmin and valmax to Range data structure
+ *
+ * Feb 15 2013	Add UCAC4 to list of catalog codes
+ *
+ * Aug  2 2021	Move range, string-parsing, and polynomial-fitting subroutines to wcs.h
  */

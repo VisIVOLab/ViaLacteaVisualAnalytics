@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** November 12, 2009
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** September 23, 2019
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2009
+ *** Copyright (C) 1994-2019
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -51,13 +51,14 @@
  * Subroutine:	strsrch (s1, s2) finds string s2 in null-terminated string s1
  * Subroutine:	strnsrch (s1, s2, ls1) finds string s2 in ls1-byte string s1
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
- * Subroutine:  isnum (string) returns 1 if integer, 2 if fp number, else 0
+ * Subroutine:  isnum (string) returns 1 if integer, 2 if fp number,
+ *              3 if hh:mm:dd.ss time, 4 if yyyy-mm-dd date, else 0
  * Subroutine:  notnum (string) returns 0 if number, else 1
  * Subroutine:  numdec (string) returns number of decimal places in numeric string
  * Subroutine:	strfix (string,blankfill,zerodrop) removes extraneous characters
  */
 
-#include <string.h>		/* NULL, strlen, strstr, strcpy */
+#include <string.h>	/* NULL, strlen, strstr, strcpy */
 #include <stdio.h>
 #include "fitshead.h"	/* FITS header extraction subroutines */
 #include <stdlib.h>
@@ -68,6 +69,7 @@
 #define SHRT_MAX 32767
 #endif
 #define VLENGTH 81
+#define LHEAD0 288000	/* Maximum number of characters to search in header */
 
 #ifdef USE_SAOLIB
 static int use_saolib=0;
@@ -89,10 +91,14 @@ int	lhead;	/* Maximum length of FITS header */
     char *hend;
     if (lhead > 0)
 	lhead0 = lhead;
-    else {
+
+    else if (lhead == 0) {
 	lhead0 = 0;
 	hend = ksearch (header,"END");
 	lhead0 = hend + 80 - header;
+	}
+    else {
+	lhead0 = 0;
 	}
     return (lhead0);
 }
@@ -682,6 +688,8 @@ char *str;	/* String (returned) */
 	    sprintf (keywordi, "%s_001", keyword);
 	    if (ksearch (hstring, keywordi))
 		strcpy (keyform, "%s_%03d");
+	    else if (ksearch (hstring, keywordi))
+		strcpy (keyform, "%s_%03d");
 	    else
 		return (0);
 	    }
@@ -885,9 +893,8 @@ const char *keyword0;	/* character string containing the name of the keyword
     vpos = ksearch (hstring,keyword);
 
     /* Exit if not found */
-    if (vpos == NULL) {
+    if (vpos == NULL)
 	return (NULL);
-	}
 
     /* Initialize line to nulls */
     for (i = 0; i < 100; i++)
@@ -1003,7 +1010,7 @@ const char *keyword0;	/* character string containing the name of the keyword
 	brack2 = strsrch (brack1,rbracket);
 	if (brack2 != NULL)
 	    *brack2 = '\0';
-	if (isnum (brack1)) {
+	if (isnum (brack1) == 1) {
 	    ipar = atoi (brack1);
 	    cwhite[0] = ' ';
 	    cwhite[1] = '\0';
@@ -1094,7 +1101,7 @@ const char *keyword;	/* character string containing the name of the variable
 	lhstr = lhead0;
     else {
 	lhstr = 0;
-	while (lhstr < 256000 && hstring[lhstr] != 0)
+	while (lhstr < LHEAD0 && hstring[lhstr] != 0)
 	    lhstr++;
 	}
     headlast = hstring + lhstr;
@@ -1193,12 +1200,12 @@ const char *keyword;	/* character string containing the name of the variable
     pval = 0;
 
 /* Find current length of header string */
-    if (lhead0)
+    if (lhead0 > 0)
 	lmax = lhead0;
     else
-	lmax = 256000;
+	lmax = LHEAD0;
     for (lhead = 0; lhead < lmax; lhead++) {
-	if (hstring[lhead] == (char) 0)
+	if (hstring[lhead] <= (char) 0)
 	    break;
 	}
 
@@ -1315,6 +1322,10 @@ const char *in;	/* Character string of sexigesimal or decimal degrees */
 	    }
 	else
 	    sign = 1.0;
+
+	/* Turn comma into space */
+	if ((c1 = strsrch (value,",")) != NULL)
+	    *c1 = ' ';
 
 	/* Remove trailing spaces */
 	lval = strlen (value);
@@ -1531,16 +1542,22 @@ const int ls1;	/* Length of string being searched */
 	if (*s == cfirst || *s == ocfirst) {
 
 	    /* If single character search, return */
-	    if (ls2 == 1)
+	    if (ls2 == 1) {
+		if (os2 != NULL)
+		    free (os2);
 		return (s);
+		}
 
 	    /* Search for last character in pattern string if first found */
 	    sl = s[ls2-1];
 	    if (sl == clast || sl == oclast) {
 
 		/* If two-character search, return */
-		if (ls2 == 2)
+		if (ls2 == 2) {
+		    if (os2 != NULL)
+			free (os2);
 		    return (s);
+		    }
 
 		/* If 3 or more characters, check for rest of search string */
 		i = 1;
@@ -1549,7 +1566,8 @@ const int ls1;	/* Length of string being searched */
 
 		/* If entire string matches, return */
 		if (i >= ls2) {
-		    free (os2);
+		    if (os2 != NULL)
+			free (os2);
 		    return (s);
 		    }
 		}
@@ -1577,6 +1595,7 @@ const char *string;	/* Character string */
 /* ISNUM-- Return 1 if string is an integer number,
 		  2 if floating point,
 		  3 if sexigesimal, with or without decimal point
+		  4 if yyyy-mm-dd date
 		  else 0
  */
 
@@ -1586,7 +1605,7 @@ isnum (string)
 const char *string;	/* Character string */
 {
     int lstr, i, nd, cl;
-    char cstr, cstr1;
+    char cstr, cstr1, cstr2;
     int fpcode;
 
     /* Return 0 if string is NULL */
@@ -1630,7 +1649,11 @@ const char *string;	/* Character string */
 		return (0);
 	    else if (i > 0) {
 		cstr1 = string[i-1];
-		if (cstr1 != 'D' && cstr1 != 'd' &&
+		cstr2 = string[i+1];
+		if (cstr == '-' && cstr1 > 47 && cstr1 < 58 &&
+		    cstr2 > 47 && cstr2 < 58)
+		    return (4);
+		else if (cstr1 != 'D' && cstr1 != 'd' &&
 		    cstr1 != 'E' && cstr1 != 'e' &&
 		    cstr1 != ':' && cstr1 != ' ')
 		    return (0);
@@ -1895,4 +1918,13 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
  * Aug 22 2007	If closing quote not found, make one up
  *
  * Nov 12 2009	In strfix(), if drop enclosing parantheses
+ *
+ * Apr 19 2011	In str2dec(), change comma to space
+ * May 19 2011	In strncsrch() always free allocated memory before returning
+ *
+ * Nov  6 2015	In isnum(), add return of 4 for yyyy-mm-dd dates
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
+ *
+ * Sep 23 2019	Add -1 argument to hlen()
  */
