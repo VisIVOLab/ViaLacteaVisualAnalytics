@@ -1,7 +1,10 @@
+#include <pybind11/embed.h>
+
 #include "vtkwindowcube.h"
 #include "ui_lutcustomize.h"
 #include "ui_vtkwindowcube.h"
 
+#include "interactors/vtkinteractorstyledrawarrow.h"
 #include "interactors/vtkinteractorstyleimagecustom.h"
 #include "interactors/vtkinteractorstyleprofile.h"
 
@@ -14,6 +17,7 @@
 #include "vtkfitsreader2.h"
 #include "vtklegendscaleactorwcs.h"
 #include "vtkwindow_new.h"
+#include "vtkwindowpv.h"
 
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
@@ -46,6 +50,8 @@
 
 #include <cmath>
 #include <string>
+
+namespace py = pybind11;
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor,
                              QString velocityUnit)
@@ -287,10 +293,15 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
         ui->thresholdGroupBox->setTitle(ui->thresholdGroupBox->title() + " (" + bunit + ")");
         ui->contourGroupBox->setTitle(ui->contourGroupBox->title() + " (" + bunit + ")");
     }
+
+    currentSlice = 0;
+    updateSliceDatacube();
 }
 
 vtkWindowCube::~vtkWindowCube()
 {
+    setInteractorStyleImage();
+
     if (parentWindow) {
         parentWindow->removeActor(contoursActorForParent);
     }
@@ -337,6 +348,7 @@ void vtkWindowCube::setInteractorStyleImage()
     interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
     interactorStyle->SetReader(readerSlice);
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    ui->qVtkSlice->renderWindow()->Render();
 }
 
 void vtkWindowCube::setInteractorStyleProfile(bool liveMode)
@@ -348,6 +360,20 @@ void vtkWindowCube::setInteractorStyleProfile(bool liveMode)
     interactorStyle->SetReader(readerSlice);
     interactorStyle->SetLiveMode(liveMode);
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    ui->qVtkSlice->renderWindow()->Render();
+}
+
+void vtkWindowCube::setInteractorStyleDrawLine()
+{
+    vtkNew<vtkInteractorStyleDrawArrow> interactorStyle;
+    interactorStyle->SetAbortCallback([this]() { setInteractorStyleImage(); });
+    interactorStyle->SetCallback([this](float x1, float y1, float x2, float y2) {
+        setInteractorStyleImage();
+        generatePositionVelocityPlot(x1, y1, x2, y2);
+    });
+    ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
+    ui->qVtkSlice->renderWindow()->Render();
+    showStatusBarMessage("Press ENTER to confirm your selection, press ESC to abort.");
 }
 
 int vtkWindowCube::readFitsHeader()
@@ -557,6 +583,26 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     changeSliceView(1);
     this->activateWindow();
     this->raise();
+}
+
+void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, float y2)
+{
+    try {
+        std::string fin = this->filepath.toStdString();
+        py::list line;
+        line.append(std::make_tuple(x1, y1));
+        line.append(std::make_tuple(x2, y2));
+        std::string outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp").toStdString();
+
+        py::module_ pvplot = py::module_::import("pvplot");
+        std::string fout = pvplot.attr("extract_pv_plot")(fin, this->currentSlice, line, outDir)
+                                   .cast<std::string>();
+        auto win = new vtkWindowPV(QString::fromStdString(fout), this->filepath, x1, y1, x2, y2);
+        win->show();
+    } catch (const std::exception &e) {
+        qDebug() << Q_FUNC_INFO << "Error" << e.what();
+        QMessageBox::critical(this, "Error", e.what());
+    }
 }
 
 void vtkWindowCube::resetCamera()
@@ -856,4 +902,9 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
     auto vectors = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, nulval);
     profileWin->plotSpectrum(vectors.first, vectors.second, x, y, nulval);
     profileWin->raise();
+}
+
+void vtkWindowCube::on_actionPV_triggered()
+{
+    setInteractorStyleDrawLine();
 }

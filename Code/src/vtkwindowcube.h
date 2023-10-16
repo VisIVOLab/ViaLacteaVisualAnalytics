@@ -76,9 +76,12 @@ private slots:
     void changeSliceView(int mode);
     void setInteractorStyleImage();
     void setInteractorStyleProfile(bool liveMode = false);
+    void setInteractorStyleDrawLine();
 
     void on_actionExtract_spectrum_triggered();
     void extractSpectrum(double x, double y, bool live = false);
+
+    void on_actionPV_triggered();
 
 private:
     QString filepath;
@@ -128,6 +131,7 @@ private:
     void showContours();
     void removeContours();
     void calculateAndShowMomentMap(int order);
+    void generatePositionVelocityPlot(float x1, float y1, float x2, float y2);
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);

@@ -72,12 +72,12 @@ void vtkInteractorStyleProfile::OnMouseMove()
     bool xInside = worldCoords[0] >= bounds[0] && worldCoords[0] <= bounds[1];
     bool yInside = worldCoords[1] >= bounds[2] && worldCoords[1] <= bounds[3];
     if (xInside && yInside) {
-        lineX->SetPoint1(0, worldCoords[1], 0);
-        lineX->SetPoint2(bounds[1], worldCoords[1], 0);
+        lineX->SetPoint1(0, worldCoords[1], worldCoords[2]);
+        lineX->SetPoint2(bounds[1], worldCoords[1], worldCoords[2]);
         lineX->Update();
 
-        lineY->SetPoint1(worldCoords[0], 0, 0);
-        lineY->SetPoint2(worldCoords[0], bounds[3], 0);
+        lineY->SetPoint1(worldCoords[0], 0, worldCoords[2]);
+        lineY->SetPoint2(worldCoords[0], bounds[3], worldCoords[2]);
         lineY->Update();
 
         // This is necessary because the renderer may have changed in the meantime
@@ -110,6 +110,8 @@ void vtkInteractorStyleProfile::OnLeftButtonDown()
         this->LiveMode = false;
         this->ProfileCb(worldCoords[0], worldCoords[1], LiveMode);
     }
+
+    this->Interactor->GetRenderWindow()->Render();
 }
 
 //----------------------------------------------------------------------------

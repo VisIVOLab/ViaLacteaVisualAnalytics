@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>vtkWindowPV</class>
+ <widget class="QMainWindow" name="vtkWindowPV">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1265</width>
+    <height>932</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Position-Velocity Slice</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QGroupBox" name="groupBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="title">
+         <string>Settings</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Opacity:</string>
+           </property>
+           <property name="buddy">
+            <cstring>sliderOpacity</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" colspan="2">
+          <widget class="QComboBox" name="comboLut">
+           <item>
+            <property name="text">
+             <string>Gray</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Default</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Default Step</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>EField</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Glow</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>MinMax</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PhysicsContour</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PureRed</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PureGreen</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PureBlue</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Run1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Run2</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Sar</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Temperature</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>TenStep</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>VolRenGlow</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>VolRenRGB</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>VolRenTwoLev</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllYellow</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllCyane</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllViolet</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllBlack</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllRed</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllGreen</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>AllBlu</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>LUT:</string>
+           </property>
+           <property name="buddy">
+            <cstring>comboLut</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QRadioButton" name="radioLog">
+           <property name="text">
+            <string>Log</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QRadioButton" name="radioLinear">
+           <property name="text">
+            <string>Linear</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Scale:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1" colspan="2">
+          <widget class="QSlider" name="sliderOpacity">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
+           <property name="value">
+            <number>100</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QVTKOpenGLNativeWidget" name="qVtk" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1265</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionSaveImage"/>
+   </widget>
+   <addaction name="menuFile"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSaveImage">
+   <property name="text">
+    <string>Save as PNG...</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QVTKOpenGLNativeWidget</class>
+   <extends>QWidget</extends>
+   <header>QVTKOpenGLNativeWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>comboLut</tabstop>
+  <tabstop>radioLinear</tabstop>
+  <tabstop>radioLog</tabstop>
+  <tabstop>sliderOpacity</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

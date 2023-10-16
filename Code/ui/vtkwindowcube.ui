@@ -320,6 +320,7 @@
      <string>Action</string>
     </property>
     <addaction name="actionExtract_spectrum"/>
+    <addaction name="actionPV"/>
    </widget>
    <addaction name="menuCamera"/>
    <addaction name="menuWCS"/>
@@ -460,6 +461,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionPV">
+   <property name="text">
+    <string>PV</string>
    </property>
   </action>
  </widget>
