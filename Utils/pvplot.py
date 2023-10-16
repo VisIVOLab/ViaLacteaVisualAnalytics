@@ -42,6 +42,7 @@ def extract_pv_plot(fin, slice, line, outdir):
     ax.set_xlabel(cube.wcs.wcs.lngtyp)
     ax.set_ylabel(cube.wcs.wcs.lattyp)
     plt.savefig(pathlib.Path(outdir) / (f'path_{name}.png'))
+    plt.clf()
 
     # PV as FITS
     pvdiagram = extract_pv_slice(cube=cube, path=path, spacing=1)
