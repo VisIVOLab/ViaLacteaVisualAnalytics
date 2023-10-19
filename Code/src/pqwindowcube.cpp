@@ -337,6 +337,7 @@ void pqWindowCube::showSlice()
                                                   vtkDataObject::POINT);
     cubeSliceProxy->UpdateVTKObjects();
 
+
     // vtkNew<vtkSMTransferFunctionManager> mgr;
     // lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
     //                                                     mgr->GetColorTransferFunction("FITSImage",
@@ -358,6 +359,7 @@ void pqWindowCube::showSlice()
                          ->getProxy();
     vtkSMPropertyHelper(sliceProxy, "Representation").Set("Slice");
     vtkSMPVRepresentationProxy::SetScalarColoring(sliceProxy, "FITSImage", vtkDataObject::POINT);
+
     vtkNew<vtkSMTransferFunctionManager> mgr;
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(
             mgr->GetColorTransferFunction("FITSImage", sliceProxy->GetSessionProxyManager()));
@@ -642,6 +644,7 @@ void pqWindowCube::changeColorMap(const QString &name)
         vtkSMPropertyHelper(lutProperty).Set(lutProxy);
         lutProxy->UpdateVTKObjects();
         vtkSMPVRepresentationProxy::RescaleTransferFunctionToDataRange(sliceProxy, false, false);
+
         sliceProxy->UpdateVTKObjects();
 
         viewSlice->resetDisplay();
