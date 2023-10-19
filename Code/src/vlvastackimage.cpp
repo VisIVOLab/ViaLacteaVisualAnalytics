@@ -349,6 +349,7 @@ int vlvaStackImage::setLogScale(bool useLog)
 
                 lutProxy->UpdateVTKObjects();
                 imageProxy->UpdateVTKObjects();
+                changeColorMap(this->getColourMap());
                 return 1;
             }
             else
@@ -362,10 +363,10 @@ int vlvaStackImage::setLogScale(bool useLog)
                 this->logScale = false;
                 vtkSMTransferFunctionProxy::RescaleTransferFunctionToDataRange(lutProxy);
                 vtkSMPropertyHelper(logProperty).Set(0);
-                changeColorMap(this->getColourMap());
 
                 lutProxy->UpdateVTKObjects();
                 imageProxy->UpdateVTKObjects();
+                changeColorMap(this->getColourMap());
                 return 1;
             }
             else
