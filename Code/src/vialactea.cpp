@@ -29,8 +29,7 @@ void WebProcess::jsCall(const QString &point, const QString &radius)
     emit processJavascript(point, radius);
 }
 
-const QString ViaLactea::ONLINE_TILE_PATH =
-        "https://vlkb.neanias.eu/PanoramicView-v1.1.0/openlayers.html";
+const QString ViaLactea::ONLINE_TILE_PATH = "http://vlkb.ia2.inaf.it/panoramicview/openlayers.html";
 
 const QString ViaLactea::VLKB_URL_IA2 = "https://vlkb.ia2.inaf.it:8443/vlkb/datasets";
 const QString ViaLactea::TAP_URL_IA2 = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
