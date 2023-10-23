@@ -40,15 +40,9 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     QObject::connect(nam, SIGNAL(finished(QNetworkReply *)), this,
                      SLOT(finishedSlot(QNetworkReply *)));
     QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-                     &VialacteaInitialQuery::on_authentication_required);
+                     &VialacteaInitialQuery::onAuthenticationRequired);
 
     vlkbtype = settings.value("vlkbtype", "ia2").toString();
-    if (vlkbtype == "ia2") {
-        qDebug() << "QUERY VLKB instance: IA2";
-    } else if (vlkbtype == "neanias") {
-        qDebug() << "QUERY VLKB instance: NEANIAS";
-    }
-
     parser = new xmlparser();
     loading = new LoadingWidget();
     outputFile = fn;
@@ -115,7 +109,7 @@ void VialacteaInitialQuery::setTransition(QString s)
     transition = s;
 }
 
-void VialacteaInitialQuery::on_authentication_required(QNetworkReply *r, QAuthenticator *a)
+void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenticator *a)
 {
     Q_UNUSED(r);
     QSettings settings(QDir::homePath()
@@ -171,12 +165,10 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
     connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            &VialacteaInitialQuery::on_authentication_required);
+            &VialacteaInitialQuery::onAuthenticationRequired);
 
     QNetworkRequest req(url_enc);
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
     QNetworkReply *reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir]() {
         if (reply->error() == QNetworkReply::NoError) {
@@ -229,7 +221,7 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
     connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            &VialacteaInitialQuery::on_authentication_required);
+            &VialacteaInitialQuery::onAuthenticationRequired);
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
         if (reply->error() == QNetworkReply::NoError) {
             QXmlStreamReader xml(reply);
@@ -247,9 +239,7 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
     });
 
     QNetworkRequest req(url);
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
 
     QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
@@ -283,14 +273,12 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList<QMap<QString, QStri
     QNetworkRequest req(url_enc);
 
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
                        QSettings::NativeFormat);
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
 
     QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
@@ -309,9 +297,7 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
 
     QNetworkRequest req(url);
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
 
     QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
@@ -335,14 +321,12 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
     QUrl url2(urlString);
     QNetworkRequest req(url2);
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append("/setting.ini"),
                        QSettings::NativeFormat);
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
     QNetworkReply *reply = nam->get(req);
     loading->setLoadingProcess(reply);
 }
@@ -376,7 +360,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
 
                 QUrl url3(list.join("/"));
 
-                connect(manager, SIGNAL(downloadCompleted()), this, SLOT(on_download_completed()));
+                connect(manager, SIGNAL(downloadCompleted()), this, SLOT(onDownloadCompleted()));
 
                 file = manager->doDownload(url3, outputFile);
                 loading->loadingEnded();
@@ -430,10 +414,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
                 q.setQueryItems(urlQuery);
                 url.setQuery(q);
                 QNetworkRequest req(url);
-                auto auth = settings.value("vlkbtype", "ia2") == "ia2"
-                        ? &IA2VlkbAuth::Instance()
-                        : &NeaniasVlkbAuth::Instance();
-                auth->putAccessToken(req);
+                IA2VlkbAuth::Instance().putAccessToken(req);
 
                 QNetworkReply *res = nam->get(req);
                 loading->setLoadingProcess(res);
@@ -478,10 +459,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
                 url.setQuery(q);
 
                 QNetworkRequest req(url);
-                auto auth = settings.value("vlkbtype", "ia2") == "ia2"
-                        ? &IA2VlkbAuth::Instance()
-                        : &NeaniasVlkbAuth::Instance();
-                auth->putAccessToken(req);
+                IA2VlkbAuth::Instance().putAccessToken(req);
 
                 QNetworkReply *res = nam->get(req);
                 loading->setLoadingProcess(res);
@@ -499,7 +477,7 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
     reply->deleteLater();
 }
 
-void VialacteaInitialQuery::on_download_completed()
+void VialacteaInitialQuery::onDownloadCompleted()
 {
     int test_flag_nanten = -1;
     if (pubdid.compare("") != 0)

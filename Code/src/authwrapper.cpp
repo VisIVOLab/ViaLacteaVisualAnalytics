@@ -249,41 +249,6 @@ AuthWrapper &IA2VlkbAuth::Instance()
     return instance;
 }
 
-NeaniasVlkbAuth::NeaniasVlkbAuth(QObject *parent) : AuthWrapper(parent) { }
-
-void NeaniasVlkbAuth::setup()
-{
-    authUrl = QUrl(
-            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/auth");
-    tokenUrl = QUrl(
-            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/token");
-    logoutUrl = QUrl(
-            "https://sso.neanias.eu/auth/realms/neanias-production/protocol/openid-connect/logout");
-    clientId = QString(NEANIAS_VLKB_CLIENT);
-    clientSecret = QString(NEANIAS_VLKB_KEY);
-    scope = QString("openid profile email phone address");
-
-    auto replyHandler = new CustomOAuthReplyHandler(this);
-    oauth2 = new QOAuth2AuthorizationCodeFlow(this);
-    oauth2->setReplyHandler(replyHandler);
-    oauth2->setAuthorizationUrl(authUrl);
-    oauth2->setAccessTokenUrl(tokenUrl);
-    oauth2->setClientIdentifier(clientId);
-    oauth2->setScope(scope);
-    connect(oauth2, &QOAuth2AuthorizationCodeFlow::authorizeWithBrowser, this,
-            &NeaniasVlkbAuth::open_webview);
-}
-
-AuthWrapper &NeaniasVlkbAuth::Instance()
-{
-    static NeaniasVlkbAuth instance;
-    if (!instance._init) {
-        instance.setup();
-        instance._init = true;
-    }
-    return instance;
-}
-
 NeaniasCaesarAuth::NeaniasCaesarAuth(QObject *parent) : AuthWrapper(parent) { }
 
 void NeaniasCaesarAuth::setup()

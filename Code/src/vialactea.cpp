@@ -34,9 +34,6 @@ const QString ViaLactea::ONLINE_TILE_PATH = "http://vlkb.ia2.inaf.it/panoramicvi
 const QString ViaLactea::VLKB_URL_IA2 = "https://vlkb.ia2.inaf.it:8443/vlkb/datasets";
 const QString ViaLactea::TAP_URL_IA2 = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
 
-const QString ViaLactea::VLKB_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb-datasets-1.2/";
-const QString ViaLactea::TAP_URL_NEANIAS = "https://vlkb.neanias.eu/vlkb/tap";
-
 ViaLactea::ViaLactea(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::ViaLactea),
@@ -670,13 +667,6 @@ void ViaLactea::on_actionLoad_session_triggered()
 
 void ViaLactea::on_loadTableButton_clicked()
 {
-    QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
-    if (vlkbtype == "neanias") {
-        QMessageBox::information(this, "Info",
-                                 "This feature is only available using the IA2 instance.");
-        return;
-    }
-
     // Check if a job was already being polled
     QString pendingFile(QDir::homePath().append("/VisIVODesktopTemp/pending_mcutouts.dat"));
     if (QFileInfo::exists(pendingFile)) {

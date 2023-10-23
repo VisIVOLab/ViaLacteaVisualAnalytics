@@ -36,9 +36,7 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
 
     savedFilename = fn;
     QNetworkRequest request(url);
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
     QNetworkReply *reply = man->get(request);
     loading->setLoadingProcess(reply);
 

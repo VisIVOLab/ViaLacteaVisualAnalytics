@@ -47,8 +47,6 @@ public:
     static const QString ONLINE_TILE_PATH;
     static const QString VLKB_URL_IA2;
     static const QString TAP_URL_IA2;
-    static const QString VLKB_URL_NEANIAS;
-    static const QString TAP_URL_NEANIAS;
 
 private slots:
     void quitApp(); // Added page delete befor main app quits

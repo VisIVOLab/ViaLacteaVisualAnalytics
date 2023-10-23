@@ -40,7 +40,7 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
     ui->vlkbUrlLineEdit->setText(url);
     url.replace("http://", QString("http://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));
     vlkbtype = settings.value("vlkbtype", "ia2").toString();
-    table_prefix = (vlkbtype == "neanias") ? "" : "vlkb_";
+    table_prefix = "vlkb_";
     on_connectPushButton_clicked();
 }
 

@@ -23,8 +23,6 @@ private slots:
     void on_workdirButton_clicked();
     void on_pushButton_clicked();
     void on_OkPushButton_clicked();
-    void on_ia2VLKB_radioButton_toggled(bool checked);
-    void on_neaniasVLKB_radioButton_toggled(bool checked);
     void on_vlkbLoginButton_clicked();
     void on_vlkbLogoutButton_clicked();
     void on_caesarLoginButton_clicked();
@@ -41,11 +39,7 @@ private:
     Ui::SettingForm *ui;
     QString m_settingsFile;
     AuthWrapper *m_ia2VlkbAuth;
-    AuthWrapper *m_neaniasVlkbAuth;
     AuthWrapper *m_caesarAuth;
-    bool m_termsAccepted = false;
-    const QString m_privacyPolicyUrl = "https://thematic.neanias.eu/SPACE/ViaLactea/privacy.html";
-    const QString m_termsOfUseUrl = "https://thematic.neanias.eu/SPACE/ViaLactea/terms.html";
 };
 
 #endif // SETTINGFORM_H

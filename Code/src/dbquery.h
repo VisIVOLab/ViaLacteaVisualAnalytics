@@ -55,7 +55,7 @@ private slots:
     void on_spinBox_valueChanged(int arg1);
 
 public slots:
-    void on_download_completed();
+    void onDownloadCompleted();
 
 private:
     Ui::dbquery *ui;

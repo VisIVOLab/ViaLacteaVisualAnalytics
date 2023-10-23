@@ -160,7 +160,6 @@ set(PROJECT_SOURCES
     src/observedobject.h
     src/operationqueue.cpp
     src/operationqueue.h
-    src/osxhelper.h
     src/pipe.cpp
     src/pipe.h
     src/plotwindow.cpp

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>796</width>
-    <height>845</height>
+    <width>797</width>
+    <height>828</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -202,63 +202,6 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_6">
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>Instance:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer_7">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeType">
-           <enum>QSizePolicy::Fixed</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>10</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QRadioButton" name="ia2VLKB_radioButton">
-          <property name="text">
-           <string>IA2</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QRadioButton" name="neaniasVLKB_radioButton">
-          <property name="text">
-           <string>NEANIAS</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-      <item>
        <layout class="QFormLayout" name="formLayout">
         <property name="fieldGrowthPolicy">
          <enum>QFormLayout::ExpandingFieldsGrow</enum>
@@ -306,7 +249,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="neaniasStatusLayout">
+       <layout class="QHBoxLayout" name="statusLayout">
         <property name="sizeConstraint">
          <enum>QLayout::SetMinimumSize</enum>
         </property>
@@ -559,8 +502,6 @@
   <tabstop>urlLineEdit</tabstop>
   <tabstop>glyphLineEdit</tabstop>
   <tabstop>textDownscaleSize</tabstop>
-  <tabstop>ia2VLKB_radioButton</tabstop>
-  <tabstop>neaniasVLKB_radioButton</tabstop>
   <tabstop>vlkbUrl_lineEdit</tabstop>
   <tabstop>tapUrl_lineEdit</tabstop>
   <tabstop>vlkbLoginButton</tabstop>

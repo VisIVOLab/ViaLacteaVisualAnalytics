@@ -47,13 +47,7 @@ UserTableWindow::~UserTableWindow()
 void UserTableWindow::getSurveysData()
 {
     QString vlkbType = settings.value("vlkbtype", "ia2").toString();
-
-    QString table;
-    if (vlkbType == "ia2") {
-        table = "vlkb_radiocubes.surveys";
-    } else /* neanias */ {
-        table = "datasets.surveys";
-    }
+    QString table = "vlkb_radiocubes.surveys";
 
     QUrlQuery postData;
     postData.addQueryItem("REQUEST", "doQuery");
@@ -66,9 +60,7 @@ void UserTableWindow::getSurveysData()
     QString tapUrl = settings.value("vlkbtableurl").toString();
     QNetworkRequest req(tapUrl + "/sync");
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
 

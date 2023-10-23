@@ -23,10 +23,6 @@ SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new 
     connect(m_ia2VlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
     connect(m_ia2VlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
 
-    m_neaniasVlkbAuth = &NeaniasVlkbAuth::Instance();
-    connect(m_neaniasVlkbAuth, &AuthWrapper::authenticated, this, &SettingForm::vlkb_loggedin);
-    connect(m_neaniasVlkbAuth, &AuthWrapper::logged_out, this, &SettingForm::vlkb_loggedout);
-
     m_caesarAuth = &NeaniasCaesarAuth::Instance();
     connect(m_caesarAuth, &AuthWrapper::authenticated, this, &SettingForm::caesar_loggedin);
     connect(m_caesarAuth, &AuthWrapper::logged_out, this, &SettingForm::caesar_loggedout);
@@ -46,7 +42,6 @@ SettingForm::~SettingForm()
 void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
-    m_termsAccepted = settings.value("termsaccepted", false).toBool();
 
     QString pythonpath = settings.value("python.path").toString();
     if (pythonpath.isEmpty()) {
@@ -67,30 +62,15 @@ void SettingForm::readSettingsFromFile()
     ui->textDownscaleSize->setText(QString::number(maxSize));
 
     QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
-    AuthWrapper *vlkbAuth;
-    if (vlkbtype == "ia2") {
-        QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_URL_IA2).toString();
-        QString vlkbtableurl = settings.value("vlkbtableurl", ViaLactea::TAP_URL_IA2).toString();
-
-        ui->ia2VLKB_radioButton->setChecked(true);
-        ui->vlkbUrl_lineEdit->setText(vlkburl);
-        ui->tapUrl_lineEdit->setText(vlkbtableurl);
-        vlkbAuth = m_ia2VlkbAuth;
-    } else /* (vlkbtype == "neanias") */ {
-        QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_URL_NEANIAS).toString();
-        QString vlkbtableurl =
-                settings.value("vlkbtableurl", ViaLactea::TAP_URL_NEANIAS).toString();
-
-        ui->neaniasVLKB_radioButton->setChecked(true);
-        ui->vlkbUrl_lineEdit->setText(vlkburl);
-        ui->tapUrl_lineEdit->setText(vlkbtableurl);
-        vlkbAuth = m_neaniasVlkbAuth;
-    }
+    QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_URL_IA2).toString();
+    QString vlkbtableurl = settings.value("vlkbtableurl", ViaLactea::TAP_URL_IA2).toString();
+    ui->vlkbUrl_lineEdit->setText(vlkburl);
+    ui->tapUrl_lineEdit->setText(vlkbtableurl);
 
     bool searchOnImport = settings.value("vlkb.search", false).toBool();
     ui->checkSearchOnImport->setChecked(searchOnImport);
 
-    if (vlkbAuth->isAuthenticated()) {
+    if (m_ia2VlkbAuth->isAuthenticated()) {
         vlkb_loggedin();
     } else {
         vlkb_loggedout();
@@ -153,17 +133,12 @@ void SettingForm::on_TilePushButton_clicked()
 void SettingForm::on_OkPushButton_clicked()
 {
     QSettings settings(m_settingsFile, QSettings::NativeFormat);
-    settings.setValue("termsaccepted", m_termsAccepted);
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("python.path", ui->textPython->text());
     settings.setValue("python.bundle", ui->checkBundlePython->isChecked());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
-    if (ui->ia2VLKB_radioButton->isChecked())
-        settings.setValue("vlkbtype", "ia2");
-    else
-        settings.setValue("vlkbtype", "neanias");
-
+    settings.setValue("vlkbtype", "ia2");
     settings.setValue("vlkb.search", ui->checkSearchOnImport->isChecked());
     settings.setValue("vlkburl", ui->vlkbUrl_lineEdit->text());
     settings.setValue("vlkbtableurl", ui->tapUrl_lineEdit->text());
@@ -182,20 +157,6 @@ void SettingForm::on_pushButton_clicked()
     this->close();
 }
 
-void SettingForm::on_ia2VLKB_radioButton_toggled(bool checked)
-{
-    if (checked) {
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_IA2);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_IA2);
-
-        if (!m_ia2VlkbAuth->isAuthenticated()) {
-            vlkb_loggedout();
-        } else {
-            vlkb_loggedin();
-        }
-    }
-}
-
 void SettingForm::on_workdirButton_clicked()
 {
     QString fn = QFileDialog::getExistingDirectory(this, tr("Open Directory"), "~",
@@ -206,53 +167,18 @@ void SettingForm::on_workdirButton_clicked()
     }
 }
 
-void SettingForm::on_neaniasVLKB_radioButton_toggled(bool checked)
-{
-    if (checked) {
-        ui->vlkbUrl_lineEdit->setText(ViaLactea::VLKB_URL_NEANIAS);
-        ui->tapUrl_lineEdit->setText(ViaLactea::TAP_URL_NEANIAS);
-
-        if (!m_neaniasVlkbAuth->isAuthenticated()) {
-            vlkb_loggedout();
-        } else {
-            vlkb_loggedin();
-        }
-    }
-}
-
 void SettingForm::on_vlkbLoginButton_clicked()
 {
-    auto vlkbAuth = (ui->ia2VLKB_radioButton->isChecked() ? m_ia2VlkbAuth : m_neaniasVlkbAuth);
-
-    if (vlkbAuth->isAuthenticated())
+    if (m_ia2VlkbAuth->isAuthenticated())
         return;
 
-    if (vlkbAuth == m_neaniasVlkbAuth && !m_termsAccepted) {
-        auto text = QString("To continue you must accept the <a href=\"%1\">privacy policy</a> and "
-                            "the <a href=\"%2\">terms of use</a>.<br>Do you accept both?")
-                            .arg(m_privacyPolicyUrl, m_termsOfUseUrl);
-
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setTextFormat(Qt::RichText);
-        msgBox.setInformativeText(text);
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        int ret = msgBox.exec();
-        if (ret == QMessageBox::Yes) {
-            m_termsAccepted = true;
-        } else {
-            return;
-        }
-    }
-
-    vlkbAuth->grant();
+    m_ia2VlkbAuth->grant();
 }
 
 void SettingForm::on_vlkbLogoutButton_clicked()
 {
-    auto vlkbAuth = (ui->ia2VLKB_radioButton->isChecked() ? m_ia2VlkbAuth : m_neaniasVlkbAuth);
-    if (vlkbAuth->isAuthenticated())
-        vlkbAuth->logout();
+    if (m_ia2VlkbAuth->isAuthenticated())
+        m_ia2VlkbAuth->logout();
 }
 
 void SettingForm::on_caesarLoginButton_clicked()

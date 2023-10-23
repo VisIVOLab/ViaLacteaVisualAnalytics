@@ -109,10 +109,7 @@ void dbquery::finishedSlot(QNetworkReply *reply)
                           + "&nullvals");
 
                 QNetworkRequest request(url2);
-                auto auth = settings.value("vlkbtype", "ia2") == "ia2"
-                        ? &IA2VlkbAuth::Instance()
-                        : &NeaniasVlkbAuth::Instance();
-                auth->putAccessToken(request);
+                IA2VlkbAuth::Instance().putAccessToken(request);
 
                 nam->get(request);
             } else {
@@ -131,7 +128,7 @@ void dbquery::finishedSlot(QNetworkReply *reply)
                 DownloadManager *manager = new DownloadManager();
                 QString urlString = string.trimmed();
                 QUrl url3(urlString);
-                connect(manager, SIGNAL(downloadCompleted()), this, SLOT(on_download_completed()));
+                connect(manager, SIGNAL(downloadCompleted()), this, SLOT(onDownloadCompleted()));
                 file = manager->doDownload(url3);
                 loading->loadingEnded();
                 loading->hide();
@@ -599,9 +596,7 @@ void dbquery::on_queryPushButton_clicked()
              + "&vu=" + ui->lineEdit_vu->text());
 
     QNetworkRequest request(url);
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
     nam->get(request);
 
     ui->lineEdit_l->setReadOnly(false);
@@ -635,9 +630,7 @@ void dbquery::on_pushButton_map_clicked()
              + "&vu=" + ui->lineEdit_vu->text());
 
     QNetworkRequest request(url);
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
     nam->get(request);
 }
 
@@ -667,9 +660,7 @@ void dbquery::handleButton(int i)
             + "&vu=" + ui->lineEdit_vu->text() + "&nullvals");
 
     QNetworkRequest request(url);
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
     nam->get(request);
 }
 
@@ -757,7 +748,7 @@ void dbquery::on_spinBox_valueChanged(int arg1)
     vtkwin->showNormal();
 }
 
-void dbquery::on_download_completed()
+void dbquery::onDownloadCompleted()
 {
     vtkFitsReader *fitsReader = vtkFitsReader::New();
     fitsReader->is3D = true;

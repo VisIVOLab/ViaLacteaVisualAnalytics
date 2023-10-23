@@ -81,19 +81,6 @@ protected:
     void setup() override;
 };
 
-class NeaniasVlkbAuth : public AuthWrapper
-{
-    Q_OBJECT
-public:
-    static AuthWrapper &Instance();
-
-private:
-    NeaniasVlkbAuth(QObject *parent = nullptr);
-
-protected:
-    void setup() override;
-};
-
 class NeaniasCaesarAuth : public AuthWrapper
 {
     Q_OBJECT

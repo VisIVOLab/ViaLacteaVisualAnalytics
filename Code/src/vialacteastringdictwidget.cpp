@@ -44,9 +44,7 @@ void VialacteaStringDictWidget::buildDict()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("text/html; charset=utf-8"));
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
     manager->get(request);
 }
 
@@ -57,7 +55,7 @@ void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
     } else {
         QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
         QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
-        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
+        QString tag = "vosi:available";
 
         QDomDocument doc;
         doc.setContent(reply->readAll());
@@ -102,9 +100,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
 
     manager->post(request, postData);
 }
@@ -134,9 +130,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(request);
+    IA2VlkbAuth::Instance().putAccessToken(request);
     manager->post(request, postData);
 }
 
@@ -156,9 +150,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                                   : &NeaniasVlkbAuth::Instance();
-            auth->putAccessToken(req);
+            IA2VlkbAuth::Instance().putAccessToken(req);
             manager->get(req);
         } else {
             QByteArray bytes = reply->readLine();
@@ -211,9 +203,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                                   : &NeaniasVlkbAuth::Instance();
-            auth->putAccessToken(req);
+            IA2VlkbAuth::Instance().putAccessToken(req);
             manager->get(req);
         } else {
 

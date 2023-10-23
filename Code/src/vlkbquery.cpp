@@ -51,9 +51,7 @@ void VLKBQuery::connectToVlkb()
     QUrl reqUrl(url + "/availability");
     QNetworkRequest req(reqUrl);
 
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
     QNetworkReply *reply = manager->get(req);
     loading->setLoadingProcess(reply);
 }
@@ -65,7 +63,7 @@ void VLKBQuery::availReplyFinished(QNetworkReply *reply)
     } else {
         QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
         QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
-        QString tag = vlkbtype == "neanias" ? "available" : "vosi:available";
+        QString tag = "vosi:available";
 
         QDomDocument doc;
         doc.setContent(reply->readAll());
@@ -101,9 +99,7 @@ void VLKBQuery::executeQuery()
                 SLOT(queryReplyFinishedModel(QNetworkReply *)));
 
     QNetworkRequest req(url + "/sync");
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
     QNetworkReply *reply = manager->post(req, postData);
     loading->setLoadingProcess(reply);
 }
@@ -124,9 +120,7 @@ void VLKBQuery::executoSyncQuery()
 
     QNetworkRequest req(url + "/sync?REQUEST=doQuery&VERSION=1.0&LANG=ADQL&FORMAT=tsv&QUERY="
                         + QUrl::toPercentEncoding(query));
-    auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                           : &NeaniasVlkbAuth::Instance();
-    auth->putAccessToken(req);
+    IA2VlkbAuth::Instance().putAccessToken(req);
     QNetworkReply *reply = networkMgr->get(req);
     QEventLoop loop;
     QObject::connect(reply, SIGNAL(readyRead()), &loop, SLOT(quit()));
@@ -161,9 +155,7 @@ void VLKBQuery::queryReplyFinishedModel(QNetworkReply *reply)
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                                   : &NeaniasVlkbAuth::Instance();
-            auth->putAccessToken(req);
+            IA2VlkbAuth::Instance().putAccessToken(req);
             manager->get(req);
         } else {
 
@@ -200,9 +192,7 @@ void VLKBQuery::queryReplyFinishedBM(QNetworkReply *reply)
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            auto auth = settings.value("vlkbtype", "ia2") == "ia2" ? &IA2VlkbAuth::Instance()
-                                                                   : &NeaniasVlkbAuth::Instance();
-            auth->putAccessToken(req);
+            IA2VlkbAuth::Instance().putAccessToken(req);
             manager->get(req);
         } else {
 
