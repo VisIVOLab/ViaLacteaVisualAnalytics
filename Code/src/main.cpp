@@ -2,6 +2,7 @@
 
 #include "mainwindow.h"
 #include "singleton.h"
+#include "version.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -23,9 +24,12 @@ int main(int argc, char *argv[])
 
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
+    setlocale(LC_NUMERIC, "C");
+    QLocale::setDefault(QLocale::c());
+
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");
-    a.setApplicationVersion("1.6");
+    a.setApplicationVersion(VLVA_VERSION_STR);
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
 
     // Init python interpreter
@@ -33,8 +37,6 @@ int main(int argc, char *argv[])
     py::module_ sys = py::module_::import("sys");
     sys.attr("path").attr("append")(QApplication::applicationDirPath().toStdString());
 
-    setlocale(LC_NUMERIC, "C");
-    QLocale::setDefault(QLocale::c());
     Singleton<MainWindow>::Instance();
 
     return a.exec();

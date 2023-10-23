@@ -1,0 +1,4 @@
+#pragma once
+
+#define VLVA_VERSION_STR "@ViaLacteaVisualAnalytics_VERSION@"
+

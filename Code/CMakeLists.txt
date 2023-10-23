@@ -19,7 +19,6 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(CMAKE_AUTOMOC ON)
@@ -63,6 +62,8 @@ FetchContent_Declare(pybind11
     GIT_TAG v2.10.4
 )
 FetchContent_MakeAvailable(pybind11)
+
+configure_file(src/version.h.in version.h)
 
 set(PROJECT_SOURCES
     src/aboutform.cpp
