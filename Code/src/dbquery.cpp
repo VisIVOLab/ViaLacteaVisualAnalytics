@@ -63,8 +63,9 @@ dbquery::dbquery(QWidget *parent) : QDialog(parent), ui(new Ui::dbquery)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
     parser = new xmlparser();
 }
@@ -80,8 +81,9 @@ void dbquery::finishedSlot(QNetworkReply *reply)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
 
     QString string;
@@ -567,8 +569,9 @@ void dbquery::on_queryPushButton_clicked()
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     ui->lineEdit_l->setReadOnly(true);
     ui->lineEdit_b->setReadOnly(true);
     ui->lineEdit_r->setReadOnly(true);
@@ -612,8 +615,9 @@ void dbquery::on_pushButton_map_clicked()
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     loading = new LoadingWidget();
     loading->init();
     loading->setText("Getting datacube list...");
@@ -639,8 +643,9 @@ void dbquery::handleButton(int i)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     loading = new LoadingWidget();
     loading->init();
     loading->setText("Downloading selected datacube...");

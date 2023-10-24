@@ -30,7 +30,8 @@ SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new 
     m_settingsFile = QDir::homePath()
                              .append(QDir::separator())
                              .append("VisIVODesktopTemp")
-                             .append("/setting.ini");
+                             .append(QDir::separator())
+                             .append("setting.ini");
     readSettingsFromFile();
 }
 
@@ -41,7 +42,7 @@ SettingForm::~SettingForm()
 
 void SettingForm::readSettingsFromFile()
 {
-    QSettings settings(m_settingsFile, QSettings::NativeFormat);
+    QSettings settings(m_settingsFile, QSettings::IniFormat);
 
     QString pythonpath = settings.value("python.path").toString();
     if (pythonpath.isEmpty()) {
@@ -132,7 +133,7 @@ void SettingForm::on_TilePushButton_clicked()
 
 void SettingForm::on_OkPushButton_clicked()
 {
-    QSettings settings(m_settingsFile, QSettings::NativeFormat);
+    QSettings settings(m_settingsFile, QSettings::IniFormat);
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("python.path", ui->textPython->text());
     settings.setValue("python.bundle", ui->checkBundlePython->isChecked());

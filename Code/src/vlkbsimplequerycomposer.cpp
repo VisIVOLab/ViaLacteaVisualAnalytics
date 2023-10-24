@@ -34,8 +34,9 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
     m_sSettingsFile = QDir::homePath()
             .append(QDir::separator())
             .append("VisIVODesktopTemp")
-            .append("/setting.ini");
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+            .append(QDir::separator())
+            .append("setting.ini");
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     url = settings.value("vlkbtableurl", "").toString();
     ui->vlkbUrlLineEdit->setText(url);
     url.replace("http://", QString("http://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));

@@ -21,7 +21,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->greyBodyGroupBox->hide();
 
     QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     if (settings.value("python.bundle", true).toBool()) {
         pythonExe = "vialactea.pex";
