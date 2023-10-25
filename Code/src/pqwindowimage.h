@@ -88,6 +88,8 @@ private:
     void changeColorMap(const QString &name);
     void showStatusBarMessage(const std::string &msg);
 
+    void throwError(const QString& text, const QString& info = "");
+
     void updateUI();
 
     void setImageListCheckbox(int row, Qt::CheckState checked);

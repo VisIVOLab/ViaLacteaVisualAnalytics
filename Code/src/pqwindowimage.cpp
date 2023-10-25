@@ -1,4 +1,6 @@
 #include "pqwindowimage.h"
+#include "qerrormessage.h"
+#include "qmessagebox.h"
 #include "ui_pqwindowimage.h"
 
 #include "interactors/vtkinteractorstyleimagecustom.h"
@@ -117,6 +119,17 @@ void pqWindowImage::changeColorMap(const QString &name)
 void pqWindowImage::showStatusBarMessage(const std::string &msg)
 {
     ui->statusBar->showMessage(QString::fromStdString(msg));
+}
+
+void pqWindowImage::throwError(const QString &text, const QString &info)
+{
+    QMessageBox e;
+    e.setIcon(QMessageBox::Critical);
+    e.setWindowTitle("Error!");
+    e.setText(text);
+    e.setInformativeText(info);
+    e.setStandardButtons(QMessageBox::Ok);
+    e.exec();
 }
 
 /**
@@ -252,7 +265,13 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
             images.at(activeIndex)->setOpacity(1);
         }
         else{
-            this->positionImage(images.at(activeIndex), false);
+            if (!this->positionImage(images.at(activeIndex), false))
+            {
+                std::cerr << file.toStdString() << " not added to stack." << std::endl;
+                removeImageFromStack(activeIndex);
+                return 0;
+            }
+
             images.at(activeIndex)->setOpacity(defaultMultiOpacity);
         }
         this->updateUI();
@@ -346,6 +365,10 @@ int pqWindowImage::positionImage(vlvaStackImage *stackImage, bool setBasePos)
     catch (std::exception& e)
     {
         std::cerr << "Error when trying to extract WCS position from FITS header file!" << std::endl;
+        std::stringstream eString, eInfo;
+        eString << "Error when trying to extract WCS position from FITS header file " << stackImage->getFitsFileName().toStdString() << "!";
+        eInfo << "Please file a bug report and include the specific files you were trying to load.";
+        this->throwError(eString.str().c_str(), eInfo.str().c_str());
         return 0;
     }
 
@@ -357,13 +380,38 @@ int pqWindowImage::positionImage(vlvaStackImage *stackImage, bool setBasePos)
         }
         scaledPixel = AstroUtils().arcsecPixel(fitsPath) / refImagePixScaling;
 
-        return stackImage->setOrientation(0, 0, angle) && stackImage->setScale(scaledPixel, scaledPixel) && stackImage->setPosition(x1, y1);
+        int sum = 0;
+        sum += stackImage->setOrientation(0, 0, angle);
+        sum += stackImage->setScale(scaledPixel, scaledPixel);
+        sum += stackImage->setXYPosition(x1, y1);
+        if (sum != 3){
+            std::cerr << "Error when placing/rotating/scaling image " << stackImage->getFitsFileName().toStdString() << "!" << std::endl;
+            std::stringstream eString, eInfo;
+            eString << "Error when placing/rotating/scaling image " << stackImage->getFitsFileName().toStdString() << "!";
+            eInfo << "Please file a bug report and include the specific files you were trying to load.";
+            this->throwError(eString.str().c_str(), eInfo.str().c_str());
+            return 0;
+        }
+        if (!setBasePos && !overlaps(this->images, stackImage)){
+            std::cerr << "File " << stackImage->getFitsFileName().toStdString() << " does not overlap any currently displayed image!" << std::endl;
+            std::stringstream eString, eInfo;
+            eString << "File " << stackImage->getFitsFileName().toStdString() << " does not overlap any currently displayed image!";
+            eInfo << "Images must overlap at least partially to be shown in a stack. Remove all current images and try again if you want to load this image.";
+            this->throwError(eString.str().c_str(), eInfo.str().c_str());
+
+            return 0;
+        }
     }
     catch (std::exception& e)
     {
         std::cerr << "Error when trying to position image via proxies!" << std::endl;
+        std::stringstream eString, eInfo;
+        eString << "Error when trying to position image via proxies!";
+        eInfo << "Please file a bug report and include the specific files you were trying to load.";
+        this->throwError(eString.str().c_str(), eInfo.str().c_str());
         return 0;
     }
+    return 1;
 }
 
 /**

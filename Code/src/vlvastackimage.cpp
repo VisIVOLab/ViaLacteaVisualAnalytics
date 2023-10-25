@@ -69,6 +69,7 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
         setOpacity(1);
         setActive(true);
         type = 0;
+        pixCount = std::make_pair(fitsHeader.value("NAXIS1").toInt(), fitsHeader.value("NAXIS2").toInt());
     }
     catch (std::exception& e)
     {
@@ -101,6 +102,18 @@ const QString vlvaStackImage::getFitsFileName() const
 bool vlvaStackImage::operator<(const vlvaStackImage &other) const
 {
     return this->getIndex() < other.getIndex();
+}
+
+bool vlvaStackImage::operator==(const vlvaStackImage &other) const
+{
+    if (this->getFitsFileName() != other.getFitsFileName())
+        return false;
+    return true;
+}
+
+const std::pair<int, int> vlvaStackImage::getPixCount() const
+{
+    return pixCount;
 }
 
 int vlvaStackImage::setSubsetProperties(CubeSubset& subset)
@@ -419,7 +432,7 @@ int vlvaStackImage::setOpacity(float value, bool updateVal)
     }
 }
 
-int vlvaStackImage::setPosition(double x, double y)
+int vlvaStackImage::setXYPosition(double x, double y)
 {
     if (initialised)
     {
@@ -432,6 +445,11 @@ int vlvaStackImage::setPosition(double x, double y)
         std::cerr << "StackImage not initialised, returning default value." << std::endl;
         return 0;
     }
+}
+
+const std::pair<double, double> vlvaStackImage::getXYPosition() const
+{
+    return this->xyPosition;
 }
 
 int vlvaStackImage::setZPosition()
@@ -472,6 +490,7 @@ int vlvaStackImage::setScale(double x, double y, double z)
             vtkSMPropertyHelper(scaleProperty).Set(val, 3);
             imageProxy->UpdateVTKObjects();
             delete[] val;
+            this->scale = std::make_tuple(x, y, z);
             return 1;
         }
         std::cerr << "Error with scale proxy: not found correctly." << std::endl;
