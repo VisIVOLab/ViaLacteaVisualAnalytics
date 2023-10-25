@@ -17,11 +17,15 @@ public:
     ~AboutForm();
 
 private slots:
-    void on_neaniasLogo_clicked();
+    void on_btnNeanias_clicked();
+    void on_btnCirasa_clicked();
+    void on_btnEcogal_clicked();
 
 private:
     Ui::AboutForm *ui;
     QUrl neaniasUrl;
+    QUrl cirasaUrl;
+    QUrl ecogalUrl;
 };
 
 #endif // ABOUTFORM_H

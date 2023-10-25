@@ -65,5 +65,7 @@
         <file>icons/NEANIAS.jpg</file>
         <file>icons/logo_256.png</file>
         <file>icons/reset.png</file>
+        <file>icons/ecogal.png</file>
+        <file>icons/cirasa.png</file>
     </qresource>
 </RCC>
