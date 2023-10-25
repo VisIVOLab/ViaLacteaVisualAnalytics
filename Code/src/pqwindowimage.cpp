@@ -121,6 +121,13 @@ void pqWindowImage::showStatusBarMessage(const std::string &msg)
     ui->statusBar->showMessage(QString::fromStdString(msg));
 }
 
+/**
+ * @brief pqWindowImage::throwError
+ * A standardised error message that can be thrown from anywhere in the class.
+ * @param text The error message
+ * @param info More detailed information, such as the next step to take or
+ *             steps that could resolve the issue.
+ */
 void pqWindowImage::throwError(const QString &text, const QString &info)
 {
     QMessageBox e;
