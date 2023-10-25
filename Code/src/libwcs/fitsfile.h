@@ -31,6 +31,8 @@
 #define fitsfile_h_
 #include "fitshead.h"
 
+#include <stdio.h>
+
 /* Declarations for subroutines in fitsfile.c, imhfile.c, imio.c,
  * fileutil.c, and dateutil.c */
 
@@ -1041,14 +1043,14 @@ float ftgetr4(		/* Extract column for keyword from FITS table line
 extern int fitsropen();
 extern char* fitsrhead(char* filename, int* lhead, int* nbhead);
 extern char* fitsrtail(char* filename, int* lhead, int* nbhead);
-extern char *fitsrimage();
+extern char *fitsrimage(char* filename, int nbhead, char* header);
 extern char *fitsrfull();
 extern char *fitsrsect();
 extern int fitswhead();
 extern int fitswexhead();
 extern int fitswext();
 extern int fitswhdu();
-extern int fitswimage();
+extern int fitswimage(char* filename, char* header, char* image);
 extern int fitscimage();
 extern int isfits();		/* Return 1 if file is a FITS file */
 extern void fitserr();          /* Print FITS error message to stderr */

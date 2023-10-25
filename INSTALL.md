@@ -165,5 +165,3 @@ Build the project using CMake of QT Creator build settings. You may need to spec
 - `CFITSIO_ROOT_DIR`: CFITSIO non-standard installation path.
 - `VTK_DIR`: The directory containing a CMake configuration file for VTK.
 - `PYTHON_EXECUTABLE`: Path to python3 executable.
-
-Copy the contents of [wcstools](wcstools) in libwcs
