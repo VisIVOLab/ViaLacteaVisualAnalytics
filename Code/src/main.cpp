@@ -24,18 +24,20 @@ int main(int argc, char *argv[])
 
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
-    setlocale(LC_NUMERIC, "C");
-    QLocale::setDefault(QLocale::c());
-
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion(VLVA_VERSION_STR);
     a.setWindowIcon(QIcon(":/icons/logo_256.png"));
 
     // Init python interpreter
+    QDir appDir(QApplication::applicationDirPath());
     py::scoped_interpreter guard;
     py::module_ sys = py::module_::import("sys");
-    sys.attr("path").attr("append")(QApplication::applicationDirPath().toStdString());
+    sys.attr("path").attr("append")(appDir.absolutePath().toStdString());
+    sys.attr("path").attr("append")(appDir.absoluteFilePath("site-packages").toStdString());
+
+    std::setlocale(LC_ALL, "C");
+    QLocale::setDefault(QLocale::c());
 
     Singleton<MainWindow>::Instance();
 
