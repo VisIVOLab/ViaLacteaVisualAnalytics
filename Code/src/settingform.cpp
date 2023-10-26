@@ -4,13 +4,18 @@
 #include "caesarwindow.h"
 #include "singleton.h"
 #include "vialactea.h"
+
 #include <QApplication>
 #include <QDebug>
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
 
-SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
+SettingForm::SettingForm(QWidget *parent)
+    : QWidget(parent, Qt::Window),
+      ui(new Ui::SettingForm),
+      urlSignUp("http://vlkb.ia2.inaf.it/authz/ui")
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(this);
@@ -206,4 +211,9 @@ void SettingForm::on_btnPython_clicked()
     if (!fn.isEmpty()) {
         ui->textPython->setText(fn);
     }
+}
+
+void SettingForm::on_btnRegister_clicked()
+{
+    QDesktopServices::openUrl(urlSignUp);
 }

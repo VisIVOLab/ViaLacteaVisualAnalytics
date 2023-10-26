@@ -32,12 +32,13 @@ private slots:
     void caesar_loggedin();
     void caesar_loggedout();
     void on_checkBundlePython_toggled(bool checked);
-
     void on_btnPython_clicked();
+    void on_btnRegister_clicked();
 
 private:
     Ui::SettingForm *ui;
     QString m_settingsFile;
+    QUrl urlSignUp;
     AuthWrapper *m_ia2VlkbAuth;
     AuthWrapper *m_caesarAuth;
 };

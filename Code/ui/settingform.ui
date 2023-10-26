@@ -298,6 +298,16 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="btnRegister">
+          <property name="toolTip">
+           <string>Sign up for private data access</string>
+          </property>
+          <property name="text">
+           <string>Sign Up</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <spacer name="horizontalSpacer_4">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -307,7 +317,7 @@
           </property>
           <property name="sizeHint" stdset="0">
            <size>
-            <width>380</width>
+            <width>300</width>
             <height>20</height>
            </size>
           </property>
