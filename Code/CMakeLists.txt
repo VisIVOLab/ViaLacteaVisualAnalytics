@@ -101,6 +101,7 @@ set(sources
         src/pointspipe.cpp
         src/pqmeminspector.cpp
         src/pqwindowcube.cpp
+        src/pqwindowimage.cpp
         src/sed.cpp
         src/sedfitgrid_thick.cpp
         src/sedfitgrid_thin.cpp
@@ -126,6 +127,7 @@ set(sources
         src/vlkbquery.cpp
         src/vlkbsimplequerycomposer.cpp
         src/vlkbtable.cpp
+        src/vlvastackimage.cpp
         src/vlvaurlschemehandler.cpp
         src/vsobjectdesktop.cpp
         src/vstabledesktop.cpp
@@ -178,6 +180,7 @@ set(headers
         src/pointspipe.h
         src/pqmeminspector.h
         src/pqwindowcube.h
+        src/pqwindowimage.h
         src/sed.h
         src/sedfitgrid_thick.h
         src/sedfitgrid_thin.h
@@ -204,6 +207,7 @@ set(headers
         src/vlkbquery.h
         src/vlkbsimplequerycomposer.h
         src/vlkbtable.h
+        src/vlvastackimage.h
         src/vlvaurlschemehandler.h
         src/vsobjectdesktop.h
         src/vstabledesktop.h
@@ -236,6 +240,7 @@ set(ui_files
         ui/plotwindow.ui
         ui/pqmeminspector.ui
         ui/pqwindowcube.ui
+        ui/pqwindowimage.ui
         ui/sedfitgrid_thick.ui
         ui/sedfitgrid_thin.ui
         ui/sedvisualizerplot.ui

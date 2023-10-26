@@ -109,6 +109,7 @@ protected:
 
 protected slots:
     void onDataLoaded(const QString &filepath);
+    void onImageDataLoaded(const QString &filepath);
 };
 
 #endif // VIALACTEA_H
