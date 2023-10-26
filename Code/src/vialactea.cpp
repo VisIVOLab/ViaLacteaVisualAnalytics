@@ -393,9 +393,8 @@ void ViaLactea::on_localDCPushButton_clicked()
                 });
                 auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
                 dialog->show();
+                return;
             }
-
-            return;
         }
     } catch (const std::exception &e) {
         QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));

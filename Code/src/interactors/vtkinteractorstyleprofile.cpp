@@ -111,7 +111,7 @@ void vtkInteractorStyleProfile::OnLeftButtonDown()
         this->ProfileCb(worldCoords[0], worldCoords[1], LiveMode);
     }
 
-    this->Interactor->GetRenderWindow()->Render();
+    // this->Interactor->GetRenderWindow()->Render();
 }
 
 //----------------------------------------------------------------------------
