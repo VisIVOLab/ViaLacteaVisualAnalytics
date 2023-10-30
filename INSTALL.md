@@ -39,7 +39,8 @@ Python3 is required for certain functionalities using specific Python packages. 
 - `jmespath`
 - `pyvo`
 - `numpy`
-- `scipy` 
+- `scipy`
+- `pvextractor`
 
 # Building ViaLacteaVisualAnalytics
 Build the project using CMake with your preferred generator. You may need to specify the following CMake variables:
