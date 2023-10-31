@@ -254,6 +254,7 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
     if (fn.isEmpty()) {
         return;
     }
+
     bool doSearch = settings.value("vlkb.search", false).toBool();
     if (masterWin == nullptr) {
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
@@ -359,6 +360,7 @@ void ViaLactea::sessionScan(const QString &currentDir, const QDir &rootDir, QStr
     }
 }
 
+/**
 void ViaLactea::on_localDCPushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
@@ -475,6 +477,7 @@ void ViaLactea::on_localDCPushButton_clicked()
                                          "imported in the current session."));
     }
 }
+**/
 
 void ViaLactea::on_actionExit_triggered()
 {

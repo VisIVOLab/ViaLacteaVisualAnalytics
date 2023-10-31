@@ -61,7 +61,7 @@ private slots:
     void queryButtonStatusOnOff();
     void on_openLocalImagePushButton_clicked();
     void on_actionSettings_triggered();
-    void on_localDCPushButton_clicked();
+    //void on_localDCPushButton_clicked();
     void on_actionExit_triggered();
     void on_actionAbout_triggered();
     void on_select3dPushButton_clicked();
