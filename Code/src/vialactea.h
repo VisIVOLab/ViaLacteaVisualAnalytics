@@ -74,6 +74,7 @@ private slots:
     void on_actionLoad_session_triggered();
     void on_loadTableButton_clicked();
     void on_actionConeSearch_triggered();
+    void on_openLoadDataPushButton_clicked();
 
 private:
     Ui::ViaLactea *ui;

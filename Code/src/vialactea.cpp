@@ -718,3 +718,9 @@ bool ViaLactea::isFitsImage(const QString &filepath, int &ReadStatus) const
 
     return naxis == 2;
 }
+
+void ViaLactea::on_openLoadDataPushButton_clicked()
+{
+    QMessageBox::about(this, "Titole", "LoadDataPushButton");
+}
+
