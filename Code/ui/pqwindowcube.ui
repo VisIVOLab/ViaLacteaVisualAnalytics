@@ -487,6 +487,7 @@
      <string>PV Slice</string>
     </property>
     <addaction name="actionDraw_PV_line"/>
+    <addaction name="actionGen_test_PV_slice"/>
    </widget>
    <addaction name="menuCamera"/>
    <addaction name="menuRendering"/>
@@ -604,6 +605,11 @@
    </property>
    <property name="toolTip">
     <string>Draw line along which to generate the PV plot</string>
+   </property>
+  </action>
+  <action name="actionGen_test_PV_slice">
+   <property name="text">
+    <string>Gen_test_PV_slice</string>
    </property>
   </action>
  </widget>

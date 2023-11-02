@@ -100,6 +100,7 @@ set(sources
         src/plotwindow.cpp
         src/pointspipe.cpp
         src/pqmeminspector.cpp
+        src/pqPVWindow.cpp
         src/pqwindowcube.cpp
         src/pqwindowimage.cpp
         src/sed.cpp
@@ -179,6 +180,7 @@ set(headers
         src/plotwindow.h
         src/pointspipe.h
         src/pqmeminspector.h
+        src/pqPVWindow.h
         src/pqwindowcube.h
         src/pqwindowimage.h
         src/sed.h
@@ -239,6 +241,7 @@ set(ui_files
         ui/operationqueue.ui
         ui/plotwindow.ui
         ui/pqmeminspector.ui
+        ui/pqPVWindow.ui
         ui/pqwindowcube.ui
         ui/pqwindowimage.ui
         ui/sedfitgrid_thick.ui

@@ -500,6 +500,22 @@ void pqWindowCube::endDrawLine()
     viewSlice->getRenderViewProxy()->GetRenderer()->RemoveActor(this->actor);
 }
 
+void pqWindowCube::showPVSlice()
+{
+    int start1 = 50, start2 = 50;
+    int end1 = 100, end2 = 100;
+    showPVSlice(std::make_pair(start1, start2), std::make_pair(end1, end2));
+}
+
+void pqWindowCube::showPVSlice(std::pair<int, int> start, std::pair<int, int> end)
+{
+    pvSlice = new pqPVWindow(this->server, this->CubeSource, start, end, this);
+    pvSlice->setAttribute(Qt::WA_Hover);
+    pvSlice->show();
+    pvSlice->activateWindow();
+    pvSlice->raise();
+}
+
 void pqWindowCube::on_sliceSlider_valueChanged()
 {
     // Check what caused the value to change, and don't update while sliding.
@@ -842,5 +858,11 @@ void pqWindowCube::on_actionDraw_PV_line_triggered()
     }
     else
         endDrawLine();
+}
+
+
+void pqWindowCube::on_actionGen_test_PV_slice_triggered()
+{
+    showPVSlice();
 }
 
