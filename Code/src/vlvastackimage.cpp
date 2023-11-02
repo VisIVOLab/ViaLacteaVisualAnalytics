@@ -111,6 +111,11 @@ bool vlvaStackImage::operator==(const vlvaStackImage &other) const
     return true;
 }
 
+pqDataRepresentation *vlvaStackImage::getImageRep() const
+{
+    return imageRep;
+}
+
 const std::pair<int, int> vlvaStackImage::getPixCount() const
 {
     return pixCount;

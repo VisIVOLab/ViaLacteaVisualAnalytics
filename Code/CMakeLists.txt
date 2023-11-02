@@ -159,6 +159,7 @@ set(headers
         src/ds9region/Consts.h
         src/ds9region/DS9Region.h
         src/ds9region/DS9RegionParser.h
+        src/errorMessage.h
         src/extendedglyph3d.h
         src/filtercustomize.h
         src/fitsimagestatisiticinfo.h

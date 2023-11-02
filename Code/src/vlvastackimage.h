@@ -57,6 +57,8 @@ public:
         bool operator<(const vlvaStackImage& other) const;
         bool operator==(const vlvaStackImage& other) const;
 
+        pqDataRepresentation *getImageRep() const;
+
     private:
         int index;
         bool logScale, active;

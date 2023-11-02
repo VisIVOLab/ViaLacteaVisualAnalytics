@@ -1,8 +1,6 @@
 #ifndef PQWINDOWIMAGE_H
 #define PQWINDOWIMAGE_H
 
-#include "astroutils.h"
-#include "src/vtklegendscaleactor.h"
 #include "subsetselectordialog.h"
 #include "vlvastackimage.h"
 
@@ -88,8 +86,6 @@ private:
     void changeColorMap(const QString &name);
     void showStatusBarMessage(const std::string &msg);
 
-    void throwError(const QString& text, const QString& info = "");
-
     void updateUI();
 
     void setImageListCheckbox(int row, Qt::CheckState checked);
@@ -98,7 +94,6 @@ private:
     void createView();
     void readInfoFromSource();
     void readHeaderFromSource();
-    void showLegendScaleActor();
     void setLogScale(bool logScale);
     void setOpacity(float value);
     void extracted(QList<pqRepresentation *> &reps, QString &fName);
