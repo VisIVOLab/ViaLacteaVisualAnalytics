@@ -62,7 +62,7 @@
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
-              <widget class="QPushButton" name="openLocalImagePushButton">
+              <widget class="QPushButton" name="openLoadDataPushButton">
                <property name="minimumSize">
                 <size>
                  <width>75</width>
