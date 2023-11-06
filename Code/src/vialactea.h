@@ -59,9 +59,9 @@ private slots:
     void on_glatLineEdit_textChanged(const QString &arg1);
     void on_radiumLineEdit_textChanged(const QString &arg1);
     void queryButtonStatusOnOff();
-    void on_openLocalImagePushButton_clicked(const QString &fn);
+    void openLocalImage(const QString &fn);
     void on_actionSettings_triggered();
-    void on_localDCPushButton_clicked(const QString &fn);
+    void openLocalDC(const QString &fn);
     void on_actionExit_triggered();
     void on_actionAbout_triggered();
     void on_select3dPushButton_clicked();

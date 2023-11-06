@@ -729,7 +729,7 @@ void MainWindow::on_actionCsv_triggered()
 
 void MainWindow::on_actionTEST_DC3D_triggered()
 {
-    // Moved to ViaLactea::on_localDCPushButton_clicked
+    // Moved to ViaLactea::openLocalDC
 }
 
 void MainWindow::importFitsDC(QString fileName)

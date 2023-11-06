@@ -21,7 +21,6 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QWebChannel>
-#include <QDebug>
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -248,14 +247,9 @@ void ViaLactea::queryButtonStatusOnOff()
         ui->queryPushButton->setEnabled(false);
 }
 
-void ViaLactea::on_openLocalImagePushButton_clicked(const QString &fn)
+void ViaLactea::openLocalImage(const QString &fn)
 {
-    //QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(), "Fits images (*.fits)");
-    //if (fn.isEmpty()) {
-    //    return;
-    //}
-
-    // starting
+    // No image open yet: new image
     if (masterWin == nullptr) {
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(fn.toStdString());
@@ -284,7 +278,7 @@ void ViaLactea::on_openLocalImagePushButton_clicked(const QString &fn)
 
         this->showMinimized();
     } else if (canImportToMasterWin(fn.toStdString())) {
-        // An image is already open and we can add this image as a layer
+        // An image is already open: we can add this image as a layer
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(fn.toStdString());
         masterWin->addLayerImage(fits);
@@ -363,23 +357,8 @@ void ViaLactea::sessionScan(const QString &currentDir, const QDir &rootDir, QStr
 }
 
 
-void ViaLactea::on_localDCPushButton_clicked(const QString &fn)
+void ViaLactea::openLocalDC(const QString &fn)
 {
-    //QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "", tr("FITS images(*.fit *.fits)"));
-
-    //if (fn.isEmpty()) {
-    //    return;
-    //}
-
-    // Do not continue if the file is an image or it can't be loaded
-    //int ReadStatus = 0;
-    //if (isFitsImage(fn, ReadStatus) || ReadStatus != 0) {
-    //    QMessageBox::warning(this, "Open file",
-    //                         "The file you selected is not a cube!\n"
-    //                         "Use Load Image to load it.");
-    //    return;
-    //}
-
     // Check if the fits is a simcube
     auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader_dc->SetFileName(fn.toStdString());
@@ -705,11 +684,10 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
         return;
     }
 
-    // LocalImage: if the file is an image or it can't be loaded
+    // LocalImage: if the file is an image [or it can't be loaded: removed the ReadStatus != 0 check condition]
     int ReadStatus;
     if (isFitsImage(fn, ReadStatus)) {
-        //qDebug() << "--ReadStatus:" <<ReadStatus;
-        on_openLocalImagePushButton_clicked(fn);
+        openLocalImage(fn);
     } else {
         // localDC: if the file is an image or it can't be loaded
 
@@ -717,7 +695,6 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
         std::list<std::string> missing;
         try {
             if (!AstroUtils::checkSimCubeHeader(fn.toStdString(), missing)) {
-                //qDebug() << "--keywords check";
                 auto res = QMessageBox::warning(this, "Warning",
                                                 "The header does not contain all the necessary "
                                                 "keywords!\nDo you want to add them?",
@@ -738,8 +715,7 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
             return;
         }
 
-        on_localDCPushButton_clicked(fn);
+        openLocalDC(fn);
     }
-    qDebug() << "--ReadStatus dopo:" <<ReadStatus;
 }
 
