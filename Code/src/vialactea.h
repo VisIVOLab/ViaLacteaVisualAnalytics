@@ -59,9 +59,9 @@ private slots:
     void on_glatLineEdit_textChanged(const QString &arg1);
     void on_radiumLineEdit_textChanged(const QString &arg1);
     void queryButtonStatusOnOff();
-    void on_openLocalImagePushButton_clicked();
+    void openLocalImage(const QString &fn);
     void on_actionSettings_triggered();
-    void on_localDCPushButton_clicked();
+    void openLocalDC(const QString &fn);
     void on_actionExit_triggered();
     void on_actionAbout_triggered();
     void on_select3dPushButton_clicked();
@@ -74,6 +74,7 @@ private slots:
     void on_actionLoad_session_triggered();
     void on_loadTableButton_clicked();
     void on_actionConeSearch_triggered();
+    void on_openLoadDataPushButton_clicked();
 
 private:
     Ui::ViaLactea *ui;

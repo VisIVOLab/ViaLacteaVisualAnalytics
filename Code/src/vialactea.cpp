@@ -247,17 +247,14 @@ void ViaLactea::queryButtonStatusOnOff()
         ui->queryPushButton->setEnabled(false);
 }
 
-void ViaLactea::on_openLocalImagePushButton_clicked()
+void ViaLactea::openLocalImage(const QString &fn)
 {
-    QString fn = QFileDialog::getOpenFileName(this, "Open image file", QString(),
-                                              "Fits images (*.fits)");
-    if (fn.isEmpty()) {
-        return;
-    }
-    bool doSearch = settings.value("vlkb.search", false).toBool();
+    // No image open yet: new image
     if (masterWin == nullptr) {
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(fn.toStdString());
+
+        bool doSearch = settings.value("vlkb.search", false).toBool();
 
         if (doSearch) {
             double coords[2], rectSize[2];
@@ -281,7 +278,7 @@ void ViaLactea::on_openLocalImagePushButton_clicked()
 
         this->showMinimized();
     } else if (canImportToMasterWin(fn.toStdString())) {
-        // An image is already open and we can add this image as a layer
+        // An image is already open: we can add this image as a layer
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
         fits->SetFileName(fn.toStdString());
         masterWin->addLayerImage(fits);
@@ -359,48 +356,9 @@ void ViaLactea::sessionScan(const QString &currentDir, const QDir &rootDir, QStr
     }
 }
 
-void ViaLactea::on_localDCPushButton_clicked()
+
+void ViaLactea::openLocalDC(const QString &fn)
 {
-    QString fn = QFileDialog::getOpenFileName(this, tr("Import a file"), "",
-                                              tr("FITS images(*.fit *.fits)"));
-
-    if (fn.isEmpty()) {
-        return;
-    }
-
-    // Do not continue if the file is an image or it can't be loaded
-    int ReadStatus = 0;
-    if (isFitsImage(fn, ReadStatus) || ReadStatus != 0) {
-        QMessageBox::warning(this, "Open file",
-                             "The file you selected is not a cube!\n"
-                             "Use Load Image to load it.");
-        return;
-    }
-
-    // Check if the keywords in the header are present
-    std::list<std::string> missing;
-    try {
-        if (!AstroUtils::checkSimCubeHeader(fn.toStdString(), missing)) {
-            auto res = QMessageBox::warning(this, "Warning",
-                                            "The header does not contain all the necessary "
-                                            "keywords!\nDo you want to add them?",
-                                            QMessageBox::Yes | QMessageBox::No);
-
-            if (res == QMessageBox::Yes) {
-                QStringList qMissing;
-                std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
-                    qMissing << QString::fromStdString(key);
-                });
-                auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
-                dialog->show();
-                return;
-            }
-        }
-    } catch (const std::exception &e) {
-        QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
-        return;
-    }
-
     // Check if the fits is a simcube
     auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader_dc->SetFileName(fn.toStdString());
@@ -475,6 +433,8 @@ void ViaLactea::on_localDCPushButton_clicked()
                                          "imported in the current session."));
     }
 }
+
+
 
 void ViaLactea::on_actionExit_triggered()
 {
@@ -715,3 +675,49 @@ bool ViaLactea::isFitsImage(const QString &filepath, int &ReadStatus) const
 
     return naxis == 2;
 }
+
+void ViaLactea::on_openLoadDataPushButton_clicked()
+{
+    QString fn = QFileDialog::getOpenFileName(this, tr("Import an image file"), QString(),
+                                              tr("FITS images (*.fit *.fits)"));
+    if (fn.isEmpty()) {
+        return;
+    }
+
+    // LocalImage: if the file is an image [or it can't be loaded: removed the ReadStatus != 0 check condition]
+    int ReadStatus;
+    if (isFitsImage(fn, ReadStatus)) {
+        openLocalImage(fn);
+    } else {
+        // localDC: if the file is an image or it can't be loaded
+
+        // Check if the keywords in the header are present
+        std::list<std::string> missing;
+        try {
+            if (!AstroUtils::checkSimCubeHeader(fn.toStdString(), missing)) {
+                auto res = QMessageBox::warning(this, "Warning",
+                                                "The header does not contain all the necessary "
+                                                "keywords!\nDo you want to add them?",
+                                                QMessageBox::Yes | QMessageBox::No);
+
+                if (res == QMessageBox::Yes) {
+                    QStringList qMissing;
+                    std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
+                        qMissing << QString::fromStdString(key);
+                    });
+                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
+                    dialog->show();
+                    return;
+                }
+            }
+        } catch (const std::exception &e) {
+            QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
+            return;
+        }
+
+        openLocalDC(fn);
+    }
+
+    this->showMinimized();
+}
+
