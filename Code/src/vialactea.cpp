@@ -717,5 +717,7 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
 
         openLocalDC(fn);
     }
+
+    this->showMinimized();
 }
 
