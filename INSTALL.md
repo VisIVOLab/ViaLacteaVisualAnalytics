@@ -159,6 +159,11 @@ On System variables edit `Path` variable and add new `%VTK_DIR%\bin`
 ## Boost 1.78 C++ Libraries
 Unzip Boost
 
+## OpenSSL
+Qt do not provide OpenSSL. You can download the 32 or 64 bit version system [here](https://www.openssl.org/)
+For the project it is required the close v1.1.1
+| Copy OpenSSL DLLs to: The windows system directory
+
 ## Building ViaLacteaVisualAnalytics
 Build the project using CMake of QT Creator build settings. You may need to specify the following CMake variables:
 - `BOOST_ROOT`: Boost installation prefix.
