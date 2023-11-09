@@ -1,71 +1,106 @@
 #include "vtkdrawlineinteractorstyleimage.h"
 
 #include <vtkNamedColors.h>
+#include <vtkObjectFactory.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
-#include "vtkRenderWindow.h"
-#include "vtkRendererCollection.h"
+#include <vtkProperty2D.h>
+#include <vtkRenderWindow.h>
+#include <vtkRendererCollection.h>
 #include <vtkRenderWindowInteractor.h>
 
-vtkStandardNewMacro(vtkDrawLineInteractorStyleImage);
+vtkStandardNewMacro(vtkDrawLineInteractorStyleUser);
 
-vtkDrawLineInteractorStyleImage::vtkDrawLineInteractorStyleImage()
+vtkDrawLineInteractorStyleUser::vtkDrawLineInteractorStyleUser() : isDrawingPVSliceLine(false), Start { 0, 0, 0 }, End { 0, 0, 0 }
 {
+    vtkNew<vtkNamedColors> colors;
+    this->Coordinate->SetCoordinateSystemToDisplay();
+    this->Actor->SetArrowPlacementToPoint2();
+    this->Actor->GetProperty()->SetColor(colors->GetColor3d("Red").GetData());
+    this->Actor->GetPositionCoordinate()->SetCoordinateSystemToWorld();
+    this->Actor->GetPosition2Coordinate()->SetCoordinateSystemToWorld();
     isDrawingPVSliceLine = false;
     startPVSliceLine = endPVSliceLine = QPointF(0, 0);
 }
 
-vtkDrawLineInteractorStyleImage::~vtkDrawLineInteractorStyleImage()
+vtkDrawLineInteractorStyleUser::~vtkDrawLineInteractorStyleUser()
 {
+    std::for_each(this->renderers.begin(), this->renderers.end(), [=](vtkRenderer *r) {
+        r->RemoveActor(this->Actor);
+        if (r->GetRenderWindow()) {
+            r->GetRenderWindow()->Render();
+        }
+    });
 }
 
-void vtkDrawLineInteractorStyleImage::setCoordLocCallback(const std::function<void (const std::string &)> &newCoordLocCallback)
+void vtkDrawLineInteractorStyleUser::setLineAbortCallback(const std::function<void ()> &newLineAbortCallback)
 {
-    coordLocCallback = newCoordLocCallback;
+    lineAbortCallback = newLineAbortCallback;
 }
 
-void vtkDrawLineInteractorStyleImage::setLineDrawnCallback(const std::function<void ()> &newLineDrawnCallback)
-{
-    lineDrawnCallback = newLineDrawnCallback;
-}
-
-void vtkDrawLineInteractorStyleImage::PrintSelf(ostream &os, vtkIndent indent)
+void vtkDrawLineInteractorStyleUser::PrintSelf(ostream &os, vtkIndent indent)
 {
     Superclass::PrintSelf(os, indent);
 }
 
-void vtkDrawLineInteractorStyleImage::OnMouseMove()
+void vtkDrawLineInteractorStyleUser::OnMouseMove()
 {
     Superclass::OnMouseMove();
 
-    std::stringstream ss;
-
-    if (isDrawingPVSliceLine) {
-        endPVSliceLine = QPointF(this->GetInteractor()->GetEventPosition()[0], this->GetInteractor()->GetEventPosition()[1]);
-        // Send information back to pqWindowCube to send to the server to calculate the actual pvslice.
-        LinePointCallback(startPVSliceLine, endPVSliceLine);
+    if (!this->isDrawingPVSliceLine) {
+        return;
     }
-    this->coordLocCallback(ss.str());
+
+    int *coords = this->Interactor->GetEventPosition();
+    this->Coordinate->SetValue(coords[0], coords[1], 0);
+    auto renderer = this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
+    double *worldCoords = this->Coordinate->GetComputedWorldValue(renderer);
+    std::copy_n(worldCoords, 3, this->End);
+    this->Actor->GetPosition2Coordinate()->SetValue(this->End);
+
+    this->renderers.insert(renderer);
+    renderer->AddActor(this->Actor);
+    this->Interactor->GetRenderWindow()->Render();
 }
 
-void vtkDrawLineInteractorStyleImage::OnLeftButtonDown()
+void vtkDrawLineInteractorStyleUser::OnLeftButtonDown()
 {
     Superclass::OnLeftButtonDown();
 
-    startPVSliceLine = QPointF(this->GetInteractor()->GetEventPosition()[0], this->GetInteractor()->GetEventPosition()[1]);
-    endPVSliceLine = startPVSliceLine;
-    isDrawingPVSliceLine = true;
+    int *coords = this->Interactor->GetEventPosition();
+    this->Coordinate->SetValue(coords[0], coords[1], 0);
+    auto renderer = this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
+    double *worldCoords = this->Coordinate->GetComputedWorldValue(renderer);
+    std::copy_n(worldCoords, 3, this->Start);
+    this->Actor->GetPositionCoordinate()->SetValue(this->Start);
+    this->isDrawingPVSliceLine = true;
 }
 
-void vtkDrawLineInteractorStyleImage::OnLeftButtonUp()
+void vtkDrawLineInteractorStyleUser::OnLeftButtonUp()
 {
     Superclass::OnLeftButtonUp();
-
-    isDrawingPVSliceLine = false;
-//    this->lineDrawnCallback();
+    this->isDrawingPVSliceLine = false;
+    this->Interactor->GetRenderWindow()->Render();
 }
 
-void vtkDrawLineInteractorStyleImage::setLineValsCallback(const std::function<void (QPointF, QPointF)> &callback)
+void vtkDrawLineInteractorStyleUser::OnKeyPress()
+{
+    Superclass::OnKeyPress();
+    std::string key = this->Interactor->GetKeySym();
+
+    if (key == "Escape") {
+        this->lineAbortCallback();
+        return;
+    }
+
+    if (key == "Return") {
+        this->LinePointCallback(this->Start[0], this->Start[1], this->End[0], this->End[1]);
+        this->lineAbortCallback();
+        return;
+    }
+}
+
+void vtkDrawLineInteractorStyleUser::setLineValsCallback(const std::function<void (float, float, float, float)> &callback)
 {
     LinePointCallback = callback;
 }

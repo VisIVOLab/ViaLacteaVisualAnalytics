@@ -126,11 +126,8 @@ private:
     void showContours();
     void removeContours();
 
-    QPointF pvStart, pvEnd;
-    vtkNew<vtkLineSource> line;
-    vtkNew<vtkActor> actor;
     int zDepth;
-    void sendLineEndPoints(QPointF start, QPointF end);
+    void sendLineEndPoints(std::pair<float, float> start, std::pair<float, float> end);
     void endDrawLine();
     void showPVSlice();
     void showPVSlice(std::pair<int, int> start, std::pair<int, int> end);
@@ -139,7 +136,7 @@ private:
     bool loadChange = false;
 
     vtkNew<vtkInteractorStyleImageCustom> pixCoordInteractorStyle;
-    vtkNew<vtkDrawLineInteractorStyleImage> drawPVLineInteractorStyle;
+    vtkNew<vtkDrawLineInteractorStyleUser> drawPVLineInteractorStyle;
 };
 
 #endif // PQWINDOWCUBE_H

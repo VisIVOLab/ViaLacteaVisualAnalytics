@@ -43,7 +43,7 @@ pqPVWindow::pqPVWindow(pqServer *serv, pqPipelineSource *cbSrc, std::pair<int, i
         std::cerr << "Error when setting filter properties!" << std::endl;
     }
 
-    if (auto endProp = filterProxy->GetProperty("StartPoint")){
+    if (auto endProp = filterProxy->GetProperty("EndPoint")){
         int* endVals = new int[2];
         endVals[0] = end.first;
         endVals[1] = end.second;
@@ -65,6 +65,9 @@ pqPVWindow::pqPVWindow(pqServer *serv, pqPipelineSource *cbSrc, std::pair<int, i
 
     vtkNew<vtkSMTransferFunctionManager> mgr;
     lutProxy = vtkSMTransferFunctionProxy::SafeDownCast(mgr->GetColorTransferFunction("PVSliceTransferFunction", imageProxy->GetSessionProxyManager()));
+    changeLut("Grayscale");
+    ui->comboLut->setCurrentIndex(ui->comboLut->findText("Grayscale"));
+    this->logScale = false;
 
     connect(ui->radioLinear, &QRadioButton::toggled, this, &pqPVWindow::changeLutScale);
     connect(ui->opacitySlider, &QSlider::valueChanged, this, &pqPVWindow::changeOpacity);

@@ -151,20 +151,8 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     pixCoordInteractorStyle->SetPixelZCompFunc([this]() { return currentSlice; });
 
     // Set up interactor for drawing PV slice line
-    drawPVLineInteractorStyle->setLineValsCallback([this](QPointF start, QPointF end){sendLineEndPoints(start, end);});
-    drawPVLineInteractorStyle->setLineDrawnCallback([this](){endDrawLine();});
-    drawPVLineInteractorStyle->setCoordLocCallback(
-            [this](const std::string &str) { showStatusBarMessage(str); });
-
-    // Set up rules to draw line with
-    this->line->SetPoint1(0, 0, 0);
-    this->line->SetPoint2(0, 0, 0);
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(this->line->GetOutputPort());
-    this->actor->SetMapper(mapper);
-    this->actor->GetProperty()->SetLineWidth(2);
-    vtkNew<vtkNamedColors> colors;
-    this->actor->GetProperty()->SetColor(colors->GetColor3d("Red").GetData());
+    drawPVLineInteractorStyle->setLineValsCallback([this](float x1, float y1, float x2, float y2){sendLineEndPoints(std::make_pair(x1, y1), std::make_pair(x2, y2));});
+    drawPVLineInteractorStyle->setLineAbortCallback([this](){endDrawLine();});
 
     // Set initial interactor
     viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
@@ -480,15 +468,23 @@ void pqWindowCube::removeContours()
     }
 }
 
-void pqWindowCube::sendLineEndPoints(QPointF start, QPointF end)
+void pqWindowCube::sendLineEndPoints(std::pair<float, float> start, std::pair<float, float> end)
 {
-    pvStart = start;
-    pvEnd = end;
-    this->line->SetPoint1(pvStart.x(), pvStart.y(), zDepth);
-    this->line->SetPoint2(pvEnd.x(), pvEnd.y(), zDepth);
-    viewSlice->resetDisplay();
-    viewSlice->render();
-    // TODO: yell at server
+    bool invalid = start.first < bounds[0] || start.first > bounds[1] || start.second < bounds[2] || start.second > bounds[3];
+    invalid = invalid || end.first < bounds[0] || end.first > bounds[1] || end.second < bounds[2] || end.second > bounds[3];
+    if (invalid){
+        std::stringstream eString, eInfo;
+        eString << "Error: trying to draw a PV slice beyond the edges of the available data!";
+        eInfo << "Draw a line only on the slice.";
+//        throwError(eString.str().c_str(), eInfo.str().c_str());
+        return;
+    }
+    int x1, y1, x2, y2;
+    x1 = std::round(start.first);
+    y1 = std::round(start.second);
+    x2 = std::round(end.first);
+    y2 = std::round(end.second);
+    this->showPVSlice(std::make_pair(x1, y1), std::make_pair(x2, y2));
 }
 
 void pqWindowCube::endDrawLine()
@@ -497,7 +493,6 @@ void pqWindowCube::endDrawLine()
             pixCoordInteractorStyle);
     this->ui->actionDraw_PV_line->setChecked(false);
     drawing = false;
-    viewSlice->getRenderViewProxy()->GetRenderer()->RemoveActor(this->actor);
 }
 
 void pqWindowCube::showPVSlice()
@@ -854,12 +849,11 @@ void pqWindowCube::on_actionDraw_PV_line_triggered()
         viewSlice->getViewProxy()->GetRenderWindow()->GetInteractor()->SetInteractorStyle(
                 drawPVLineInteractorStyle);
         drawing = true;
-        viewSlice->getRenderViewProxy()->GetRenderer()->AddActor(this->actor);
+        showStatusBarMessage("Press ENTER to confirm your selection, press ESC to abort.");
     }
     else
         endDrawLine();
 }
-
 
 void pqWindowCube::on_actionGen_test_PV_slice_triggered()
 {
