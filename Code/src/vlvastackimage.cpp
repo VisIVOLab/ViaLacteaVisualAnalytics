@@ -1,5 +1,5 @@
 #include "vlvastackimage.h"
-#include "vtkSMProperty.h"
+#include "errorMessage.h"
 
 #include <pqDataRepresentation.h>
 #include <pqLoadDataReaction.h>
@@ -9,6 +9,7 @@
 #include <vtkPVDataMover.h>
 #include <vtkPVDataSetAttributesInformation.h>
 #include <vtkSMCoreUtilities.h>
+#include <vtkSMProperty.h>
 #include <vtkSMPropertyHelper.h>
 #include <vtkSMPVRepresentationProxy.h>
 #include <vtkSMSessionProxyManager.h>
@@ -51,6 +52,13 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
 
         // Handle Subset selection
         setSubsetProperties(subset);
+        if (!checkValid())
+        {
+            std::stringstream eString, eInfo;
+            eString << "File " << f.toStdString() << " is a cube!";
+            eInfo << "Images must be 2D FITS images, with NAXES == 2.";
+            throwError(eString.str().c_str(), eInfo.str().c_str());
+        }
 
         imageRep = builder->createDataRepresentation(this->imageSource->getOutputPort(0), viewImage);
         imageProxy = imageRep->getProxy();
@@ -232,6 +240,28 @@ void vlvaStackImage::readHeaderFromSource()
         std::cerr << "StackImage not initialised, returning default value." << std::endl;
         return;
     }
+}
+
+bool vlvaStackImage::checkValid()
+{
+    if (initialised)
+    {
+        try
+        {
+            auto sourceProxy = imageSource->getProxy();
+            sourceProxy->UpdateVTKObjects();
+            int imType = 0;
+            vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Get(&imType);
+            if (imType == imageType::FITS2DIMAGE)
+                return true;
+        }
+        catch (std::exception& e)
+        {
+            std::cerr << "Error when setting subset properties of stack image! Error: " << e.what() << std::endl;
+            return false;
+        }
+    }
+    return false;
 }
 
 QString vlvaStackImage::createFitsHeaderFile(const FitsHeaderMap &fitsHeader)

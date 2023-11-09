@@ -16,7 +16,8 @@ class vlvaStackImage
 {
     using FitsHeaderMap = QMap<QString, QString>;
 
-public:
+    public:
+        enum imageType { EMPTY, FITS2DIMAGE, FITS3DIMAGE };
         vlvaStackImage(QString f, int i, bool log, pqObjectBuilder* bldr, pqRenderView *viewImage, vtkSMSessionProxyManager* spm);
         ~vlvaStackImage();
 
@@ -102,6 +103,8 @@ public:
         QString createFitsHeaderFile(const FitsHeaderMap &fitsHeader);
         void readInfoFromSource();
         void readHeaderFromSource();
+
+        bool checkValid();
 };
 
 static bool overlaps(const std::vector<vlvaStackImage*>& imgs, const vlvaStackImage* evalImg){
