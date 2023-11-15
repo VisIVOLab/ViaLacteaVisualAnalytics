@@ -59,6 +59,8 @@ private slots:
     void on_lstImageList_itemChanged(QListWidgetItem *item);
 
 private:
+    enum removeErrorCode{INIT_ERROR, NO_ERROR, IS_CUBE_ERROR};
+
     Ui::pqWindowImage *ui;
 
     std::vector<vlvaStackImage*> images;
@@ -97,7 +99,7 @@ private:
     void setLogScale(bool logScale);
     void setOpacity(float value);
     void extracted(QList<pqRepresentation *> &reps, QString &fName);
-    int removeImageFromStack(const int index);
+    int removeImageFromStack(const int index, const removeErrorCode remErrCode = removeErrorCode::NO_ERROR);
 
     int positionImage(vlvaStackImage* stackImage, bool setBasePos = false);
 

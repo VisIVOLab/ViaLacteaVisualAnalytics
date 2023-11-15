@@ -250,7 +250,8 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
     this->activeIndex = images.size() - 1;
 
     // Initialise image on server side
-    if (images.at(activeIndex)->init(file, subset))
+    removeErrorCode initErr = (removeErrorCode) images.at(activeIndex)->init(file, subset);
+    if (initErr == removeErrorCode::NO_ERROR)
     {
         if (images.size() == 1){
             this->positionImage(images.at(activeIndex), true);
@@ -273,7 +274,7 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
     } else
     {
         std::cerr << "Failed to initialise image for file " << file.toStdString() << "." << std::endl;
-        removeImageFromStack(activeIndex);
+        removeImageFromStack(activeIndex, initErr);
         return 0;
     }
 }
@@ -284,16 +285,20 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
  * @param index The index of the image to be removed
  * @return True if successful, false if unsuccessful
  */
-int pqWindowImage::removeImageFromStack(const int index)
+int pqWindowImage::removeImageFromStack(const int index, const removeErrorCode remErrCode)
 {
     // If in the process of initialising the UI, ignore this command.
     if (clmInit)
         return 1;
 
     auto rep = this->images.at(activeIndex)->getImageRep();
-    auto colProxy = rep->getLookupTable();
-    auto scalBarRep = colProxy->getScalarBar(this->viewImage);
-    builder->destroy(scalBarRep);
+    if (remErrCode != removeErrorCode::IS_CUBE_ERROR)
+    {
+        auto colProxy = rep->getLookupTable();
+        auto scalBarRep = colProxy->getScalarBar(this->viewImage);
+        builder->destroy(scalBarRep);
+    }
+
     builder->destroy(rep);
 
     images.erase(images.begin() + index);

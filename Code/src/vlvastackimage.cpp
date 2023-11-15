@@ -58,6 +58,7 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
             eString << "File " << f.toStdString() << " is a cube!";
             eInfo << "Images must be 2D FITS images, with NAXES == 2.";
             throwError(eString.str().c_str(), eInfo.str().c_str());
+            return 2;
         }
 
         imageRep = builder->createDataRepresentation(this->imageSource->getOutputPort(0), viewImage);
@@ -251,13 +252,13 @@ bool vlvaStackImage::checkValid()
             auto sourceProxy = imageSource->getProxy();
             sourceProxy->UpdateVTKObjects();
             int imType = 0;
-            vtkSMPropertyHelper(sourceProxy, "ReadSubExtent").Get(&imType);
+            vtkSMPropertyHelper(sourceProxy, "ImgType").Get(&imType);
             if (imType == imageType::FITS2DIMAGE)
                 return true;
         }
         catch (std::exception& e)
         {
-            std::cerr << "Error when setting subset properties of stack image! Error: " << e.what() << std::endl;
+            std::cerr << "Error when retrieving image type property of stack image! Error: " << e.what() << std::endl;
             return false;
         }
     }
