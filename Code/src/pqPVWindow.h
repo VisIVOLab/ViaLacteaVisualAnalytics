@@ -30,6 +30,10 @@ private slots:
     int changeOpacity(int opacity);
     int changeLut(const QString &lutName);
 
+    void on_actionSave_as_PNG_triggered();
+
+    void on_actionSave_as_FITS_triggered();
+
 private:
     Ui::pqPVWindow *ui;
 
@@ -43,6 +47,9 @@ private:
 
     QString colourMap;
     bool logScale;
+
+    int saveAsPNG();
+    int saveAsFITS();
 };
 
 #endif // PQPVWINDOW_H

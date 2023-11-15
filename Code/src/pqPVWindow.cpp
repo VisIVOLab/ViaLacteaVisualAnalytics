@@ -1,13 +1,26 @@
 #include "pqPVWindow.h"
 #include "ui_pqPVWindow.h"
 
-#include "pqApplicationCore.h"
-#include "pqDataRepresentation.h"
-#include "vtkSMCoreUtilities.h"
-#include "vtkSMPropertyHelper.h"
-#include "vtkSMPVRepresentationProxy.h"
-#include "vtkSMTransferFunctionManager.h"
-#include "vtkSMTransferFunctionPresets.h"
+#include "pqFileDialog.h"
+#include "vtkSMProxyManager.h"
+#include "vtkSMSessionProxyManager.h"
+#include "vtkSMWriterFactory.h"
+#include "vtkSMWriterProxy.h"
+
+#include <pqApplicationCore.h>
+#include <pqDataRepresentation.h>
+#include <vtkPNGWriter.h>
+#include <vtkRenderWindow.h>
+#include <vtkSMCoreUtilities.h>
+#include <vtkSMPropertyHelper.h>
+#include <vtkSMPVRepresentationProxy.h>
+#include <vtkSMRenderViewProxy.h>
+#include <vtkSMTransferFunctionManager.h>
+#include <vtkSMTransferFunctionPresets.h>
+#include <vtkWindowToImageFilter.h>
+
+#include <QFileDialog>
+#include <QMessageBox>
 
 pqPVWindow::pqPVWindow(pqServer *serv, pqPipelineSource *cbSrc, std::pair<int, int> &start, std::pair<int, int> &end, QWidget *parent) :
       QMainWindow(parent),
@@ -194,3 +207,74 @@ int pqPVWindow::changeLut(const QString &lutName)
     }
     return 0;
 }
+
+void pqPVWindow::on_actionSave_as_PNG_triggered()
+{
+    this->saveAsPNG();
+}
+
+
+void pqPVWindow::on_actionSave_as_FITS_triggered()
+{
+    this->saveAsFITS();
+}
+
+int pqPVWindow::saveAsPNG()
+{
+    QString filepath =
+            QFileDialog::getSaveFileName(this, "Save as PNG...", QString(), "PNG image (*.png)");
+    if (filepath.isEmpty()) {
+        return 0;
+    }
+
+    vtkNew<vtkWindowToImageFilter> filter;
+    filter->SetInput(this->viewImage->getRenderViewProxy()->GetRenderWindow());
+    filter->SetScale(2);
+    filter->Update();
+
+    vtkNew<vtkPNGWriter> writer;
+    writer->SetFileName(filepath.toStdString().c_str());
+    writer->SetInputConnection(filter->GetOutputPort());
+    writer->Write();
+
+    this->viewImage->render();
+
+    QMessageBox::information(this, "Image saved", "Image saved: " + filepath);
+    return 1;
+}
+
+int pqPVWindow::saveAsFITS()
+{
+    vtkSMWriterFactory *writerFactory = vtkSMProxyManager::GetProxyManager()->GetWriterFactory();
+    auto z = writerFactory->GetSupportedWriterProxies(this->PVSliceFilter->getSourceProxy(), 0);
+    auto filters = writerFactory->GetSupportedFileTypes(this->PVSliceFilter->getSourceProxy());
+    auto filepath = pqFileDialog::getSaveFileName(server, this, QString(), QString(), filters);
+
+    if (filepath.isEmpty()){
+        return 0;
+    }
+    QFileInfo fInfo(filepath);
+    if (fInfo.suffix() != "fits" && fInfo.suffix() != "fts" && fInfo.suffix() != "fit" && fInfo.suffix() != ".fits" && fInfo.suffix() != ".fts" && fInfo.suffix() != ".fit")
+        filepath.append(".fits");
+//    throwError("Not defined yet.", "Be patient and yell at us more.");
+
+//    auto w = writerFactory->CreateWriter(filepath.toStdString().c_str(), this->PVSliceFilter->getSourceProxy());
+//    w->UpdateSelfAndAllInputs();
+//    w->Delete();
+    vtkSMWriterProxy* writer = vtkSMWriterProxy::SafeDownCast(server->proxyManager()->GetProxy("writers", "FitsWriter"));
+
+    // Set input data
+    writer->SetSelectionInput(0, this->PVSliceFilter->getSourceProxy(), 0);
+
+    // Configure writer properties
+    vtkSMPropertyHelper(writer, "FileName").Set(filepath.toStdString().c_str());
+
+    // Update and execute the writer
+    writer->UpdateVTKObjects();
+    writer->UpdatePipeline();
+
+    // Clean up
+    writer->Delete();
+    return 1;
+}
+

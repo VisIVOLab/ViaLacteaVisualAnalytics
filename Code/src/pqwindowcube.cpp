@@ -46,6 +46,7 @@
 pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset)
     : ui(new Ui::pqWindowCube),
       FitsFileName(QFileInfo(filepath).fileName()),
+      cubeFilePath(filepath),
       cubeSubset(cubeSubset),
       currentSlice(-1),
       contourFilter(nullptr),
@@ -56,8 +57,6 @@ pqWindowCube::pqWindowCube(const QString &filepath, const CubeSubset &cubeSubset
     setWindowTitle(FitsFileName);
     connect(ui->actionVolGenerate, &QAction::triggered, this,
             &pqWindowCube::generateVolumeRendering);
-
-    connect(ui->menuPV_Slice, SIGNAL(aboutToShow()), this, SLOT(pqWindowCube::pvMenuClicked()));
 
     // Opacity menu actions
     auto opacityGroup = new QActionGroup(this);
@@ -172,6 +171,15 @@ pqWindowCube::~pqWindowCube()
     this->CubeSource = NULL;
     this->SliceSource = NULL;
     delete ui;
+}
+
+void pqWindowCube::PVSliceWindowClosed()
+{
+    if (this->fullSrc != NULL)
+    {
+        builder->destroy(fullSrc);
+        this->fullSrc = NULL;
+    }
 }
 
 void pqWindowCube::readInfoFromSource()
@@ -504,7 +512,17 @@ void pqWindowCube::showPVSlice()
 
 void pqWindowCube::showPVSlice(std::pair<int, int> start, std::pair<int, int> end)
 {
-    pvSlice = new pqPVWindow(this->server, this->CubeSource, start, end, this);
+    CubeSource->getProxy()->UpdatePropertyInformation();
+    int sF;
+    vtkSMPropertyHelper(CubeSource->getProxy(), "ScaleFactorInfo").Get(&sF);
+    if (sF != 1)
+    {
+        fullSrc = pqLoadDataReaction::loadData({ cubeFilePath });
+        pvSlice = new pqPVWindow(this->server, fullSrc, start, end, this);
+    }
+    else
+        pvSlice = new pqPVWindow(this->server, this->CubeSource, start, end, this);
+    connect(pvSlice, &pqPVWindow::destroyed, this, &pqWindowCube::PVSliceWindowClosed);
     pvSlice->setAttribute(Qt::WA_Hover);
     pvSlice->show();
     pvSlice->activateWindow();
