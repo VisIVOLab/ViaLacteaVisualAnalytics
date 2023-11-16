@@ -155,6 +155,7 @@ private slots:
     void on_greyBodyPushButton_clicked();
     void on_Thick_clicked();
     void on_thinButton_clicked();
+    void on_multiDragSelectCheckBox_toggled(bool checked);
 };
 
 QDataStream &operator<<(QDataStream &out, QList<SED *> &sedlist);

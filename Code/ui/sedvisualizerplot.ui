@@ -339,6 +339,13 @@
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QCheckBox" name="multiDragSelectCheckBox">
+             <property name="text">
+              <string>Drag Select</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </widget>
         </item>
@@ -619,7 +626,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

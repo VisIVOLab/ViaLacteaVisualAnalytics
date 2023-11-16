@@ -12,6 +12,7 @@
 #include <QInputDialog>
 #include <QSignalMapper>
 #include <QtConcurrent>
+#include <QDebug>
 
 SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::SEDVisualizerPlot)
@@ -69,9 +70,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
-    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent *)), this, SLOT(mousePress()));
-    connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
-    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent *)), this, SLOT(mouseRelease()));
+    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress()));
+    connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
+    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease()));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
@@ -1995,15 +1996,27 @@ void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
 {
     if (checked == true) {
         multiSelectMOD = true;
+        // unset control/command shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
     } else {
         multiSelectMOD = false;
+        // set control/command shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
+        // reset previus pending selection
         QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
         for (int i = 0; i < list_items.size(); i++) {
             list_items.at(i)->setSelected(false);
         }
         ui->customPlot->replot();
+    }
+}
+
+void SEDVisualizerPlot::on_multiDragSelectCheckBox_toggled(bool checked)
+{
+    if (checked == true){
+        qDebug() << "--premuto" << checked;
+    } else {
+        qDebug() << "--" << checked;
     }
 }
 
