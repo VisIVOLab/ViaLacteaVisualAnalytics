@@ -24,6 +24,19 @@
 
 #include <fitsio.h>
 
+/**
+ * @brief vlvaStackImage::vlvaStackImage
+ * Default constructor. Sets or instantiates all the required components for this class instance to
+ * successfully communicate with the server.
+ * @param filePath The file path of the image managed by this class instance.
+ * @param counter A unique integer, managed by the pqWindowClass, used to ensure unique colour map names.
+ * @param log A toggle that determines if the image starts in log scale or linear scale.
+ * @param bldr The pqObjectBuilder, managed by the pqWindowClass instance. Reused across all instances of
+ *             vlvaStackImage controlled by a single pqWindowClass instance.
+ * @param vwImg The renderview that the image managed by this class instance should be displayed in.
+ * @param spm The sessionproxymanager, used to generate proxies as used by this class instance. Reused across all instances of
+ *             vlvaStackImage controlled by a single pqWindowClass instance.
+ */
 vlvaStackImage::vlvaStackImage(QString filePath, int counter, bool log, pqObjectBuilder* bldr, pqRenderView *vwImg, vtkSMSessionProxyManager *spm) : logScale(log),
                                                                                                            active(true), builder(bldr), viewImage(vwImg), serverProxyManager(spm)
 {
@@ -44,6 +57,14 @@ vlvaStackImage::~vlvaStackImage()
     setActive(false);
 }
 
+/**
+ * @brief vlvaStackImage::init
+ * This function checks that the image to be loaded conforms to the correct type
+ * to be managed by this class. Also instantiates the remaining proxies not needed on construction.
+ * @param f The file path of the image.
+ * @param subset The subset values chosen by the user for this image.
+ * @return 1 if successful, 0 if unsuccessful.
+ */
 int vlvaStackImage::init(QString f, CubeSubset subset)
 {
     try {
@@ -89,11 +110,19 @@ int vlvaStackImage::init(QString f, CubeSubset subset)
     return 1;
 }
 
+/**
+ * @brief vlvaStackImage::getIndex
+ * @return The index of the image managed by this class instance in the stack
+ */
 size_t vlvaStackImage::getIndex() const
 {
     return this->index;
 }
 
+/**
+ * @brief vlvaStackImage::getFitsHeaderPath
+ * @return The file path of the FitsHeader used by interactors and the like to interact with this image's FITS header.
+ */
 const std::string vlvaStackImage::getFitsHeaderPath() const
 {
     if (initialised) return fitsHeaderPath.toStdString();
@@ -101,6 +130,10 @@ const std::string vlvaStackImage::getFitsHeaderPath() const
     return "";
 }
 
+/**
+ * @brief vlvaStackImage::getFitsFileName
+ * @return The file path of the image managed by this class instance.
+ */
 const QString vlvaStackImage::getFitsFileName() const
 {
     if (initialised) return FitsFileName;
@@ -108,11 +141,24 @@ const QString vlvaStackImage::getFitsFileName() const
     return "";
 }
 
+/**
+ * @brief vlvaStackImage::operator <
+ * Compare this class instance to another class instance.
+ * @param other The other class instance to be compared to.
+ * @return True if the index of this class instance is less than the index of the other class instance.
+ */
 bool vlvaStackImage::operator<(const vlvaStackImage &other) const
 {
     return this->getIndex() < other.getIndex();
 }
 
+/**
+ * @brief vlvaStackImage::operator ==
+ * Compare this class instance to another class instance.
+ * @param other The other class instance to be compared to.
+ * @return True if the file path of this class instance's image is the same
+ * as the file path of the other class instance's image.
+ */
 bool vlvaStackImage::operator==(const vlvaStackImage &other) const
 {
     if (this->getFitsFileName() != other.getFitsFileName())
@@ -120,16 +166,31 @@ bool vlvaStackImage::operator==(const vlvaStackImage &other) const
     return true;
 }
 
+/**
+ * @brief vlvaStackImage::getImageRep
+ * @return A pointer to the client side data representation for this image,
+ * used for removing this image and the image's colour legend bar
+ */
 pqDataRepresentation *vlvaStackImage::getImageRep() const
 {
     return imageRep;
 }
 
+/**
+ * @brief vlvaStackImage::getPixCount
+ * @return The number of pixels in the image, calculated on intialisation.
+ */
 const std::pair<int, int> vlvaStackImage::getPixCount() const
 {
     return pixCount;
 }
 
+/**
+ * @brief vlvaStackImage::setSubsetProperties
+ * Function sets load properties for the FitsReader plugin on the server for this image.
+ * @param subset The user-selected values for the subset of this image.
+ * @return 1 if successful, 0 if unsuccessful
+ */
 int vlvaStackImage::setSubsetProperties(CubeSubset& subset)
 {
     if (initialised) {
@@ -155,6 +216,12 @@ int vlvaStackImage::setSubsetProperties(CubeSubset& subset)
     return 0;
 }
 
+/**
+ * @brief vlvaStackImage::setActive
+ * Function to set the image visible or invisible (called when selecting the checkbox in the list of images in the stack)
+ * @param act True if set visible, false if to set invisible.
+ * @return 1 if successful, 0 if unsuccessful
+ */
 int vlvaStackImage::setActive(bool act)
 {
     if (initialised)
@@ -183,16 +250,29 @@ int vlvaStackImage::setActive(bool act)
     return 0;
 }
 
+/**
+ * @brief vlvaStackImage::isEnabled
+ * @return True if the image is visible, false if it is invisible
+ */
 const bool vlvaStackImage::isEnabled() const
 {
     return this->active;
 }
 
+/**
+ * @brief vlvaStackImage::getColourMap
+ * @return The name of the colour map applied to this image.
+ */
 const QString vlvaStackImage::getColourMap() const
 {
     return this->colourMap;
 }
 
+/**
+ * @brief vlvaStackImage::readInfoFromSource
+ * Function that extracts the information of the image
+ * from the source.
+ */
 void vlvaStackImage::readInfoFromSource()
 {
     if (initialised)
@@ -215,6 +295,11 @@ void vlvaStackImage::readInfoFromSource()
     }
 }
 
+/**
+ * @brief vlvaStackImage::readHeaderFromSource
+ * Function that retrieves the FITS header information from
+ * the file loaded on the server.
+ */
 void vlvaStackImage::readHeaderFromSource()
 {
     if (initialised)
@@ -243,6 +328,11 @@ void vlvaStackImage::readHeaderFromSource()
     }
 }
 
+/**
+ * @brief vlvaStackImage::checkValid
+ * Function checks if the image is a proper 2D FITS image (rather than cube)
+ * @return True if the image is a 2D FITS image, false if it is a cube or poorly formed.
+ */
 bool vlvaStackImage::checkValid()
 {
     if (initialised)
@@ -265,6 +355,13 @@ bool vlvaStackImage::checkValid()
     return false;
 }
 
+/**
+ * @brief vlvaStackImage::createFitsHeaderFile
+ * This function creates a temporary local copy of the FITS header of this image,
+ * used by the AstroWCS library functions.
+ * @param fitsHeader The FITS header of this image, pulled from the server
+ * @return The file path to the new local copy of the FITS header
+ */
 QString vlvaStackImage::createFitsHeaderFile(const FitsHeaderMap &fitsHeader)
 {
     if (initialised)
@@ -370,6 +467,10 @@ int vlvaStackImage::changeColorMap(const QString &name)
     }
 }
 
+/**
+ * @brief vlvaStackImage::getLogScale
+ * @return True if the image is using log scaling, false if it is using linear scaling.
+ */
 const bool vlvaStackImage::getLogScale() const
 {
     return this->logScale;
@@ -432,6 +533,10 @@ int vlvaStackImage::setLogScale(bool useLog)
     }
 }
 
+/**
+ * @brief vlvaStackImage::getOpacity
+ * @return The opacity of the image, in range [0, 1].
+ */
 const double vlvaStackImage::getOpacity() const
 {
     return this->opacity;
@@ -440,8 +545,9 @@ const double vlvaStackImage::getOpacity() const
 /**
  * @brief vlvaStackImage::setOpacity
  * Function that sets the image opacity according to the given value.
- * @param value
- * A value between 0 and 1, with 0 being fully transparent and 1 being fully opaque.
+ * @param value A value between 0 and 1, with 0 being fully transparent and 1 being fully opaque.
+ * @param updateVal Set if the image opacity should be updated or if this is being set as a "removal".
+ * @return 1 if successful, 0 if unsuccessful
  */
 int vlvaStackImage::setOpacity(float value, bool updateVal)
 {
@@ -468,6 +574,13 @@ int vlvaStackImage::setOpacity(float value, bool updateVal)
     }
 }
 
+/**
+ * @brief vlvaStackImage::setXYPosition
+ * Set the XY position of the image (Z is set by the index)
+ * @param x The x coordinate of the bottom left of the image
+ * @param y The y coordinate of the bottom left of the image
+ * @return 1 if successful, 0 if unsuccessful
+ */
 int vlvaStackImage::setXYPosition(double x, double y)
 {
     if (initialised)
@@ -483,11 +596,20 @@ int vlvaStackImage::setXYPosition(double x, double y)
     }
 }
 
+/**
+ * @brief vlvaStackImage::getXYPosition
+ * @return The
+ */
 const std::pair<double, double> vlvaStackImage::getXYPosition() const
 {
     return this->xyPosition;
 }
 
+/**
+ * @brief vlvaStackImage::setZPosition
+ * This function sets the Z position of the image
+ * @return 1 if successful, 0 if unsuccessful
+ */
 int vlvaStackImage::setZPosition()
 {
     if (initialised)
@@ -513,6 +635,14 @@ int vlvaStackImage::setZPosition()
     }
 }
 
+/**
+ * @brief vlvaStackImage::setScale
+ * Function that sets the scale of the image according to WCS coordinates
+ * @param x The scaling along the x-axis
+ * @param y The scaling along the y-axis
+ * @param z The scaling along the z-axis (always 1)
+ * @return 1 if successful, 0 if unsuccessful
+ */
 int vlvaStackImage::setScale(double x, double y, double z)
 {
     if (initialised)
@@ -539,6 +669,14 @@ int vlvaStackImage::setScale(double x, double y, double z)
     }
 }
 
+/**
+ * @brief vlvaStackImage::setOrientation
+ * Function sets the orientation of the image (as determined by WCS)
+ * @param phi The phi angle of the image (about the x-axis)
+ * @param theta The theta angle of the image (about the y-axis)
+ * @param psi The psi angle of the image (about the z-axis)
+ * @return 1 if successful, 0 if unsuccessful
+ */
 int vlvaStackImage::setOrientation(double phi, double theta, double psi)
 {
     if (initialised)
@@ -567,11 +705,20 @@ int vlvaStackImage::setOrientation(double phi, double theta, double psi)
     }
 }
 
+/**
+ * @brief vlvaStackImage::getOrientation
+ * @return Return the orientation of this image
+ */
 const std::tuple<double, double, double> vlvaStackImage::getOrientation() const
 {
     return this->angle;
 }
 
+/**
+ * @brief vlvaStackImage::setIndex
+ * Function that sets the index of this image in the stack (and the z-axis)
+ * @param val The index, range [0, N) where N is the number of images in the stack.
+ */
 void vlvaStackImage::setIndex(const size_t val)
 {
     this->index = val;

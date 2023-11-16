@@ -59,6 +59,11 @@ private slots:
     void on_lstImageList_itemChanged(QListWidgetItem *item);
 
 private:
+    /**
+     * @brief The removeErrorCode enum
+     * Used for removing images from stack for reasons to make sure that program doesn't
+     * try to destroy unitialised or nonexisting proxies and sources.
+     */
     enum removeErrorCode{INIT_ERROR, NO_ERROR, IS_CUBE_ERROR};
 
     Ui::pqWindowImage *ui;

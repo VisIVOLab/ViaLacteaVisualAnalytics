@@ -12,11 +12,22 @@
 #include <QMap>
 #include <QString>
 
+/**
+ * @brief The vlvaStackImage class is a container class used for managing a single image
+ *        in the image stack displayed by the pqWindowImage class.
+ *
+ *        The pqWindowImage class forwards calls to the relevant instance of vlvaStackImage
+ *        and this class then contacts the server for updates.
+ */
 class vlvaStackImage
 {
     using FitsHeaderMap = QMap<QString, QString>;
 
     public:
+        /**
+         * @brief The imageType enum mirrors the declaration of the FitsReader plugin and
+         *        says if the image is a cube or just a 2D image.
+         */
         enum imageType { EMPTY, FITS2DIMAGE, FITS3DIMAGE };
         vlvaStackImage(QString f, int i, bool log, pqObjectBuilder* bldr, pqRenderView *viewImage, vtkSMSessionProxyManager* spm);
         ~vlvaStackImage();
@@ -107,14 +118,21 @@ class vlvaStackImage
         bool checkValid();
 };
 
+/**
+ * @brief overlaps
+ * Utility function that checks if a given image overlaps any in the stack.
+ * @param imgs The stack of images to be compared to.
+ * @param evalImg The image that is being considered.
+ * @return True if any image in the stack overlaps with evalImg, false if none overlap.
+ */
 static bool overlaps(const std::vector<vlvaStackImage*>& imgs, const vlvaStackImage* evalImg){
     for (auto i : imgs){
         if (i == evalImg)
             continue;
         if (AstroUtils().CheckOverlap(i->getFitsHeaderPath(), evalImg->getFitsHeaderPath()))
-            return 1;
+            return true;
     }
-    return 0;
+    return false;
 }
 
 #endif // VLVASTACKIMAGE_H

@@ -58,6 +58,8 @@ pqWindowImage::pqWindowImage(const QString &filepath, const CubeSubset &cubeSubs
     }
     ui->cmbxLUTSelect->setCurrentIndex(ui->cmbxLUTSelect->findText("Grayscale"));
     ui->linearRadioButton->setChecked(true);
+
+    //Initialise image stack
     this->images = std::vector<vlvaStackImage*>();
 
     ui->tblCompactSourcesTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -131,8 +133,8 @@ void pqWindowImage::showStatusBarMessage(const std::string &msg)
 void pqWindowImage::updateUI()
 {
     this->ui->lstImageList->clear();
+    //Disable buttons if all images are removed
     if (images.size() == 0){
-        //TODO: disable buttons if images are removed
         this->ui->btnRemoveImageFromStack->setEnabled(false);
         this->ui->cmbxLUTSelect->setEnabled(false);
         this->ui->opacitySlider->setEnabled(false);
@@ -161,6 +163,7 @@ void pqWindowImage::updateUI()
             interactorStyle);
     std::sort(images.begin(), images.end(), [](vlvaStackImage* a, vlvaStackImage* b){ return a->getIndex() < b->getIndex();});
 
+    //Create list of images at bottom right
     for (int i = 0; i < images.size(); ++i)
     {
         auto item = images.at(i);
@@ -173,6 +176,7 @@ void pqWindowImage::updateUI()
         this->ui->lstImageList->addItem(lstItem);
     }
 
+    //Update UI for current image values
     this->ui->lstImageList->setCurrentItem(this->ui->lstImageList->item(this->activeIndex));
     int newCMIndex = this->ui->cmbxLUTSelect->findText(this->images.at(activeIndex)->getColourMap());
     this->ui->cmbxLUTSelect->setCurrentIndex(newCMIndex);
@@ -251,6 +255,7 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
 
     // Initialise image on server side
     removeErrorCode initErr = (removeErrorCode) images.at(activeIndex)->init(file, subset);
+    //Check error code
     if (initErr == removeErrorCode::NO_ERROR)
     {
         if (images.size() == 1){
@@ -283,6 +288,7 @@ int pqWindowImage::addImageToStack(QString file, const CubeSubset &subset)
  * @brief pqWindowImage::removeImageFromStack
  * Function that removes an image from the stack
  * @param index The index of the image to be removed
+ * @param remErrCode The error code used for removing the image. Used when default removal would cause issues for program.
  * @return True if successful, false if unsuccessful
  */
 int pqWindowImage::removeImageFromStack(const int index, const removeErrorCode remErrCode)
@@ -292,6 +298,7 @@ int pqWindowImage::removeImageFromStack(const int index, const removeErrorCode r
         return 1;
 
     auto rep = this->images.at(activeIndex)->getImageRep();
+    //If error code returns that the image is a cube, don't remove colour bar since it doesn't exist
     if (remErrCode != removeErrorCode::IS_CUBE_ERROR)
     {
         auto colProxy = rep->getLookupTable();
@@ -299,6 +306,7 @@ int pqWindowImage::removeImageFromStack(const int index, const removeErrorCode r
         builder->destroy(scalBarRep);
     }
 
+    //Free resources on the server
     builder->destroy(rep);
 
     images.erase(images.begin() + index);
