@@ -26,7 +26,7 @@ jobs:
       - name: Prepare
         env:
           KEYS: ${{secrets.KEYS}}
-        run: echo $KEYS | base64 --decode > Code/src/authkeys.h
+        run: echo $KEYS | base64 -d > Code/src/authkeys.h
 
       - name: Configure
         run: > 
@@ -34,6 +34,7 @@ jobs:
           -B ${{github.workspace}}/build
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           -DCMAKE_PREFIX_PATH=${{env.Qt5_DIR}}
+          -DCMAKE_CXX_FLAGS_INIT="-fuse-ld=gold"
           -DVTK_DIR=${{env.VTK_DIR}}
           -DCFITSIO_ROOT_DIR=${{env.CFITSIO_DIR}}
           -DBOOST_ROOT=${{env.BOOST_DIR}}
