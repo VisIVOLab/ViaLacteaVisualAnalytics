@@ -18,6 +18,10 @@ jobs:
     steps:       
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            Code
+            Utils
 
       - name: Prepare
         env:
@@ -26,7 +30,8 @@ jobs:
 
       - name: Configure
         run: > 
-          cmake -B ${{github.workspace}}/build
+          cmake -S ${{github.workspace}}/Code
+          -B ${{github.workspace}}/build
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           -DCMAKE_PREFIX_PATH=${{env.Qt5_DIR}}
           -DVTK_DIR=${{env.VTK_DIR}}
