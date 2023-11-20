@@ -10,10 +10,6 @@ jobs:
 
     env:
       BUILD_TYPE: Release
-      Qt5_DIR: "/opt/Qt/5.15.2/gcc_64"
-      VTK_DIR: "/opt/VTK-9.1.0/lib/cmake/vtk-9.1"
-      CFITSIO_DIR: "/opt/cfitsio-4.3.0"
-      BOOST_DIR: "/opt/boost_1_78_0"
 
     steps:       
       - name: Checkout
@@ -33,11 +29,11 @@ jobs:
           cmake -S ${{github.workspace}}/Code
           -B ${{github.workspace}}/build
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          -DCMAKE_PREFIX_PATH=${{env.Qt5_DIR}}
+          -DCMAKE_PREFIX_PATH=${{vars.Qt5_DIR}}
           -DCMAKE_CXX_FLAGS_INIT="-fuse-ld=gold"
-          -DVTK_DIR=${{env.VTK_DIR}}
-          -DCFITSIO_ROOT_DIR=${{env.CFITSIO_DIR}}
-          -DBOOST_ROOT=${{env.BOOST_DIR}}
+          -DVTK_DIR=${{vars.VTK_DIR}}
+          -DCFITSIO_ROOT_DIR=${{vars.CFITSIO_DIR}}
+          -DBOOST_ROOT=${{vars.BOOST_DIR}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build
