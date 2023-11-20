@@ -176,6 +176,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->generatedSedBox->setHidden(true);
     nSED = 0;
     multiSelectMOD = false;
+    multiDragSelectMOD = false;
     temporaryMOD = false;
     doubleClicked = false;
     temporaryRow = 0;
@@ -435,8 +436,8 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 
 void SEDVisualizerPlot::selectionChanged()
 {
-    if (multiSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be
-                          // selected.
+    if (multiSelectMOD || multiDragSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be
+                                                // selected.
         ui->customPlot->graph()->setSelection(
                 QCPDataSelection(QCPDataRange(0, 0))); // graph(i)->setSelected(true);
     }
@@ -1995,6 +1996,11 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
 void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
 {
     if (checked == true) {
+        //unset multiDragSelectCheckbox
+        multiDragSelectMOD = false;
+        ui->multiDragSelectCheckBox->setChecked(false);
+        qDebug() << "--multiDragSelectMOD" << multiDragSelectMOD;
+
         multiSelectMOD = true;
         // unset control/command shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
@@ -2014,9 +2020,16 @@ void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
 void SEDVisualizerPlot::on_multiDragSelectCheckBox_toggled(bool checked)
 {
     if (checked == true){
-        qDebug() << "--premuto" << checked;
+        //unset multiSelectCheckBox
+        multiSelectMOD = false;
+        ui->multiSelectCheckBox->setChecked(false);
+        qDebug() << "--multiSelectMOD" << multiSelectMOD;
+
+        multiDragSelectMOD = true;
+        qDebug() << "--multiDragSelectMOD" << multiDragSelectMOD;
     } else {
-        qDebug() << "--" << checked;
+        multiDragSelectMOD = false;
+        qDebug() << "--multiDragSelectMOD" << multiDragSelectMOD;
     }
 }
 

@@ -88,6 +88,7 @@ private:
     QList<SEDPlotPointCustom *> collapsedGraphPoints;
     QMap<int, QList<SEDPlotPointCustom *>> sedGraphPoints;
     bool multiSelectMOD;
+    bool multiDragSelectMOD;
     bool temporaryMOD;
     int temporaryRow;
     QCPGraph *temporaryGraph;
