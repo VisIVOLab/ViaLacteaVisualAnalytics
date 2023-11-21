@@ -55,6 +55,10 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setLabel("Wavelength [" + QString::fromUtf8("\u00b5") + "m]");
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
 
+    // draggable axisx and axisy
+    QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+    ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+
     minWavelen = std::numeric_limits<int>::max();
     maxWavelen = std::numeric_limits<int>::min();
     minFlux = std::numeric_limits<int>::max();
@@ -70,7 +74,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
-    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress()));
+    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*)));
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
     connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease()));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
@@ -85,8 +89,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     connect(ui->customPlot, SIGNAL(plottableClick(QCPAbstractPlottable *, QMouseEvent *)), this,
             SLOT(graphClicked(QCPAbstractPlottable *)));
     ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this,
-            SLOT(contextMenuRequest(QPoint)));
+    //connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextMenuRequest(QPoint)));
 
     modelFitBands.insert("wise1", 3.4);
     modelFitBands.insert("i1", 3.6);
@@ -445,17 +448,38 @@ void SEDVisualizerPlot::selectionChanged()
 
 void SEDVisualizerPlot::mouseRelease() { }
 
-void SEDVisualizerPlot::mousePress()
+void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
+    if (event->button() == Qt::RightButton) {
+        // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
+        //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+        //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+    }
+
+
+    /*
+    if (event->buttons() & Qt::RightButton)
+    {
+        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+    }
+    else if (event->button() & Qt::LeftButton){
+        ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+        ui->customPlot->graph()->setSelectable(QCP::stMultipleDataRanges);
+    }
+*/
+
     if (multiSelectMOD) {
         QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
     } else {
+        // Single selection: caso base
         for (int i = 0; i < ui->customPlot->graphCount(); ++i)
             ui->customPlot->graph()->setSelection(
                     QCPDataSelection(QCPDataRange(i - 1, i))); // graph(i)->setSelected(true);
         ui->customPlot->replot();
     }
 
+
+    //
     // if an axis is selected, only allow the direction of that axis to be dragged
     // if no axis is selected, both directions may be dragged
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
@@ -493,6 +517,7 @@ void SEDVisualizerPlot::removeAllGraphs()
     ui->customPlot->replot();
 }
 
+/*
 void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 {
 
@@ -511,12 +536,11 @@ void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
                 ->setData((int)(Qt::AlignBottom | Qt::AlignRight));
         menu->addAction("Move to bottom left", this, SLOT(moveLegend()))
                 ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
-    } else // general context menu on graphs requested
-    {
     }
 
     menu->popup(ui->customPlot->mapToGlobal(pos));
 }
+*/
 
 void SEDVisualizerPlot::graphClicked(QCPAbstractPlottable *plottable) { }
 
@@ -1996,7 +2020,7 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
 void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
 {
     if (checked == true) {
-        //unset multiDragSelectCheckbox
+        //unset multiDragSelectCheckbox: avoid selection mode combination
         multiDragSelectMOD = false;
         ui->multiDragSelectCheckBox->setChecked(false);
         qDebug() << "--multiDragSelectMOD" << multiDragSelectMOD;
@@ -2020,7 +2044,7 @@ void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
 void SEDVisualizerPlot::on_multiDragSelectCheckBox_toggled(bool checked)
 {
     if (checked == true){
-        //unset multiSelectCheckBox
+        //unset multiSelectCheckBox: avoid selection mode combination
         multiSelectMOD = false;
         ui->multiSelectCheckBox->setChecked(false);
         qDebug() << "--multiSelectMOD" << multiSelectMOD;

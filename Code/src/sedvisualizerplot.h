@@ -102,14 +102,14 @@ private slots:
     void axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part);
     void legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item);
     void selectionChanged();
-    void mousePress();
+    void mousePress(QMouseEvent *event);
     void mouseWheel();
     void mouseRelease();
     void checkboxClicked(int cb);
 
     void removeSelectedGraph();
     void removeAllGraphs();
-    void contextMenuRequest(QPoint pos);
+    //void contextMenuRequest(QPoint pos);
     void graphClicked(QCPAbstractPlottable *plottable);
     void drawNode(SEDNode *node);
     void doThinLocalFit();
