@@ -55,9 +55,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setLabel("Wavelength [" + QString::fromUtf8("\u00b5") + "m]");
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
 
-    // draggable axisx and axisy
-    QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-    ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+    // draggable axis-x and axis-y
+    //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+    //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 
     minWavelen = std::numeric_limits<int>::max();
     maxWavelen = std::numeric_limits<int>::min();
@@ -450,12 +450,9 @@ void SEDVisualizerPlot::mouseRelease() { }
 
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    if (event->button() == Qt::RightButton) {
-        // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
-        //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-        //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
-    }
-
+    // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
+    //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+    //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 
     /*
     if (event->buttons() & Qt::RightButton)
@@ -469,6 +466,7 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 */
 
     if (multiSelectMOD) {
+        // unuset this command
         QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
     } else {
         // Single selection: caso base
@@ -478,8 +476,6 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
         ui->customPlot->replot();
     }
 
-
-    //
     // if an axis is selected, only allow the direction of that axis to be dragged
     // if no axis is selected, both directions may be dragged
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
@@ -488,19 +484,33 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
         ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->yAxis->orientation());
     else
         ui->customPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
+
+    // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
+    // This part of code could be replaced in the constructor with the following:
+    // QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+    // ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+
 }
 
 void SEDVisualizerPlot::mouseWheel()
 {
-    // if an axis is selected, only allow the direction of that axis to be zoomed
-    // if no axis is selected, both directions may be zoomed
 
+    // if an axis is selected, only allow the direction of that axis to be zoomeds
+    // if no axis is selected, both directions may be zoomed
+    /*
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeZoom(ui->customPlot->xAxis->orientation());
     else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeZoom(ui->customPlot->yAxis->orientation());
     else
         ui->customPlot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
+
+    */
+
+    // This part of code could be replaced with the following: DO NOT WORK
+    QList<QCPAxis *> zoomableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+    ui->customPlot->axisRect()->setRangeZoomAxes(zoomableAxes);
+    //ui->customPlot->axisRect()->setRangeZoomAxes(zoomableAxes);
 }
 
 void SEDVisualizerPlot::removeSelectedGraph()
