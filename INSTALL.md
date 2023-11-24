@@ -77,7 +77,9 @@ Python3 is required for certain functionalities with specific Python packages. I
 * `scipy`
 
 ### Visual Studio Community: (>= 17 2022)
-It is required for the installation of C/C++ compiler on Windows and for further dependencies
+It is required for the installation of C/C++ compiler on Windows and for further dependencies: 
+`Desktop development with C++`. And the following packages under the `individual components` tab: Windows 10 SDK, Visual Studio C++ core features, VC++ 2017, Windows Universal CRT SDK, C++/CLI support.
+
 
 ### CMake
 | "Add CMake to the system PATH for all users"
