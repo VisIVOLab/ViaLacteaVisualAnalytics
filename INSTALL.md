@@ -141,7 +141,7 @@ Comment line 223 in `cfitsio\include\fitsio.h`
 
 ## VTK 9.1.0
 Unzip VTK .zip and create a new folder inside it `/build` \
-Open CMake GUI and specify the VTK path in the \
+Run CMake GUI as administrator and specify the VTK path in the \
 **source code**:`"C:/Users/myname/.../VTK-9.1.0"`\
 **binary code**:`"C:/Users/myname/.../VTK-9.1.0/build"` \
 and press *Configure*
