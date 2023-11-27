@@ -99,14 +99,14 @@ On System variables create a new variable. \
 On System variables edit `Path` variable and add new `%QTDIR%\lib` and `%QTDIR%\bin` 
 
 ## CFITSIO 4.1.0
-The compression library "zlib" is required in order to build CFITSIO. Visit the [site](https://zlib.net) to download the latest distribution. Unpack it, then build and install it from a parallel directory, for example:
+The compression library "zlib" is required in order to build CFITSIO. Visit the [site](https://zlib.net) to download the latest distribution. Unpack it, then build and install it from a parallel directory. Run as administrator if the specified path requires it. For example:
 
 ```bash
 mkdir zlib.build
 cd zlib.build
 cmake ..\zlib-1.3 -DCMAKE_INSTALL_PREFIX="C:\Users\myname\zlib"
 ```
-Select your version: Building for Visual Studio 17 2022
+(Select your compiler version if required: Building for Visual Studio 17 2022)
 ```bash
 cmake --build . --config Release
 cmake --install .
