@@ -284,7 +284,7 @@
    <item>
     <widget class="QGroupBox" name="caesarGroupBox">
      <property name="title">
-      <string>CAESAR</string>
+      <string>CAESAR Source Finders</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
