@@ -330,7 +330,9 @@ set(PROJECT_UI
 
 qt_add_resources(PROJECT_RESOURCES visivo.qrc)
 
-if(APPLE)
+if(WIN32)
+    set(ICON_RESOURCE visivo.rc)
+elseif(APPLE)
     set(ICON_RESOURCE logo.icns)
     set(MACOSX_BUNDLE_ICON_FILE logo.icns)
     set(app_icon_macos "${CMAKE_SOURCE_DIR}/logo.icns")
