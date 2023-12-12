@@ -22,17 +22,6 @@ SFilterDialog::SFilterDialog(Catalogue *c, QWidget *parent)
     model = new QStringListModel(this);
     ui->listView->setModel(model);
     ui->textPredicate->clear();
-
-    QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
-    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-
-    if (settings.value("python.bundle", true).toBool()) {
-        pythonExe = "vialactea.pex";
-    } else {
-        pythonExe = settings.value("python.path").toString();
-        if (pythonExe.isEmpty())
-            pythonExe = "python3";
-    }
 }
 
 SFilterDialog::~SFilterDialog()
@@ -69,7 +58,7 @@ void SFilterDialog::on_btnFilter_clicked()
     QStringList args;
     args << "sfilter.py" << catalogue->getFilepath() << ui->textPredicate->text();
     py3->setWorkingDirectory(wd.absolutePath());
-    py3->start(pythonExe, args);
+    py3->start("vialactea.pex", args);
 }
 
 void SFilterDialog::append(const QString &arg)

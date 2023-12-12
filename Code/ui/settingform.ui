@@ -15,60 +15,6 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <widget class="QGroupBox" name="groupBox_5">
-     <property name="title">
-      <string>Python</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_6">
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
-         <widget class="QLabel" name="label_10">
-          <property name="text">
-           <string>Executable:</string>
-          </property>
-          <property name="buddy">
-           <cstring>textPython</cstring>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="textPython">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnPython">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-          <property name="icon">
-           <iconset resource="../visivo.qrc">
-            <normaloff>:/icons/FILE_OPEN.bmp</normaloff>:/icons/FILE_OPEN.bmp</iconset>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="checkBundlePython">
-        <property name="text">
-         <string>Use bundled environment</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Tile</string>
@@ -503,9 +449,6 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>textPython</tabstop>
-  <tabstop>btnPython</tabstop>
-  <tabstop>checkBundlePython</tabstop>
   <tabstop>TileLineEdit</tabstop>
   <tabstop>TilePushButton</tabstop>
   <tabstop>checkBox</tabstop>

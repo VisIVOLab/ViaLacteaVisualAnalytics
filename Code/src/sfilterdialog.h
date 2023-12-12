@@ -29,7 +29,6 @@ private slots:
 
 private:
     Ui::SFilterDialog *ui;
-    QString pythonExe;
 
     Catalogue *catalogue;
 

@@ -49,15 +49,6 @@ void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_settingsFile, QSettings::IniFormat);
 
-    QString pythonpath = settings.value("python.path").toString();
-    if (pythonpath.isEmpty()) {
-        pythonpath = "python3";
-    }
-    ui->textPython->setText(pythonpath);
-
-    bool useBundlePython = settings.value("python.bundle", true).toBool();
-    ui->checkBundlePython->setChecked(useBundlePython);
-
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
 
@@ -140,8 +131,6 @@ void SettingForm::on_OkPushButton_clicked()
 {
     QSettings settings(m_settingsFile, QSettings::IniFormat);
     settings.setValue("tilepath", ui->TileLineEdit->text());
-    settings.setValue("python.path", ui->textPython->text());
-    settings.setValue("python.bundle", ui->checkBundlePython->isChecked());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
     settings.setValue("vlkbtype", "ia2");
@@ -198,20 +187,6 @@ void SettingForm::on_caesarLogoutButton_clicked()
 {
     if (m_caesarAuth->isAuthenticated())
         m_caesarAuth->logout();
-}
-
-void SettingForm::on_checkBundlePython_toggled(bool checked)
-{
-    ui->textPython->setEnabled(!checked);
-    ui->btnPython->setEnabled(!checked);
-}
-
-void SettingForm::on_btnPython_clicked()
-{
-    QString fn = QFileDialog::getOpenFileName(this, "Python3 Binary", QString(), "python3");
-    if (!fn.isEmpty()) {
-        ui->textPython->setText(fn);
-    }
 }
 
 void SettingForm::on_btnRegister_clicked()

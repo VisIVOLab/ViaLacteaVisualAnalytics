@@ -31,8 +31,6 @@ private slots:
     void vlkb_loggedout();
     void caesar_loggedin();
     void caesar_loggedout();
-    void on_checkBundlePython_toggled(bool checked);
-    void on_btnPython_clicked();
     void on_btnRegister_clicked();
 
 private:
