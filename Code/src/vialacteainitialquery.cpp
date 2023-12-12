@@ -32,8 +32,9 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
 
     nam = new QNetworkAccessManager(this);
@@ -115,8 +116,9 @@ void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenti
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     if (settings.value("vlkbtype", "ia2") == "ia2") {
         a->setUser(IA2_TAP_USER);
         a->setPassword(IA2_TAP_PASS);
@@ -147,8 +149,9 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
 
     loading->setText("Querying cutout service");
     loading->show();
@@ -213,8 +216,9 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     loading->setText("Querying search service");
     loading->show();
     loading->activateWindow();
@@ -275,8 +279,9 @@ void VialacteaInitialQuery::cutoutRequest(QString url, QList<QMap<QString, QStri
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
                                .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                               .append(QDir::separator())
+                               .append("setting.ini"),
+                       QSettings::IniFormat);
 
     IA2VlkbAuth::Instance().putAccessToken(req);
 
@@ -292,8 +297,9 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
 
     QNetworkRequest req(url);
 
@@ -323,8 +329,9 @@ void VialacteaInitialQuery::on_queryPushButton_clicked()
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
                                .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                               .append(QDir::separator())
+                               .append("setting.ini"),
+                       QSettings::IniFormat);
 
     IA2VlkbAuth::Instance().putAccessToken(req);
     QNetworkReply *reply = nam->get(req);
@@ -338,8 +345,9 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
 
     if (reply->error() == QNetworkReply::NoError) {
         QXmlStreamReader xml(reply);
@@ -529,8 +537,9 @@ void VialacteaInitialQuery::onDownloadCompleted()
         QSettings settings(QDir::homePath()
                                    .append(QDir::separator())
                                    .append("VisIVODesktopTemp")
-                                   .append("/setting.ini"),
-                           QSettings::NativeFormat);
+                                   .append(QDir::separator())
+                                   .append("setting.ini"),
+                           QSettings::IniFormat);
 
         long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024;
         long size = QFileInfo(currentPath).size() / 1024;

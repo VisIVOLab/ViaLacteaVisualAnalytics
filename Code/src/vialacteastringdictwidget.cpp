@@ -32,9 +32,10 @@ void VialacteaStringDictWidget::buildDict()
     m_sSettingsFile = QDir::homePath()
                               .append(QDir::separator())
                               .append("VisIVODesktopTemp")
-                              .append("/setting.ini");
+                              .append(QDir::separator())
+                              .append("setting.ini");
 
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     manager = new QNetworkAccessManager(this);
 
     connect(manager, SIGNAL(finished(QNetworkReply *)), this,
@@ -53,7 +54,7 @@ void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
-        QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+        QSettings settings(m_sSettingsFile, QSettings::IniFormat);
         QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
         QString tag = "vosi:available";
 
@@ -74,7 +75,7 @@ void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
 void VialacteaStringDictWidget::executeQueryTapSchemaTables()
 {
 
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     QString query = "SELECT * FROM TAP_SCHEMA.tables";
 
@@ -108,7 +109,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
 void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
 {
 
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     QString query = "SELECT * FROM TAP_SCHEMA.columns";
     manager = new QNetworkAccessManager(this);
     QByteArray postData;
@@ -136,7 +137,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
 
 void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply *reply)
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
@@ -189,7 +190,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
 
 void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply *reply)
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     if (reply->error()) {
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
@@ -259,7 +260,7 @@ void VialacteaStringDictWidget::onAuthenticationRequestSlot(QNetworkReply *aRepl
                                                             QAuthenticator *aAuthenticator)
 {
     Q_UNUSED(aReply);
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
         aAuthenticator->setUser(IA2_TAP_USER);
         aAuthenticator->setPassword(IA2_TAP_PASS);

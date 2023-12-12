@@ -1083,8 +1083,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
                                .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                               .append(QDir::separator())
+                               .append("setting.ini"),
+                       QSettings::IniFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     myfits = vis;
@@ -4080,8 +4081,9 @@ void vtkwindow_new::on_glyphActivateCheckBox_clicked(bool checked)
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
                                .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                               .append(QDir::separator())
+                               .append("setting.ini"),
+                       QSettings::IniFormat);
 
     int maxpoint = settings.value("glyphmax", "2147483647").toString().toInt();
     if (checked) {
