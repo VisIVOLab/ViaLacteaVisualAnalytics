@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion(VLVA_VERSION_STR);
-    a.setWindowIcon(QIcon(":/icons/logo_256.png"));
+    a.setWindowIcon(QIcon(":/icons/visivo512.png"));
 
     // Init python interpreter
     QDir appDir(QApplication::applicationDirPath());
