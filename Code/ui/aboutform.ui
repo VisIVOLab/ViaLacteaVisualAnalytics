@@ -126,17 +126,7 @@
         <item>
          <widget class="QLabel" name="label_14">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://sms.neanias.eu/projects/neanias-sms/issues/new?issue[tracker_id]=11&amp;amp;issue[custom_field_values][2]=SPACE-VIS-ViaLactea&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Helpdesk&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="openExternalLinks">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="label_7">
-          <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://files.neanias.eu/apps/forms/WRzok4Ygp7Wb6ooF&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Provide feedback&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;mailto:visivolab.oact@inaf.it&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Helpdesk&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="openExternalLinks">
            <bool>true</bool>
@@ -146,7 +136,7 @@
         <item>
          <widget class="QLabel" name="label_15">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://thematic.neanias.eu/SPACE/ViaLactea/privacy.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Privacy policy&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://vlva.readthedocs.io/en/latest/privacy.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Privacy policy&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="openExternalLinks">
            <bool>true</bool>
@@ -156,7 +146,7 @@
         <item>
          <widget class="QLabel" name="label_16">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://thematic.neanias.eu/SPACE/ViaLactea/terms.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Terms and Conditions&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://vlva.readthedocs.io/en/latest/terms.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0068da;&quot;&gt;Terms and Conditions&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="openExternalLinks">
            <bool>true</bool>
