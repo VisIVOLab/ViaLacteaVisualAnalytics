@@ -43,7 +43,10 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setTicker(logTicker);
     ui->customPlot->plotLayout()->insertRow(0);
     ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));
-    ui->customPlot->xAxis->setLabel("Wavelength [" + QString::fromUtf8("\u00b5") + "m]");
+
+    QString sMu = u8"\u00b5";
+    QString sLabelTextX = "Wavelength [" + sMu + "m]";
+    ui->customPlot->xAxis->setLabel(sLabelTextX);
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
 
     minWavelen = std::numeric_limits<int>::max();
