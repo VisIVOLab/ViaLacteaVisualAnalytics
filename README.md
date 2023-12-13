@@ -1,4 +1,4 @@
-# ViaLactea Visual Analytics <img align="right" src="Code/icons/visivo.svg" width="48">
+# ViaLactea Visual Analytics <img align="left" src="Code/icons/visivo.svg" width="48">
 
 [![DOI](https://zenodo.org/badge/269041293.svg)](https://zenodo.org/badge/latestdoi/269041293)
 [![GitHub release](https://img.shields.io/github/v/release/VisIVOLab/ViaLacteaVisualAnalytics)](https://github.com/VisIVOLab/ViaLacteaVisualAnalytics/releases/latest)
