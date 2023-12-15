@@ -73,16 +73,12 @@ set(PROJECT_SOURCES
     src/authkeys.h
     src/authwrapper.cpp
     src/authwrapper.h
-    src/base64.cpp
-    src/base64.h
     src/caesarwindow.cpp
     src/caesarwindow.h
     src/catalogue.cpp
     src/catalogue.h
     src/color.cpp
     src/color.h
-    src/contour.cpp
-    src/contour.h
     src/dbquery.cpp
     src/dbquery.h
     src/downloadmanager.cpp
@@ -95,16 +91,12 @@ set(PROJECT_SOURCES
     src/ds9region/DS9RegionParser.h
     src/extendedglyph3d.cpp
     src/extendedglyph3d.h
-    src/filtercustomize.cpp
-    src/filtercustomize.h
     src/fitsheadermodifierdialog.cpp
     src/fitsheadermodifierdialog.h
     src/fitsimagestatisiticinfo.cpp
     src/fitsimagestatisiticinfo.h
     src/higalselectedsources.cpp
     src/higalselectedsources.h
-    src/histogram.cpp
-    src/histogram.h
     src/interactors/vtkinteractorstyledrawarrow.h
     src/interactors/vtkinteractorstyledrawarrow.cpp
     src/interactors/vtkinteractorstyleimagecustom.h
@@ -150,8 +142,6 @@ set(PROJECT_SOURCES
     src/lutcustomize.h
     src/luteditor.cpp
     src/luteditor.h
-    src/lutselector.cpp
-    src/lutselector.h
     src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
@@ -185,8 +175,6 @@ set(PROJECT_SOURCES
     src/sedvisualizerplot.h
     src/selectedsourcefieldsselect.cpp
     src/selectedsourcefieldsselect.h
-    src/selectedsourcesform.cpp
-    src/selectedsourcesform.h
     src/sessionloader.cpp
     src/sessionloader.h
     src/settingform.cpp
@@ -245,8 +233,6 @@ set(PROJECT_SOURCES
     src/vlkbquery.h
     src/vlkbsimplequerycomposer.cpp
     src/vlkbsimplequerycomposer.h
-    src/vlkbtable.cpp
-    src/vlkbtable.h
     src/vlvaurlschemehandler.cpp
     src/vlvaurlschemehandler.h
     src/vsobjectdesktop.cpp
@@ -263,8 +249,6 @@ set(PROJECT_SOURCES
     src/vtkfitsreader2.h
     src/vtkfitstoolswidget.cpp
     src/vtkfitstoolswidget.h
-    src/vtkfitstoolwidget_new.cpp
-    src/vtkfitstoolwidget_new.h
     src/vtkfitstoolwidgetobject.cpp
     src/vtkfitstoolwidgetobject.h
     src/vtklegendscaleactorwcs.cpp
@@ -288,9 +272,7 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 set(PROJECT_UI
     ui/aboutform.ui
     ui/caesarwindow.ui
-    ui/contour.ui
     ui/dbquery.ui
-    ui/filtercustomize.ui
     ui/fitsheadermodifierdialog.ui
     ui/fitsimagestatisiticinfo.ui
     ui/higalselectedsources.ui
@@ -305,7 +287,6 @@ set(PROJECT_UI
     ui/sedfitgrid_thin.ui
     ui/sedvisualizerplot.ui
     ui/selectedsourcefieldsselect.ui
-    ui/selectedsourcesform.ui
     ui/sessionloader.ui
     ui/settingform.ui
     ui/sfilterdialog.ui
@@ -321,7 +302,6 @@ set(PROJECT_UI
     ui/vlkbquery.ui
     ui/vlkbsimplequerycomposer.ui
     ui/vtkfitstoolswidget.ui
-    ui/vtkfitstoolwidget_new.ui
     ui/vtktoolswidget.ui
     ui/vtkwindow_new.ui
     ui/vtkwindowcube.ui

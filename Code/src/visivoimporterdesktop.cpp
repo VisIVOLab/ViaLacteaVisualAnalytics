@@ -20,7 +20,6 @@
 
 #include "visivoimporterdesktop.h"
 #include "astroutils.h"
-#include "base64.h"
 #include "mainwindow.h"
 #include "singleton.h"
 #include "treemodel.h"
@@ -111,14 +110,14 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             double *coord = new double[3];
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation1100")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation1100")][i]);
             if (tmp != "missing") {
                 firstSEDNode = false;
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux1100")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux1100")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux1100")][i]
+                                .c_str());
                 if (flux > 0) {
                     node = new SEDNode();
                     node->setDesignation(tmp);
@@ -129,35 +128,35 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     sed->setRootNode(node);
 
                     glon = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon1100")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon1100")][i]
+                                    .c_str());
                     glat = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat1100")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat1100")][i]
+                                    .c_str());
                     node->setSky(glon, glat);
                     AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma1100")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma1100")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb1100")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb1100")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa1100")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                 }
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation870")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation870")][i]);
             if (tmp.compare("missing") != 0) {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux870")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux870")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux870")][i]
+                                .c_str());
                 tmp_node = node;
                 if (flux > 0) {
                     node = new SEDNode();
@@ -175,20 +174,20 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     }
 
                     glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon870")][i]
-                            .c_str());
+                                        .c_str());
                     glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat870")][i]
-                            .c_str());
+                                        .c_str());
                     node->setSky(glon, glat);
                     AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma870")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma870")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb870")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb870")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa870")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     if (!sed->hasRoot())
                         sed->setRootNode(node);
@@ -196,13 +195,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation500")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation500")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux500")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux500")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux500")][i]
+                                .c_str());
                 tmp_node = node;
                 if (flux > 0) {
                     node = new SEDNode();
@@ -218,20 +217,20 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                         firstSEDNode = false;
 
                     glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon500")][i]
-                            .c_str());
+                                        .c_str());
                     glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat500")][i]
-                            .c_str());
+                                        .c_str());
                     node->setSky(glon, glat);
                     AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma500")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma500")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb500")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb500")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa500")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
 
                     if (!sed->hasRoot())
@@ -240,13 +239,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation350")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation350")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux350")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux350")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux350")][i]
+                                .c_str());
                 tmp_node = node;
 
                 if (flux > 0) {
@@ -265,22 +264,22 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                         firstSEDNode = false;
 
                     glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon350")][i]
-                            .c_str());
+                                        .c_str());
                     glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat350")][i]
-                            .c_str());
+                                        .c_str());
                     node->setSky(glon, glat);
 
                     AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                     node->setXY(coord[0], coord[1]);
 
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma350")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma350")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb350")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb350")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa350")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
 
                     if (!sed->hasRoot())
@@ -289,13 +288,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation250")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation250")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux250")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux250")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux250")][i]
+                                .c_str());
                 tmp_node = node;
                 if (flux > 0) {
                     node = new SEDNode();
@@ -314,21 +313,21 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                         firstSEDNode = false;
 
                     glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon250")][i]
-                            .c_str());
+                                        .c_str());
                     glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat250")][i]
-                            .c_str());
+                                        .c_str());
                     node->setSky(glon, glat);
                     AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                     node->setXY(coord[0], coord[1]);
 
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma250")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma250")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb250")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb250")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa250")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
 
                     if (!sed->hasRoot())
@@ -337,13 +336,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation160")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation160")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux160")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux160")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux160")][i]
+                                .c_str());
 
                 tmp_node = node;
                 if (flux > 0) {
@@ -362,21 +361,21 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     sed->updateMaxFlux(node->getFlux());
 
                     glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon160")][i]
-                            .c_str());
+                                        .c_str());
                     glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat160")][i]
-                            .c_str());
+                                        .c_str());
                     node->setSky(glon, glat);
                     AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                     node->setXY(coord[0], coord[1]);
 
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma160")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma160")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb160")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb160")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa160")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
 
                     if (!sed->hasRoot())
@@ -385,17 +384,17 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation70")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation70")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux70")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux70")][i]
-                        .c_str());
+                                     .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon70")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat70")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -414,13 +413,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma70")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma70")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb70")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb70")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa70")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(70);
 
@@ -430,18 +429,18 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation24")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation24")][i]);
             if (tmp != "missing") {
 
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux24")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux24")][i]
-                        .c_str());
+                                     .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon24")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat24")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -453,13 +452,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma24")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma24")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb24")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb24")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa24")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(24);
                     if (!firstSEDNode) {
@@ -474,18 +473,18 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
             if (tmp != "missing") {
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux22")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux22")][i]
-                        .c_str());
+                                     .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -497,13 +496,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(22);
 
@@ -519,17 +518,17 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             }
 
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_e")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_e")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_e")][i]
+                                .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -542,13 +541,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma21")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma21")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb21")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb21")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa21")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(21);
                     if (!firstSEDNode) {
@@ -562,10 +561,10 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                 }
 
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_d")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_d")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_d")][i]
+                                .c_str());
                 tmp_node = node;
                 if (flux > 0) {
 
@@ -592,17 +591,17 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 12.1um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
             if (tmp != "missing") {
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_c")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_c")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_c")][i]
+                                .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                 tmp_node = node;
                 if (flux > 0) {
@@ -628,20 +627,20 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 12um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
 
             if (tmp != "missing") {
 
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux12")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux12")][i]
-                        .c_str());
+                                     .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -653,13 +652,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(12);
 
@@ -676,18 +675,18 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 8.3um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
             if (tmp != "missing") {
 
                 flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_a")][i]
-                        .c_str());
+                                    .c_str());
                 e_flux = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_a")][i]
-                        .c_str());
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_a")][i]
+                                .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
                 tmp_node = node;
                 if (flux > 0) {
@@ -706,13 +705,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma21")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma21")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb21")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb21")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa21")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(8.3);
@@ -724,19 +723,19 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 4.6um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
             if (tmp != "missing") {
 
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux46")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux46")][i]
-                        .c_str());
+                                     .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -750,13 +749,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(4.6);
@@ -774,19 +773,19 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 3.4um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
             if (tmp != "missing") {
 
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux34")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux =
                         atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux34")][i]
-                        .c_str());
+                                     .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -799,13 +798,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(3.4);
@@ -823,18 +822,18 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 2.2um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
             if (tmp != "missing") {
 
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_K")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_K")][i]
-                        .c_str());
+                                      .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -847,13 +846,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(2.2);
@@ -870,18 +869,18 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 1.65um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
             if (tmp != "missing") {
 
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_H")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_H")][i]
-                        .c_str());
+                                      .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -894,13 +893,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(1.65);
@@ -917,18 +916,18 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
 
             // 1.25um
             tmp = QString::fromStdString(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
             if (tmp != "missing") {
 
                 flux = flux22Multiplier
                         * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_J")][i]
-                        .c_str());
+                                       .c_str());
                 e_flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_J")][i]
-                        .c_str());
+                                      .c_str());
                 glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                        .c_str());
+                                    .c_str());
                 glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                        .c_str());
+                                    .c_str());
                 AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
 
                 tmp_node = node;
@@ -941,13 +940,13 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     minAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
+                                    .c_str());
                     maxAxes = atof(
-                                m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                            .c_str());
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
+                                    .c_str());
                     angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                            .c_str());
+                                         .c_str());
 
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
                     node->setWavelength(1.25);
@@ -965,7 +964,7 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
             sedlist.push_back(sed);
             distances = 1000
                     * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("distance")][i]
-                    .c_str());
+                                   .c_str());
         }
 
         ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
@@ -1191,14 +1190,14 @@ void VisIVOImporterDesktop::doImport(QString wavelen, bool usingAPI)
             arguments << "--fformat" << type << "--out" << binaryFileName << fileName;
 
             myProcess->setStandardErrorFile(QDir::homePath()
-                                            .append(QDir::separator())
-                                            .append("VisIVODesktopTemp")
-                                            .append("log_error.txt"),
+                                                    .append(QDir::separator())
+                                                    .append("VisIVODesktopTemp")
+                                                    .append("log_error.txt"),
                                             QIODevice::Append);
             myProcess->setStandardOutputFile(QDir::homePath()
-                                             .append(QDir::separator())
-                                             .append("VisIVODesktopTemp")
-                                             .append("log_output.txt"),
+                                                     .append(QDir::separator())
+                                                     .append("VisIVODesktopTemp")
+                                                     .append("log_output.txt"),
                                              QIODevice::Append);
             myProcess->start(w->importer, arguments);
         }

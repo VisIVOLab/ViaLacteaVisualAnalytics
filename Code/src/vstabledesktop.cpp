@@ -20,7 +20,6 @@
  ***************************************************************************/
 
 #include "vstabledesktop.h"
-#include "base64.h"
 #include "mainwindow.h"
 #include "singleton.h"
 #include "visivoutilsdesktop.h"
@@ -266,8 +265,8 @@ bool VSTableDesktop::readHeader()
 
     inHeader.close();
     if ((m_colVector.size() != nCols)
-            || (m_cellNumber[0] > 0
-                && m_cellNumber[0] * m_cellNumber[1] * m_cellNumber[2] != m_nRows)) {
+        || (m_cellNumber[0] > 0
+            && m_cellNumber[0] * m_cellNumber[1] * m_cellNumber[2] != m_nRows)) {
         m_nCols = 0;
         m_colVector.clear();
 
@@ -569,7 +568,7 @@ int VSTableDesktop::getColumnStringToFloat(unsigned int *colList, unsigned int n
         for (int i = 0; i < m_nRows; i++) {
             fileInput.read(buffer, length);
             std::string str(buffer);
-            tmp[i] = atof(base64_decode(str).c_str());
+            tmp[i] = atof(QByteArray::fromBase64Encoding(str.c_str()).decoded);
         }
         fArray[j] = tmp;
     }
@@ -653,7 +652,7 @@ int VSTableDesktop::getColumn(unsigned int *colList, unsigned int nOfCol,
 #endif
 
     if ((endianism == "big" && m_endiannes == "little")
-            || (endianism == "little" && m_endiannes == "big")) {
+        || (endianism == "little" && m_endiannes == "big")) {
         std::cerr << "Warning: endianism swap executed on table " << m_locator << std::endl;
         for (unsigned int j = 0; j < nOfCol; j++)
             for (int k = 0; k < nLoad; k++)
@@ -777,7 +776,7 @@ int VSTableDesktop::getColumnList(unsigned int *colList, unsigned int nOfCol,
 #endif
 
     if ((endianism == "big" && m_endiannes == "little")
-            || (endianism == "little" && m_endiannes == "big")) {
+        || (endianism == "little" && m_endiannes == "big")) {
         std::cerr << "Warning: endianism swap executed on table " << m_locator << std::endl;
         for (unsigned int k = 0; k < nOfCol; k++)
             for (unsigned long long int j = 0; j < nOfEle; j++)

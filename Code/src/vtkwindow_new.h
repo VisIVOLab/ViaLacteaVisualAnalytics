@@ -1,11 +1,11 @@
 #ifndef vtkwindow_new_H
 #define vtkwindow_new_H
 
-#include "contour.h"
 #include "loadingwidget.h"
 #include "pointspipe.h"
 #include "sourcewidget.h"
 #include "vialacteastringdictwidget.h"
+#include "vtkfitstoolwidgetobject.h"
 
 #include "vtkActor.h"
 #include "vtkAxes.h"
@@ -20,7 +20,6 @@
 #include "vtkellipse.h"
 #include "vtkEventQtSlotConnect.h"
 #include "vtkfitsreader.h"
-#include "vtkfitstoolwidget_new.h"
 #include "vtkFloatArray.h"
 #include "vtkGenericRenderWindowInteractor.h"
 #include "vtkGlyph3D.h"
@@ -65,7 +64,6 @@ class vtkColorTransferFunction;
 class VisPoint;
 class vtkfitstoolswidget;
 class FitsImageStatisiticInfo;
-class contour;
 class DS9Region;
 class Catalogue;
 class LutCustomize;
@@ -104,7 +102,6 @@ public:
     vtkRenderWindow *renwin2;
     vtkwindow_new *vtkcontourwindow;
     vtkwindow_new *myParentVtkWindow;
-    contour *contourWin;
     vtkSmartPointer<vtkLineSource> lineSource;
 
     vtkMarchingCubes *shellE;
@@ -244,7 +241,6 @@ private:
     QString sessionFile;
     bool sessionSaved = false;
 
-    vtkfitstoolwidget_new *vtkfitstoolwindow;
     QPointer<Catalogue> catalogue;
 
     QString windowName;
@@ -335,7 +331,6 @@ public slots:
     void setSkyRegionSelectorInteractorStyleFor3D();
     void setVtkInteractorStyleFreehand();
     void setVtkInteractorStyle3DFreehand(vtkSmartPointer<vtkPolyData> points);
-    void setVtkInteractorContourWindow();
     void setSliceDatacube(int i);
 
     void plotSlice(vtkSmartPointer<vtkFitsReader> visvis, int arg1);
@@ -390,16 +385,12 @@ private slots:
     //  void on_horizontalSlider_threshold_sliderMoved(int position);
 
     void on_spinBox_contour_valueChanged(int arg1);
-    void on_contour_pushButton_clicked();
     void on_cuttingPlane_Slider_sliderMoved(int position);
     // void on_horizontalSlider_threshold_actionTriggered(int action);
-    void on_PVPlotPushButton_clicked();
     // void on_generatePushButton_clicked();
-    void on_PVPlot_radioButton_clicked(bool checked);
     void on_horizontalSlider_threshold_valueChanged(int value);
     void on_horizontalSlider_threshold_sliderReleased();
     void on_rectangularSelectionCS_clicked();
-    void on_colorPushButton_clicked();
     void addToList(vtkfitstoolwidgetobject *o, bool enabled = true);
     void addImageToList(vtkfitstoolwidgetobject *o);
 
@@ -444,7 +435,6 @@ private slots:
     void sendImageTo(QString id);
 
     void on_bubblePushButton_clicked();
-    void on_filterMoreButton_clicked();
     void on_actionCalculate_order_0_triggered();
     void on_actionCalculate_order_1_triggered();
     void on_actionFront_triggered();
