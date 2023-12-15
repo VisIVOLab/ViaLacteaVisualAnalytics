@@ -1,8 +1,10 @@
-name: Build Workflow
+name: Build
 run-name: Building commit ${{github.sha}}
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -36,4 +38,4 @@ jobs:
           -DBOOST_ROOT=${{vars.BOOST_DIR}}
 
       - name: Build
-        run: cmake --build ${{github.workspace}}/build
+        run: cmake --build ${{github.workspace}}/build --parallel
