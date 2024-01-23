@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>1010</height>
+    <height>1055</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -336,14 +336,27 @@
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
-            <widget class="QCheckBox" name="multiSelectCheckBox">
+            <widget class="QRadioButton" name="singleSelectRadioButton">
+             <property name="text">
+              <string>Single Select</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="multiSelectRadioButton">
              <property name="text">
               <string>Multi Select</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="multiDragSelectCheckBox">
+            <widget class="QRadioButton" name="dragSelectRadioButton">
              <property name="text">
               <string>Drag Select</string>
              </property>

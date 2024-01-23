@@ -31,6 +31,10 @@ public:
     void setDistances(double dist);
     void setTitle(QString t);
 
+protected:
+    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
+
 private:
     Ui::SEDVisualizerPlot *ui;
     QString pythonExe;
@@ -88,7 +92,6 @@ private:
     QList<SEDPlotPointCustom *> collapsedGraphPoints;
     QMap<int, QList<SEDPlotPointCustom *>> sedGraphPoints;
     bool multiSelectMOD;
-    bool multiDragSelectMOD;
     bool temporaryMOD;
     int temporaryRow;
     QCPGraph *temporaryGraph;
@@ -140,7 +143,6 @@ private slots:
     void on_actionSave_triggered();
     void on_actionLoad_triggered();
     void on_collapseCheckBox_toggled(bool checked);
-    void on_multiSelectCheckBox_toggled(bool checked);
     void on_resultsTableWidget_clicked(const QModelIndex &index);
     void addNewTheoreticalFit();
     void sectionClicked(int index);
@@ -156,7 +158,9 @@ private slots:
     void on_greyBodyPushButton_clicked();
     void on_Thick_clicked();
     void on_thinButton_clicked();
-    void on_multiDragSelectCheckBox_toggled(bool checked);
+    void on_singleSelectRadioButton_toggled(bool checked);
+    void on_multiSelectRadioButton_toggled(bool checked);
+    void on_dragSelectRadioButton_toggled(bool checked);
 };
 
 QDataStream &operator<<(QDataStream &out, QList<SED *> &sedlist);
