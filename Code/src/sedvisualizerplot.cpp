@@ -333,13 +333,7 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
     return in;
 }
 
-/**
- * Il costruttore per ciasun Sed presente nella QList invoca drawNode
- * @brief SEDVisualizerPlot::drawNode
- * @param SEDNode
- */
-void SEDVisualizerPlot::drawNode(SEDNode *node)
-{
+void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
     // visualnode_hash è un QHash<QString, SEDPlotPointCustom *>
     // visualnode_hash: tiene traccia dei nodi visualizzati?
     // se la QHash non contiene la designation (QString) del SEDNode corrente iesimo
@@ -348,7 +342,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
 
         if (vtkwin != 0) {
-        // set cp rgb color
+            // set cp rgb color
             if (vtkwin->getDesignation2fileMap().values(node->getDesignation()).length() > 0) {
                 double r = vtkwin->getEllipseActorList()
                                    .value(vtkwin->getDesignation2fileMap().value(
@@ -390,7 +384,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
                        node->getAngle(), node->getArcpix());
         cp->setNode(node);
 
-        // new visualnode_hash entry
+               // new visualnode_hash entry
         visualnode_hash.insert(node->getDesignation(), cp);
 
         if (node->getWavelength() > maxWavelen)
@@ -405,6 +399,17 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         }
         all_sed_node.insert(node->getWavelength(), node);
     }
+}
+
+
+/**
+ * Il costruttore per ciasun Sed presente nella QList invoca drawNode
+ * @brief SEDVisualizerPlot::drawNode
+ * @param SEDNode
+ */
+void SEDVisualizerPlot::drawNode(SEDNode *node)
+{
+    insertNewPlotPoint(node);
     QVector<double> x(2), y(2), y_err(2);
     // on 0 setta value nodi correnti
     x[0] = node->getWavelength();
@@ -502,11 +507,19 @@ void SEDVisualizerPlot::selectionChanged()
 {
     // on multiSelectMod "multi select mode" prevent a graph to be clicked. Only nodes can be selected -
     // TODO rimuovere questo commento: multiSelectMod non esiste più
-    if (ui->multiSelectRadioButton->isChecked() || ui->dragSelectRadioButton->isChecked()) {
+    //if (ui->multiSelectRadioButton->isChecked() || ui->dragSelectRadioButton->isChecked()) {
         // non mi convince per nulla questa tipologia di selezione, rende selezionabile cosa?
-        ui->customPlot->graph()->setSelection(
-                QCPDataSelection(QCPDataRange(0, 0))); // graph(i)->setSelected(true);
+        //ui->customPlot->graph()->setSelection(
+                //QCPDataSelection(QCPDataRange(0, 0))); // graph(i)->setSelected(true);
+    //}
+
+    // se la modalità di selezione rettangolare
+    if(ui->dragSelectRadioButton->isChecked()){
+        // ottieni le selezioni pendenti: single or multipoint selection
+        qDebug() << "-- modalità di selezione Rettangolare: salvare selezioni pendenti?";
     }
+
+
 }
 
 // TODO refactor
@@ -2231,18 +2244,25 @@ void SEDVisualizerPlot::on_thinButton_clicked()
 void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
 {
     if (checked){
+        qDebug() << "-- Single mode";
         // reset previus pending selection
         //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
         //for (int i = 0; i < list_items.size(); i++) {
         //    list_items.at(i)->setSelected(false);
         //}
         ui->customPlot->deselectAll();
-        // set control/command shortcut for multi selection
+        qDebug() << "-- deseleziono tutto";
+        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+        qDebug() << "-- disabilito selezione rettangolare";
+        for (int i = 0; i < ui->customPlot->graphCount(); i++) {
+            ui->customPlot->graph(i)->setSelectable(QCP::stSingleData);
+        }
+        // set 'control/command' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-
+        qDebug() << "-- Single mode end";
         ui->customPlot->replot();
     } else {
-        // unset control/ctrl shortcut for multi selection
+        // unset 'control/ctrl' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
     }
 }
