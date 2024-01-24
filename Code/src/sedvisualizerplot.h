@@ -114,7 +114,8 @@ private slots:
     void removeAllGraphs();
     //void contextMenuRequest(QPoint pos);
     void graphClicked(QCPAbstractPlottable *plottable);
-    void drawNode(SEDNode *node);
+    void drawPlot(SEDNode *node);
+    void drawNode(QList<SED *> sedlist);
     void insertNewPlotPoint(SEDNode *node);
     void doThinLocalFit();
     void doThickLocalFit();
