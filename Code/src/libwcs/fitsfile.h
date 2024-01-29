@@ -31,8 +31,6 @@
 #define fitsfile_h_
 #include "fitshead.h"
 
-#include <stdio.h>
-
 /* Declarations for subroutines in fitsfile.c, imhfile.c, imio.c,
  * fileutil.c, and dateutil.c */
 
@@ -1041,16 +1039,16 @@ float ftgetr4(		/* Extract column for keyword from FITS table line
 
 /* FITS file access subroutines in fitsfile.c */
 extern int fitsropen();
-extern char* fitsrhead(char* filename, int* lhead, int* nbhead);
-extern char* fitsrtail(char* filename, int* lhead, int* nbhead);
-extern char *fitsrimage(char* filename, int nbhead, char* header);
+extern char *fitsrhead();
+extern char *fitsrtail();
+extern char *fitsrimage();
 extern char *fitsrfull();
 extern char *fitsrsect();
 extern int fitswhead();
 extern int fitswexhead();
 extern int fitswext();
 extern int fitswhdu();
-extern int fitswimage(char* filename, char* header, char* image);
+extern int fitswimage();
 extern int fitscimage();
 extern int isfits();		/* Return 1 if file is a FITS file */
 extern void fitserr();          /* Print FITS error message to stderr */
@@ -1070,12 +1068,12 @@ extern int ftgetc();
 extern void moveb();	/* Copy nbytes bytes from source+offs to dest+offd */
 
 /* IRAF file access subroutines in imhfile.c */
-extern char* irafrhead(char* filename, int* lihead);
+extern char *irafrhead();
 extern char *irafrimage();
 extern int irafwhead();
 extern int irafwimage();
-extern int isiraf(char* filename);
-extern char* iraf2fits(char* hdrname, char* irafheader, int nbiraf, int* nbfits);
+extern int isiraf();
+extern char *iraf2fits();
 extern char *fits2iraf();
 
 /* Image pixel access subroutines in imio.c */
@@ -1111,9 +1109,9 @@ extern int isimlist();
 extern int isimlistd();
 extern int isfilelist();
 extern int isfile();
-extern int istiff(char* filename);
-extern int isjpeg(char* filename);
-extern int isgif(char* filename);
+extern int istiff();
+extern int isjpeg();
+extern int isgif();
 extern int next_line();
 extern int first_token();
 
@@ -1204,6 +1202,7 @@ double fd2ep();	/* FITS standard date string to fractional year (epoch) */
 double fd2epb(); /* FITS standard date string to Besselian epoch */
 double fd2epj(); /* FITS standard date string to Julian epoch */
 char *fd2fd();	/* Any FITS standard date string to ISO FITS date string */
+char* fd2mfd();	/* Any FITS standard date string to date string with month name*/
 char *fd2of();	/* Any FITS standard date string to old FITS date and time */
 char *fd2ofd();	/* Any FITS standard date string to old FITS date string */
 char *fd2oft(); /* Any FITS standard date string to old FITS time string */

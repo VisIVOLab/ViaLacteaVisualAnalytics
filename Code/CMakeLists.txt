@@ -104,38 +104,6 @@ set(PROJECT_SOURCES
     src/interactors/vtkinteractorstyleimagecustom.h
     src/interactors/vtkinteractorstyleprofile.cpp
     src/interactors/vtkinteractorstyleprofile.h
-    src/libwcs/cel.c
-    src/libwcs/dateutil.c
-    src/libwcs/distort.c
-    src/libwcs/dsspos.c
-    src/libwcs/fileutil.c
-    src/libwcs/fitsfile.c
-    src/libwcs/fitsfile.h
-    src/libwcs/fitshead.h
-    src/libwcs/hget.c
-    src/libwcs/hput.c
-    src/libwcs/iget.c
-    src/libwcs/imhfile.c
-    src/libwcs/imio.c
-    src/libwcs/imio.h
-    src/libwcs/imutil.c
-    src/libwcs/lin.c
-    src/libwcs/lwcs.h
-    src/libwcs/platepos.c
-    src/libwcs/poly.c
-    src/libwcs/proj.c
-    src/libwcs/sph.c
-    src/libwcs/tnxpos.c
-    src/libwcs/wcs.c
-    src/libwcs/wcscat.h
-    src/libwcs/wcscon.c
-    src/libwcs/wcs.h
-    src/libwcs/wcsinit.c
-    src/libwcs/wcslib.c
-    src/libwcs/wcslib.h
-    src/libwcs/wcstrig.c
-    src/libwcs/worldpos.c
-    src/libwcs/zpxpos.c
     src/loadingwidget.cpp
     src/loadingwidget.h
     src/lutcustomize.cpp
@@ -264,9 +232,6 @@ set(PROJECT_SOURCES
     src/xmlparser.cpp
     src/xmlparser.h
 )
-if(WIN32)
-    list(APPEND PROJECT_SOURCES src/libwcs/win_time.h)
-endif()
 
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 set(PROJECT_UI
@@ -328,6 +293,8 @@ add_executable(ViaLacteaVisualAnalytics
     ${ICON_RESOURCE}
 )
 
+add_subdirectory(src/libwcs)
+
 target_compile_definitions(ViaLacteaVisualAnalytics PRIVATE $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>)
 
 foreach(_qt_comp IN LISTS qt_components)
@@ -339,6 +306,7 @@ target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
     ${VTK_LIBRARIES}
     CFITSIO::CFITSIO
     Boost::headers
+    wcs
     pybind11::embed
 )
 

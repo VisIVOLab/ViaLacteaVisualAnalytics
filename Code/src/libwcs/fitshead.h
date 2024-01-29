@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 
-#if defined(__STDC__) || defined(_WIN32)
+#ifdef __STDC__   /* Full ANSI prototypes */
 
 /* Subroutines in hget.c */
     int hgeti2(			/* Extract short value from FITS header */

@@ -319,41 +319,15 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-
-#ifdef _WIN32
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
-#define ftruncate _chsize
-
-#include "win_time.h"
-char* fd2mfd(char*);
-
- // File descriptor associated with stdin, stdout, stderr
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
-
-#define R_OK 4
-
-// Includes for open, close, access, read and write
-#include <io.h>
-
-#define _CRT_INTERNAL_NONSTDC_NAMES 1
-#include <sys/stat.h>
-#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-#endif
-#if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
-#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
-#endif
-#else
-#include <unistd.h>
-#include <sys/file.h>
-#include <sys/time.h>
-#endif
-
+//#include <sys/time.h>
 #include "wcs.h"
 #include "fitsfile.h"
+
+#ifndef _WIN32
+#include <sys/time.h>
+#else
+#include "win_fixes.h"
+#endif
 
 static double suntl();
 static void fixdate();

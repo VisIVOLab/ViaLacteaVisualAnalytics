@@ -32,6 +32,11 @@
 *   $Id: wcs.h,v 2.9 2002/04/03 01:25:29 mcalabre Exp $
 *===========================================================================*/
 
+#ifdef _WIN32
+#define wcsset __wcsset
+#define wcsrev __wcsrev
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -326,7 +331,7 @@ struct wcsprm {
 };
 
 #if __STDC__ || defined(__cplusplus)
-   int libwcsset(const int,
+   int wcsset(const int,
               const char[][16],
               struct wcsprm *);
 
@@ -342,7 +347,7 @@ struct wcsprm {
               struct linprm *,
               double[]);
 
-   int libwcsrev(const char[][16],
+   int wcsrev(const char[][16],
               struct wcsprm *,
               const double[], 
               struct linprm *,
@@ -372,7 +377,7 @@ struct wcsprm {
               double[]);
 
 #else
-   int libwcsset(), wcsfwd(), libwcsrev(), wcsmix();
+   int wcsset(), wcsfwd(), wcsrev(), wcsmix();
 #endif
 
 extern const char *wcsset_errmsg[];

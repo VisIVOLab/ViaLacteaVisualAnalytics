@@ -37,13 +37,17 @@
  * Subroutine:  getdistcode (wcs) returns distortion code string for CTYPEi
  */
 
-#ifndef _WIN32
-#include <unistd.h>
-#endif
+//#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "wcs.h"
+
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include "win_fixes.h"
+#endif
 
 void
 distortinit (wcs, hstring)

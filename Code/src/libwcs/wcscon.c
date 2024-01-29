@@ -74,7 +74,7 @@
 #include "wcs.h"
 
 #ifdef _WIN32
-#define strncasecmp _strnicmp
+#include "win_fixes.h"
 #endif
 
 void fk524(), fk524e(), fk524m(), fk524pv();

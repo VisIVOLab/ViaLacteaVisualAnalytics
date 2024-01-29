@@ -2357,7 +2357,7 @@ double  *ypos;           /* y (dec) coordinate (deg) */
 {
     int offscl;
     int i;
-    int libwcsrev();
+    int wcsrev();
     double wcscrd[4], imgcrd[4], pixcrd[4];
     double phi, theta;
     
@@ -2374,7 +2374,7 @@ double  *ypos;           /* y (dec) coordinate (deg) */
     pixcrd[3] = 1.0;
     for (i = 0; i < 4; i++)
 	imgcrd[i] = 0.0;
-    offscl = libwcsrev ((void *)&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
+    offscl = wcsrev ((void *)&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
 		    &wcs->prj, &phi, &theta, wcs->crval, &wcs->cel, wcscrd);
     if (offscl == 0) {
 	*xpos = wcscrd[wcs->wcsl.lng];
@@ -2405,7 +2405,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
     *xpix = 0.0;
     *ypix = 0.0;
     if (wcs->wcsl.flag != WCSSET) {
-	if (libwcsset (wcs->lin.naxis, (void *)&wcs->ctype, &wcs->wcsl) )
+	if (wcsset (wcs->lin.naxis, (void *)&wcs->ctype, &wcs->wcsl) )
 	    return (1);
 	}
 
