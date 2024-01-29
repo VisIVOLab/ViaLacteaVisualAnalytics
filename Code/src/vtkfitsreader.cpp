@@ -594,6 +594,8 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
     int anynull = 0;
     float fpixel = 1, nullval = 0;
 
+    double vdelt = std::abs(cdelt[2]);
+
     switch (order) {
     case 0: {
         // the integrated value of the spectrum
@@ -603,7 +605,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
             for (long i = 0; i < buffsize; ++i) {
                 if (std::isfinite(buffer[i])) {
-                    scalars[i] += buffer[i];
+                    scalars[i] += buffer[i] * vdelt;
                 }
             }
 
@@ -624,7 +626,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
             for (long i = 0; i < buffsize; ++i) {
                 if (m0->GetValue(i) != 0 && std::isfinite(buffer[i])) {
-                    scalars[i] = scalars[i] + (buffer[i] * velocityValue) / m0->GetValue(i);
+                    scalars[i] = scalars[i] + (buffer[i] * velocityValue * vdelt) / m0->GetValue(i);
                 }
             }
 
@@ -651,7 +653,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
             for (long i = 0; i < buffsize; ++i) {
                 if (m0->GetValue(i) != 0 && std::isfinite(buffer[i])) {
-                    m1[i] = m1[i] + (buffer[i] * velocityValue) / m0->GetValue(i);
+                    m1[i] = m1[i] + (buffer[i] * velocityValue * vdelt) / m0->GetValue(i);
                 }
             }
 
@@ -669,16 +671,17 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
             for (long i = 0; i < buffsize; ++i) {
                 if (m0->GetValue(i) != 0 && std::isfinite(buffer[i])) {
                     scalars[i] = scalars[i]
-                            + (buffer[i] * std::pow(velocityValue - m1[i], 2)) / m0->GetValue(i);
+                            + (buffer[i] * std::pow(velocityValue - m1[i], 2) * vdelt)
+                                    / m0->GetValue(i);
                 }
             }
 
             fpixel += buffsize;
         }
 
-        for (int i = 0; i < buffsize; ++i) {
-            scalars[i] = std::sqrt(scalars[i]);
-        }
+        // for (int i = 0; i < buffsize; ++i) {
+        //     scalars[i] = std::sqrt(scalars[i]);
+        // }
 
         delete[] m1;
         m0->Delete();
@@ -700,7 +703,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
         }
 
         for (int i = 0; i < buffsize; ++i) {
-            scalars[i] = std::sqrt(scalars[i] / naxes[2]);
+            scalars[i] = std::sqrt(scalars[i] / buffsize);
         }
 
         break;
