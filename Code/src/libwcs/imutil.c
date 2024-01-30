@@ -2638,10 +2638,13 @@ int	bitpix;		/* Number of bits per output pixel (neg=f.p.) */
 	}
 
     /* Add keyword to denote this operation */
+    /*
     if (strlen (filename) < 40)
 	sprintf (history, "%s blocked %dx%d", filename, xfactor, yfactor);
     else
 	sprintf (history, "%40s blocked / %dx%d", filename, xfactor, yfactor);
+    */
+    sprintf (history, "blocked %dx%d", xfactor, yfactor);
     if (mean)
 	strcat (history, " mean");
     else
