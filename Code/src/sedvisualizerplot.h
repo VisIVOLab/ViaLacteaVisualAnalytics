@@ -61,6 +61,8 @@ private:
 
     QStringList plottedSedLabels;
 
+    void getCoordinatesData(SEDNode* node, QVector<double>& x, QVector<double>& y, QVector<double>& y_err);
+
     void readColumnsFromSedFitResults(const QJsonArray &columns);
     void plotSedFitModel(const QJsonArray &model, Qt::GlobalColor color);
 

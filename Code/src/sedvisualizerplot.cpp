@@ -79,12 +79,15 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
-    qDebug() <<"-- quanti grafici ci sono?"<< ui->customPlot->graphCount();
-    qDebug() << "-- esistono"<< s.count() << "nodi";
+    qDebug() << "-- Studiamo"<< s.count() << "nodi PADRI da sed_list";
+    //TEST
+    //sed = s.at(0);
+    //qDebug() << "-- draw del nodo padre iesimo"<< sed->getRootNode()->getDesignation();
+    //drawPlot(sed->getRootNode());
     // plot di ciascun grafico: solo grafico dei punti presenti in sed_list
     for (sedCount = 0; sedCount < s.count(); sedCount++) {
         sed = s.at(sedCount);   //SED* sed-iesimo
-        qDebug() << "-- draw del nodo iesimo"<< sed->getRootNode()->getDesignation();
+        qDebug() << "-- draw del nodo padre iesimo"<< sed->getRootNode()->getDesignation();
         drawPlot(sed->getRootNode());
     }
     qDebug() <<"-- quanti grafici ci sono?"<< ui->customPlot->graphCount();
@@ -413,21 +416,18 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
     // è un nuovo nodo da trattare?
     insertNewPlotPoint(node);    // TODO per ogni nodo
 
-    QVector<double> x(2), y(2), y_err(2);
-    // on 0 setta value nodi correnti
+    QVector<double> x(2), y(2);
+    // on 0 setta value nodo corrente
     x[0] = node->getWavelength();
     y[0] = node->getFlux();
-    qDebug() << "--Draw: Padre X:" << x[0] << y[0];
-    y_err[0] = node->getErrFlux();
+    qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
     qDebug() << "--Draw: il nodo ha figli" << node->getChild().count();
-    for (int i = 0; i < node->getChild().count(); i++) {
-        // chiama ricorsivamente drawNode per ogni nodo figlio
-        drawPlot(node->getChild().values()[i]);
+    // se esistono nodi figli (archi da graficare)
+    if (node->getChild().count() > 0){
         // on 1 setta value nodo figlio
-        x[1] = node->getChild().values()[i]->getWavelength();
-        y[1] = node->getChild().values()[i]->getFlux();
-        y_err[1] = node->getChild().values()[i]->getErrFlux();
-        qDebug() << "--Draw: Figlio X:" << x[1] << y[1];
+        x[1] = node->getChild().values()[0]->getWavelength();
+        y[1] = node->getChild().values()[0]->getFlux();
+        qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
 
         // PLOT GRAFICO
         // plot grafico semplicemente, sono dei QVector di (getWavelength, getFlux)
@@ -437,62 +437,57 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
         // sia perché i punti sono gestiti da una seconda parte
         // sia perché non sarebbero selezionabili
         // sia perché non si nota la differenza (sembrano sotto punti)
-        //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
+        //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));   // riduce la dim dei nodi
+        ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone));
         ui->customPlot->graph()->setSelectable(QCP::stNone);    // non selezionabile
-        qDebug()<< "-- grafico " << i;
-
-
-        // set error bar on node
-        /**
-        QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
-        errorBars->removeFromLegend();
-        errorBars->setAntialiased(true);
-        errorBars->setData(y_err);
-        errorBars->setDataPlottable(ui->customPlot->graph(1));
-        errorBars->setPen(QPen(QColor(180, 180, 180)));
-        errorBars->setSelectable(QCP::stNone);
-        ui->customPlot->graph()->setPen(QPen(Qt::black));
-        ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
-        ui->customPlot->graph()->setAntialiased(true);
-        **/
+        // chiama ricorsivamente drawNode per ogni nodo figlio: alla ricerca di altri archi
+        drawPlot(node->getChild().values()[0]);
     }
 }
 
 void SEDVisualizerPlot::drawNode(QList<SED *> sedlist){
-    qDebug() << "drawNode";
+    qDebug() << "--drawNode";
     QVector<double> x, y, y_err;
-
-    for (sedCount = 0; sedCount < sedlist.count(); sedCount++) {
-        SEDNode *sedRootNode = sedlist.at(sedCount)->getRootNode();
-
-        // setta value current root node
-        x.append(sedRootNode->getWavelength());
-        y.append(sedRootNode->getFlux());
-        y_err.append(sedRootNode->getErrFlux());
-        for (int i = 0; i < sedRootNode->getChild().count(); i++) {
-            x.append(sedRootNode->getChild().values()[i]->getWavelength());
-            y.append(sedRootNode->getChild().values()[i]->getFlux());
-            y_err.append(sedRootNode->getChild().values()[i]->getErrFlux());
-        }
+    for (int i = 0; i < sedlist.count(); i++) {
+        SEDNode *sedRootNode = sedlist.at(i)->getRootNode();
+        getCoordinatesData(sedRootNode, x, y, y_err);
     }
     // PLOT PUNTI
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone);
-    ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssCircle);
+    ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssCross);
 
 
     // set error bar on node
-    QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
-    errorBars->removeFromLegend();
-    errorBars->setAntialiased(true);
-    errorBars->setData(y_err);
-    errorBars->setDataPlottable(ui->customPlot->graph());
-    errorBars->setPen(QPen(QColor(180, 180, 180)));
-    errorBars->setSelectable(QCP::stNone);
-    ui->customPlot->graph()->setPen(QPen(Qt::black));
-    ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
-    ui->customPlot->graph()->setAntialiased(true);
+    //QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    //errorBars->removeFromLegend();
+    //errorBars->setAntialiased(true);
+    //errorBars->setData(y_err);
+    //errorBars->setDataPlottable(ui->customPlot->graph());
+    //errorBars->setPen(QPen(QColor(180, 180, 180)));
+    //errorBars->setSelectable(QCP::stNone);
+    //ui->customPlot->graph()->setPen(QPen(Qt::black));
+    //ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
+    //ui->customPlot->graph()->setAntialiased(true);
+}
+
+/**
+ * @brief SEDVisualizerPlot::getCoordinatesData
+ * Recursively traverses a structure of SEDNodes, extracting the wavelength, flux, and flux-error data from each node.
+ * The extracted data is appended to the provided QVector objects.
+ * @param node SEDNode*. The method will visit this node and all its descendants.
+ * @param x Reference QVector of double. Collect the wavelength data of each node.
+ * @param y Reference QVector of double. Collect flux data of each node.
+ * @param y_err Reference QVector of double. Collect flux-error data of each node.
+ */
+void SEDVisualizerPlot::getCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y, QVector<double> &y_err) {
+    x.append(node->getWavelength());
+    y.append(node->getFlux());
+    y_err.append(node->getErrFlux());
+    for(int i = 0; i < node->getChild().count(); i++){
+        getCoordinatesData(node->getChild().values()[i], x, y, y_err);
+    }
 }
 
 // TODO do not work
