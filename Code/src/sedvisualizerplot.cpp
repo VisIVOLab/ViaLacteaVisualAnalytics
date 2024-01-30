@@ -334,11 +334,14 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
     return in;
 }
 
+/**
+ * Insert new SEDNode point into the all_sed_node and visualnode_hash.
+ * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
+ * It also updates the maximum and minimum wavelength and flux values.
+ * @brief SEDVisualizerPlot::insertNewPlotPoint
+ * @param node SEDNode to insert
+ */
 void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
-    // visualnode_hash è un QHash<QString, SEDPlotPointCustom *>
-    // visualnode_hash: tiene traccia dei nodi visualizzati?
-    // se la QHash non contiene la designation (QString) del SEDNode corrente iesimo
-    // ne ricava i suoi valori in SEDPlotPointCustom e inserisce una new entry in all_sed_node e visualnode_hash
     if (!visualnode_hash.contains(node->getDesignation())) {
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
 
@@ -365,27 +368,19 @@ void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
             }
         }
         // set cp component
-        //qDebug() << "-- cp set component";
         cp->setAntialiased(true);
         cp->setPos(node->getWavelength(), node->getFlux());
-        //qDebug() << node->getWavelength() << node->getFlux();
         cp->setDesignation(node->getDesignation());
-        //qDebug() << node->getDesignation();
         cp->setX(node->getX());
-        //qDebug() << node->getX();
         cp->setY(node->getY());
-        //qDebug() << node->getY();
         cp->setLat(node->getLat());
-        //qDebug() << node->getLat();
         cp->setLon(node->getLon());
-        //qDebug() << node->getLon();
         cp->setErrorFlux(node->getErrFlux());
-        //qDebug() << node->getErrFlux();
         cp->setEllipse(node->getSemiMinorAxisLength(), node->getSemiMajorAxisLength(),
                        node->getAngle(), node->getArcpix());
         cp->setNode(node);
 
-               // new visualnode_hash entry
+        // new visualnode_hash entry
         visualnode_hash.insert(node->getDesignation(), cp);
 
         if (node->getWavelength() > maxWavelen)
@@ -404,13 +399,13 @@ void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
 
 
 /**
- * Il costruttore per ciasun Sed presente nella QList invoca drawNode
+ * Draw a plot(edge) for every child of a given SEDNode
  * @brief SEDVisualizerPlot::drawNode
  * @param SEDNode
  */
 void SEDVisualizerPlot::drawPlot(SEDNode *node)
 {
-    // è un nuovo nodo da trattare?
+    // update external structures if it's a new nodes
     insertNewPlotPoint(node);
 
     QVector<double> x(2), y(2);
@@ -419,38 +414,39 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
     y[0] = node->getFlux();
     qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
     qDebug() << "--Draw: il nodo ha figli" << node->getChild().count();
-    // se esistono nodi figli (archi da graficare)
+    // if a child node exists, an edge is to be drawn
     if (node->getChild().count() > 0){
         // on 1 set child node values
         x[1] = node->getChild().values()[0]->getWavelength();
         y[1] = node->getChild().values()[0]->getFlux();
         qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
 
-        // PLOT GRAFICO
-        // plot grafico semplicemente, sono dei QVector di (getWavelength, getFlux)
+        // plot edge-i
         ui->customPlot->addGraph();
         ui->customPlot->graph()->setData(x, y);
-        //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));   // riduce la dim dei nodi
-        ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // punti non selezionabili
-        ui->customPlot->graph()->setSelectable(QCP::stNone);    // grafico non selezionabile
-        // chiama ricorsivamente drawNode per ogni nodo figlio: alla ricerca di altri archi
+        //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));   // reduce selectable area of nodes
+        ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
+        ui->customPlot->graph()->setSelectable(QCP::stNone);    // edge not selectable
+        // repeat for every child
         drawPlot(node->getChild().values()[0]);
     }
 }
 
+/**
+ * @brief SEDVisualizerPlot::drawNode Draw sed nodes and their flux error
+ * @param sedlist A list of sed objects to be visualized
+ */
 void SEDVisualizerPlot::drawNode(QList<SED *> sedlist){
-    qDebug() << "--drawNode";
     QVector<double> x, y, y_err;
     for (int i = 0; i < sedlist.count(); i++) {
         SEDNode *sedRootNode = sedlist.at(i)->getRootNode();
         getCoordinatesData(sedRootNode, x, y, y_err);
     }
-    // PLOT PUNTI
+    // plot nodes
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone);
     //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssCross);   // test
-
 
     // set error bar on node
     QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
