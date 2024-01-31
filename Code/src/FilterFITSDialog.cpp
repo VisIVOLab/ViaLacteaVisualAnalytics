@@ -1,6 +1,7 @@
 #include "FilterFITSDialog.h"
 #include "ui_FilterFITSDialog.h"
 
+#include "fitswcs.h"
 #include "imutils.h"
 
 #include <QDir>
@@ -12,9 +13,13 @@ FilterFITSDialog::FilterFITSDialog(const QString &input, QWidget *parent)
     : QDialog(parent), ui(new Ui::FilterFITSDialog), inputPath(input)
 {
     ui->setupUi(this);
-
     ui->lineFWHM->setValidator(new QDoubleValidator(ui->lineFWHM));
     ui->lineFactor->setValidator(new QIntValidator(ui->lineFactor));
+
+    struct WorldCoor *wcs = GetWCSFITS(input.toUtf8().data(), 0);
+    ui->labelDim->setText(QString("%1x%2").arg(wcs->nxpix).arg(wcs->nypix));
+    ui->labelRes->setText(QString::number(std::max(wcs->cdelt[0], wcs->cdelt[1])));
+    wcsfree(wcs);
 }
 
 FilterFITSDialog::~FilterFITSDialog()
