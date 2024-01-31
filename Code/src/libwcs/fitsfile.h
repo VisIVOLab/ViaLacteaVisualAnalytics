@@ -31,6 +31,8 @@
 #define fitsfile_h_
 #include "fitshead.h"
 
+#include <stdio.h>
+
 /* Declarations for subroutines in fitsfile.c, imhfile.c, imio.c,
  * fileutil.c, and dateutil.c */
 

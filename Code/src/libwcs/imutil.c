@@ -2532,7 +2532,7 @@ double	*buffr8 = NULL;
 		    }
 		}
 	    }
-	if ((jy+1)%nlog == 0)
+    if (nlog > 0 && (jy+1)%nlog == 0)
 	    fprintf (stderr,"IMRESIZE: %d/%d lines created\r", jy+1, ny1);
 	}
     if (nlog > 0)

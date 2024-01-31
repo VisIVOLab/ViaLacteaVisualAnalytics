@@ -97,6 +97,8 @@ set(PROJECT_SOURCES
     src/fitsimagestatisiticinfo.h
     src/higalselectedsources.cpp
     src/higalselectedsources.h
+    src/imutils.cpp
+    src/imutils.h
     src/interactors/vtkinteractorstyledrawarrow.h
     src/interactors/vtkinteractorstyledrawarrow.cpp
     src/interactors/vtkinteractorstyleimagecustom.h
@@ -151,8 +153,6 @@ set(PROJECT_SOURCES
     src/sfilterdialog.h
     src/simcollapsedialog.cpp
     src/simcollapsedialog.h
-    src/simcube/imresize.cpp
-    src/simcube/imresize.h
     src/simcube/simcube_projection-collapse/api-collapse.cpp
     src/simcube/simcube_projection-collapse/fits_simcube.cpp
     src/simcube/simcube_projection-collapse/fits_simcube.hpp
