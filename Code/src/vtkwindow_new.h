@@ -333,6 +333,8 @@ public slots:
     void setVtkInteractorStyle3DFreehand(vtkSmartPointer<vtkPolyData> points);
     void setSliceDatacube(int i);
 
+    void filterCurrentImage();
+
     void plotSlice(vtkSmartPointer<vtkFitsReader> visvis, int arg1);
     void updateSpecies();
     void updateSurvey();

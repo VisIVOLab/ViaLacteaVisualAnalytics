@@ -95,6 +95,8 @@ set(PROJECT_SOURCES
     src/fitsheadermodifierdialog.h
     src/fitsimagestatisiticinfo.cpp
     src/fitsimagestatisiticinfo.h
+    src/FilterFITSDialog.cpp
+    src/FilterFITSDialog.h
     src/higalselectedsources.cpp
     src/higalselectedsources.h
     src/imutils.cpp
@@ -240,6 +242,7 @@ set(PROJECT_UI
     ui/dbquery.ui
     ui/fitsheadermodifierdialog.ui
     ui/fitsimagestatisiticinfo.ui
+    ui/FilterFITSDialog.ui
     ui/higalselectedsources.ui
     ui/loadingwidget.ui
     ui/lutcustomize.ui

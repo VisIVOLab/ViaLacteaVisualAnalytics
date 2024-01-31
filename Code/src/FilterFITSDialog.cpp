@@ -1,0 +1,51 @@
+#include "FilterFITSDialog.h"
+#include "ui_FilterFITSDialog.h"
+
+#include "imutils.h"
+
+#include <QDir>
+#include <QDoubleValidator>
+#include <QIntValidator>
+#include <QMessageBox>
+
+FilterFITSDialog::FilterFITSDialog(const QString &input, QWidget *parent)
+    : QDialog(parent), ui(new Ui::FilterFITSDialog), inputPath(input)
+{
+    ui->setupUi(this);
+
+    ui->lineFWHM->setValidator(new QDoubleValidator(ui->lineFWHM));
+    ui->lineFactor->setValidator(new QIntValidator(ui->lineFactor));
+}
+
+FilterFITSDialog::~FilterFITSDialog()
+{
+    delete ui;
+}
+
+void FilterFITSDialog::accept()
+{
+    if (!ui->checkFilter->isChecked() && !ui->checkResize->isChecked()) {
+        QMessageBox::warning(this, QString(), "Select at least one action.");
+        return;
+    }
+
+    QString inputFilepath(inputPath);
+    const QString outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download");
+    const QString outFile = QFileInfo(inputFilepath).baseName() + "_filtered.fits";
+    const QString outputFilePath = QDir(outDir).absoluteFilePath(outFile);
+
+    if (ui->checkFilter->isChecked()) {
+        const double fwhm = ui->lineFWHM->text().toDouble();
+        const double sigma = fwhm / 2.355;
+        imsmooth(inputFilepath.toStdString(), sigma, outputFilePath.toStdString());
+        inputFilepath = outputFilePath;
+    }
+
+    if (ui->checkResize->isChecked()) {
+        const int factor = ui->lineFactor->text().toInt();
+        imresize(inputFilepath.toStdString(), factor, outputFilePath.toStdString());
+    }
+
+    QMessageBox::information(this, QString(), "File saved in " + outputFilePath);
+    QDialog::accept();
+}
