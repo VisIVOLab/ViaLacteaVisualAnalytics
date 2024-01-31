@@ -9,6 +9,7 @@
 #include "extendedglyph3d.h"
 #include "fitsimagestatisiticinfo.h"
 #include "higalselectedsources.h"
+#include "imutils.h"
 #include "lutcustomize.h"
 #include "luteditor.h"
 #include "qdebug.h"
@@ -102,7 +103,6 @@
 #include "ds9region/DS9Region.h"
 #include "ds9region/DS9RegionParser.h"
 
-#include "simcube/imresize.h"
 #include "simcube/simcube_projection.hpp"
 
 #include <QDir>
