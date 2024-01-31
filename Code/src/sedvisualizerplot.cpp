@@ -204,8 +204,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->singleSelectRadioButton->setChecked(true);
     ui->generatedSedBox->setHidden(true);
     nSED = 0;
-    multiSelectMOD = false; //TODO da capire cosa fa - rimuoverlo anche
-    temporaryMOD = false;   //TODO da capire cosa fa
+    temporaryMOD = false;
     doubleClicked = false;
     temporaryRow = 0;
     this->setFocus();
@@ -2257,66 +2256,40 @@ void SEDVisualizerPlot::on_thinButton_clicked()
 void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
 {
     if (checked){
-        qDebug() << "-- Single mode";
         // reset previus pending selection TODO (può servire da nota nella gestione dei nodi)
         //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
         //for (int i = 0; i < list_items.size(); i++) {
         //    list_items.at(i)->setSelected(false);
         //}
-
-        qDebug() << "-- deseleziono tutto";
+        // unable rect selection mode TODO: metterlo nell'else della selezione drag
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
-        qDebug() << "-- disabilito selezione rettangolare";
-        if (ui->customPlot->graphCount() > 0)   // se ci sono grafici
+        if (ui->customPlot->graphCount() > 0)   // set last graph() layer of nodes selectable on single data
             ui->customPlot->graph(ui->customPlot->graphCount()-1)->setSelectable(QCP::stSingleData);
         // set 'control/command' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-        qDebug() << "-- Single mode end";
-
     } else {
         // unset 'control/ctrl' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
-        qDebug() << "-- USCITA Single mode";
     }
     // reset previus pending selection every in and out singlemode selection
     ui->customPlot->deselectAll();
     ui->customPlot->replot();
 }
 
-// TODO multiSelectMOD che utilità ha?
-// TODO replace
 void SEDVisualizerPlot::on_multiSelectRadioButton_toggled(bool checked)
 {
     if (checked) {
-        qDebug() << "-- Multiselection mode";
-        multiSelectMOD = true;
-
-        // unset control/command shortcut for multi selection
-        ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
 
     } else {
-        multiSelectMOD = false;
-        ui->customPlot->deselectAll(); // --non presente
-        // do not require the
-        // reset previus pending selection and set control/command shortcut for multi selection
-        // it is in Single Selection (for now)
-
-        // --presente tutto sotto
-        // set control/command shortcut for multi selection - solo se entra in single (se entra in drag ha senso)
-        //ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-        // reset previus pending selection - solo se entra in single (se entra in drag ha senso)
-        //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-        //for (int i = 0; i < list_items.size(); i++) {
-        //    list_items.at(i)->setSelected(false);
-        //}
-        //ui->customPlot->replot();
+        ui->customPlot->deselectAll(); // TODO forse inutile già gestita da single e forse richiesta da drag
+        ui->customPlot->replot();
     }
 }
 
 
 void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
 {
-    qDebug() << "on_dragSelectRadioButton_toggled";
+    qDebug() << "--on_dragSelectRadioButton_toggled";
     if (checked){
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         ui->customPlot->graph()->setSelectable(QCP::stMultipleDataRanges);
@@ -2327,6 +2300,11 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
     }
 }
 
+/**
+ * In DragSelection mode, holding 'shift' allows graph navigation by disabling drag selection
+ * @brief SEDVisualizerPlot::keyPressEvent
+ * @param event
+ */
 void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Shift && ui->dragSelectRadioButton->isChecked()) {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
@@ -2335,6 +2313,11 @@ void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
     QMainWindow::keyPressEvent(event);
 }
 
+/**
+ * Reset DragSelection mode realeasing 'shift'
+ * @brief SEDVisualizerPlot::keyReleaseEvent
+ * @param event
+ */
 void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Shift && ui->dragSelectRadioButton->isChecked()) {
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
