@@ -143,7 +143,6 @@ private slots:
     void handleFinished();
     void on_clearAllButton_clicked();
     void on_SEDCheckboxClicked(int n);
-    void on_normalRadioButton_toggled(bool checked);
     void on_actionSave_triggered();
     void on_actionLoad_triggered();
     void on_collapseCheckBox_toggled(bool checked);

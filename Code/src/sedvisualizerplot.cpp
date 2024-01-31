@@ -2031,23 +2031,6 @@ void SEDVisualizerPlot::on_clearAllButton_clicked()
     plottedSedLabels.clear();
 }
 
-// TODO da rimuovere?
-void SEDVisualizerPlot::on_normalRadioButton_toggled(bool selectNormal)
-{
-    if (selectNormal == true) {
-        multiSelectMOD = false;
-        ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-        QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-        for (int i = 0; i < list_items.size(); i++) {
-            list_items.at(i)->setSelected(false);
-        }
-        ui->customPlot->replot();
-    } else {
-        multiSelectMOD = true;
-        ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
-    }
-}
-
 void SEDVisualizerPlot::on_actionSave_triggered()
 {
     QProcess process_zip;
@@ -2275,12 +2258,12 @@ void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
 {
     if (checked){
         qDebug() << "-- Single mode";
-        // reset previus pending selection
+        // reset previus pending selection TODO (può servire da nota nella gestione dei nodi)
         //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
         //for (int i = 0; i < list_items.size(); i++) {
         //    list_items.at(i)->setSelected(false);
         //}
-        ui->customPlot->deselectAll();
+
         qDebug() << "-- deseleziono tutto";
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
         qDebug() << "-- disabilito selezione rettangolare";
@@ -2289,11 +2272,15 @@ void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
         // set 'control/command' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
         qDebug() << "-- Single mode end";
-        ui->customPlot->replot();
+
     } else {
         // unset 'control/ctrl' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
+        qDebug() << "-- USCITA Single mode";
     }
+    // reset previus pending selection every in and out singlemode selection
+    ui->customPlot->deselectAll();
+    ui->customPlot->replot();
 }
 
 // TODO multiSelectMOD che utilità ha?
@@ -2301,9 +2288,12 @@ void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
 void SEDVisualizerPlot::on_multiSelectRadioButton_toggled(bool checked)
 {
     if (checked) {
+        qDebug() << "-- Multiselection mode";
         multiSelectMOD = true;
+
         // unset control/command shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
+
     } else {
         multiSelectMOD = false;
         ui->customPlot->deselectAll(); // --non presente
