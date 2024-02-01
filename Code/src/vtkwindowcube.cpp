@@ -9,6 +9,7 @@
 #include "interactors/vtkinteractorstyleprofile.h"
 
 #include "astroutils.h"
+#include "FilterFITSDialog.h"
 #include "fitsimagestatisiticinfo.h"
 #include "lutcustomize.h"
 #include "luteditor.h"
@@ -913,4 +914,10 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
 void vtkWindowCube::on_actionPV_triggered()
 {
     setInteractorStyleDrawLine();
+}
+
+void vtkWindowCube::on_actionFilter_triggered()
+{
+    FilterFITSDialog d(this->filepath, this);
+    d.exec();
 }

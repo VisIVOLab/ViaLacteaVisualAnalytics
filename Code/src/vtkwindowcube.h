@@ -83,6 +83,7 @@ private slots:
     void extractSpectrum(double x, double y, bool live = false);
 
     void on_actionPV_triggered();
+    void on_actionFilter_triggered();
 
 private:
     QString filepath;

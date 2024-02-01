@@ -13,11 +13,19 @@ char *ShrinkFITSHeader(char *name, char *header, int xfactor, int yfactor, int m
 char *ShrinkFITSImage(char *header, char *image, int xfactor, int yfactor, int mean, int bitpix,
                       int nlog);
 
+void gausswt(int mx, int my, int nx);
+float gausspixr4(float *image, float rval, int ix, int iy, int nx, int ny);
+double gausspixr8(double *image, double rval, int ix, int iy, int nx, int ny);
+
 #ifdef __cplusplus
 }
 #endif
 
+void smooth(const std::string &inFile, const double sigma, const std::string &outFile);
+
 void imsmooth(const std::string &inFile, const double sigma, const std::string &outFile);
 void imresize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
+
+void cubesmooth(const std::string &inFile, const double sigma, const std::string &outFile);
 
 #endif // IMUTILS_H

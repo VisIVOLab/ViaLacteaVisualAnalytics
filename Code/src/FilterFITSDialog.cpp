@@ -42,7 +42,7 @@ void FilterFITSDialog::accept()
     if (ui->checkFilter->isChecked()) {
         const double fwhm = ui->lineFWHM->text().toDouble();
         const double sigma = fwhm / 2.355;
-        imsmooth(inputFilepath.toStdString(), sigma, outputFilePath.toStdString());
+        smooth(inputFilepath.toStdString(), sigma, outputFilePath.toStdString());
         inputFilepath = outputFilePath;
     }
 
