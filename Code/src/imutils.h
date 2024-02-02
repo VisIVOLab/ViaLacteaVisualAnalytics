@@ -21,13 +21,13 @@ double gausspixr8(double *image, double rval, int ix, int iy, int nx, int ny);
 }
 #endif
 
-void fits_smooth(const std::string &inFile, const double sigma, const std::string &outFile);
-void fits_resize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
+bool fits_smooth(const std::string &inFile, const double sigma, const std::string &outFile);
+bool fits_resize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
 
-void imsmooth(const std::string &inFile, const double sigma, const std::string &outFile);
-void imresize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
+bool imsmooth(const std::string &inFile, const double sigma, const std::string &outFile);
+bool imresize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
 
-void cubesmooth(const std::string &inFile, const double sigma, const std::string &outFile);
-void cuberesize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
+bool cubesmooth(const std::string &inFile, const double sigma, const std::string &outFile);
+bool cuberesize(const std::string &inFile, const int resizeFactor, const std::string &outFile);
 
 #endif // IMUTILS_H

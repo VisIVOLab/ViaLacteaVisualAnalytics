@@ -19,7 +19,7 @@
 #define MEAN 2
 #define GAUSSIAN 3
 
-void fits_smooth(const std::string &inFile, const double sigma, const std::string &outFile)
+bool fits_smooth(const std::string &inFile, const double sigma, const std::string &outFile)
 {
     fitsfile *fptr;
     int status = 0;
@@ -29,13 +29,13 @@ void fits_smooth(const std::string &inFile, const double sigma, const std::strin
     fits_close_file(fptr, &status);
 
     if (naxis == 2) {
-        imsmooth(inFile, sigma, outFile);
+        return imsmooth(inFile, sigma, outFile);
     } else {
-        cubesmooth(inFile, sigma, outFile);
+        return cubesmooth(inFile, sigma, outFile);
     }
 }
 
-void fits_resize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
+bool fits_resize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
 {
     fitsfile *fptr;
     int status = 0;
@@ -45,13 +45,13 @@ void fits_resize(const std::string &inFile, const int resizeFactor, const std::s
     fits_close_file(fptr, &status);
 
     if (naxis == 2) {
-        imresize(inFile, resizeFactor, outFile);
+        return imresize(inFile, resizeFactor, outFile);
     } else {
-        cuberesize(inFile, resizeFactor, outFile);
+        return cuberesize(inFile, resizeFactor, outFile);
     }
 }
 
-void imsmooth(const std::string &inFile, const double sigma, const std::string &outFile)
+bool imsmooth(const std::string &inFile, const double sigma, const std::string &outFile)
 {
     char name[inFile.size() + 1];
     std::strncpy(name, inFile.c_str(), sizeof(name));
@@ -67,11 +67,11 @@ void imsmooth(const std::string &inFile, const double sigma, const std::string &
         if ((image = fitsrimage(name, nbhead, header)) == NULL) {
             std::cerr << "Cannot read FITS Image " << inFile << std::endl;
             free(header);
-            return;
+            return false;
         }
     } else {
         std::cerr << "Cannot read FITS file " << inFile << std::endl;
-        return;
+        return false;
     }
 
     int kernelSize = std::ceil(6. * sigma);
@@ -82,7 +82,7 @@ void imsmooth(const std::string &inFile, const double sigma, const std::string &
         std::cerr << "Cannot filter image " << inFile << "; file is unchanged" << std::endl;
         free(image);
         free(header);
-        return;
+        return false;
     }
     free(image);
     image = newimage;
@@ -99,9 +99,10 @@ void imsmooth(const std::string &inFile, const double sigma, const std::string &
     fitswimage(fout, header, image);
     free(image);
     free(header);
+    return true;
 }
 
-void imresize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
+bool imresize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
 {
     char name[inFile.size() + 1];
     std::strncpy(name, inFile.c_str(), sizeof(name));
@@ -117,11 +118,11 @@ void imresize(const std::string &inFile, const int resizeFactor, const std::stri
         if ((image = fitsrimage(name, nbhead, header)) == NULL) {
             std::cerr << "Cannot read FITS Image " << inFile << std::endl;
             free(header);
-            return;
+            return false;
         }
     } else {
         std::cerr << "Cannot read FITS file " << inFile << std::endl;
-        return;
+        return false;
     }
 
     char *newhead = nullptr;
@@ -133,14 +134,14 @@ void imresize(const std::string &inFile, const int resizeFactor, const std::stri
         std::cerr << "Cannot make new image header for " << outFile << std::endl;
         free(image);
         free(header);
-        return;
+        return false;
     }
     if ((newimage = ShrinkFITSImage(header, image, resizeFactor, resizeFactor, mean, bitpix, 0))
         == NULL) {
         std::cerr << "Cannot shrink image " << inFile << std::endl;
         free(image);
         free(header);
-        return;
+        return false;
     }
 
     free(header);
@@ -158,9 +159,10 @@ void imresize(const std::string &inFile, const int resizeFactor, const std::stri
     fitswimage(fout, header, image);
     free(image);
     free(header);
+    return true;
 }
 
-void cubesmooth(const std::string &inFile, const double sigma, const std::string &outFile)
+bool cubesmooth(const std::string &inFile, const double sigma, const std::string &outFile)
 {
     char name[inFile.size() + 1];
     std::strncpy(name, inFile.c_str(), sizeof(name));
@@ -176,11 +178,11 @@ void cubesmooth(const std::string &inFile, const double sigma, const std::string
         if ((image = fitsrfull(name, nbhead, header)) == NULL) {
             std::cerr << "Cannot read FITS Cube " << inFile << std::endl;
             free(header);
-            return;
+            return false;
         }
     } else {
         std::cerr << "Cannot read FITS file " << inFile << std::endl;
-        return;
+        return false;
     }
 
     int bitpix, nx, ny, nz;
@@ -245,7 +247,7 @@ void cubesmooth(const std::string &inFile, const double sigma, const std::string
         std::cerr << "Cannot filter cube " << inFile << "; file is unchanged" << std::endl;
         free(image);
         free(header);
-        return;
+        return false;
     }
     free(image);
     image = newimage;
@@ -262,9 +264,10 @@ void cubesmooth(const std::string &inFile, const double sigma, const std::string
     fitswimage(fout, header, image);
     free(image);
     free(header);
+    return true;
 }
 
-void cuberesize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
+bool cuberesize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
 {
     char name[inFile.size() + 1];
     std::strncpy(name, inFile.c_str(), sizeof(name));
@@ -280,11 +283,11 @@ void cuberesize(const std::string &inFile, const int resizeFactor, const std::st
         if ((image = fitsrfull(name, nbhead, header)) == NULL) {
             std::cerr << "Cannot read FITS Image " << inFile << std::endl;
             free(header);
-            return;
+            return false;
         }
     } else {
         std::cerr << "Cannot read FITS file " << inFile << std::endl;
-        return;
+        return false;
     }
 
     int bitpix, nx, ny, nz;
@@ -309,7 +312,7 @@ void cuberesize(const std::string &inFile, const int resizeFactor, const std::st
         std::cerr << "Cannot make new image header for " << outFile << std::endl;
         free(image);
         free(header);
-        return;
+        return false;
     }
 
     char *newimage = reinterpret_cast<char *>(malloc(outImageSize));
@@ -365,4 +368,5 @@ void cuberesize(const std::string &inFile, const int resizeFactor, const std::st
     fitswimage(fout, header, image);
     free(image);
     free(header);
+    return true;
 }

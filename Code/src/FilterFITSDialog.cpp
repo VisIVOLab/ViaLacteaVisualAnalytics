@@ -42,13 +42,19 @@ void FilterFITSDialog::accept()
     if (ui->checkFilter->isChecked()) {
         const double fwhm = ui->lineFWHM->text().toDouble();
         const double sigma = fwhm / 2.355;
-        fits_smooth(inputFilepath.toStdString(), sigma, outputFilePath.toStdString());
+        if (!fits_smooth(inputFilepath.toStdString(), sigma, outputFilePath.toStdString())) {
+            QMessageBox::critical(this, QString(), "Could not filter input file!");
+            return;
+        }
         inputFilepath = outputFilePath;
     }
 
     if (ui->checkResize->isChecked()) {
         const int factor = ui->lineFactor->text().toInt();
-        fits_resize(inputFilepath.toStdString(), factor, outputFilePath.toStdString());
+        if (!fits_resize(inputFilepath.toStdString(), factor, outputFilePath.toStdString())) {
+            QMessageBox::critical(this, QString(), "Could not resize input file!");
+            return;
+        }
     }
 
     QMessageBox::information(this, QString(), "File saved in " + outputFilePath);
