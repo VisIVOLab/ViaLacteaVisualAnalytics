@@ -53,10 +53,10 @@ bool fits_resize(const std::string &inFile, const int resizeFactor, const std::s
 
 bool imsmooth(const std::string &inFile, const double sigma, const std::string &outFile)
 {
-    char name[inFile.size() + 1];
+    char name[FLEN_FILENAME];
     std::strncpy(name, inFile.c_str(), sizeof(name));
 
-    char fout[outFile.size() + 1];
+    char fout[FLEN_FILENAME];
     std::strncpy(fout, outFile.c_str(), sizeof(fout));
 
     char *header;
@@ -104,10 +104,10 @@ bool imsmooth(const std::string &inFile, const double sigma, const std::string &
 
 bool imresize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
 {
-    char name[inFile.size() + 1];
+    char name[FLEN_FILENAME];
     std::strncpy(name, inFile.c_str(), sizeof(name));
 
-    char fout[outFile.size() + 1];
+    char fout[FLEN_FILENAME];
     std::strncpy(fout, outFile.c_str(), sizeof(fout));
 
     char *header;
@@ -164,10 +164,10 @@ bool imresize(const std::string &inFile, const int resizeFactor, const std::stri
 
 bool cubesmooth(const std::string &inFile, const double sigma, const std::string &outFile)
 {
-    char name[inFile.size() + 1];
+    char name[FLEN_FILENAME];
     std::strncpy(name, inFile.c_str(), sizeof(name));
 
-    char fout[outFile.size() + 1];
+    char fout[FLEN_FILENAME];
     std::strncpy(fout, outFile.c_str(), sizeof(fout));
 
     char *header;
@@ -269,10 +269,10 @@ bool cubesmooth(const std::string &inFile, const double sigma, const std::string
 
 bool cuberesize(const std::string &inFile, const int resizeFactor, const std::string &outFile)
 {
-    char name[inFile.size() + 1];
+    char name[FLEN_FILENAME];
     std::strncpy(name, inFile.c_str(), sizeof(name));
 
-    char fout[outFile.size() + 1];
+    char fout[FLEN_FILENAME];
     std::strncpy(fout, outFile.c_str(), sizeof(fout));
 
     char *header;

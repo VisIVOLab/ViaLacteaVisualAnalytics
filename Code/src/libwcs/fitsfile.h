@@ -83,7 +83,7 @@ extern "C" {
 #endif
 
 
-#ifdef __STDC__   /* Full ANSI prototypes */
+#if __STDC__ || defined(__cplusplus)   /* Full ANSI prototypes */
 
 /* Declarations for subroutines in fitsfile.c, imhfile.c, imio.c,
  * fileutil.c, and dateutil.c */
