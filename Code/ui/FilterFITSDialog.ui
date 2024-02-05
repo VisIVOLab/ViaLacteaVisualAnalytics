@@ -37,7 +37,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label_5">
         <property name="text">
-         <string>Resolution:</string>
+         <string>Resolution (deg):</string>
         </property>
        </widget>
       </item>
@@ -60,7 +60,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>FWHM:</string>
+         <string>FWHM (pixel):</string>
         </property>
         <property name="buddy">
          <cstring>lineFWHM</cstring>

@@ -21,6 +21,9 @@ public slots:
 private:
     Ui::FilterFITSDialog *ui;
     QString inputPath;
+
+    QString outputFileName(const QString &inputFilepath) const;
+    void openOutputFile(const QString &filepath);
 };
 
 #endif // FILTERFITSDIALOG_H

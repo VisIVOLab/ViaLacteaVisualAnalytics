@@ -3,6 +3,11 @@
 
 #include "fitswcs.h"
 #include "imutils.h"
+#include "vtkfitsreader.h"
+#include "vtkwindow_new.h"
+#include "vtkwindowcube.h"
+
+#include <vtkNew.h>
 
 #include <QDir>
 #include <QDoubleValidator>
@@ -36,7 +41,7 @@ void FilterFITSDialog::accept()
 
     QString inputFilepath(inputPath);
     const QString outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download");
-    const QString outFile = QFileInfo(inputFilepath).baseName() + "_filtered.fits";
+    const QString outFile = outputFileName(inputFilepath);
     const QString outputFilePath = QDir(outDir).absoluteFilePath(outFile);
 
     if (ui->checkFilter->isChecked()) {
@@ -58,5 +63,39 @@ void FilterFITSDialog::accept()
     }
 
     QMessageBox::information(this, QString(), "File saved in " + outputFilePath);
+
+    openOutputFile(outputFilePath);
+
     QDialog::accept();
+}
+
+QString FilterFITSDialog::outputFileName(const QString &inputFilepath) const
+{
+    QString outFile = QFileInfo(inputFilepath).baseName();
+    if (ui->checkFilter->isCheckable()) {
+        outFile += "_smooth";
+    }
+    if (ui->checkResize->isChecked()) {
+        outFile += "_regrid";
+    }
+    outFile += ".fits";
+    return outFile;
+}
+
+void FilterFITSDialog::openOutputFile(const QString &filepath)
+{
+    auto parentImg = qobject_cast<vtkwindow_new *>(this->parent());
+    if (parentImg) {
+        vtkNew<vtkFitsReader> img;
+        img->SetFileName(filepath.toStdString());
+        parentImg->addLayerImage(img);
+        parentImg->raise();
+        return;
+    }
+
+    // Parent is vtkWindowCube
+    auto win = new vtkWindowCube(nullptr, filepath);
+    win->show();
+    win->activateWindow();
+    win->raise();
 }
