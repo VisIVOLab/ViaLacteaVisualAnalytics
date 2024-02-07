@@ -58,7 +58,7 @@ jobs:
             Utils
       
       - name: Get binary
-        uses: actions/download-artifact
+        uses: actions/download-artifact@4
       
       - name: Create AppDir
         run: >
