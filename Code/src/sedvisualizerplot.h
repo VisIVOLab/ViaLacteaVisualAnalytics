@@ -45,6 +45,8 @@ private:
     int sedCount;
     QList<SED *> sed_list;
     QList<SEDNode *> selected_sed_list;
+    QCPDataSelection selectedRanges;    //TODO da rimuovere?
+    QMap<int, bool> selectedPointsMap; // TODO da rimuovere?
     bool prepareInputForSedFit(SEDNode *node);
     bool prepareSelectedInputForSedFit();
     QMap<double, double> sedFitInput;
