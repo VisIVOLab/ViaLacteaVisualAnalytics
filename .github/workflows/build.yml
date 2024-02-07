@@ -64,11 +64,12 @@ jobs:
         with:
           name: Binary
       
-      - name: Prepare ENV
+      - name: Prepare
         shell: bash
         run: |
           echo "${{vars.Qt5_DIR}}/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=${{vars.VTK_DIR}}/../../:${{vars.CFITSIO_DIR}}/lib" >> $GITHUB_ENV
+          cp ${{github.workspace}}/Code/icons/visivo.svg ViaLacteaVisualAnalytics.svg
       
       - name: Create AppDir
         run: >
@@ -76,7 +77,7 @@ jobs:
           --appdir AppDir
           -e ViaLacteaVisualAnalytics
           --create-desktop-file
-          -i ${{github.workspace}}/Code/icons/visivo.svg
+          -i ViaLacteaVisualAnalytics.svg
           --plugin qt
       
       - name: Fix AppDir
