@@ -1,8 +1,8 @@
 #include <pybind11/embed.h>
 
-#include "vtkwindowcube.h"
 #include "ui_lutcustomize.h"
 #include "ui_vtkwindowcube.h"
+#include "vtkwindowcube.h"
 
 #include "interactors/vtkinteractorstyledrawarrow.h"
 #include "interactors/vtkinteractorstyleimagecustom.h"
@@ -233,6 +233,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     momViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     momViewer->SetRenderer(rendererMoment);
     momViewer->SetRenderWindow(renWinSlice);
+    momViewer->GetImageActor()->InterpolateOff();
 
     // Show cube slices by default
     currentVisOnSlicePanel = 0;
@@ -575,7 +576,7 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
         parentWindow->addLayerImage(moment);
     } else {
         parentWindow = new vtkwindow_new(nullptr, moment, 0, 0, false);
-        parentWindow->showMaximized();
+        parentWindow->showMinimized();
     }
 
     momViewer->SetInputData(moment->GetOutput());
@@ -742,6 +743,11 @@ void vtkWindowCube::on_actionCalculate_order_0_triggered()
 void vtkWindowCube::on_actionCalculate_order_1_triggered()
 {
     calculateAndShowMomentMap(1);
+}
+
+void vtkWindowCube::on_actionCalculate_order_2_triggered()
+{
+    calculateAndShowMomentMap(2);
 }
 
 void vtkWindowCube::on_actionCalculate_order_6_triggered()

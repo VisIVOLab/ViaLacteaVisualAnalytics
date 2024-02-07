@@ -28,15 +28,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
 
     // setting del file di configurazione .ini
     QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
-    // set Qstring pythonExe value
-    if (settings.value("python.bundle", true).toBool()) {
-        pythonExe = "vialactea.pex";
-    } else {
-        pythonExe = settings.value("python.path").toString();
-        if (pythonExe.isEmpty())
-            pythonExe = "python3";
-    }
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     // setting per le interazioni con il grafico: trascinare e zoomare l'intervallo, selezionare gli assi, elementi grafici e articoli, e selezionare più elmenti contemporaneamente
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
@@ -63,7 +55,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->plotLayout()->insertRow(0); // inserisce una nuova riga all'inizio del layout grafico
     ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));  // inserisce "SED" titolo centrale
 
-    // set x and y axis label
     QString sMu = u8"\u00b5";
     QString sLabelTextX = "Wavelength [" + sMu + "m]";
     ui->customPlot->xAxis->setLabel(sLabelTextX);
@@ -558,11 +549,8 @@ void SEDVisualizerPlot::selectionChanged()
 
         //selectedRanges += newNodeSelection;
 
-        ui->customPlot->graph(ui->customPlot->graphCount()-1)->setSelection(newNodeSelection);
+        //ui->customPlot->graph(ui->customPlot->graphCount()-1)->setSelection(newNodeSelection);
 
-        ui->customPlot->replot();
-        // ottieni le selezioni pendenti: single or multipoint selection
-        qDebug() << "-- modalità di selezione Rettangolare: ho salvato le selezioni pendenti";
     }
 
 }
@@ -628,6 +616,10 @@ void SEDVisualizerPlot::selectionChanged()
 void SEDVisualizerPlot::mouseRelease() {
     if (ui->dragSelectRadioButton->isChecked()){
 
+        QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
+        qDebug() << "========list_items=========";
+        qDebug() << list_items;
+
         /*
         QCPDataSelection selection;
 
@@ -682,24 +674,19 @@ void SEDVisualizerPlot::mouseRelease() {
 
         */
     }
-    ui->customPlot->replot();
 }
 
 // TODO refactor
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-    qDebug() << "========1=========";
-    qDebug() << list_items;
-    qDebug() << ui->customPlot->graphCount();
-
     // seleziona tutti i dati
     //ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(0, ui->customPlot->graph()->dataCount()-1)));
 
-   // for (int i = 1; i <= ui->customPlot->graphCount(); ++i)
-    //    ui->customPlot->graph()->setSelection(
-    //            QCPDataSelection(QCPDataRange(i - 1, i))); // graph(i)->setSelected(true);
-    //ui->customPlot->replot();
+    if(ui->dragSelectRadioButton->isChecked()){
+        //a ogni nuova selezione drag, rimuovo le precedenti selezioni
+        ui->customPlot->deselectAll();
+        selectedRanges.clear(); // rimuovo drag selection pendenti
+    }
 
     // if an axis is selected, only allow the direction of that axis to be dragged
     // if no axis is selected, both directions may be dragged
@@ -1498,7 +1485,7 @@ void SEDVisualizerPlot::doThinLocalFit()
          << sedFitInputErrF << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start(pythonExe, args);
+    process->start("python3", args);
 }
 
 void SEDVisualizerPlot::doThinRemoteFit()
@@ -1732,7 +1719,7 @@ void SEDVisualizerPlot::doThickLocalFit()
          << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start(pythonExe, args);
+    process->start("python3", args);
 }
 
 void SEDVisualizerPlot::finishedThinRemoteFit()
@@ -2372,7 +2359,7 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         if (ui->customPlot->graphCount() > 0){   // set last graph() layer of nodes selectable on drag data
             ui->customPlot->graph(ui->customPlot->graphCount()-1)->setSelectable(QCP::stMultipleDataRanges);
-            //ui->customPlot->graph(ui->customPlot->graphCount()-1)->setScatterStyle(QCPScatterStyle::ssCross); // set dragselectable nodes
+            ui->customPlot->graph(ui->customPlot->graphCount()-1)->setScatterStyle(QCPScatterStyle::ssCross); // set dragselectable nodes
         }
     } else {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);

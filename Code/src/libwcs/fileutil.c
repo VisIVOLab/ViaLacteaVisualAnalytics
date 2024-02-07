@@ -113,9 +113,9 @@
  */
 
 #include <stdlib.h>
-#ifndef VMS
+//#ifndef VMS
 //#include <unistd.h>
-#endif
+//#endif
 #include <stdio.h>
 #include <fcntl.h>
 //#include <sys/file.h>
@@ -126,32 +126,13 @@
 #include <sys/stat.h>
 #define SZ_PATHNAME	128
 
-#ifdef _WIN32
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
-#define ftruncate _chsize
-
-// File descriptor associated with stdin, stdout, stderr
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
-
-#define R_OK 4
-
-// Includes for open, close, access, read and write
-#include <io.h>
-
-#define _CRT_INTERNAL_NONSTDC_NAMES 1
-#include <sys/stat.h>
-#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-#endif
-#if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
-#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
-#endif
-#else
+#ifndef _WIN32
+#ifndef VMS
 #include <unistd.h>
+#endif
 #include <sys/file.h>
+#else
+#include "win_fixes.h"
 #endif
 
 /* GETFILELINES -- Return number of lines in one file */
@@ -989,6 +970,7 @@ int	maxchars;	/* Maximum length of token */
     return (ltok);
 }
 
+//#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

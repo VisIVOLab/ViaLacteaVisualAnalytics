@@ -37,7 +37,6 @@ protected:
 
 private:
     Ui::SEDVisualizerPlot *ui;
-    QString pythonExe;
     SED *sed;
     QHash<QString, SEDPlotPointCustom *> visualnode_hash;
     double minFlux, maxFlux, minWavelen, maxWavelen;

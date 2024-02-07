@@ -269,7 +269,7 @@ struct IRAFsurface {
 extern "C" {
 #endif
 
-#ifdef __STDC__   /* Full ANSI prototypes */
+#if __STDC__ || defined(__cplusplus)   /* Full ANSI prototypes */
 
     /* WCS data structure initialization subroutines in wcsinit.c */
     struct WorldCoor *wcsinit ( /* set up WCS structure from a FITS image header */
@@ -732,45 +732,45 @@ extern "C" {
 /* WCS subroutines in wcs.c */
 struct WorldCoor *wcsinit(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsninit(); /* set up a WCS structure from a FITS image header */
-struct WorldCoor* wcsinitn(const char* hstring, const char* wcsname);
-struct WorldCoor *wcsninitn();	/* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsinitn(); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsninitn(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsinitc(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsninitc(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsxinit(); /* set up a WCS structure from arguments */
 struct WorldCoor *wcskinit(); /* set up a WCS structure from keyword values */
 char *uppercase();	/* Convert string of any case to uppercase */
-void wcsfree(struct WorldCoor* wcs);
+void wcsfree(void);	/* Free a WCS structure and its contents */
 int wcstype();		/* Set projection type from header CTYPEs */
 void wcscdset();	/* Set scaling and rotation from CD matrix */
 void wcsdeltset();	/* set scaling and rotation from CDELTs and CROTA2 */
 void wcspcset();	/* set scaling and rotation from CDELTs and PC matrix */
 int iswcs();		/* Return 1 if WCS structure is filled, else 0 */
-int nowcs(struct WorldCoor *);
+int nowcs();		/* Return 0 if WCS structure is filled, else 1 */
 void wcsshift();	/* Reset the center of a WCS structure */
 void wcscent();		/* Print the image center and size in WCS units */
 void wcssize();		/* Return RA and Dec of image center, size in RA and Dec */
 void wcsfull();		/* Return RA and Dec of image center, size in degrees */
 void wcsrange();	/* Return min and max RA and Dec of image in degrees */
-double wcsdist(double ra1, double dec1, double ra2, double dec2);
+double wcsdist();	/* Distance in degrees between two sky coordinates */
 double wcsdist1();	/* Compute angular distance between 2 sky positions */
 double wcsdiff();	/* Distance in degrees between two sky coordinates */
 void wcscominit();	/* Initialize catalog search command set by -wcscom */
 void wcscom();		/* Execute catalog search command set by -wcscom */
 char *getradecsys();	/* Return current value of coordinate system */
-void wcsoutinit(struct WorldCoor* wcs, char* coorsys);
+void wcsoutinit();	/* Initialize WCS output coordinate system for use by pix2wcs */
 char *getwcsout();	/* Return current value of WCS output coordinate system */
-void wcsininit(struct WorldCoor* wcs, char* coorsys);
+void wcsininit();	/* Initialize WCS input coordinate system for use by wcs2pix */
 char *getwcsin();	/* Return current value of WCS input coordinate system */
-int setwcsdeg(struct WorldCoor* wcs, int degout);	/* Set WCS output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
+int setwcsdeg();	/* Set WCS output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 int wcsndec();		/* Set or get number of output decimal places */
 int wcsreset();		/* Change WCS using arguments */
 void wcseqset();	/* Change equinox of reference pixel coordinates in WCS */
-void wcscstr(char* cstr, int syswcs, double equinox, double epoch);
+void wcscstr();		/* Return system string from system code, equinox, epoch */
 void setwcslin();	/* Set output string mode for LINEAR coordinates */
-int pix2wcst(struct WorldCoor* wcs, double xpix, double ypix, char* wcstring, int lstr);
-void pix2wcs(struct WorldCoor* wcs, double xpix, double ypix, double* xpos, double* ypos);
-void wcs2pix(struct WorldCoor* wcs, double xpos, double ypos, double* xpix, double* ypix, int* offscl);
-void wcsc2pix(struct WorldCoor* wcs, double xpos, double ypos, char* coorsys, double* xpix, double* ypix, int* offscl);
+int pix2wcst();		/* Convert pixel coordinates to World Coordinate string */
+void pix2wcs();		/* Convert pixel coordinates to World Coordinates */
+void wcsc2pix();	/* Convert World Coordinates to pixel coordinates */
+void wcs2pix();		/* Convert World Coordinates to pixel coordinates */
 void setdefwcs();	/* Call to use AIPS classic WCS (also not PLT/TNX/ZPX */
 int getdefwcs();	/* Call to get flag for AIPS classic WCS */
 int wcszin();		/* Set coordinate in third dimension (face) */
@@ -783,17 +783,17 @@ void savewcscom();	/* Save WCS shell command */
 char *getwcscom();	/* Return WCS shell command */
 void setwcscom();	/* Set WCS shell commands from stored values */
 void freewcscom();	/* Free memory used to store WCS shell commands */
-void setwcsfile(char* filename);
+void setwcsfile();	/* Set filename for WCS error message */
 int cpwcs();		/* Copy WCS keywords with no suffix to ones with suffix */
 
 /* Coordinate conversion subroutines in wcscon.c */
-void wcscon(int sys1, int sys2, double eq1, double eq2, double* dtheta, double* dphi, double epoch);
+void wcscon();		/* Convert between coordinate systems and equinoxes */
 void wcsconp();		/* Convert between coordinate systems and equinoxes */
 void wcsconv();		/* Convert between coordinate systems and equinoxes */
 void fk425e();		/* Convert B1950(FK4) to J2000(FK5) coordinates */
 void fk524e();		/* Convert J2000(FK5) to B1950(FK4) coordinates */
-int wcscsys(char* coorsys);
-double wcsceq(char* wcstring);
+int wcscsys();		/* Set coordinate system from string */
+double wcsceq();	/* Set equinox from string (return 0.0 if not obvious) */
 void d2v3();		/* Convert RA and Dec in degrees and distance to vector */
 void s2v3();		/* Convert RA and Dec in radians and distance to vector */
 void v2d3();		/* Convert vector to RA and Dec in degrees and distance */

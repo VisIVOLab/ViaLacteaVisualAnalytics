@@ -27,8 +27,9 @@ QString DownloadManager::doDownload(const QUrl &url, QString fn)
     QSettings settings(QDir::homePath()
                        .append(QDir::separator())
                        .append("VisIVODesktopTemp")
-                       .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                       .append(QDir::separator())
+                       .append("setting.ini"),
+                       QSettings::IniFormat);
     qDebug() << " ********************************** FN: " << fn;
     loading->show();
     loading->activateWindow();

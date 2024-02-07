@@ -38,7 +38,7 @@ ViaLactea::ViaLactea(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::ViaLactea),
       settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
-      settings(settingsFile, QSettings::NativeFormat)
+      settings(settingsFile, QSettings::IniFormat)
 {
 
     ui->setupUi(this);

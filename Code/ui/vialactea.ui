@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1266</width>
-    <height>914</height>
+    <height>921</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -65,7 +65,7 @@
               <widget class="QPushButton" name="openLoadDataPushButton">
                <property name="minimumSize">
                 <size>
-                 <width>75</width>
+                 <width>0</width>
                  <height>32</height>
                 </size>
                </property>
@@ -82,22 +82,6 @@
            </widget>
           </item>
           <item>
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeType">
-             <enum>QSizePolicy::MinimumExpanding</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>80</width>
-              <height>10</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
            <widget class="QGroupBox" name="groupBox_4">
             <property name="title">
              <string>3D</string>
@@ -105,6 +89,12 @@
             <layout class="QVBoxLayout" name="verticalLayout_5">
              <item>
               <widget class="QPushButton" name="select3dPushButton">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
                <property name="text">
                 <string>Select</string>
                </property>
@@ -579,7 +569,7 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

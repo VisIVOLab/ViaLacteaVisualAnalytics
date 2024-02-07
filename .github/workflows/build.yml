@@ -1,0 +1,41 @@
+name: Build
+run-name: Building commit ${{github.sha}}
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64]
+
+    env:
+      BUILD_TYPE: Release
+
+    steps:       
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            Code
+            Utils
+
+      - name: Prepare
+        env:
+          KEYS: ${{secrets.KEYS}}
+        run: echo $KEYS | base64 -d > Code/src/authkeys.h
+
+      - name: Configure
+        run: > 
+          cmake -S ${{github.workspace}}/Code
+          -B ${{github.workspace}}/build
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+          -DCMAKE_PREFIX_PATH=${{vars.Qt5_DIR}}
+          -DCMAKE_CXX_FLAGS_INIT="-fuse-ld=gold"
+          -DVTK_DIR=${{vars.VTK_DIR}}
+          -DCFITSIO_ROOT_DIR=${{vars.CFITSIO_DIR}}
+          -DBOOST_ROOT=${{vars.BOOST_DIR}}
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --parallel

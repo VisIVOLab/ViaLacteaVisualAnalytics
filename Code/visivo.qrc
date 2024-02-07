@@ -59,13 +59,16 @@
         <file>icons/rect-select.png</file>
         <file>icons/ellipse-select.png</file>
         <file>icons/colorize.png</file>
-        <file>icons/logo3b_vl.jpg</file>
-        <file>icons/visivo.png</file>
         <file>icons/filter.png</file>
         <file>icons/NEANIAS.jpg</file>
-        <file>icons/logo_256.png</file>
         <file>icons/reset.png</file>
         <file>icons/ecogal.png</file>
         <file>icons/cirasa.png</file>
+        <file>icons/visivo.svg</file>
+        <file>icons/visivo512.png</file>
+        <file>icons/visivo32.png</file>
+        <file>icons/visivo48.png</file>
+        <file>icons/visivo128.png</file>
+        <file>icons/visivo256.png</file>
     </qresource>
 </RCC>

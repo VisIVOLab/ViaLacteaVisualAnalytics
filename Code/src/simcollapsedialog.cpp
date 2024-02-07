@@ -1,9 +1,8 @@
 #include "simcollapsedialog.h"
+#include "simcube/simcube_projection.hpp"
 #include "ui_simcollapsedialog.h"
 
-#include "simcube/imresize.h"
-#include "simcube/simcube_projection.hpp"
-
+#include "imutils.h"
 #include "vtkfitsreader.h"
 #include "vtkwindow_new.h"
 
@@ -11,8 +10,6 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QMessageBox>
-
-#include <cmath>
 
 SimCollapseDialog::SimCollapseDialog(vtkSmartPointer<vtkFitsReader> reader, double *angles,
                                      QWidget *parent)
@@ -40,7 +37,6 @@ SimCollapseDialog::SimCollapseDialog(vtkSmartPointer<vtkFitsReader> reader, doub
 
 SimCollapseDialog::~SimCollapseDialog()
 {
-    qDebug() << Q_FUNC_INFO;
     delete ui;
 }
 
@@ -105,8 +101,9 @@ void SimCollapseDialog::accept()
         // Filter and Resize
         double newCDelt = fwhm / 3.0;
         int resizeFactor = newCDelt / (r2d * reader->getMaxCDelt() / distance);
-        double sigma = fwhm / 2.35;
-        imresize(outputFilePath.toUtf8().data(), resizeFactor, sigma);
+        double sigma = fwhm / 2.355;
+        imsmooth(outputFilePath.toStdString(), sigma, outputFilePath.toStdString());
+        imresize(outputFilePath.toStdString(), resizeFactor, outputFilePath.toStdString());
         showResultingImage(outputFilePath);
     } catch (const std::exception &e) {
         QMessageBox::critical(this, "Error", e.what());

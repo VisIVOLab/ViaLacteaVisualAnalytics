@@ -21,7 +21,7 @@ UserTableWindow::UserTableWindow(const QString &filepath, const QString &setting
     : QMainWindow(parent),
       ui(new Ui::UserTableWindow),
       filepath(filepath),
-      settings(settingsFile, QSettings::NativeFormat)
+      settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
     ui->ctnDownload->hide();

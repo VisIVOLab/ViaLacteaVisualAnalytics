@@ -23,7 +23,7 @@
 MCutoutSummary::MCutoutSummary(QWidget *parent)
     : QWidget(parent, Qt::Window),
       ui(new Ui::MCutoutSummary),
-      settings(QDir::homePath().append("/VisIVODesktopTemp/setting.ini"), QSettings::NativeFormat),
+      settings(QDir::homePath().append("/VisIVODesktopTemp/setting.ini"), QSettings::IniFormat),
       pollTimeout(2000)
 {
     ui->setupUi(this);

@@ -24,7 +24,8 @@ VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt
     m_sSettingsFile = QDir::homePath()
             .append(QDir::separator())
             .append("VisIVODesktopTemp")
-            .append("/setting.ini");
+            .append(QDir::separator())
+            .append("setting.ini");
 
     query = q; // QUrl::toPercentEncoding(q);
 
@@ -42,7 +43,7 @@ VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt
 
 void VLKBQuery::connectToVlkb()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     url = settings.value("vlkbtableurl").toString();
 
     manager = new QNetworkAccessManager(this);
@@ -61,7 +62,7 @@ void VLKBQuery::availReplyFinished(QNetworkReply *reply)
     if (reply->error()) {
         available = false;
     } else {
-        QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+        QSettings settings(m_sSettingsFile, QSettings::IniFormat);
         QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
         QString tag = "vosi:available";
 
@@ -79,7 +80,7 @@ void VLKBQuery::availReplyFinished(QNetworkReply *reply)
 
 void VLKBQuery::executeQuery()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     manager = new QNetworkAccessManager(this);
 
     QByteArray postData;
@@ -106,7 +107,7 @@ void VLKBQuery::executeQuery()
 
 void VLKBQuery::executoSyncQuery()
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     QByteArray postData;
 
     postData.append("REQUEST=doQuery&");
@@ -133,7 +134,7 @@ void VLKBQuery::executoSyncQuery()
 void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
     Q_UNUSED(aReply);
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
         aAuthenticator->setUser(IA2_TAP_USER);
         aAuthenticator->setPassword(IA2_TAP_PASS);
@@ -142,7 +143,7 @@ void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticato
 
 void VLKBQuery::queryReplyFinishedModel(QNetworkReply *reply)
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     if (reply->error()) {
     } else {
@@ -180,7 +181,7 @@ void VLKBQuery::queryReplyFinishedModel(QNetworkReply *reply)
 
 void VLKBQuery::queryReplyFinishedBM(QNetworkReply *reply)
 {
-    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     if (reply->error()) {
     } else {
 

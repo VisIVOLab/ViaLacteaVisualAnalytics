@@ -296,6 +296,7 @@
     </property>
     <addaction name="actionCalculate_order_0"/>
     <addaction name="actionCalculate_order_1"/>
+    <addaction name="actionCalculate_order_2"/>
     <addaction name="actionCalculate_order_6"/>
     <addaction name="actionCalculate_order_8"/>
     <addaction name="actionCalculate_order_10"/>
@@ -466,6 +467,11 @@
   <action name="actionPV">
    <property name="text">
     <string>PV</string>
+   </property>
+  </action>
+  <action name="actionCalculate_order_2">
+   <property name="text">
+    <string>2 - the intensity weighted dispersion of the coordinate</string>
    </property>
   </action>
  </widget>

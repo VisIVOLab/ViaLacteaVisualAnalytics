@@ -1,13 +1,13 @@
 #ifndef ASTROUTILS_H
 #define ASTROUTILS_H
 
-#include "libwcs/wcs.h"
-
 #include <QPair>
 #include <QVector>
 
 #include <list>
 #include <string>
+
+#include "libwcs/fitswcs.h"
 
 class AstroUtils
 {

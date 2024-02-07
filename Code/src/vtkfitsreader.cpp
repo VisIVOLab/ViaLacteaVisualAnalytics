@@ -574,10 +574,11 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 {
     ReadHeader();
     fitsfile *fptr;
-    int status = 0, nfound = 0;
-
+    int status = 0;
     if (fits_open_file(&fptr, filename.c_str(), READONLY, &status))
         printerror(status);
+
+    int nfound = 0;
     if (fits_read_keys_lng(fptr, "NAXIS", 1, 3, naxes, &nfound, &status))
         printerror(status);
 
@@ -585,9 +586,6 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
     output->SetDimensions(naxes[0], naxes[1], 1);
     output->SetOrigin(1.0, 1.0, 0.0);
 
-    datamin = 1.0E30;
-    datamax = -1.0E30;
-    long npixels = naxes[0] * naxes[1] * naxes[2];
     long buffsize = naxes[0] * naxes[1];
     float *buffer = new float[buffsize];
     float *scalars = new float[buffsize];
@@ -595,115 +593,155 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
     int anynull = 0;
     float fpixel = 1, nullval = 0;
-    long nbuffer = 0;
 
-    if (order == 0) {
+    double vdelt = std::abs(cdelt[2]);
+
+    switch (order) {
+    case 0: {
         // the integrated value of the spectrum
-        while (npixels > 0) {
-            nbuffer = fmin(npixels, buffsize);
-
-            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
                 printerror(status);
 
-            for (long i = 0; i < nbuffer; ++i) {
-                if (std::isnan(buffer[i]))
-                    continue;
-
-                scalars[i] += buffer[i];
-            }
-
-            fpixel += nbuffer;
-            npixels -= nbuffer;
-        }
-    } else if (order == 1) {
-        // the intensity weighted coordinate
-        vtkFloatArray *m0 = CalculateMoment(0);
-
-        int slice = 0;
-        while (npixels > 0) {
-            nbuffer = fmin(npixels, buffsize);
-            double velocityValue = getInitSlice() + GetCdelt(2) * (slice);
-
-            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
-                printerror(status);
-
-            for (long i = 0; i < nbuffer; ++i) {
-                if (std::isnan(buffer[i]))
-                    continue;
-
-                if (m0->GetValue(i) != 0) {
-                    scalars[i] = scalars[i] + (buffer[i] * velocityValue) / m0->GetValue(i);
+            for (long i = 0; i < buffsize; ++i) {
+                if (std::isfinite(buffer[i])) {
+                    scalars[i] += buffer[i] * vdelt;
                 }
             }
 
-            slice++;
-            fpixel += nbuffer;
-            npixels -= nbuffer;
+            fpixel += buffsize;
+        }
+
+        break;
+    }
+    case 1: {
+        // the intensity weighted coordinate
+        vtkFloatArray *m0 = CalculateMoment(0);
+
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            double velocityValue = getInitSlice() + GetCdelt(2) * (slice);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < buffsize; ++i) {
+                if (m0->GetValue(i) != 0 && std::isfinite(buffer[i])) {
+                    scalars[i] = scalars[i] + (buffer[i] * velocityValue * vdelt) / m0->GetValue(i);
+                }
+            }
+
+            fpixel += buffsize;
         }
 
         m0->Delete();
-    } else if (order == 6) {
+        break;
+    }
+    case 2: {
+        // the intensity weighted dispersion of the coordinate
+
+        // Moment 0
+        vtkFloatArray *m0 = CalculateMoment(0);
+
+        // Moment 1
+        float *m1 = new float[buffsize];
+        std::fill_n(m1, buffsize, 0);
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            double velocityValue = getInitSlice() + GetCdelt(2) * (slice);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < buffsize; ++i) {
+                if (m0->GetValue(i) != 0 && std::isfinite(buffer[i])) {
+                    m1[i] = m1[i] + (buffer[i] * velocityValue * vdelt) / m0->GetValue(i);
+                }
+            }
+
+            fpixel += buffsize;
+        }
+
+        // Moment 2
+        fpixel = 1;
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            double velocityValue = getInitSlice() + GetCdelt(2) * (slice);
+
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
+                printerror(status);
+
+            for (long i = 0; i < buffsize; ++i) {
+                if (m0->GetValue(i) != 0 && std::isfinite(buffer[i])) {
+                    scalars[i] = scalars[i]
+                            + (buffer[i] * std::pow(velocityValue - m1[i], 2) * vdelt)
+                                    / m0->GetValue(i);
+                }
+            }
+
+            fpixel += buffsize;
+        }
+
+        // for (int i = 0; i < buffsize; ++i) {
+        //     scalars[i] = std::sqrt(scalars[i]);
+        // }
+
+        delete[] m1;
+        m0->Delete();
+        break;
+    }
+    case 6: {
         // root mean square of the spectrum (noise map)
-
-        // sum of squares
-        while (npixels > 0) {
-            nbuffer = fmin(npixels, buffsize);
-
-            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
                 printerror(status);
 
-            for (long i = 0; i < nbuffer; ++i) {
-                if (std::isnan(buffer[i]))
-                    continue;
-
-                scalars[i] += buffer[i] * buffer[i];
+            for (long i = 0; i < buffsize; ++i) {
+                if (std::isfinite(buffer[i])) {
+                    scalars[i] += buffer[i] * buffer[i];
+                }
             }
 
-            fpixel += nbuffer;
-            npixels -= nbuffer;
+            fpixel += buffsize;
         }
 
-        // RMS
         for (int i = 0; i < buffsize; ++i) {
-            float v = std::sqrt(scalars[i] / naxes[2]);
-            scalars[i] = v;
+            scalars[i] = std::sqrt(scalars[i] / buffsize);
         }
 
-    } else if (order == 8) {
+        break;
+    }
+    case 8: {
         // maximum value of the spectrum (peak map)
-        while (npixels > 0) {
-            nbuffer = fmin(npixels, buffsize);
-
-            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
                 printerror(status);
 
-            for (long i = 0; i < nbuffer; ++i) {
-                if (std::isnan(buffer[i]))
-                    continue;
-
-                scalars[i] = fmax(scalars[i], buffer[i]);
+            for (long i = 0; i < buffsize; ++i) {
+                if (std::isfinite(buffer[i])) {
+                    scalars[i] = fmax(scalars[i], buffer[i]);
+                }
             }
 
-            fpixel += nbuffer;
-            npixels -= nbuffer;
+            fpixel += buffsize;
         }
-    } else if (order == 10) {
-        while (npixels > 0) {
-            nbuffer = fmin(npixels, buffsize);
 
-            if (fits_read_img(fptr, TFLOAT, fpixel, nbuffer, &nullval, buffer, &anynull, &status))
+        break;
+    }
+    case 10: {
+        // the minimum value of the spectrum
+        for (int slice = 0; slice < naxes[2]; ++slice) {
+            if (fits_read_img(fptr, TFLOAT, fpixel, buffsize, &nullval, buffer, &anynull, &status))
                 printerror(status);
 
-            for (long i = 0; i < nbuffer; ++i) {
-                if (std::isnan(buffer[i]))
-                    continue;
-
-                scalars[i] = fmin(scalars[i], buffer[i]);
+            for (long i = 0; i < buffsize; ++i) {
+                if (std::isfinite(buffer[i])) {
+                    scalars[i] = fmin(scalars[i], buffer[i]);
+                }
             }
 
-            fpixel += nbuffer;
-            npixels -= nbuffer;
+            fpixel += buffsize;
         }
+
+        break;
+    }
     }
 
     delete[] buffer;
@@ -713,8 +751,9 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
         fits_report_error(stderr, status);
     }
 
-    if (fits_close_file(fptr, &status))
+    if (fits_close_file(fptr, &status)) {
         printerror(status);
+    }
 
     auto values = vtkFloatArray::New();
     values->SetVoidArray(scalars, buffsize, 0, vtkAbstractArray::VTK_DATA_ARRAY_DELETE);

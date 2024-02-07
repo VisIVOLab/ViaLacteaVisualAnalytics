@@ -22,7 +22,6 @@
 
 #include "vialacteasource.h"
 
-#include "base64.h"
 #include "visivoutilsdesktop.h"
 
 #include <fstream>

@@ -7,14 +7,13 @@
 #include "catalogue.h"
 #include "dbquery.h"
 #include "extendedglyph3d.h"
-#include "filtercustomize.h"
 #include "fitsimagestatisiticinfo.h"
 #include "higalselectedsources.h"
+#include "imutils.h"
 #include "lutcustomize.h"
 #include "luteditor.h"
 #include "qdebug.h"
 #include "selectedsourcefieldsselect.h"
-#include "selectedsourcesform.h"
 #include "sfilterdialog.h"
 #include "simcollapsedialog.h"
 #include "singleton.h"
@@ -50,7 +49,6 @@
 #include "vtkExtractSelectedFrustum.h"
 #include "vtkExtractSelection.h"
 #include "vtkfitstoolswidget.h"
-#include "vtkfitstoolwidget_new.h"
 #include "vtkfitstoolwidgetobject.h"
 #include "vtkFrustumSource.h"
 #include "vtkGenericOpenGLRenderWindow.h"
@@ -105,7 +103,6 @@
 #include "ds9region/DS9Region.h"
 #include "ds9region/DS9RegionParser.h"
 
-#include "simcube/imresize.h"
 #include "simcube/simcube_projection.hpp"
 
 #include <QDir>
@@ -450,82 +447,6 @@ public:
     virtual void CollectRevisions(std::ostream &os) { }
 };
 vtkStandardNewMacro(MyRubberBand);
-
-class myVtkInteractorContourWindow : public vtkInteractorStyleImage
-{
-private:
-    vtkwindow_new *vtkwin;
-
-public:
-    static myVtkInteractorContourWindow *New();
-    double *startPosition;
-    double *endPosition;
-    vtkSmartPointer<vtkActor> lineActor;
-
-    void setVtkWin(vtkwindow_new *w)
-    {
-        vtkwin = w;
-        startPosition = new double[3];
-        endPosition = new double[3];
-    }
-
-    virtual void OnMouseMove() { }
-
-    virtual void OnLeftButtonDown()
-    {
-        vtkwin->removeActor(lineActor);
-        startPosition[0] = this->Interactor->GetEventPosition()[0];
-        startPosition[1] = this->Interactor->GetEventPosition()[1];
-    }
-
-    virtual void OnLeftButtonUp()
-    {
-        endPosition[0] = this->Interactor->GetEventPosition()[0];
-        endPosition[1] = this->Interactor->GetEventPosition()[1];
-
-        // Forward events
-        vtkSmartPointer<vtkCoordinate> coordinate_start = vtkSmartPointer<vtkCoordinate>::New();
-        coordinate_start->SetCoordinateSystemToDisplay();
-        coordinate_start->SetValue(this->startPosition[0], this->startPosition[1], 0);
-        double *world_start = coordinate_start->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
-        vtkSmartPointer<vtkCoordinate> coordinate_end = vtkSmartPointer<vtkCoordinate>::New();
-        coordinate_end->SetCoordinateSystemToDisplay();
-        coordinate_end->SetValue(this->endPosition[0], this->endPosition[1], 0);
-        double *world_end = coordinate_end->GetComputedWorldValue(
-                this->GetInteractor()->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
-        vtkSmartPointer<vtkLineSource> lineSource = vtkSmartPointer<vtkLineSource>::New();
-        double deltaX = abs(world_end[0] - world_start[0]);
-        double deltaY = abs(world_end[1] - world_start[1]);
-        int resolution;
-        if (deltaX > deltaY)
-            resolution = (int)deltaX;
-        else
-            resolution = (int)deltaY;
-        lineSource->SetResolution(resolution);
-        lineSource->SetPoint1(world_start);
-        lineSource->SetPoint2(world_end);
-        lineSource->Update();
-        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-        // Visualize
-        vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-        mapper->SetInputConnection(lineSource->GetOutputPort());
-        lineActor = vtkSmartPointer<vtkActor>::New();
-        lineActor->SetMapper(mapper);
-        lineActor->GetProperty()->SetLineWidth(1);
-        lineActor->GetProperty()->SetColor(102, 0, 102);
-        vtkwin->addActor(lineActor);
-        vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer()->Render();
-    }
-
-    virtual void OnChar() { }
-
-    virtual void PrintSelf(std::ostream &os, vtkIndent indent) { }
-    virtual void PrintHeader(ostream &os, vtkIndent indent) { }
-    virtual void PrintTrailer(std::ostream &os, vtkIndent indent) { }
-    virtual void CollectRevisions(std::ostream &os) { }
-};
-vtkStandardNewMacro(myVtkInteractorContourWindow);
 
 class myVtkInteractorStyleImage : public vtkInteractorStyleImage
 {
@@ -1083,8 +1004,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
                                .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                               .append(QDir::separator())
+                               .append("setting.ini"),
+                       QSettings::IniFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     myfits = vis;
@@ -1474,88 +1396,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         updateScene();
         break;
     }
-    case 2: {
-        vis->CalculateRMS();
-        isDatacube = true;
-        vis->is3D = true;
-        vis->GetOutput();
-        // ui->setupUi(this);
-        this->setWindowName("Datacubes slices visualization");
-        contourWin = new contour();
-        m_Ren1 = vtkRenderer::New();
-        m_Ren1->GlobalWarningDisplayOff();
-        vtkNew<vtkGenericOpenGLRenderWindow> rw;
-        rw->AddRenderer(m_Ren1);
-        ui->qVTK1->setRenderWindow(rw);
-        ui->filamentsGroupBox->hide();
-        ui->bubbleGroupBox->hide();
-        ui->compactSourcesGroupBox->hide();
-        ui->datacubeGroupBox->hide();
-        ui->toolsGroupBox->hide();
-        ui->tdGroupBox->hide();
-        ui->splitter->hide();
-        ui->ElementListWidget->hide();
-        ui->tableWidget->hide();
-        ui->listWidget->hide();
-        ui->glyphGroupBox->hide();
-        ui->cameraControlgroupBox->hide();
-        ui->ThresholdGroupBox->hide();
-        ui->cuttingPlaneGroupBox->hide();
-        ui->spinBox_cuttingPlane->hide();
-        ui->lineEdit_species->setText(species);
-        ui->lineEdit_survey->setText(survey);
-        ui->lineEdit_transition->setText(transition);
-        ui->lineEdit_species->setEnabled(false);
-        ui->lineEdit_survey->setEnabled(false);
-        ui->lineEdit_transition->setEnabled(false);
-        ui->selectionGroupBox->hide();
-        ui->filterGroupBox->hide();
-        ui->menuWCS->menuAction()->setVisible(false);
-
-        naxis3 = vis->GetNaxes(2);
-        fitsViewer = true;
-        filenameWithPath = vis->GetFileName();
-        vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-        lut->SetScaleToLog10();
-        SelectLookTable("Gray", lut);
-        double *range = vis->GetOutput()->GetScalarRange();
-        // The image viewers and writers are only happy with unsigned char
-        // images.  This will convert the floats into that format.
-        vtkSmartPointer<vtkImageShiftScale> resultScale =
-                vtkSmartPointer<vtkImageShiftScale>::New();
-        resultScale->SetOutputScalarTypeToUnsignedChar();
-        resultScale->SetShift(0);
-        resultScale->SetScale(range[1] - range[0]);
-        resultScale->SetInputData(vis->GetOutput());
-        resultScale->Update();
-        imageViewer = vtkSmartPointer<vtkImageViewer2>::New();
-        imageViewer->SetInputData(resultScale->GetOutput());
-        // Set Color level and window
-        imageViewer->SetColorLevel(0.5 * (range[1] + range[0]));
-        imageViewer->SetColorWindow(range[1] - range[0]);
-        imageViewer->SetupInteractor(ui->qVTK1->renderWindow()->GetInteractor());
-        imageViewer->GetInteractorStyle()->AutoAdjustCameraClippingRangeOn();
-        imageViewer->SetRenderer(m_Ren1);
-        imageViewer->SetRenderWindow(rw);
-        imageViewer->GetWindowLevel()->SetLookupTable(lut);
-        viewer = vtkSmartPointer<vtkResliceImageViewer>::New();
-        viewer->SetRenderer(ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer());
-        viewer->SetRenderWindow(ui->qVTK1->renderWindow());
-        viewer->SetupInteractor(ui->qVTK1->renderWindow()->GetInteractor());
-        viewer->SetInputData(vis->GetOutput());
-        viewer->SetSlice(1);
-        double *pos = m_Ren1->GetActiveCamera()->GetPosition();
-        cam_init_pos[0] = pos[0];
-        cam_init_pos[1] = pos[1];
-        cam_init_pos[2] = pos[2];
-        vtkImageActor *imageActor = viewer->GetImageActor();
-        m_Ren1->AddActor(imageActor);
-        m_Ren1->SetBackground(0.21, 0.23, 0.25);
-        update();
-        break;
-    }
-    default:
-        break;
     }
 }
 
@@ -3206,40 +3046,6 @@ void vtkwindow_new::setSkyRegionSelectorInteractorStyle()
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::on_PVPlotPushButton_clicked()
-{
-    setVtkInteractorContourWindow();
-}
-
-void vtkwindow_new::on_PVPlot_radioButton_clicked(bool checked)
-{
-    if (checked == true)
-        setVtkInteractorContourWindow();
-    else
-        setVtkInteractorStyleImage();
-}
-
-void vtkwindow_new::on_contour_pushButton_clicked()
-{
-    contourWin->setFitsReader(myfits, this);
-    contourWin->show();
-}
-
-void vtkwindow_new::setVtkInteractorContourWindow()
-{
-    /*
-     Left Mouse button triggers window level events
-     SHIFT Right Mouse triggers pick events
-     */
-    vtkSmartPointer<myVtkInteractorContourWindow> style =
-            vtkSmartPointer<myVtkInteractorContourWindow>::New();
-
-    ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle(style);
-    ui->qVTK1->renderWindow()->GetInteractor()->SetRenderWindow(ui->qVTK1->renderWindow());
-    style->setVtkWin(this);
-    ui->qVTK1->setCursor(Qt::ArrowCursor);
-}
-
 void vtkwindow_new::setVtkInteractorStyle3DPicker(vtkSmartPointer<vtkPolyData> points)
 {
     vtkSmartPointer<vtkAreaPicker> areaPicker = vtkSmartPointer<vtkAreaPicker>::New();
@@ -3455,11 +3261,6 @@ void vtkwindow_new::plotSlice(vtkSmartPointer<vtkFitsReader> visvis, int arg1) {
 void vtkwindow_new::on_rectangularSelectionCS_clicked()
 {
     setSkyRegionSelectorInteractorStyle();
-}
-
-void vtkwindow_new::on_colorPushButton_clicked()
-{
-    vtkfitstoolwindow->show();
 }
 
 void vtkwindow_new::addLayer(vtkfitstoolwidgetobject *o, bool enabled)
@@ -4080,8 +3881,9 @@ void vtkwindow_new::on_glyphActivateCheckBox_clicked(bool checked)
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
                                .append("VisIVODesktopTemp")
-                               .append("/setting.ini"),
-                       QSettings::NativeFormat);
+                               .append(QDir::separator())
+                               .append("setting.ini"),
+                       QSettings::IniFormat);
 
     int maxpoint = settings.value("glyphmax", "2147483647").toString().toInt();
     if (checked) {
@@ -4459,12 +4261,6 @@ void vtkwindow_new::on_bubblePushButton_clicked()
     style->setIsBubble();
     ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle(style);
     ui->qVTK1->setCursor(Qt::CrossCursor);
-}
-
-void vtkwindow_new::on_filterMoreButton_clicked()
-{
-    FilterCustomize *filterCustomize = new FilterCustomize(this);
-    filterCustomize->show();
 }
 
 void vtkwindow_new::on_actionCalculate_order_0_triggered()

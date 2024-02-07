@@ -49,14 +49,18 @@
  * Subroutine:  getltime () returns current local time as ISO-style string
  * Subroutine:  getutime () returns current UT as ISO-style string
  */
-#ifndef _WIN32
-#include <sys/time.h>
-#endif
+//#include <sys/time.h>
 #include <string.h>             /* NULL, strlen, strstr, strcpy */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include "fitshead.h"
+
+#ifndef _WIN32
+#include <sys/time.h>
+#else
+#include "win_fixes.h"
+#endif
 
 static int verbose=0;	/* Set to 1 to print error messages and other info */
 

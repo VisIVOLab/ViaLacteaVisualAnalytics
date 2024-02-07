@@ -73,16 +73,12 @@ set(PROJECT_SOURCES
     src/authkeys.h
     src/authwrapper.cpp
     src/authwrapper.h
-    src/base64.cpp
-    src/base64.h
     src/caesarwindow.cpp
     src/caesarwindow.h
     src/catalogue.cpp
     src/catalogue.h
     src/color.cpp
     src/color.h
-    src/contour.cpp
-    src/contour.h
     src/dbquery.cpp
     src/dbquery.h
     src/downloadmanager.cpp
@@ -95,16 +91,14 @@ set(PROJECT_SOURCES
     src/ds9region/DS9RegionParser.h
     src/extendedglyph3d.cpp
     src/extendedglyph3d.h
-    src/filtercustomize.cpp
-    src/filtercustomize.h
     src/fitsheadermodifierdialog.cpp
     src/fitsheadermodifierdialog.h
     src/fitsimagestatisiticinfo.cpp
     src/fitsimagestatisiticinfo.h
     src/higalselectedsources.cpp
     src/higalselectedsources.h
-    src/histogram.cpp
-    src/histogram.h
+    src/imutils.cpp
+    src/imutils.h
     src/interactors/vtkinteractorstyledrawarrow.h
     src/interactors/vtkinteractorstyledrawarrow.cpp
     src/interactors/vtkinteractorstyleimagecustom.h
@@ -112,46 +106,12 @@ set(PROJECT_SOURCES
     src/interactors/vtkinteractorstyleimagecustom.h
     src/interactors/vtkinteractorstyleprofile.cpp
     src/interactors/vtkinteractorstyleprofile.h
-    src/libwcs/cel.c
-    src/libwcs/dateutil.c
-    src/libwcs/distort.c
-    src/libwcs/dsspos.c
-    src/libwcs/fileutil.c
-    src/libwcs/fitsfile.c
-    src/libwcs/fitsfile.h
-    src/libwcs/fitshead.h
-    src/libwcs/hget.c
-    src/libwcs/hput.c
-    src/libwcs/iget.c
-    src/libwcs/imhfile.c
-    src/libwcs/imio.c
-    src/libwcs/imio.h
-    src/libwcs/imutil.c
-    src/libwcs/lin.c
-    src/libwcs/lwcs.h
-    src/libwcs/platepos.c
-    src/libwcs/poly.c
-    src/libwcs/proj.c
-    src/libwcs/sph.c
-    src/libwcs/tnxpos.c
-    src/libwcs/wcs.c
-    src/libwcs/wcscat.h
-    src/libwcs/wcscon.c
-    src/libwcs/wcs.h
-    src/libwcs/wcsinit.c
-    src/libwcs/wcslib.c
-    src/libwcs/wcslib.h
-    src/libwcs/wcstrig.c
-    src/libwcs/worldpos.c
-    src/libwcs/zpxpos.c
     src/loadingwidget.cpp
     src/loadingwidget.h
     src/lutcustomize.cpp
     src/lutcustomize.h
     src/luteditor.cpp
     src/luteditor.h
-    src/lutselector.cpp
-    src/lutselector.h
     src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
@@ -185,8 +145,6 @@ set(PROJECT_SOURCES
     src/sedvisualizerplot.h
     src/selectedsourcefieldsselect.cpp
     src/selectedsourcefieldsselect.h
-    src/selectedsourcesform.cpp
-    src/selectedsourcesform.h
     src/sessionloader.cpp
     src/sessionloader.h
     src/settingform.cpp
@@ -195,8 +153,6 @@ set(PROJECT_SOURCES
     src/sfilterdialog.h
     src/simcollapsedialog.cpp
     src/simcollapsedialog.h
-    src/simcube/imresize.cpp
-    src/simcube/imresize.h
     src/simcube/simcube_projection-collapse/api-collapse.cpp
     src/simcube/simcube_projection-collapse/fits_simcube.cpp
     src/simcube/simcube_projection-collapse/fits_simcube.hpp
@@ -245,8 +201,6 @@ set(PROJECT_SOURCES
     src/vlkbquery.h
     src/vlkbsimplequerycomposer.cpp
     src/vlkbsimplequerycomposer.h
-    src/vlkbtable.cpp
-    src/vlkbtable.h
     src/vlvaurlschemehandler.cpp
     src/vlvaurlschemehandler.h
     src/vsobjectdesktop.cpp
@@ -263,8 +217,6 @@ set(PROJECT_SOURCES
     src/vtkfitsreader2.h
     src/vtkfitstoolswidget.cpp
     src/vtkfitstoolswidget.h
-    src/vtkfitstoolwidget_new.cpp
-    src/vtkfitstoolwidget_new.h
     src/vtkfitstoolwidgetobject.cpp
     src/vtkfitstoolwidgetobject.h
     src/vtklegendscaleactorwcs.cpp
@@ -280,17 +232,12 @@ set(PROJECT_SOURCES
     src/xmlparser.cpp
     src/xmlparser.h
 )
-if(WIN32)
-    list(APPEND PROJECT_SOURCES src/libwcs/win_time.h)
-endif()
 
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 set(PROJECT_UI
     ui/aboutform.ui
     ui/caesarwindow.ui
-    ui/contour.ui
     ui/dbquery.ui
-    ui/filtercustomize.ui
     ui/fitsheadermodifierdialog.ui
     ui/fitsimagestatisiticinfo.ui
     ui/higalselectedsources.ui
@@ -305,7 +252,6 @@ set(PROJECT_UI
     ui/sedfitgrid_thin.ui
     ui/sedvisualizerplot.ui
     ui/selectedsourcefieldsselect.ui
-    ui/selectedsourcesform.ui
     ui/sessionloader.ui
     ui/settingform.ui
     ui/sfilterdialog.ui
@@ -321,7 +267,6 @@ set(PROJECT_UI
     ui/vlkbquery.ui
     ui/vlkbsimplequerycomposer.ui
     ui/vtkfitstoolswidget.ui
-    ui/vtkfitstoolwidget_new.ui
     ui/vtktoolswidget.ui
     ui/vtkwindow_new.ui
     ui/vtkwindowcube.ui
@@ -330,7 +275,9 @@ set(PROJECT_UI
 
 qt_add_resources(PROJECT_RESOURCES visivo.qrc)
 
-if(APPLE)
+if(WIN32)
+    set(ICON_RESOURCE visivo.rc)
+elseif(APPLE)
     set(ICON_RESOURCE logo.icns)
     set(MACOSX_BUNDLE_ICON_FILE logo.icns)
     set(app_icon_macos "${CMAKE_SOURCE_DIR}/logo.icns")
@@ -346,6 +293,8 @@ add_executable(ViaLacteaVisualAnalytics
     ${ICON_RESOURCE}
 )
 
+add_subdirectory(src/libwcs)
+
 target_compile_definitions(ViaLacteaVisualAnalytics PRIVATE $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>)
 
 foreach(_qt_comp IN LISTS qt_components)
@@ -357,6 +306,7 @@ target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
     ${VTK_LIBRARIES}
     CFITSIO::CFITSIO
     Boost::headers
+    wcs
     pybind11::embed
 )
 
