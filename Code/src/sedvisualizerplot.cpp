@@ -1234,7 +1234,7 @@ void SEDVisualizerPlot::doThinLocalFit()
          << sedFitInputErrF << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start("vialactea.pex", args);
+    process->start("python3", args);
 }
 
 void SEDVisualizerPlot::doThinRemoteFit()
@@ -1468,7 +1468,7 @@ void SEDVisualizerPlot::doThickLocalFit()
          << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start("vialactea.pex", args);
+    process->start("python3", args);
 }
 
 void SEDVisualizerPlot::finishedThinRemoteFit()
