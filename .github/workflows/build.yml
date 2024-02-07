@@ -73,7 +73,7 @@ jobs:
           echo "${{vars.Qt5_DIR}}/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=${{vars.VTK_DIR}}/../../:${{vars.CFITSIO_DIR}}/lib" >> $GITHUB_ENV
           shortSha=$(git rev-parse --short ${{github.sha}})
-          echo "COMMIT_SHORT_SHA=$shortSHA" >> GITHUB_ENV
+          echo "COMMIT_SHORT_SHA=$shortSHA" >> $GITHUB_ENV
           cp ${{github.workspace}}/Code/icons/visivo.svg ViaLacteaVisualAnalytics.svg
       
       - name: Create AppDir
