@@ -90,10 +90,10 @@ jobs:
           sed -i "/exec/s/\$$/ --no-sandbox/" AppDir/AppRun
 
       - name: Create AppImage
-              run: |
-                calculatedSha=$(git rev-parse --short ${{github.sha}})
-                echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
-                appimagetool "AppDir" ViaLacteaVisualAnalytics-${{env.COMMIT_SHORT_SHA}}-x86_64.AppImage
+        run: |
+          calculatedSha=$(git rev-parse --short ${{github.sha}})
+          echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
+          appimagetool "AppDir" ViaLacteaVisualAnalytics-${{env.COMMIT_SHORT_SHA}}-x86_64.AppImage
 
       - name: Create release
         uses: softprops/action-gh-release@v1
