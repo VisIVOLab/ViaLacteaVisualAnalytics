@@ -65,7 +65,7 @@ jobs:
         run: >
           linuxdeploy
           --appdir AppDir
-          -e ViaLacteaVisualAnalytics
+          -e ${{github.workspace}}/build/ViaLacteaVisualAnalytics
           --create-desktop-file
           -i ${{github.workspace}}/Code/icons/visivo.svg
           --plugin qt
