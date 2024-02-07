@@ -1,10 +1,10 @@
-name: Build
-run-name: Building commit ${{github.sha}}
+name: CI/CD
 
 on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,7 +19,6 @@ jobs:
         with:
           sparse-checkout: |
             Code
-            Utils
 
       - name: Prepare
         env:
@@ -28,7 +27,8 @@ jobs:
 
       - name: Configure
         run: > 
-          cmake -S ${{github.workspace}}/Code
+          cmake -GNinja
+          -S ${{github.workspace}}/Code
           -B ${{github.workspace}}/build
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           -DCMAKE_PREFIX_PATH=${{vars.Qt5_DIR}}
@@ -39,3 +39,39 @@ jobs:
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --parallel
+      
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{github.workspace}}/build/ViaLacteaVisualAnalytics
+          retention-days: 1
+
+  release:
+    runs-on: [self-hosted, linux, x64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            Code
+            Utils
+      
+      - name: Get binary
+        uses: actions/download-artifact
+      
+      - name: Create AppDir
+        run: >
+          linuxdeploy
+          --appdir AppDir
+          -e ViaLacteaVisualAnalytics
+          --create-desktop-file
+          -i ${{github.workspace}}/Code/icons/visivo.svg
+          --plugin qt
+      
+      - name: Fix AppDir
+        run: |
+          rm AppDir/usr/lib/libnss*
+          cp -r ${{github.workspace}}/Utils/* AppDir/usr/bin
+          sed -i "/exec/s/\$$/ --no-sandbox/" AppDir/AppRun
+
