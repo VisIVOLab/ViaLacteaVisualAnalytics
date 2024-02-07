@@ -51,6 +51,9 @@ jobs:
     needs: build
     runs-on: [self-hosted, linux, x64]
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,3 +89,17 @@ jobs:
           cp -r ${{github.workspace}}/Utils/* AppDir/usr/bin
           sed -i "/exec/s/\$$/ --no-sandbox/" AppDir/AppRun
 
+      - name: Create AppImage
+              run: |
+                calculatedSha=$(git rev-parse --short ${{github.sha}})
+                echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
+                appimagetool "AppDir" ViaLacteaVisualAnalytics-${{env.COMMIT_SHORT_SHA}}-x86_64.AppImage
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: continuous
+          prerelease: true
+          files: |
+            ViaLacteaVisualAnalytics-${{env.COMMIT_SHORT_SHA}}-x86_64.AppImage
+          token: ${{secrets.GITHUB_TOKEN}}
