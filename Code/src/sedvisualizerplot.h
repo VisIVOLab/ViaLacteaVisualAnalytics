@@ -47,7 +47,8 @@ private:
     QCPDataSelection selectedRanges;    //TODO da rimuovere?
     QMap<int, bool> selectedPointsMap; // TODO da rimuovere?
     // data structure to support drag item selection
-    QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element; // TODO da rimuovere?
+    QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
+    int dragNodesLayer;
     bool prepareInputForSedFit(SEDNode *node);
     bool prepareSelectedInputForSedFit();
     QMap<double, double> sedFitInput;
