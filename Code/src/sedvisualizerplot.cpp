@@ -73,6 +73,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     drawNode(sed_list);
     //qDebug() <<"-- how many graph()?"<< ui->customPlot->graphCount() << " + drag nodes layer";
     //qDebug() << dragNodesLayer;
+    dragRemovingStatus = false;
 
     double x_deltaRange = (maxWavelen - minWavelen) * 0.02;
     double y_deltaRange = (maxFlux - minFlux) * 0.02;
@@ -524,8 +525,18 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 void SEDVisualizerPlot::selectionChanged()
 {
 
-    if(ui->dragSelectRadioButton->isChecked()){
+    // Drag selection update current selected nodes on selectedNodes
+    if (ui->dragSelectRadioButton->isChecked()){
 
+        // current selected nodes
+        QCPDataSelection newNodeSelection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
+        qDebug() <<"+++seleziono drag" << newNodeSelection;
+
+        foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
+            for (int i = dataRange.begin(); i < dataRange.end(); ++i)
+                selectedNodes.insert(i);
+        }
+        qDebug() << "Selected Nodes:" << selectedNodes;
 
 
         /***
@@ -612,74 +623,23 @@ void SEDVisualizerPlot::selectionChanged()
 
 // TODO refactor
 void SEDVisualizerPlot::mouseRelease() {
-    if (ui->dragSelectRadioButton->isChecked()){
-
-
-        /*
-        QCPDataSelection selection;
-
-        QCPGraph *graph = ui->customPlot->graph(ui->customPlot->graphCount()-1);
-        qDebug() << "graph->dataCount()" << graph->dataCount();
-        for (int j = 0; j < graph->dataCount(); ++j)
-        {
-            if (ui->customPlot->selectionRect()->rect().contains(graph->data()->at(j)->key, graph->data()->at(j)->value))
-            {
-                selection.addDataRange(QCPDataRange(j, j));
-            }
-        }
-        //selection.addDataRange(dataRange);
-        graph->setSelection(selection);
-*/
-        /*
-        QCPDataSelection selection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
-        qDebug() << "selection.dataRangeCount()" <<selection.dataRangeCount();
-        for (int i = 0; i < selection.dataRangeCount(); ++i) {
-            QCPDataRange dataRange = selection.dataRange(i);
-            for (int j = dataRange.begin(); j <= dataRange.end(); ++j) {
-                double x = ui->customPlot->graph(ui->customPlot->graphCount()-1)->data()->at(j)->key;
-                double y = ui->customPlot->graph(ui->customPlot->graphCount()-1)->data()->at(j)->value;
-                qDebug() << "key" << x;
-                qDebug() << "value" << y;
-                qDebug() << dataRange.end();
-            }
-        }
-*/
-
-
-        /*
-        QList<QCPAbstractPlottable*> selectedPlottables = ui->customPlot->selectedPlottables();
-        foreach (QCPAbstractPlottable* plottable, selectedPlottables) {
-            QCPGraph* graph = qobject_cast<QCPGraph*>(plottable);
-            if (graph) {
-                QCPDataSelection selection = graph->selection();
-                for (int i = 0; i < selection.dataRangeCount(); ++i) {
-                    QCPDataRange dataRange = selection.dataRange(i);
-                    for (int j = dataRange.begin(); j <= dataRange.end(); ++j) {
-                        double x = graph->data()->at(j)->key;
-                        double y = graph->data()->at(j)->value;
-                        qDebug() << "key" << x;
-                        qDebug() << "value" << y;
-                        qDebug() << dataRange.end();
-                    }
-                }
-            }
-        }
-
-        */
+    if (ui->dragSelectRadioButton->isChecked() && dragRemovingStatus){
+        // aggiornare selection...
     }
 }
 
 // TODO refactor
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    // seleziona tutti i dati
-    //ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(0, ui->customPlot->graph()->dataCount()-1)));
-
-    if(ui->dragSelectRadioButton->isChecked()){
-        //a ogni nuova selezione drag, rimuovo le precedenti selezioni
+    if(ui->dragSelectRadioButton->isChecked() && !dragRemovingStatus){
+        // every new drag selection is a new selection
         ui->customPlot->deselectAll();
-        selectedRanges.clear(); // rimuovo drag selection pendenti
+        selectedNodes.clear();
+        qDebug() << "--selectedNode reset" << selectedNodes;
+        // we clear selectedNodes waiting for new selection
+        ui->customPlot->replot();
     }
+
 
     // if an axis is selected, only allow the direction of that axis to be dragged
     // if no axis is selected, both directions may be dragged
@@ -690,6 +650,7 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     else
         ui->customPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
 
+    // TODO
     // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
     // This part of code could be replaced in the constructor with the following:
     // QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
@@ -801,6 +762,7 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     if (ui->dragSelectRadioButton->isChecked()){
         QList<QCPAbstractItem *> drag_list_items;
         QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+        qDebug() << newNodeSelection << "nella Drag sono invece?";
         QCPGraph *graph = ui->customPlot->graph(dragNodesLayer);
         // for each range of data selected on drag mode
         for (int i=0; i<newNodeSelection.dataRangeCount(); ++i)
@@ -2353,9 +2315,9 @@ void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
     } else {
         // unset 'control/ctrl' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
+        ui->customPlot->deselectAll();
+
     }
-    // reset previus pending selection every in and out singlemode selection
-    ui->customPlot->deselectAll();
     ui->customPlot->replot();
 }
 
@@ -2366,8 +2328,9 @@ void SEDVisualizerPlot::on_multiSelectRadioButton_toggled(bool checked)
             ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stSingleData);    // TODO mistero mezzo risolto
     } else {
         ui->customPlot->deselectAll();
-        ui->customPlot->replot();
+
     }
+    ui->customPlot->replot();
 }
 
 
@@ -2379,11 +2342,13 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
             ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stMultipleDataRanges);
             ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle::ssCross); // set dragselectable nodes
         }
+
     } else {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
         ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle::ssNone);    // unset dragselectable nodes
         ui->customPlot->deselectAll();
-        selectedRanges.clear(); // rimuovo drag selection pendenti
+        selectedNodes.clear();
+
     }
     ui->customPlot->replot();
 }
@@ -2394,22 +2359,69 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
  * @param event
  */
 void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
-    if (event->key() == Qt::Key_Shift && ui->dragSelectRadioButton->isChecked()) {
-        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+    if(ui->dragSelectRadioButton->isChecked()){
+        if (event->key() == Qt::Key_Shift) {
+            ui->customPlot->setSelectionRectMode(QCP::srmNone);
+        }
+        if(event->key() == Qt::Key_Tab){
+            dragRemovingStatus = true;
+        }
     }
 
     QMainWindow::keyPressEvent(event);
 }
 
+
 /**
- * Reset DragSelection mode realeasing 'shift'
+ * Reset DragSelection mode realeasing 'shift' and manage dragRemovingStatus releasing 'tab'
  * @brief SEDVisualizerPlot::keyReleaseEvent
  * @param event
  */
 void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event) {
-    if (event->key() == Qt::Key_Shift && ui->dragSelectRadioButton->isChecked()) {
-        ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+    if(ui->dragSelectRadioButton->isChecked()){
+        if (event->key() == Qt::Key_Shift) {
+            ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+        }
+        if(event->key() == Qt::Key_Tab){
+            /*
+            qDebug() << "+++nodi prima: " << selectedNodes;
+
+            qDebug() << "--Rimuovo";
+
+                   // ottengo le nuove selezioni
+            QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+            qDebug() <<"--currentDragSelection" << newNodeSelection;
+
+                   // Controlla se i nodi sono già stati selezionati
+            foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
+                for (int i = dataRange.begin(); i < dataRange.end(); ++i) {
+                    if (selectedNodes.contains(i)) {
+                        qDebug() << i << "--è presente in" << selectedNodes;
+                        // Se un nodo già selezionato viene selezionato di nuovo, rimuovi la selezione
+                        selectedNodes.remove(i);
+                        qDebug() << "--rimuovo" << i;
+                    }
+                }
+            }
+            qDebug() << "+++i nodi attuali sono" << selectedNodes;
+
+            // insert range (i, i+1)
+            QCPDataSelection updatedSelection;
+            foreach (int node, selectedNodes) {
+                updatedSelection += QCPDataSelection(QCPDataRange(node, node+1));
+            }
+            qDebug() << updatedSelection;
+            ui->customPlot->graph(dragNodesLayer)->setSelection(updatedSelection);
+
+            ui->customPlot->replot();
+            // ottieni le selezioni pendenti: single or multipoint selection
+            qDebug() << "---";
+*/
+            dragRemovingStatus = false;
+
+        }
     }
+
 
     QMainWindow::keyPressEvent(event);
 }

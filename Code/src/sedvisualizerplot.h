@@ -44,8 +44,11 @@ private:
     int sedCount;
     QList<SED *> sed_list;
     QList<SEDNode *> selected_sed_list;
-    QCPDataSelection selectedRanges;    //TODO da rimuovere?
     QMap<int, bool> selectedPointsMap; // TODO da rimuovere?
+    // drag remove status
+    bool dragRemovingStatus;
+    // data structure to support the drag item remove
+    QSet<int> selectedNodes;
     // data structure to support drag item selection
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
     int dragNodesLayer;
