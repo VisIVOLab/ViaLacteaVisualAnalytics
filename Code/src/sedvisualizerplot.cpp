@@ -520,123 +520,22 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
     }
 }
 
-
-
+// TODO da rimuovere se non più necessario
 void SEDVisualizerPlot::selectionChanged()
 {
-
-    // Drag selection update current selected nodes on selectedNodes
-    if (ui->dragSelectRadioButton->isChecked()){
-
-        // current selected nodes
-        QCPDataSelection newNodeSelection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
-        qDebug() <<"+++seleziono drag" << newNodeSelection;
-
-        foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
-            for (int i = dataRange.begin(); i < dataRange.end(); ++i)
-                selectedNodes.insert(i);
-        }
-        qDebug() << "Selected Nodes:" << selectedNodes;
-
-
-        /***
-        // ottengo le nuove selezioni
-        QCPDataSelection newNodeSelection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
-        qDebug() <<"--newDragSelection" << newNodeSelection;
-
-        QCPGraph *graph = ui->customPlot->graph(ui->customPlot->graphCount()-1);
-        for (int i=0; i<newNodeSelection.dataRangeCount(); ++i)
-        {
-            QCPDataRange dataRange = newNodeSelection.dataRange(i);
-            for (int j=dataRange.begin(); j<dataRange.end(); ++j)
-            {
-                // Accedi al punto dati utilizzando il metodo at(int index)
-                QCPDataContainer<QCPGraphData>::const_iterator dataPoint = graph->data()->at(j);                // Stampa i dati del punto con qDebug()
-                qDebug() << "Data point at index" << j << ":"
-                         << "x =" << dataPoint->key
-                         << ", y =" << dataPoint->value;
-            }
-        }
-***/
-
-
-    }
 
 }
 
 
-/*
-QSet<int> selectedNodes;
-
-void SEDVisualizerPlot::selectionChanged()
-{
-    if(ui->dragSelectRadioButton->isChecked()){
-        qDebug() << "nodi prima: " << selectedNodes;
-
-        // ottengo le nuove selezioni
-        QCPDataSelection newNodeSelection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
-        //QCPGraph *graph = ui->customPlot->graph(ui->customPlot->graphCount()-1);
-        qDebug() <<"--newDragSelection" << newNodeSelection;
-
-        // Controlla se i nodi sono già stati selezionati
-        foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
-            for (int i = dataRange.begin(); i < dataRange.end(); ++i) {
-                qDebug() << "nodo-i:" << i;
-                //QCPGraphDataContainer::const_iterator it = graph->data()->at(i);
-                // Stampa il dato
-                //qDebug() << "Dato selezionato:key e value: " << it->key << it->value;
-                if (selectedNodes.contains(i)) {
-                    qDebug() << i << "è presente in" << selectedNodes;
-                    // Se un nodo già selezionato viene selezionato di nuovo, rimuovi la selezione
-                    selectedNodes.remove(i);
-                    qDebug() << "rimuovo" << i;
-                } else {
-                    // Altrimenti, aggiungi la selezione
-                    selectedNodes.insert(i);
-                    qDebug() << "inserisco" << i;
-                }
-            }
-        }
-        qDebug() << "nodi dopo" << selectedNodes;
-
-        // insert range (i, i+1)
-        QCPDataSelection updatedSelection;
-        foreach (int node, selectedNodes) {
-            updatedSelection += QCPDataSelection(QCPDataRange(node, node+1));
-        }
-        qDebug() << updatedSelection;
-        ui->customPlot->graph(ui->customPlot->graphCount()-1)->setSelection(updatedSelection);
-
-        ui->customPlot->replot();
-        // ottieni le selezioni pendenti: single or multipoint selection
-        qDebug() << "--";
-    }
-}
-
-*/
-
-
-
-
-
-
-
-// TODO refactor
 void SEDVisualizerPlot::mouseRelease() {
-    if (ui->dragSelectRadioButton->isChecked() && dragRemovingStatus){
-        // aggiornare selection...
-    }
+
 }
 
-// TODO refactor
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
     if(ui->dragSelectRadioButton->isChecked() && !dragRemovingStatus){
         // every new drag selection is a new selection
         ui->customPlot->deselectAll();
-        selectedNodes.clear();
-        qDebug() << "--selectedNode reset" << selectedNodes;
-        // we clear selectedNodes waiting for new selection
         ui->customPlot->replot();
     }
 
@@ -2347,14 +2246,13 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
         ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle::ssNone);    // unset dragselectable nodes
         ui->customPlot->deselectAll();
-        selectedNodes.clear();
-
     }
     ui->customPlot->replot();
 }
 
 /**
  * In DragSelection mode, holding 'shift' allows graph navigation by disabling drag selection
+ *                      , holding 'tab' deselect any nodes selected again
  * @brief SEDVisualizerPlot::keyPressEvent
  * @param event
  */
@@ -2383,42 +2281,7 @@ void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event) {
             ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         }
         if(event->key() == Qt::Key_Tab){
-            /*
-            qDebug() << "+++nodi prima: " << selectedNodes;
-
-            qDebug() << "--Rimuovo";
-
-                   // ottengo le nuove selezioni
-            QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
-            qDebug() <<"--currentDragSelection" << newNodeSelection;
-
-                   // Controlla se i nodi sono già stati selezionati
-            foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
-                for (int i = dataRange.begin(); i < dataRange.end(); ++i) {
-                    if (selectedNodes.contains(i)) {
-                        qDebug() << i << "--è presente in" << selectedNodes;
-                        // Se un nodo già selezionato viene selezionato di nuovo, rimuovi la selezione
-                        selectedNodes.remove(i);
-                        qDebug() << "--rimuovo" << i;
-                    }
-                }
-            }
-            qDebug() << "+++i nodi attuali sono" << selectedNodes;
-
-            // insert range (i, i+1)
-            QCPDataSelection updatedSelection;
-            foreach (int node, selectedNodes) {
-                updatedSelection += QCPDataSelection(QCPDataRange(node, node+1));
-            }
-            qDebug() << updatedSelection;
-            ui->customPlot->graph(dragNodesLayer)->setSelection(updatedSelection);
-
-            ui->customPlot->replot();
-            // ottieni le selezioni pendenti: single or multipoint selection
-            qDebug() << "---";
-*/
             dragRemovingStatus = false;
-
         }
     }
 
