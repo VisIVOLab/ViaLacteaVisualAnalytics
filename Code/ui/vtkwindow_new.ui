@@ -1635,10 +1635,10 @@
   </action>
   <action name="actionFilterImage">
    <property name="text">
-    <string>Filter Image</string>
+    <string>Spatial Filters</string>
    </property>
    <property name="toolTip">
-    <string>Filter Image</string>
+    <string>Spatial Filters</string>
    </property>
    <property name="menuRole">
     <enum>QAction::NoRole</enum>

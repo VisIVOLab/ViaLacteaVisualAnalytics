@@ -480,7 +480,10 @@
   </action>
   <action name="actionFilter">
    <property name="text">
-    <string>Filter</string>
+    <string>Spatial Filters</string>
+   </property>
+   <property name="toolTip">
+    <string>Spatial Filters</string>
    </property>
   </action>
  </widget>
