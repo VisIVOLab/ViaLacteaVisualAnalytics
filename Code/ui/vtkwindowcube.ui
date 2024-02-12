@@ -276,7 +276,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCamera">
@@ -322,6 +322,7 @@
     </property>
     <addaction name="actionExtract_spectrum"/>
     <addaction name="actionPV"/>
+    <addaction name="actionFilter"/>
    </widget>
    <addaction name="menuCamera"/>
    <addaction name="menuWCS"/>
@@ -466,12 +467,23 @@
   </action>
   <action name="actionPV">
    <property name="text">
-    <string>PV</string>
+    <string>Position-Velocity Plot</string>
+   </property>
+   <property name="toolTip">
+    <string>Position-Velocity Plot</string>
    </property>
   </action>
   <action name="actionCalculate_order_2">
    <property name="text">
     <string>2 - the intensity weighted dispersion of the coordinate</string>
+   </property>
+  </action>
+  <action name="actionFilter">
+   <property name="text">
+    <string>Spatial Filters</string>
+   </property>
+   <property name="toolTip">
+    <string>Spatial Filters</string>
    </property>
   </action>
  </widget>

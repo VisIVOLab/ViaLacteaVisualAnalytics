@@ -154,7 +154,7 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                     datamax = -1.0E30;
 
                     output->SetDimensions(naxes[0], naxes[1], 1);
-                    output->SetOrigin(1.0, 1.0, 0.0);
+                    output->SetOrigin(0.0, 0.0, 0.0);
 
                     scalars->Allocate(npixels);
                     while (npixels > 0) {
@@ -196,7 +196,7 @@ int vtkFitsReader::RequestDataObject(vtkInformation *vtkNotUsed(request),
                     output->SetDimensions(naxes[1], naxes[0], naxes[2]);
                 } else
                     output->SetDimensions(naxes[0], naxes[1], naxes[2]);
-                output->SetOrigin(1.0, 1.0, 1.0);
+                output->SetOrigin(0.0, 0.0, 0.0);
                 fitsScalars = vtkFloatArray::New();
                 fitsScalars->Allocate(npixels);
                 scalars->Allocate(npixels);
@@ -584,7 +584,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
 
     vtkStructuredPoints *output = this->GetOutput();
     output->SetDimensions(naxes[0], naxes[1], 1);
-    output->SetOrigin(1.0, 1.0, 0.0);
+    output->SetOrigin(0.0, 0.0, 0.0);
 
     long buffsize = naxes[0] * naxes[1];
     float *buffer = new float[buffsize];

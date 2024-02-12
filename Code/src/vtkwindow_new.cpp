@@ -7,6 +7,7 @@
 #include "catalogue.h"
 #include "dbquery.h"
 #include "extendedglyph3d.h"
+#include "FilterFITSDialog.h"
 #include "fitsimagestatisiticinfo.h"
 #include "higalselectedsources.h"
 #include "imutils.h"
@@ -1096,9 +1097,12 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->ElementListWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+        ui->listWidget->addAction(ui->actionFilterImage);
         ui->listWidget->setDragDropMode(QAbstractItemView::InternalMove);
         connect(ui->listWidget->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)),
                 this, SLOT(movedLayersRow(QModelIndex, int, int, QModelIndex, int)));
+        connect(ui->actionFilterImage, &QAction::triggered, this,
+                &vtkwindow_new::filterCurrentImage);
         auto renWin = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
         renwin = renWin;
         ui->qVTK1->setRenderWindow(renwin);
@@ -1197,7 +1201,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->AddViewProp(imageStack);
         m_Ren1->ResetCamera();
         addLayer(imageObject);
-        ui->listWidget->setContextMenuPolicy(Qt::CustomContextMenu);
         createInfoWindow();
         if (activate) {
             showMaximized();
@@ -2857,6 +2860,16 @@ void vtkwindow_new::setSliceDatacube(int i)
     ui->isocontourVtkWin->update();
     viewer->GetRenderer()->ResetCamera();
     viewer->Render();
+}
+
+void vtkwindow_new::filterCurrentImage()
+{
+    int idx = ui->listWidget->currentRow();
+    auto layer = imgLayerList.at(idx);
+    QString inFile = QString::fromStdString(layer->getFits()->GetFileName());
+
+    FilterFITSDialog d(inFile, this);
+    d.exec();
 }
 
 void vtkwindow_new::changeFitsPalette(std::string palette)

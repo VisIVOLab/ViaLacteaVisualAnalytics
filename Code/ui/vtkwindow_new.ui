@@ -1490,6 +1490,9 @@
        </column>
       </widget>
       <widget class="QListWidget" name="listWidget">
+       <property name="contextMenuPolicy">
+        <enum>Qt::ActionsContextMenu</enum>
+       </property>
        <property name="alternatingRowColors">
         <bool>true</bool>
        </property>
@@ -1504,7 +1507,7 @@
      <x>0</x>
      <y>0</y>
      <width>4064</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1628,6 +1631,17 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionFilterImage">
+   <property name="text">
+    <string>Spatial Filters</string>
+   </property>
+   <property name="toolTip">
+    <string>Spatial Filters</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
    </property>
   </action>
  </widget>

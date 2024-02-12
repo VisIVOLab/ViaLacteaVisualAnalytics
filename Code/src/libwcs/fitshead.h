@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 
-#ifdef __STDC__   /* Full ANSI prototypes */
+#if __STDC__ || defined(__cplusplus)   /* Full ANSI prototypes */
 
 /* Subroutines in hget.c */
     int hgeti2(			/* Extract short value from FITS header */
