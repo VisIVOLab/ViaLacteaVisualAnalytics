@@ -520,10 +520,23 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
     }
 }
 
-// TODO da rimuovere se non più necessario
+
+/**
+ * Drag selection update current selected nodes on selectedNodes
+ * @brief SEDVisualizerPlot::selectionChanged
+ */
 void SEDVisualizerPlot::selectionChanged()
 {
+    if (ui->dragSelectRadioButton->isChecked()){
+        QCPDataSelection newNodeSelection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
+        qDebug() <<"+++seleziono drag" << newNodeSelection;
 
+        foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
+            for (int i = dataRange.begin(); i < dataRange.end(); ++i)
+                selectedNodes.insert(i);
+        }
+        qDebug() << "Selected Nodes:" << selectedNodes;
+    }
 }
 
 
@@ -536,6 +549,9 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     if(ui->dragSelectRadioButton->isChecked() && !dragRemovingStatus){
         // every new drag selection is a new selection
         ui->customPlot->deselectAll();
+        selectedNodes.clear();
+        qDebug() << "--selectedNode reset" << selectedNodes;
+        // we clear selectedNodes waiting for new selection
         ui->customPlot->replot();
     }
 
@@ -2246,6 +2262,8 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
         ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle::ssNone);    // unset dragselectable nodes
         ui->customPlot->deselectAll();
+        selectedNodes.clear();
+
     }
     ui->customPlot->replot();
 }
