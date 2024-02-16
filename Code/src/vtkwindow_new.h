@@ -261,7 +261,6 @@ private:
     QHash<QString, vtkEllipse *> ft_ellipse_list;
     vtkSmartPointer<vtkOrientationMarkerWidget> vtkAxesWidget;
     vtkSmartPointer<vtkAxesActor> vtkAxes;
-    FitsImageStatisiticInfo *info;
     vtkSmartPointer<vtkEventQtSlotConnect> Connections;
     vtkfitstoolwidgetobject *imageObject;
     QList<vtkfitstoolwidgetobject *> imgLayerList;
@@ -318,7 +317,6 @@ public slots:
     void setCameraAzimuth(double az);
     void scale(bool checked);
     void showGrid(bool checked);
-    FitsImageStatisiticInfo *getInfoWindow();
     void createInfoWindow();
     void setSelectionFitsViewerInteractorStyle();
     void setSkyRegionSelectorInteractorStyle();

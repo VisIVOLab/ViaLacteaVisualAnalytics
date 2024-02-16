@@ -8,7 +8,6 @@
 #include "dbquery.h"
 #include "extendedglyph3d.h"
 #include "FilterFITSDialog.h"
-#include "fitsimagestatisiticinfo.h"
 #include "higalselectedsources.h"
 #include "imutils.h"
 #include "lutcustomize.h"
@@ -2620,11 +2619,6 @@ void vtkwindow_new::changePalette(std::string palette)
     pp->setLookupTableScale();
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-}
-
-FitsImageStatisiticInfo *vtkwindow_new::getInfoWindow()
-{
-    return info;
 }
 
 void vtkwindow_new::cutoutDatacube(QString c)

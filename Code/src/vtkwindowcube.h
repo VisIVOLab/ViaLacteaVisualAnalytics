@@ -21,7 +21,6 @@ class vtkwindow_new;
 class vtkRenderer;
 class vtkLookupTable;
 class vtkScalarBarActor;
-class FitsImageStatisiticInfo;
 class LutCustomize;
 class ProfileWindow;
 
@@ -72,7 +71,6 @@ private slots:
     void on_actionCalculate_order_8_triggered();
     void on_actionCalculate_order_10_triggered();
 
-    void on_actionShowStats_triggered();
     void on_actionSlice_Lookup_Table_triggered();
     void changeSliceView(int mode);
     void setInteractorStyleImage();
@@ -91,8 +89,6 @@ private:
     int ScaleFactor;
     QPointer<vtkwindow_new> parentWindow;
     vtkSmartPointer<vtkFitsReader2> readerCube;
-    FitsImageStatisiticInfo *fitsStatsWidget;
-    QPointer<QDockWidget> dock;
     QPointer<ProfileWindow> profileWin;
 
     FitsHeaderMap fitsHeader;

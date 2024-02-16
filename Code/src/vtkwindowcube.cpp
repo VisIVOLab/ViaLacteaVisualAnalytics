@@ -10,7 +10,6 @@
 
 #include "astroutils.h"
 #include "FilterFITSDialog.h"
-#include "fitsimagestatisiticinfo.h"
 #include "lutcustomize.h"
 #include "luteditor.h"
 #include "profilewindow.h"
@@ -193,11 +192,6 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     readerSlice->SetSlice(0);
     readerSlice->Update();
 
-    // Create FITS Stats Widget
-    fitsStatsWidget = new FitsImageStatisiticInfo(readerCube, this);
-    fitsStatsWidget->showSliceStats(readerSlice);
-    on_actionShowStats_triggered();
-
     float rangeSlice[2];
     readerSlice->GetValueRange(rangeSlice);
 
@@ -271,6 +265,16 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
 
+    // Show FITS Stats
+    ui->lineCubeMin->setText(QString::number(readerCube->GetValueRange()[0], 'f', 4));
+    ui->lineCubeMax->setText(QString::number(readerCube->GetValueRange()[1], 'f', 4));
+    ui->lineCubeMean->setText(QString::number(readerCube->GetMean(), 'f', 4));
+    ui->lineCubeRMS->setText(QString::number(readerCube->GetRMS(), 'f', 4));
+    ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
+    ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
+    ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
+    ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
+
     // Set legend WCS
     QString ctype1 = fitsHeader.value("CTYPE1").toUpper();
     if (ctype1.startsWith("GL")) {
@@ -322,8 +326,13 @@ void vtkWindowCube::changeSliceView(int mode)
         currentVisOnSlicePanel = 0;
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
-        ui->actionShowSlice->setChecked(true);
-        fitsStatsWidget->showSliceStats(readerSlice);
+
+        ui->labelImg->setText("Slice");
+        ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
+        ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
+        ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
+        ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
+
         if (lcustom) {
             lcustom->configureFits3D();
         }
@@ -333,7 +342,13 @@ void vtkWindowCube::changeSliceView(int mode)
         ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
         ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
         ui->actionShowMomentMap->setChecked(true);
-        fitsStatsWidget->showMomentStats(moment);
+
+        ui->labelImg->setText("Moment");
+        ui->lineImgMin->setText(QString::number(moment->GetMin(), 'f', 4));
+        ui->lineImgMax->setText(QString::number(moment->GetMax(), 'f', 4));
+        ui->lineImgMean->setText(QString::number(moment->GetMedia(), 'f', 4));
+        ui->lineImgRMS->setText(QString::number(moment->GetRMS(), 'f', 4));
+
         if (lcustom) {
             lcustom->configureMoment();
         }
@@ -448,7 +463,10 @@ void vtkWindowCube::updateSliceDatacube()
 
     if (currentVisOnSlicePanel == 0) {
         // Update stats widget only if needed
-        fitsStatsWidget->showSliceStats(readerSlice);
+        ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
+        ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
+        ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
+        ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
     }
 
     if (parentWindow && ui->contourCheckBox->isChecked()) {
@@ -764,18 +782,6 @@ void vtkWindowCube::on_actionCalculate_order_8_triggered()
 void vtkWindowCube::on_actionCalculate_order_10_triggered()
 {
     calculateAndShowMomentMap(10);
-}
-
-void vtkWindowCube::on_actionShowStats_triggered()
-{
-    if (!dock) {
-        dock = new QDockWidget(this);
-        dock->setWidget(fitsStatsWidget);
-        dock->setAllowedAreas(Qt::RightDockWidgetArea);
-    }
-
-    dock->show();
-    addDockWidget(Qt::RightDockWidgetArea, dock);
 }
 
 void vtkWindowCube::changeLegendWCS(int wcs)
