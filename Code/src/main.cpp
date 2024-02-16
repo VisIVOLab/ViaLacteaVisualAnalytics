@@ -3,6 +3,8 @@
 #include "mainwindow.h"
 #include "singleton.h"
 #include "version.h"
+#include "qdetachtabwidget.h"
+#include "vialactea.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -24,6 +26,7 @@ int main(int argc, char *argv[])
 
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
 
+    
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");
     a.setApplicationVersion(VLVA_VERSION_STR);
@@ -43,5 +46,12 @@ int main(int argc, char *argv[])
 
     Singleton<MainWindow>::Instance();
 
+    QDetachTabWidget* tabWidget = &Singleton<QDetachTabWidget>::Instance();
+    tabWidget->setMovable(true);
+    tabWidget->setTabsClosable(true);
+
+    tabWidget->addTab(Singleton<ViaLactea>::Instance().centralWidget() , "Main Window");
+    tabWidget->show();
+    
     return a.exec();
 }

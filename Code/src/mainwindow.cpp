@@ -80,7 +80,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     hideAllFilterParameter();
 
     ui->volumeGroupBox->hide();
-    on_actionVialactea_triggered();
+    //on_actionVialactea_triggered();
 }
 
 MainWindow::~MainWindow()

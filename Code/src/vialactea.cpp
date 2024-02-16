@@ -17,6 +17,8 @@
 #include "vlkbsimplequerycomposer.h"
 #include "vtkwindowcube.h"
 
+#include "qdetachtabwidget.h"
+
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
@@ -372,10 +374,14 @@ void ViaLactea::openLocalDC(const QString &fn)
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
 
     vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
-    win->show();
-    win->activateWindow();
-    win->raise();
-    this->showMinimized();
+    
+    QDetachTabWidget* tabWidget = &Singleton<QDetachTabWidget>::Instance();
+    tabWidget->addTab(win->centralWidget(), fn);
+    
+    //win->show();
+    //win->activateWindow();
+    //win->raise();
+    //this->showMinimized();
     return;
 
     bool doSearch = settings.value("vlkb.search", false).toBool();
