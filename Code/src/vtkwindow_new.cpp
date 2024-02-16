@@ -552,20 +552,20 @@ public:
         if (vtkwin->profileMode || vtkwin->liveUpdateProfile) {
             if (world_coord[0] > 0 && world_coord[1] > 0 && world_coord[0] <= fits->GetNaxes(0)
                 && world_coord[1] <= fits->GetNaxes(1)) {
-                p0_x[0] = 1;
+                p0_x[0] = 0;
                 p0_x[1] = world_coord[1];
                 p0_x[2] = 0;
 
-                p1_x[0] = double(fits->GetNaxes(0));
+                p1_x[0] = double(fits->GetNaxes(0)) - 1;
                 p1_x[1] = world_coord[1];
                 p1_x[2] = 0;
 
                 p0_y[0] = world_coord[0];
-                p0_y[1] = 1.0;
+                p0_y[1] = 0.0;
                 p0_y[2] = 0.0;
 
                 p1_y[0] = world_coord[0];
-                p1_y[1] = double(fits->GetNaxes(1));
+                p1_y[1] = double(fits->GetNaxes(1)) - 1;
                 p1_y[2] = 0;
 
                 if (!vtkwin->lineSource_x)
@@ -4402,12 +4402,12 @@ void vtkwindow_new::on_actionProfile_triggered()
     if (world_coord[0] > 0 && world_coord[1] > 0 && world_coord[0] <= myfits->GetNaxes(0)
         && world_coord[1] <= myfits->GetNaxes(1)) {
         // Create two points, P0 and P1
-        double p0_x[3] = { 1, world_coord[1], 0 };
-        double p1_x[3] = { double(myfits->GetNaxes(0)), world_coord[1], 0 };
+        double p0_x[3] = { 0, world_coord[1], 0 };
+        double p1_x[3] = { double(myfits->GetNaxes(0)) - 1, world_coord[1], 0 };
 
         // Create two points, P0 and P1
-        double p0_y[3] = { world_coord[0], 1.0, 0.0 };
-        double p1_y[3] = { world_coord[0], double(myfits->GetNaxes(1)), 0.0 };
+        double p0_y[3] = { world_coord[0], 0.0, 0.0 };
+        double p1_y[3] = { world_coord[0], double(myfits->GetNaxes(1)) - 1, 0.0 };
 
         if (!lineSource_x)
             lineSource_x = vtkSmartPointer<vtkLineSource>::New();
