@@ -119,6 +119,8 @@
 #include "ui_lutcustomize.h"
 #include "ui_profilewindow.h"
 
+#include "qdetachtabwidget.h"
+
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
 VTK_MODULE_INIT(vtkRenderingFreeType)
@@ -1202,10 +1204,15 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->ResetCamera();
         addLayer(imageObject);
         createInfoWindow();
-        if (activate) {
+        /*
+         if (activate) {
             showMaximized();
             activateWindow();
         }
+         */
+        QDetachTabWidget* tabWidget = &Singleton<QDetachTabWidget>::Instance();
+        tabWidget->addTab(this->centralWidget(), myfits->GetFileName().c_str());
+
         break;
     }
     case 1: {
