@@ -45,12 +45,18 @@ private:
     QList<SED *> sed_list;
     QList<SEDNode *> selected_sed_list;
     QMap<int, bool> selectedPointsMap; // TODO da rimuovere?
-    // drag remove status
+    // drag remove status to avoid deselecting all
     bool dragRemovingStatus;
+    // multi selection status to avoid deselecting pending nodes
+    bool multiSelectionPointStatus;
+    // shift key press status to avoid deselecting pending nodes
+    bool shiftMovingStatus;
     // data structure to support the drag item remove
     QSet<int> selectedNodes;
     // data structure to support drag item selection
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
+    // drag settings
+    void testDragMethod();
     int dragNodesLayer;
     bool prepareInputForSedFit(SEDNode *node);
     bool prepareSelectedInputForSedFit();
@@ -115,7 +121,7 @@ private slots:
     void selectionChanged();
     void mousePress(QMouseEvent *event);
     void mouseWheel();
-    void mouseRelease();
+    //void mouseRelease(); TODO
     void checkboxClicked(int cb);
 
     void removeSelectedGraph();

@@ -26,19 +26,19 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
-                                    | QCP::iSelectLegend | QCP::iSelectPlottables
+                                    | QCP::iSelectPlottables
                                     | QCP::iMultiSelect | QCP::iSelectItems);
     sed_list = s;
     vtkwin = v;
 
-    // logfile print table
+           // logfile print table
     ui->resultsTableWidget->hide();
     ui->resultsTableWidget->setContextMenuPolicy(Qt::ActionsContextMenu);
     QAction *addFitAction = new QAction("Add this fit", ui->resultsTableWidget);
     ui->resultsTableWidget->addAction(addFitAction);
     connect(addFitAction, SIGNAL(triggered()), this, SLOT(addNewTheoreticalFit()));
 
-    // ticker to generate axes labels
+           // ticker to generate axes labels
     QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
     logTicker->setLogBase(10);
     ui->customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
@@ -53,17 +53,17 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setLabel(sLabelTextX);
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
 
-    // TODO, da tenere qui? o in mousePress?
-    // draggable axis-x and axis-y
-    //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-    //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+           // TODO, da tenere qui? o in mousePress?
+           // draggable axis-x and axis-y
+           //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+           //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 
     minWavelen = std::numeric_limits<int>::max();
     maxWavelen = std::numeric_limits<int>::min();
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
-    //qDebug() << s.count() << "root_nodes from da sed_list";
+           //qDebug() << s.count() << "root_nodes from da sed_list";
     for (sedCount = 0; sedCount < s.count(); sedCount++) {
         sed = s.at(sedCount);   //SED* sed-iesimo
         //qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
@@ -71,9 +71,15 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     }
     //qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
     drawNode(sed_list);
+
+    // TODO selezione rettangolare stats
+    testDragMethod();
     //qDebug() <<"-- how many graph()?"<< ui->customPlot->graphCount() << " + drag nodes layer";
     //qDebug() << dragNodesLayer;
-    dragRemovingStatus = false;
+    dragRemovingStatus = false; // TODO da rimuovere?
+    multiSelectionPointStatus = false;
+    shiftMovingStatus = false;  // evita che si deselezionino nodi durante la navigazione dei grafi
+
 
     double x_deltaRange = (maxWavelen - minWavelen) * 0.02;
     double y_deltaRange = (maxFlux - minFlux) * 0.02;
@@ -83,7 +89,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
     connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*))); // TODO da modificare credo
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
-    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease()));
+    //connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease()));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
@@ -118,7 +124,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     modelFitBands.insert("laboc", 870.0);
     modelFitBands.insert("bol11", 1100.0);
 
-    // columnNames.append("id");
+           // columnNames.append("id");
     columnNames.append("clump_mass");
     columnNames.append("compact_mass_fraction");
     columnNames.append("clump_upper_age");
@@ -159,7 +165,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     columnNames.append("laboc");
     columnNames.append("bol11");
 
-    // resultsOutputColumn.insert("id", -1);
+           // resultsOutputColumn.insert("id", -1);
     resultsOutputColumn.insert("clump_mass", -1);
     resultsOutputColumn.insert("compact_mass_fraction", -1);
     resultsOutputColumn.insert("clump_upper_age", -1);
@@ -185,8 +191,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     resultsOutputColumn.insert("wmod", -1);
     resultsOutputColumn.insert("fmod", -1);
 
-    // set by default single selection status
-    ui->singleSelectRadioButton->setChecked(true);
     ui->generatedSedBox->setHidden(true);
     nSED = 0;
     temporaryMOD = false;
@@ -206,8 +210,8 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     sedFile.close();
 
     qDebug() <<"-- originalGraphs conterrà " << ui->customPlot->graphCount() << "grafici";
-    // store in originalGraphs tutti i grafici presenti: TODO forse è il caso di graficare tutti i grafi - l'ultimo layer di nodi
-    for (int i = 0; i < ui->customPlot->graphCount(); i++) {
+            // store in originalGraphs tutti i grafici presenti: TODO forse è il caso di graficare tutti i grafi - l'ultimo layer di nodi
+            for (int i = 0; i < ui->customPlot->graphCount(); i++) {
         qDebug() <<"-- " << ui->customPlot->graph(i);
         originalGraphs.push_back(ui->customPlot->graph(i));
     }
@@ -364,7 +368,7 @@ void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
                        node->getAngle(), node->getArcpix());
         cp->setNode(node);
 
-        // new visualnode_hash entry
+               // new visualnode_hash entry
         visualnode_hash.insert(node->getDesignation(), cp);
 
         if (node->getWavelength() > maxWavelen)
@@ -406,10 +410,9 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
         y[1] = node->getChild().values()[0]->getFlux();
         qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
 
-        // plot edge-i
+               // plot edge-i
         ui->customPlot->addGraph();
         ui->customPlot->graph()->setData(x, y);
-        //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));   // reduce selectable area of nodes
         ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
         ui->customPlot->graph()->setSelectable(QCP::stNone);    // edge not selectable
         drawPlot(node->getChild().values()[0]);
@@ -429,14 +432,8 @@ void SEDVisualizerPlot::drawNode(QList<SED *> sedlist){
     // plot nodes
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
-    ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone);
-    //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssCross);   // test
-    //ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::red, Qt::white, 7));   // test
-
+    ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone);    // no edge on nodes
     dragNodesLayer = ui->customPlot->graphCount()-1;
-    // select the first points solo sul grafico
-    //ui->customPlot->graph()->setSelection(QCPDataSelection(QCPDataRange(0, 1)));
-    // ui->customPlot->replot();
 
     // set error bar on node
     QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
@@ -527,26 +524,26 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
  */
 void SEDVisualizerPlot::selectionChanged()
 {
-    if (ui->dragSelectRadioButton->isChecked()){
-        QCPDataSelection newNodeSelection = ui->customPlot->graph(ui->customPlot->graphCount()-1)->selection();
-        qDebug() <<"+++seleziono drag" << newNodeSelection;
+    QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+    qDebug() <<"+++selezione del grafico" << newNodeSelection;
 
-        foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
-            for (int i = dataRange.begin(); i < dataRange.end(); ++i)
-                selectedNodes.insert(i);
-        }
-        qDebug() << "Selected Nodes:" << selectedNodes;
+    selectedNodes.clear(); // Rischiosa? TODO
+
+    foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
+        for (int i = dataRange.begin(); i < dataRange.end(); ++i)
+            selectedNodes.insert(i);
     }
+    qDebug() << "Selected Nodes:" << selectedNodes;
 }
 
 
-void SEDVisualizerPlot::mouseRelease() {
+//void SEDVisualizerPlot::mouseRelease() {
 
-}
+//}
 
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    if(ui->dragSelectRadioButton->isChecked() && !dragRemovingStatus){
+    if(!dragRemovingStatus and !multiSelectionPointStatus and !shiftMovingStatus){
         // every new drag selection is a new selection
         ui->customPlot->deselectAll();
         selectedNodes.clear();
@@ -556,8 +553,8 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     }
 
 
-    // if an axis is selected, only allow the direction of that axis to be dragged
-    // if no axis is selected, both directions may be dragged
+           // if an axis is selected, only allow the direction of that axis to be dragged
+           // if no axis is selected, both directions may be dragged
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->xAxis->orientation());
     else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
@@ -565,18 +562,18 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     else
         ui->customPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
 
-    // TODO
-    // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
-    // This part of code could be replaced in the constructor with the following:
-    // QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-    // ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+           // TODO
+           // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
+           // This part of code could be replaced in the constructor with the following:
+           // QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+           // ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 }
 
 void SEDVisualizerPlot::mouseWheel()
 {
 
-    // if an axis is selected, only allow the direction of that axis to be zoomed
-    // if no axis is selected, both directions may be zoomed
+           // if an axis is selected, only allow the direction of that axis to be zoomed
+           // if no axis is selected, both directions may be zoomed
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeZoom(ui->customPlot->xAxis->orientation());
     else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
@@ -584,9 +581,9 @@ void SEDVisualizerPlot::mouseWheel()
     else
         ui->customPlot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
 
-    // This part of code could be replaced with the following: DO NOT WORK
-    //QList<QCPAxis *> zoomableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-    //ui->customPlot->axisRect()->setRangeZoomAxes(zoomableAxes);
+           // This part of code could be replaced with the following: DO NOT WORK
+           //QList<QCPAxis *> zoomableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+           //ui->customPlot->axisRect()->setRangeZoomAxes(zoomableAxes);
 
 }
 
@@ -609,24 +606,24 @@ void SEDVisualizerPlot::removeAllGraphs()
 void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 {
 
-    QMenu *menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
+ QMenu *menu = new QMenu(this);
+ menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    if (ui->customPlot->legend->selectTest(pos, false) >= 0) // context menu on legend requested
-    {
-        menu->addAction("Move to top left", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignTop | Qt::AlignLeft));
-        menu->addAction("Move to top center", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignTop | Qt::AlignHCenter));
-        menu->addAction("Move to top right", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignTop | Qt::AlignRight));
-        menu->addAction("Move to bottom right", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignBottom | Qt::AlignRight));
-        menu->addAction("Move to bottom left", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
-    }
+ if (ui->customPlot->legend->selectTest(pos, false) >= 0) // context menu on legend requested
+ {
+     menu->addAction("Move to top left", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignTop | Qt::AlignLeft));
+     menu->addAction("Move to top center", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignTop | Qt::AlignHCenter));
+     menu->addAction("Move to top right", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignTop | Qt::AlignRight));
+     menu->addAction("Move to bottom right", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignBottom | Qt::AlignRight));
+     menu->addAction("Move to bottom left", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
+ }
 
-    menu->popup(ui->customPlot->mapToGlobal(pos));
+ menu->popup(ui->customPlot->mapToGlobal(pos));
 }
 */
 
@@ -673,8 +670,9 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
     qDebug() << "========list_items_vero=========";
     qDebug() << list_items;
-    // drag selection
-    if (ui->dragSelectRadioButton->isChecked()){
+    // drag selection TODO fix
+    // faccio un controllo generico su entrambe le tipologie di selezioni, prendendo come risultante l'unione di entrambe in caso
+    if (true){
         QList<QCPAbstractItem *> drag_list_items;
         QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
         qDebug() << newNodeSelection << "nella Drag sono invece?";
@@ -762,8 +760,8 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
 {
     double chi2 = 99999999999;
 
-    // Models Map chi2 -> Model
-    // QMap<double, QJsonArray> models;
+           // Models Map chi2 -> Model
+           // QMap<double, QJsonArray> models;
     models.clear();
 
     QVector<double> clump_mass;
@@ -855,7 +853,7 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
     ui->resultsTableWidget->resizeColumnsToContents();
     ui->resultsTableWidget->resizeRowsToContents();
 
-    // Plot the best one
+           // Plot the best one
     plotSedFitModel(models.first(), Qt::blue);
 
     loading->close();
@@ -914,7 +912,7 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
 {
     double chi2 = 99999999999;
 
-    // Models Map chi2 -> Model
+           // Models Map chi2 -> Model
     models.clear();
 
     QFile file(filename);
@@ -1847,7 +1845,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
         nam->deleteLater();
         loading->close();
 
-        // Network Error
+               // Network Error
         if (reply->error()) {
             qDebug() << "Remote SEDFit service error:" << reply->errorString();
             ui->outputTextBrowser->append(reply->errorString());
@@ -1855,7 +1853,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
             return;
         }
 
-        // Service error
+               // Service error
         auto response = reply->readAll();
         QJsonParseError parseError;
         auto json = QJsonDocument::fromJson(response, &parseError);
@@ -1967,7 +1965,7 @@ void SEDVisualizerPlot::on_clearAllButton_clicked()
     temporaryRow = 0;
     QLayoutItem *item;
 
-    // the key point here is that the layout items are stored inside the layout in a stack
+           // the key point here is that the layout items are stored inside the layout in a stack
     while ((item = ui->generatedSedBox->layout()->takeAt(1)) != 0) {
         if (item->widget()) {
             ui->generatedSedBox->layout()->removeWidget(item->widget());
@@ -2255,7 +2253,6 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         if (ui->customPlot->graphCount() > 0){   // set last graph() layer of nodes selectable on drag data
             ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stMultipleDataRanges);
-            ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle::ssCross); // set dragselectable nodes
         }
 
     } else {
@@ -2269,19 +2266,62 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
 }
 
 /**
+ * Metodo solo per settare il decorator style
+ * @brief createScatterStyle
+ * @param shape
+ * @param size
+ * @param color
+ * @param penWidth
+ * @return
+ */
+QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size, QColor color, double penWidth) {
+    QCPScatterStyle scatterStyle;
+    scatterStyle.setShape(shape);
+    scatterStyle.setSize(size);
+    QPen pen(color);
+    pen.setWidthF(penWidth);
+    scatterStyle.setPen(pen);
+    return scatterStyle;
+}
+
+void SEDVisualizerPlot::testDragMethod(){
+    //
+    QCPScatterStyle myScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::transparent, 2.0);
+    QCPScatterStyle selectedScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::red, 4.0);
+
+    QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
+    decorator->setScatterStyle(selectedScatter);
+
+    ui->customPlot->graph(dragNodesLayer)->setSelectionDecorator(decorator);
+    ui->customPlot->graph(dragNodesLayer)->setScatterStyle(myScatter);
+
+
+    // oppure
+    // ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 16));
+
+
+
+    ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+    ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stMultipleDataRanges);
+    //ui->customPlot->setMultiSelectModifier(Qt::ControlModifier); // non serve a quanto pare
+}
+
+/**
  * In DragSelection mode, holding 'shift' allows graph navigation by disabling drag selection
  *                      , holding 'tab' deselect any nodes selected again
  * @brief SEDVisualizerPlot::keyPressEvent
  * @param event
  */
 void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
-    if(ui->dragSelectRadioButton->isChecked()){
-        if (event->key() == Qt::Key_Shift) {
-            ui->customPlot->setSelectionRectMode(QCP::srmNone);
-        }
-        if(event->key() == Qt::Key_Tab){
-            dragRemovingStatus = true;
-        }
+    if (event->key() == Qt::Key_Shift) {
+        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+        shiftMovingStatus = true;
+    }
+    if(event->key() == Qt::Key_Tab){
+        dragRemovingStatus = true;
+    }
+    if(event->key() == Qt::Key_Control){
+        multiSelectionPointStatus = true;
     }
 
     QMainWindow::keyPressEvent(event);
@@ -2294,17 +2334,16 @@ void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
  * @param event
  */
 void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event) {
-    if(ui->dragSelectRadioButton->isChecked()){
-        if (event->key() == Qt::Key_Shift) {
-            ui->customPlot->setSelectionRectMode(QCP::srmSelect);
-        }
-        if(event->key() == Qt::Key_Tab){
-            dragRemovingStatus = false;
-        }
+    if (event->key() == Qt::Key_Shift) {
+        ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+        shiftMovingStatus = false;
     }
-
+    if(event->key() == Qt::Key_Tab){
+        dragRemovingStatus = false;
+    }
+    if(event->key() == Qt::Key_Control){
+        multiSelectionPointStatus = false;
+    }
 
     QMainWindow::keyPressEvent(event);
 }
-
-
