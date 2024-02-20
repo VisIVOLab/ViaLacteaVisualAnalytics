@@ -57,6 +57,21 @@ private:
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
     // drag settings
     void testDragMethod();
+    // test mouse over
+    void handleMouseMove(QMouseEvent *event);
+    // calcolo del nodo più vicino
+    QPair<QCPAbstractItem*, double> closestPointAndDistance(double mouseX, double mouseY);
+
+    // info ToolTip
+    VialacteaStringDictWidget *stringDictWidget;
+    QString designation;
+    double image_x;
+    double image_y;
+    double glon;
+    double glat;
+    double error_flux;
+
+
     int dragNodesLayer;
     bool prepareInputForSedFit(SEDNode *node);
     bool prepareSelectedInputForSedFit();
