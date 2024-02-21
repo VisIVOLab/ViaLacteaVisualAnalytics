@@ -173,6 +173,26 @@ QPair<QVector<double>, QVector<double>> AstroUtils::extractSpectrum(const char *
     return qMakePair(spectrum, nanIndices);
 }
 
+bool AstroUtils::isFitsImage(const std::string &filename)
+{
+    fitsfile *fptr;
+    int ReadStatus = 0;
+    if (fits_open_data(&fptr, filename.c_str(), READONLY, &ReadStatus)) {
+        fits_report_error(stderr, ReadStatus);
+        return false;
+    }
+
+    int naxis = 0;
+    if (fits_get_img_dim(fptr, &naxis, &ReadStatus)) {
+        fits_report_error(stderr, ReadStatus);
+        return false;
+    }
+
+    fits_close_file(fptr, &ReadStatus);
+
+    return naxis == 2;
+}
+
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
 {
     double ra_min1, ra_max1, dec_min1, dec_max1;

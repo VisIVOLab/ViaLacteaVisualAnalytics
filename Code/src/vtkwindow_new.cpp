@@ -99,6 +99,7 @@
 #include "vtkTransform.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkVertexGlyphFilter.h"
+#include "vtkwindowcube.h"
 
 #include "ds9region/DS9Region.h"
 #include "ds9region/DS9RegionParser.h"
@@ -1113,9 +1114,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         QAction *filter = new QAction("Filter", this);
         connect(filter, &QAction::triggered, this, &vtkwindow_new::openFilterDialog);
         ui->menuWindow->addAction(filter);
-        auto actionImportLayer = new QAction("Add new layer...", this);
+        auto actionImportLayer = new QAction("Add new FITS file...", this);
         connect(actionImportLayer, &QAction::triggered, this,
-                &vtkwindow_new::addLocalImageTriggered);
+                &vtkwindow_new::addLocalFileTriggered);
         ui->menuFile->addAction(actionImportLayer);
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
         ui->menuFile->addAction(ui->actionSave_session);
@@ -2380,15 +2381,10 @@ void vtkwindow_new::closeEvent(QCloseEvent *event)
             myParentVtkWindow->sessionModified();
     }
 
-    auto vl = &Singleton<ViaLactea>::Instance();
-    if (vl->isMasterWin(this)) {
-        if (!isSessionSaved() && !confirmSaveAndExit()) {
-            // Cancel button was clicked, therefore do not close
-            event->ignore();
-            return;
-        }
-
-        vl->resetMasterWin();
+    if (!isSessionSaved() && !confirmSaveAndExit()) {
+        // Cancel button was clicked, therefore do not close
+        event->ignore();
+        return;
     }
 
     if (lcustom) {
@@ -2886,10 +2882,10 @@ void vtkwindow_new::removeSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActo
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
 }
 
-void vtkwindow_new::addLocalImageTriggered()
+void vtkwindow_new::addLocalFileTriggered()
 {
-    QString filepath = QFileDialog::getOpenFileName(this, tr("Import an image file"), QString(),
-                                                    tr("FITS images (*.fit *.fits)"));
+    QString filepath = QFileDialog::getOpenFileName(this, tr("Import a FITS file"), QString(),
+                                                    tr("FITS files (*.fit *.fits)"));
     if (filepath.isEmpty()) {
         // Abort
         return;
@@ -2903,9 +2899,16 @@ void vtkwindow_new::addLocalImageTriggered()
         return;
     }
 
-    auto fits = vtkSmartPointer<vtkFitsReader>::New();
-    fits->SetFileName(filepath.toStdString());
-    this->addLayerImage(fits);
+    if (AstroUtils::isFitsImage(filepath.toStdString())) {
+        auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        fits->SetFileName(filepath.toStdString());
+        this->addLayerImage(fits);
+    } else {
+        auto win = new vtkWindowCube(this, filepath);
+        win->show();
+        win->activateWindow();
+        win->raise();
+    }
 }
 
 void vtkwindow_new::loadObservedObject(VisPoint *vis)

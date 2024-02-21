@@ -123,14 +123,6 @@ void ViaLactea::updateVLKBSetting()
 
 void ViaLactea::on_queryPushButton_clicked()
 {
-    if (masterWin != nullptr) {
-        QMessageBox::information(
-                this, QObject::tr(""),
-                QObject::tr(
-                        "A session is already open. Close the session window to start a new one."));
-        return;
-    }
-
     VialacteaInitialQuery *vq;
     if (ui->saveToDiskCheckBox->isChecked()) {
         if (ui->fileNameLineEdit->text() != "")
@@ -249,46 +241,27 @@ void ViaLactea::queryButtonStatusOnOff()
 
 void ViaLactea::openLocalImage(const QString &fn)
 {
-    // No image open yet: new image
-    if (masterWin == nullptr) {
-        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-        fits->SetFileName(fn.toStdString());
+    auto fits = vtkSmartPointer<vtkFitsReader>::New();
+    fits->SetFileName(fn.toStdString());
 
-        bool doSearch = settings.value("vlkb.search", false).toBool();
+    bool doSearch = settings.value("vlkb.search", false).toBool();
 
-        if (doSearch) {
-            double coords[2], rectSize[2];
-            AstroUtils::GetCenterCoords(fn.toStdString(), coords);
-            AstroUtils::GetRectSize(fn.toStdString(), rectSize);
+    if (doSearch) {
+        double coords[2], rectSize[2];
+        AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils::GetRectSize(fn.toStdString(), rectSize);
 
-            VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-            connect(vq, &VialacteaInitialQuery::searchDone,
-                    [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
-                        auto win = new vtkwindow_new(this, fits);
-                        win->setDbElements(results);
-                        setMasterWin(win);
-                        vq->deleteLater();
-                    });
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone, this,
+                [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
+                    auto win = new vtkwindow_new(this, fits);
+                    win->setDbElements(results);
+                    vq->deleteLater();
+                });
 
-            vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-        } else {
-            auto win = new vtkwindow_new(this, fits);
-            setMasterWin(win);
-        }
-
-        this->showMinimized();
-    } else if (canImportToMasterWin(fn.toStdString())) {
-        // An image is already open: we can add this image as a layer
-        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-        fits->SetFileName(fn.toStdString());
-        masterWin->addLayerImage(fits);
-
-        this->showMinimized();
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
     } else {
-        // An image is already open and we can NOT add this image as a layer
-        QMessageBox::warning(this, QObject::tr("Import image"),
-                             QObject::tr("The regions do not overlap, the file cannot be "
-                                         "imported in the current session."));
+        new vtkwindow_new(this, fits);
     }
 }
 
@@ -317,32 +290,6 @@ void ViaLactea::reload()
     updateVLKBSetting();
 }
 
-bool ViaLactea::isMasterWin(vtkwindow_new *win)
-{
-    return win == masterWin;
-}
-
-void ViaLactea::resetMasterWin()
-{
-    masterWin = nullptr;
-}
-
-void ViaLactea::setMasterWin(vtkwindow_new *win)
-{
-    masterWin = win;
-}
-
-bool ViaLactea::canImportToMasterWin(std::string importFn)
-{
-    if (masterWin != nullptr) {
-        std::string masterFile = masterWin->getFitsImage()->GetFileName();
-        // By default, partial overlap are allowed
-        return AstroUtils().CheckOverlap(masterFile, importFn, false);
-    }
-
-    return false;
-}
-
 void ViaLactea::sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results)
 {
     QDir dir(currentDir);
@@ -356,13 +303,36 @@ void ViaLactea::sessionScan(const QString &currentDir, const QDir &rootDir, QStr
     }
 }
 
-
 void ViaLactea::openLocalDC(const QString &fn)
 {
     // Check if the fits is a simcube
     auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
     fitsReader_dc->SetFileName(fn.toStdString());
     if (fitsReader_dc->ctypeXY) {
+        // Check if the keywords in the header are present
+        std::list<std::string> missing;
+        try {
+            if (!AstroUtils::checkSimCubeHeader(fn.toStdString(), missing)) {
+                auto res = QMessageBox::warning(this, "Warning",
+                                                "The header does not contain all the necessary "
+                                                "keywords!\nDo you want to add them?",
+                                                QMessageBox::Yes | QMessageBox::No);
+
+                if (res == QMessageBox::Yes) {
+                    QStringList qMissing;
+                    std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
+                        qMissing << QString::fromStdString(key);
+                    });
+                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
+                    dialog->show();
+                    return;
+                }
+            }
+        } catch (const std::exception &e) {
+            QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
+            return;
+        }
+
         new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
         return;
     }
@@ -375,66 +345,7 @@ void ViaLactea::openLocalDC(const QString &fn)
     win->show();
     win->activateWindow();
     win->raise();
-    this->showMinimized();
-    return;
-
-    bool doSearch = settings.value("vlkb.search", false).toBool();
-    auto load = [fn, this](const QList<QMap<QString, QString>> &results =
-                                   QList<QMap<QString, QString>>()) {
-        // Open a new window to visualize the momentmap
-        auto fitsReader_moment = vtkSmartPointer<vtkFitsReader>::New();
-        fitsReader_moment->SetFileName(fn.toStdString());
-        fitsReader_moment->isMoment3D = true;
-        fitsReader_moment->setMomentOrder(0);
-        auto win = new vtkwindow_new(this, fitsReader_moment);
-        if (!results.isEmpty()) {
-            win->setDbElements(results);
-        }
-        setMasterWin(win);
-
-        // Open a new window to visualize the datacube
-        auto fitsReader_dc = vtkSmartPointer<vtkFitsReader>::New();
-        fitsReader_dc->SetFileName(fn.toStdString());
-        fitsReader_dc->is3D = true;
-        new vtkwindow_new(masterWin, fitsReader_dc, 1, win);
-    };
-
-    if (masterWin == nullptr) {
-
-        if (doSearch) {
-            double coords[2], rectSize[2];
-            AstroUtils::GetCenterCoords(fn.toStdString(), coords);
-            AstroUtils::GetRectSize(fn.toStdString(), rectSize);
-
-            VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-            connect(vq, &VialacteaInitialQuery::searchDone,
-                    [vq, fn, load](QList<QMap<QString, QString>> results) {
-                        load(results);
-                        vq->deleteLater();
-                    });
-            vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-        } else {
-            load();
-        }
-
-        this->showMinimized();
-
-    } else if (canImportToMasterWin(fn.toStdString())) {
-        auto moment = vtkSmartPointer<vtkFitsReader>::New();
-        moment->SetFileName(fn.toStdString());
-        moment->isMoment3D = true;
-        moment->setMomentOrder(0);
-        masterWin->addLayerImage(moment);
-
-        new vtkwindow_new(masterWin, fitsReader_dc, 1, masterWin);
-    } else {
-        QMessageBox::warning(this, QObject::tr("Import DC"),
-                             QObject::tr("The regions do not overlap, the file cannot be "
-                                         "imported in the current session."));
-    }
 }
-
-
 
 void ViaLactea::on_actionExit_triggered()
 {
@@ -443,13 +354,16 @@ void ViaLactea::on_actionExit_triggered()
 
 void ViaLactea::closeEvent(QCloseEvent *event)
 {
-    if (masterWin != nullptr && !masterWin->isSessionSaved()) {
-        // Prompt to save the session
-        if (!masterWin->confirmSaveAndExit()) {
-            event->ignore();
-            return;
-        }
+    auto res = QMessageBox::question(this, "Confirm exit",
+                                     "Do you want to exit?.\nClosing this "
+                                     "window will terminate ongoing processes.",
+                                     QMessageBox::Yes | QMessageBox::No);
+
+    if (res == QMessageBox::No) {
+        event->ignore();
+        return;
     }
+
     ui->webView->page()->deleteLater();
     QApplication::quit();
 }
@@ -549,12 +463,6 @@ void ViaLactea::on_dbLineEdit_textChanged(const QString &arg1)
 
 void ViaLactea::on_actionLoad_session_triggered()
 {
-    if (masterWin != nullptr) {
-        QMessageBox::warning(this, tr("Load a session"),
-                             tr("A session is already open, close it to load another session."));
-        return;
-    }
-
     QString rootPath = QFileDialog::getExistingDirectory(this, "Load a session", QDir::homePath());
     if (rootPath.isEmpty()) {
         return;
@@ -656,26 +564,6 @@ void ViaLactea::on_loadTableButton_clicked()
     this->showMinimized();
 }
 
-bool ViaLactea::isFitsImage(const QString &filepath, int &ReadStatus) const
-{
-    fitsfile *fptr;
-    ReadStatus = 0;
-    if (fits_open_data(&fptr, filepath.toUtf8().data(), READONLY, &ReadStatus)) {
-        fits_report_error(stderr, ReadStatus);
-        return false;
-    }
-
-    int naxis = 0;
-    if (fits_get_img_dim(fptr, &naxis, &ReadStatus)) {
-        fits_report_error(stderr, ReadStatus);
-        return false;
-    }
-
-    fits_close_file(fptr, &ReadStatus);
-
-    return naxis == 2;
-}
-
 void ViaLactea::on_openLoadDataPushButton_clicked()
 {
     QString fn = QFileDialog::getOpenFileName(this, tr("Import an image file"), QString(),
@@ -684,40 +572,9 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
         return;
     }
 
-    // LocalImage: if the file is an image [or it can't be loaded: removed the ReadStatus != 0 check condition]
-    int ReadStatus;
-    if (isFitsImage(fn, ReadStatus)) {
+    if (AstroUtils::isFitsImage(fn.toStdString())) {
         openLocalImage(fn);
     } else {
-        // localDC: if the file is an image or it can't be loaded
-
-        // Check if the keywords in the header are present
-        std::list<std::string> missing;
-        try {
-            if (!AstroUtils::checkSimCubeHeader(fn.toStdString(), missing)) {
-                auto res = QMessageBox::warning(this, "Warning",
-                                                "The header does not contain all the necessary "
-                                                "keywords!\nDo you want to add them?",
-                                                QMessageBox::Yes | QMessageBox::No);
-
-                if (res == QMessageBox::Yes) {
-                    QStringList qMissing;
-                    std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
-                        qMissing << QString::fromStdString(key);
-                    });
-                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
-                    dialog->show();
-                    return;
-                }
-            }
-        } catch (const std::exception &e) {
-            QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
-            return;
-        }
-
         openLocalDC(fn);
     }
-
-    this->showMinimized();
 }
-

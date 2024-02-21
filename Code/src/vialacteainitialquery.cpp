@@ -19,8 +19,8 @@
 #include "downloadmanager.h"
 #include "mainwindow.h"
 #include "singleton.h"
-#include "vtkwindowcube.h"
 #include "vialactea.h"
+#include "vtkwindowcube.h"
 
 VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     : QWidget(parent), ui(new Ui::VialacteaInitialQuery)
@@ -30,10 +30,10 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     ui->rectGroupBox->hide();
 
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append(QDir::separator())
-                       .append("setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append(QDir::separator())
+                               .append("setting.ini"),
                        QSettings::IniFormat);
     vlkbUrl = settings.value("vlkburl", "").toString();
 
@@ -114,10 +114,10 @@ void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenti
 {
     Q_UNUSED(r);
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append(QDir::separator())
-                       .append("setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append(QDir::separator())
+                               .append("setting.ini"),
                        QSettings::IniFormat);
     if (settings.value("vlkbtype", "ia2") == "ia2") {
         a->setUser(IA2_TAP_USER);
@@ -128,29 +128,29 @@ void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenti
 void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
 {
     QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&dl=%3&db=%4&vl=-500000&vu=500000")
-            .arg(l)
-            .arg(b)
-            .arg(dl)
-            .arg(db);
+                          .arg(l)
+                          .arg(b)
+                          .arg(dl)
+                          .arg(db);
     searchRequest(url);
 }
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double r)
 {
     QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&r=%3&vl=-500000&vu=500000")
-            .arg(l)
-            .arg(b)
-            .arg(r);
+                          .arg(l)
+                          .arg(b)
+                          .arg(r);
     searchRequest(url);
 }
 
 void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
 {
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append(QDir::separator())
-                       .append("setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append(QDir::separator())
+                               .append("setting.ini"),
                        QSettings::IniFormat);
 
     loading->setText("Querying cutout service");
@@ -214,10 +214,10 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
 void VialacteaInitialQuery::searchRequest(const QString &url)
 {
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append(QDir::separator())
-                       .append("setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append(QDir::separator())
+                               .append("setting.ini"),
                        QSettings::IniFormat);
     loading->setText("Querying search service");
     loading->show();
@@ -295,10 +295,10 @@ void VialacteaInitialQuery::selectedStartingLayersRequest(QUrl url)
     loading->setText("Querying cutout services");
 
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append(QDir::separator())
-                       .append("setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append(QDir::separator())
+                               .append("setting.ini"),
                        QSettings::IniFormat);
 
     QNetworkRequest req(url);
@@ -343,10 +343,10 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
     QString string;
     QString file;
     QSettings settings(QDir::homePath()
-                       .append(QDir::separator())
-                       .append("VisIVODesktopTemp")
-                       .append(QDir::separator())
-                       .append("setting.ini"),
+                               .append(QDir::separator())
+                               .append("VisIVODesktopTemp")
+                               .append(QDir::separator())
+                               .append("setting.ini"),
                        QSettings::IniFormat);
 
     if (reply->error() == QNetworkReply::NoError) {
@@ -395,9 +395,9 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
             QList<QMap<QString, QString>>::iterator j;
             for (j = elementsOnDb.begin(); j != elementsOnDb.end(); ++j) {
                 if ((*j).value("Species").compare(species) == 0
-                        && (*j).value("Survey").contains(surveyname)
-                        && (*j).value("Transition").compare(transition) == 0
-                        && (*j).value("code").toInt() < best_code) {
+                    && (*j).value("Survey").contains(surveyname)
+                    && (*j).value("Transition").compare(transition) == 0
+                    && (*j).value("code").toInt() < best_code) {
                     best_url = (*j).value("URL");
                     best_code = (*j).value("code").toInt();
                 }
@@ -435,13 +435,12 @@ void VialacteaInitialQuery::finishedSlot(QNetworkReply *reply)
             QString best_url = "";
             int best_code = 4;
 
-
             QList<QMap<QString, QString>>::iterator j;
             for (j = elementsOnDb_tmp.begin(); j != elementsOnDb_tmp.end(); ++j) {
                 if ((*j).value("Species").compare(species) == 0
-                        && (*j).value("Survey").contains(surveyname)
-                        && (*j).value("Transition").compare(transition) == 0
-                        && (*j).value("code").toInt() < best_code) {
+                    && (*j).value("Survey").contains(surveyname)
+                    && (*j).value("Transition").compare(transition) == 0
+                    && (*j).value("code").toInt() < best_code) {
                     best_url = (*j).value("URL");
                     best_code = (*j).value("code").toInt();
                 }
@@ -495,15 +494,12 @@ void VialacteaInitialQuery::onDownloadCompleted()
 
     this->close();
 
-    auto vl = &Singleton<ViaLactea>::Instance();
-    vl->showMinimized();
-
     if ((velfrom.compare("0.0") == 0 && velto.compare("0.0") == 0) || species.compare("dust") == 0
-            || species.compare("Continuum") == 0
-            || (surveyname.compare("NANTEN") == 0 && test_flag_nanten == 2)
-            || QString::compare("cornish", surveyname, Qt::CaseInsensitive) == 0
-            || QString::compare("cornish2d", surveyname, Qt::CaseInsensitive) == 0
-            || QString::compare("magpis", surveyname, Qt::CaseInsensitive) == 0) {
+        || species.compare("Continuum") == 0
+        || (surveyname.compare("NANTEN") == 0 && test_flag_nanten == 2)
+        || QString::compare("cornish", surveyname, Qt::CaseInsensitive) == 0
+        || QString::compare("cornish2d", surveyname, Qt::CaseInsensitive) == 0
+        || QString::compare("magpis", surveyname, Qt::CaseInsensitive) == 0) {
         bool l = myCallingVtkWindow != 0;
 
         auto fits = vtkSmartPointer<vtkFitsReader>::New();
@@ -524,16 +520,14 @@ void VialacteaInitialQuery::onDownloadCompleted()
             win->setDbElements(elementsOnDb);
             if (selectedSurvey.length() > 1)
                 win->downloadStartingLayers(selectedSurvey);
-
-            vl->setMasterWin(win);
         }
     } else {
-        //auto fits = vtkSmartPointer<vtkFitsReader>::New();
-        //fits->SetFileName(currentPath.toStdString());
-        //fits->is3D = true;
+        // auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        // fits->SetFileName(currentPath.toStdString());
+        // fits->is3D = true;
 
         myCallingVtkWindow->setSelectedCubeVelocityUnit(velocityUnit);
-        //new vtkwindow_new(myCallingVtkWindow, fits, 1, myCallingVtkWindow);
+        // new vtkwindow_new(myCallingVtkWindow, fits, 1, myCallingVtkWindow);
         QSettings settings(QDir::homePath()
                                    .append(QDir::separator())
                                    .append("VisIVODesktopTemp")

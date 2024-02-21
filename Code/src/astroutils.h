@@ -30,6 +30,7 @@ public:
                                    std::list<std::string> &missingKeywords);
     static QPair<QVector<double>, QVector<double>> extractSpectrum(const char *fn, int x, int y,
                                                                    double nulval);
+    static bool isFitsImage(const std::string &filename);
 
 private:
     static WorldCoor *GetWCSFITS(char *filename, int verbose);

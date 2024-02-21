@@ -162,7 +162,7 @@ public:
     QList<vtkfitstoolwidgetobject *> getLayerListImages() { return imgLayerList; }
     QList<vtkfitstoolwidgetobject *> getLayerListElements() { return elementLayerList; }
 
-    void addLocalImageTriggered();
+    void addLocalFileTriggered();
     void addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString survey = "",
                        QString species = "", QString transition = "");
 

@@ -591,18 +591,18 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     moment->isMoment3D = true;
     moment->setMomentOrder(order);
 
-    if (parentWindow) {
+    if (parentWindow && parentWindow->isVisible()) {
         parentWindow->addLayerImage(moment);
     } else {
         parentWindow = new vtkwindow_new(nullptr, moment, 0, 0, false);
-        parentWindow->showMinimized();
+        parentWindow->show();
     }
 
     momViewer->SetInputData(moment->GetOutput());
     momViewer->Render();
     changeSliceView(1);
-    this->activateWindow();
     this->raise();
+    this->activateWindow();
 }
 
 void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, float y2)
