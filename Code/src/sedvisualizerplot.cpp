@@ -12,9 +12,8 @@
 #include <QInputDialog>
 #include <QSignalMapper>
 #include <QtConcurrent>
-
-#include <QToolTip>
 #include "singleton.h"
+#include <QToolTip>
 #include <QDebug>
 #include <QtMath>
 #include <limits>
@@ -34,6 +33,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
                                     | QCP::iSelectPlottables
                                     | QCP::iMultiSelect | QCP::iSelectItems);
+    // filtro qui? TODO
     sed_list = s;
     vtkwin = v;
 
@@ -69,6 +69,10 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
+    // filtro archi duplicati TODO
+
+
+
            //qDebug() << s.count() << "root_nodes from da sed_list";
     for (sedCount = 0; sedCount < s.count(); sedCount++) {
         sed = s.at(sedCount);   //SED* sed-iesimo
@@ -85,7 +89,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     dragRemovingStatus = false; // TODO da rimuovere?
     multiSelectionPointStatus = false;
     shiftMovingStatus = false;  // evita che si deselezionino nodi durante la navigazione dei grafi
-    // TODO ???????
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
 
     double x_deltaRange = (maxWavelen - minWavelen) * 0.02;
@@ -96,7 +99,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
     connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*))); // TODO da modificare credo
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
-    //connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease()));
+    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease(QMouseEvent*)));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
@@ -396,13 +399,21 @@ void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
     }
 }
 
+/**
+ * Detect the distance and SED node closest to the mouse cursor
+ * @brief SEDVisualizerPlot::closestPointAndDistance
+ * @param mouseX Axis mouse
+ * @param mouseY Axis mouse
+ * @return pair element of closest SED node to mouse cursor and his distance
+ */
 QPair<QCPAbstractItem*, double> SEDVisualizerPlot::closestPointAndDistance(double mouseX, double mouseY) {
     QCPAbstractItem* closestSED = nullptr;
     double minDistance = std::numeric_limits<double>::max();
 
     for (const auto& key : sed_coordinte_to_element.keys()) {
-        double x = key.first;
-        double y = key.second;
+        double x = ui->customPlot->xAxis->coordToPixel(key.first);
+        double y = ui->customPlot->yAxis->coordToPixel(key.second);
+
         double distance = qSqrt(qPow(mouseX - x, 2) + qPow(mouseY - y, 2));
 
         if (distance < minDistance) {
@@ -418,6 +429,7 @@ QPair<QCPAbstractItem*, double> SEDVisualizerPlot::closestPointAndDistance(doubl
 
 void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
 {
+    /*
     double x = ui->customPlot->xAxis->pixelToCoord(event->pos().x());
     double y = ui->customPlot->yAxis->pixelToCoord(event->pos().y());
 
@@ -453,6 +465,7 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
     } else {
         QToolTip::hideText();
     }
+*/
 }
 
 
@@ -470,14 +483,14 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
     // on 0 set current node values
     x[0] = node->getWavelength();
     y[0] = node->getFlux();
-    //qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
+    qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
     //qDebug() << "--Draw: il nodo ha figli" << node->getChild().count();
     // if a child node exists, an edge is to be drawn
     if (node->getChild().count() > 0){
         // on 1 set child node values
         x[1] = node->getChild().values()[0]->getWavelength();
         y[1] = node->getChild().values()[0]->getFlux();
-        //qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
+        qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
 
         // plot edge-i
         ui->customPlot->addGraph();
@@ -603,40 +616,135 @@ void SEDVisualizerPlot::selectionChanged()
             selectedNodes.insert(i);
     }
     qDebug() << "Selected Nodes:" << selectedNodes;
-
-    /*
-    QString wav = "24";//QString::number(pos().x());
-    qDebug() << "QCursor::pos()" << QCursor::pos().x();
-    QToolTip::showText(QCursor::pos(), QString(stringDictWidget->getColUtypeStringDict().value(
-                                                       "vlkb_compactsources.sed_view_final.designation" + wav)
-                                               + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %8\nglon: %4\nglat: "
-                                                 "%5\nx: %6\ny:%7")
-                                               .arg(designation)
-                                               .arg(pos().x())
-                                               .arg(pos().y())
-                                               .arg(glon)
-                                               .arg(glat)
-                                               .arg(image_x)
-                                               .arg(image_y)
-                                               .arg(error_flux));
-*/
-
 }
 
 
-//void SEDVisualizerPlot::mouseRelease() {
+void SEDVisualizerPlot::mouseRelease(QMouseEvent *event) {
+    if (event->button() == Qt::RightButton) {
 
-//}
+        //QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+        //qDebug() <<"== Tasto destro non deve deselezionare nulla: newNodeSelection" << newNodeSelection;
+        //qDebug() << "== Tasto destro non deve deselezionare nulla: selectedNodes: " << selectedNodes;
+        ui->customPlot->replot();   // Aggiornamento per determinare coordinate corrette in dezoom
+
+        // Ottieni il nodo esatto su cui hai fatto clic: mouse
+        double x = event->pos().x();
+        double y = event->pos().y();
+
+
+        // Calcola la distanza tra la posizione del mouse e il nodo più vicino
+        QPair<QCPAbstractItem*, double> distance = closestPointAndDistance(x, y);
+
+
+        // Calcola la soglia in base al range dell'asse x o y
+        double rangeSize = ui->customPlot->xAxis->range().size();
+        qDebug() << rangeSize;
+        double threshold = 0.01 / rangeSize; // ad esempio, l'1% del range dell'asse x
+        qDebug() << distance.second << "<" << 10;
+
+        // threshold distance
+        if (distance.second <= 10) {
+            SEDPlotPointCustom *closestSED = qobject_cast<SEDPlotPointCustom *>(distance.first);
+            QString toolTipText;
+            if (closestSED->getNode()->getX() != 0 && closestSED->getNode()->getY() != 0 && closestSED->getNode()->getDesignation().compare("") != 0) {
+                QString wav = QString::number(closestSED->getNode()->getWavelength());
+                toolTipText = QString(stringDictWidget->getColUtypeStringDict().value(
+                                              "vlkb_compactsources.sed_view_final.designation" + wav)
+                                      + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
+                                        "%6\nx: %7\ny: %8")
+                                      .arg(closestSED->getNode()->getDesignation())
+                                      .arg(closestSED->getNode()->getWavelength())
+                                      .arg(closestSED->getNode()->getFlux())
+                                      .arg(closestSED->getNode()->getErrFlux())
+                                      .arg(closestSED->getNode()->getLon())
+                                      .arg(closestSED->getNode()->getLat())
+                                      .arg(closestSED->getNode()->getX())
+                                      .arg(closestSED->getNode()->getY());
+                QToolTip::showText(event->globalPos(), toolTipText);
+            } else {
+                toolTipText = QString("wavelength: %1\nfint: %2\nerr_fin: %3")
+                                      .arg(closestSED->getNode()->getWavelength())
+                                      .arg(closestSED->getNode()->getFlux())
+                                      .arg(closestSED->getNode()->getErrFlux());
+                QToolTip::showText(event->globalPos(), toolTipText);
+            }
+        }
+
+        //QString toolTipText = QString("Nodo: (%1, %2)").arg(distance->key).arg(distance->value);
+        //QToolTip::showText(event->globalPos(), toolTipText, this);
+
+        //QCPGraphDataContainer::const_iterator it = ui->customPlot->graph(dragNodesLayer)->data()->findBegin(x, true);
+        //qDebug() << "DA X:" << it->key << it->value;
+
+        //QCPGraphDataContainer::const_iterator ity = ui->customPlot->graph(dragNodesLayer)->data()->findBegin(y, true);
+        //qDebug() << "DA Y:" << ity->key << ity->value;
+
+        // se l'iterator esiste
+        //if (it != ui->customPlot->graph(dragNodesLayer)->data()->end() && qAbs(y - it->value) < 2){
+        //    QString toolTipText = QString("Nodo: (%1, %2)").arg(it->key).arg(it->value);
+        //    QToolTip::showText(event->globalPos(), toolTipText, this);
+        // }
+        testDragMethod();
+    }
+        /*
+        QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+        qDebug() <<"== Tasto destro non deve deselezionare nulla: newNodeSelection" << newNodeSelection;
+        qDebug() << "== Tasto destro non deve deselezionare nulla: selectedNodes: " << selectedNodes;
+
+        double x = ui->customPlot->xAxis->pixelToCoord(event->pos().x());
+        double y = ui->customPlot->yAxis->pixelToCoord(event->pos().y());
+
+        // Calcola la distanza tra la posizione del mouse e il nodo più vicino
+        QPair<QCPAbstractItem*, double> distance = closestPointAndDistance(x, y);
+
+        // threshold distance
+        if (distance.second <= 2) {
+            SEDPlotPointCustom *closestSED = qobject_cast<SEDPlotPointCustom *>(distance.first);
+            QString toolTipText;
+            if (closestSED->getNode()->getX() != 0 && closestSED->getNode()->getY() != 0 && closestSED->getNode()->getDesignation().compare("") != 0) {
+                QString wav = QString::number(closestSED->getNode()->getWavelength());
+                toolTipText = QString(stringDictWidget->getColUtypeStringDict().value(
+                                              "vlkb_compactsources.sed_view_final.designation" + wav)
+                                      + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
+                                        "%6\nx: %7\ny: %8")
+                                      .arg(closestSED->getNode()->getDesignation())
+                                      .arg(closestSED->getNode()->getWavelength())
+                                      .arg(closestSED->getNode()->getFlux())
+                                      .arg(closestSED->getNode()->getErrFlux())
+                                      .arg(closestSED->getNode()->getLon())
+                                      .arg(closestSED->getNode()->getLat())
+                                      .arg(closestSED->getNode()->getX())
+                                      .arg(closestSED->getNode()->getY());
+                QToolTip::showText(event->globalPos(), toolTipText);
+            } else {
+                toolTipText = QString("wavelength: %1\nfint: %2\nerr_fin: %3")
+                                      .arg(closestSED->getNode()->getWavelength())
+                                      .arg(closestSED->getNode()->getFlux())
+                                      .arg(closestSED->getNode()->getErrFlux());
+                QToolTip::showText(event->globalPos(), toolTipText);
+            }
+        } else {
+            QToolTip::hideText();
+        }
+        testDragMethod();
+    }
+*/
+}
 
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    if(!dragRemovingStatus and !multiSelectionPointStatus and !shiftMovingStatus){
+    if(!dragRemovingStatus and !multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton){
         // every new drag selection is a new selection
         ui->customPlot->deselectAll();
         selectedNodes.clear();
         // we clear selectedNodes waiting for new selection
         ui->customPlot->replot();
         qDebug() << "--selectedNode reset - supporto:" << selectedNodes << "- video"<< ui->customPlot->graph(dragNodesLayer)->selection();
+    }
+
+    if(event->button() == Qt::RightButton){
+        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+        ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stSingleData);
     }
 
 
@@ -2386,11 +2494,8 @@ void SEDVisualizerPlot::testDragMethod(){
     // oppure
     // ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 16));
 
-
-
     ui->customPlot->setSelectionRectMode(QCP::srmSelect);
     ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stMultipleDataRanges);
-    //ui->customPlot->setMultiSelectModifier(Qt::ControlModifier); // non serve a quanto pare
 }
 
 /**
