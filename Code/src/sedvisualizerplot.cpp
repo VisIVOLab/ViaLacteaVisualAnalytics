@@ -424,23 +424,34 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
     // Calcola la distanza tra la posizione del mouse e il nodo più vicino
     QPair<QCPAbstractItem*, double> distance = closestPointAndDistance(x, y);
 
-    // threshould distance
+    // threshold distance
     if (distance.second <= 2) {
         SEDPlotPointCustom *closestSED = qobject_cast<SEDPlotPointCustom *>(distance.first);
-        QString wav = QString::number(closestSED->getNode()->getWavelength());
-        QString toolTipText = QString(stringDictWidget->getColUtypeStringDict().value(
-                                              "vlkb_compactsources.sed_view_final.designation" + wav)
-                                      + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
-                                        "%6\nx: %7\ny: %8")
-                                      .arg(closestSED->getNode()->getDesignation())
-                                      .arg(closestSED->getNode()->getWavelength())
-                                      .arg(closestSED->getNode()->getFlux())
-                                      .arg(closestSED->getNode()->getErrFlux())
-                                      .arg(closestSED->getNode()->getLon())
-                                      .arg(closestSED->getNode()->getLat())
-                                      .arg(closestSED->getNode()->getX())
-                                      .arg(closestSED->getNode()->getY());
-        QToolTip::showText(event->globalPos(), toolTipText);
+        QString toolTipText;
+        if (closestSED->getNode()->getX() != 0 && closestSED->getNode()->getY() != 0 && closestSED->getNode()->getDesignation().compare("") != 0) {
+            QString wav = QString::number(closestSED->getNode()->getWavelength());
+            toolTipText = QString(stringDictWidget->getColUtypeStringDict().value(
+                                                  "vlkb_compactsources.sed_view_final.designation" + wav)
+                                          + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
+                                            "%6\nx: %7\ny: %8")
+                                          .arg(closestSED->getNode()->getDesignation())
+                                          .arg(closestSED->getNode()->getWavelength())
+                                          .arg(closestSED->getNode()->getFlux())
+                                          .arg(closestSED->getNode()->getErrFlux())
+                                          .arg(closestSED->getNode()->getLon())
+                                          .arg(closestSED->getNode()->getLat())
+                                          .arg(closestSED->getNode()->getX())
+                                          .arg(closestSED->getNode()->getY());
+            QToolTip::showText(event->globalPos(), toolTipText);
+        } else {
+            toolTipText = QString("wavelength: %1\nfint: %2\nerr_fin: %3")
+                                  .arg(closestSED->getNode()->getWavelength())
+                                  .arg(closestSED->getNode()->getFlux())
+                                  .arg(closestSED->getNode()->getErrFlux());
+            QToolTip::showText(event->globalPos(), toolTipText);
+        }
+    } else {
+        QToolTip::hideText();
     }
 }
 
