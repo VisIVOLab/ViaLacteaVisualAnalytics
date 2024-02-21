@@ -38,8 +38,8 @@ private:
                                  double *cdec, double *dra, double *ddec, double *secpix, int *wp,
                                  int *hp, int *sysout, double *eqout);
     static WorldCoor *ChangeFITSWCS(char *filename, char *header, int verbose);
-    static void GetBounds(std::string file, double *top, double *bottom, double *right,
-                          double *left);
+    static void GetBounds(std::string file, double *ra_min, double *ra_max, double *dec_min,
+                          double *dec_max);
     static bool CheckFullOverlap(std::string f1, std::string f2);
 };
 
