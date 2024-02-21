@@ -1514,7 +1514,6 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionSave_session"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
