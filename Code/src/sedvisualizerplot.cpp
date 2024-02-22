@@ -59,10 +59,10 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setLabel(sLabelTextX);
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
 
-           // TODO, da tenere qui? o in mousePress?
-           // draggable axis-x and axis-y
-           //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-           //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
+   // TODO, da tenere qui? o in mousePress?
+   // draggable axis-x and axis-y
+   //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
+   //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 
     minWavelen = std::numeric_limits<int>::max();
     maxWavelen = std::numeric_limits<int>::min();
@@ -608,13 +608,12 @@ void SEDVisualizerPlot::selectionChanged()
     QCPDataSelection newNodeSelection = graphSEDNodes->selection();
     qDebug() <<"+++selezione del grafico" << newNodeSelection;
 
-    selectedNodes.clear(); // Rischiosa? TODO
-
+    selectedNodes.clear();
     foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
         for (int i = dataRange.begin(); i < dataRange.end(); ++i)
             selectedNodes.insert(i);
     }
-    qDebug() << "Selected Nodes:" << selectedNodes;
+    qDebug() << "+++Supporto selectedNodes:" << selectedNodes;
 }
 
 
@@ -754,33 +753,28 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     bool validFit = false;
 
     QMap<double, SEDNode *> selected_sed_map;
-    // multi selection
-    QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-    qDebug() << "========list_items_vero=========";
-    qDebug() << list_items;
-    // drag selection TODO fix
-    // faccio un controllo generico su entrambe le tipologie di selezioni, prendendo come risultante l'unione di entrambe in caso
-    if (true){
-        QList<QCPAbstractItem *> drag_list_items;
-        QCPDataSelection newNodeSelection = graphSEDNodes->selection();
-        qDebug() << newNodeSelection << "nella Drag sono invece?";
-        // for each range of data selected on drag mode
-        for (int i=0; i<newNodeSelection.dataRangeCount(); ++i)
+    // previously used with multi selection command/ctrl
+    //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
+    QList<QCPAbstractItem *> list_items;
+
+    // drag selection
+    QCPDataSelection newNodeSelection = graphSEDNodes->selection();
+    // for each range of data selected on drag mode
+    for (int i=0; i<newNodeSelection.dataRangeCount(); ++i)
+    {
+        QCPDataRange dataRange = newNodeSelection.dataRange(i);
+        for (int j=dataRange.begin(); j<dataRange.end(); ++j)
         {
-            QCPDataRange dataRange = newNodeSelection.dataRange(i);
-            for (int j=dataRange.begin(); j<dataRange.end(); ++j)
-            {
-                // get data-i (not element) selected
-                QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
-                qDebug() << dataPoint->key << dataPoint->value;
-                //update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
-                drag_list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
-            }
+            // get data-i (not element) selected
+            QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
+            //qDebug() << dataPoint->key << dataPoint->value;
+            //update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
+            list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
         }
-        list_items = drag_list_items;
-        qDebug() << "========list_items_drag=========";
-        qDebug() << drag_list_items;
     }
+    //
+    qDebug() << list_items;
+
     for (int i = 0; i < list_items.size(); i++) {
         QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
         QString refName = "SEDPlotPointCustom";
