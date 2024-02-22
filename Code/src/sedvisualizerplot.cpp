@@ -85,7 +85,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     // TODO selezione rettangolare stats
     testDragMethod();
     //qDebug() <<"-- how many graph()?"<< ui->customPlot->graphCount() << " + drag nodes layer";
-    //qDebug() << dragNodesLayer;
     dragRemovingStatus = false; // TODO da rimuovere?
     multiSelectionPointStatus = false;
     shiftMovingStatus = false;  // evita che si deselezionino nodi durante la navigazione dei grafi
@@ -515,7 +514,7 @@ void SEDVisualizerPlot::drawNode(QList<SED *> sedlist){
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone);    // no edge on nodes
-    dragNodesLayer = ui->customPlot->graphCount()-1;
+    graphSEDNodes = ui->customPlot->graph();
 
     // set error bar on node
     QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
@@ -606,7 +605,7 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
  */
 void SEDVisualizerPlot::selectionChanged()
 {
-    QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+    QCPDataSelection newNodeSelection = graphSEDNodes->selection();
     qDebug() <<"+++selezione del grafico" << newNodeSelection;
 
     selectedNodes.clear(); // Rischiosa? TODO
@@ -639,7 +638,7 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
         ui->customPlot->deselectAll();
         selectedNodes.clear();
         ui->customPlot->replot();
-        qDebug() << "--selectedNode reset - supporto:" << selectedNodes << "- video"<< ui->customPlot->graph(dragNodesLayer)->selection();
+        qDebug() << "--selectedNode reset - supporto:" << selectedNodes << "- video"<< graphSEDNodes->selection();
     }
 
    // if an axis is selected, only allow the direction of that axis to be dragged
@@ -763,9 +762,8 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     // faccio un controllo generico su entrambe le tipologie di selezioni, prendendo come risultante l'unione di entrambe in caso
     if (true){
         QList<QCPAbstractItem *> drag_list_items;
-        QCPDataSelection newNodeSelection = ui->customPlot->graph(dragNodesLayer)->selection();
+        QCPDataSelection newNodeSelection = graphSEDNodes->selection();
         qDebug() << newNodeSelection << "nella Drag sono invece?";
-        QCPGraph *graph = ui->customPlot->graph(dragNodesLayer);
         // for each range of data selected on drag mode
         for (int i=0; i<newNodeSelection.dataRangeCount(); ++i)
         {
@@ -773,7 +771,7 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
             for (int j=dataRange.begin(); j<dataRange.end(); ++j)
             {
                 // get data-i (not element) selected
-                QCPGraphDataContainer::const_iterator dataPoint = graph->data()->at(j);
+                QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
                 qDebug() << dataPoint->key << dataPoint->value;
                 //update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
                 drag_list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
@@ -2311,7 +2309,7 @@ void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
         //    list_items.at(i)->setSelected(false);
         //}
         if (ui->customPlot->graphCount() > 0)   // set last graph() layer of nodes selectable on single data
-            ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stSingleData);
+            graphSEDNodes->setSelectable(QCP::stSingleData);
         // set 'control/command' shortcut for multi selection
         ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
     } else {
@@ -2327,7 +2325,7 @@ void SEDVisualizerPlot::on_multiSelectRadioButton_toggled(bool checked)
 {
     if (checked) {
         if (ui->customPlot->graphCount() > 0)   // set last graph() layer of nodes selectable on multi data
-            ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stSingleData);    // TODO mistero mezzo risolto
+            graphSEDNodes->setSelectable(QCP::stSingleData);    // TODO mistero mezzo risolto
     } else {
         ui->customPlot->deselectAll();
 
@@ -2341,12 +2339,12 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
     if (checked){
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         if (ui->customPlot->graphCount() > 0){   // set last graph() layer of nodes selectable on drag data
-            ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stMultipleDataRanges);
+            graphSEDNodes->setSelectable(QCP::stMultipleDataRanges);
         }
 
     } else {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
-        ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle::ssNone);    // unset dragselectable nodes
+        graphSEDNodes->setScatterStyle(QCPScatterStyle::ssNone);    // unset dragselectable nodes
         ui->customPlot->deselectAll();
         selectedNodes.clear();
 
@@ -2381,15 +2379,15 @@ void SEDVisualizerPlot::testDragMethod(){
     QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
     decorator->setScatterStyle(selectedScatter);
 
-    ui->customPlot->graph(dragNodesLayer)->setSelectionDecorator(decorator);
-    ui->customPlot->graph(dragNodesLayer)->setScatterStyle(myScatter);
+    graphSEDNodes->setSelectionDecorator(decorator);
+    graphSEDNodes->setScatterStyle(myScatter);
 
     // or
-    // ui->customPlot->graph(dragNodesLayer)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 16));
+    // graphSEDNodes->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 16));
 
     // drag selection mode
     ui->customPlot->setSelectionRectMode(QCP::srmSelect);
-    ui->customPlot->graph(dragNodesLayer)->setSelectable(QCP::stMultipleDataRanges);
+    graphSEDNodes->setSelectable(QCP::stMultipleDataRanges);
 }
 
 /**

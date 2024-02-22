@@ -72,7 +72,6 @@ private:
     double error_flux;
 
 
-    int dragNodesLayer;
     bool prepareInputForSedFit(SEDNode *node);
     bool prepareSelectedInputForSedFit();
     QMap<double, double> sedFitInput;
@@ -118,6 +117,7 @@ private:
     void addNewSEDCheckBox(QString label);
     QList<QCPGraph *> sedGraphs;
     QList<QCPGraph *> originalGraphs;
+    QCPGraph *graphSEDNodes;
     QCPGraph *collapsedGraph;
     QList<SEDPlotPointCustom *> collapsedGraphPoints;
     QMap<int, QList<SEDPlotPointCustom *>> sedGraphPoints;
