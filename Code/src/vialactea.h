@@ -39,9 +39,6 @@ public:
     explicit ViaLactea(QWidget *parent = 0);
     ~ViaLactea();
     void reload();
-    bool isMasterWin(vtkwindow_new *win);
-    void resetMasterWin();
-    void setMasterWin(vtkwindow_new *win);
 
     // VLKB URLs
     static const QString ONLINE_TILE_PATH;
@@ -90,10 +87,7 @@ private:
     QSettings settings;
     QString tilePath;
     QMap<int, QPair<QString, QString>> mapSurvey;
-    vtkwindow_new *masterWin = nullptr;
 
-    bool isFitsImage(const QString &filepath, int &ReadStatus) const;
-    bool canImportToMasterWin(std::string importFn);
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
 
 protected:

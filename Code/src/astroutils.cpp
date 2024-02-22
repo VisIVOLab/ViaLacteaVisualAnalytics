@@ -53,36 +53,32 @@ double AstroUtils::GetRadiusSize(std::string file)
     return radius;
 }
 
-void AstroUtils::GetBounds(std::string file, double *top, double *bottom, double *right,
-                           double *left)
+void AstroUtils::GetBounds(std::string file, double *ra_min, double *ra_max, double *dec_min,
+                           double *dec_max)
 {
-    double tl[2], br[2];
-    WorldCoor *wc = AstroUtils().GetWCSFITS((char *)file.c_str(), 1);
-    AstroUtils().xy2sky(file, 0, wc->nypix, tl, WCS_GALACTIC);
-    AstroUtils().xy2sky(file, wc->nxpix, 0, br, WCS_GALACTIC);
-
-    *top = fmax(tl[1], br[1]);
-    *bottom = fmin(tl[1], br[1]);
-    *left = fmax(tl[0], br[0]);
-    *right = fmin(tl[0], br[0]);
-
-    wcsfree(wc);
+    WorldCoor *wcs = AstroUtils::GetWCSFITS(const_cast<char *>(file.c_str()), 0);
+    char coorsys[80];
+    wcscstr(coorsys, WCS_J2000, 0., 0.);
+    wcsoutinit(wcs, coorsys);
+    wcsrange(wcs, ra_min, ra_max, dec_min, dec_max);
+    wcsfree(wcs);
 }
 
 bool AstroUtils::CheckOverlap(std::string f1, std::string f2, bool full)
 {
     if (full) {
         // Full overlap
-        return CheckFullOverlap(f1, f2) || CheckFullOverlap(f2, f1);
+        return CheckFullOverlap(f1, f2);
     } else {
         // Check partial overlap
-        double T1, B1, R1, L1;
-        AstroUtils().GetBounds(f1, &T1, &B1, &R1, &L1);
+        double ra_min1, ra_max1, dec_min1, dec_max1;
+        AstroUtils::GetBounds(f1, &ra_min1, &ra_max1, &dec_min1, &dec_max1);
 
-        double T2, B2, R2, L2;
-        AstroUtils().GetBounds(f2, &T2, &B2, &R2, &L2);
+        double ra_min2, ra_max2, dec_min2, dec_max2;
+        AstroUtils::GetBounds(f2, &ra_min2, &ra_max2, &dec_min2, &dec_max2);
 
-        return L1 >= R2 && R1 <= L2 && T1 >= B2 && B1 <= T2;
+        return std::max(ra_min1, ra_min2) < std::min(ra_max1, ra_max2)
+                && std::max(dec_min1, dec_min2) < std::min(dec_max1, dec_max2);
     }
 }
 
@@ -177,16 +173,35 @@ QPair<QVector<double>, QVector<double>> AstroUtils::extractSpectrum(const char *
     return qMakePair(spectrum, nanIndices);
 }
 
+bool AstroUtils::isFitsImage(const std::string &filename)
+{
+    fitsfile *fptr;
+    int ReadStatus = 0;
+    if (fits_open_data(&fptr, filename.c_str(), READONLY, &ReadStatus)) {
+        fits_report_error(stderr, ReadStatus);
+        return false;
+    }
+
+    int naxis = 0;
+    if (fits_get_img_dim(fptr, &naxis, &ReadStatus)) {
+        fits_report_error(stderr, ReadStatus);
+        return false;
+    }
+
+    fits_close_file(fptr, &ReadStatus);
+
+    return naxis == 2;
+}
+
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
 {
-    double T1, B1, R1, L1;
-    AstroUtils().GetBounds(f1, &T1, &B1, &R1, &L1);
+    double ra_min1, ra_max1, dec_min1, dec_max1;
+    AstroUtils::GetBounds(f1, &ra_min1, &ra_max1, &dec_min1, &dec_max1);
 
-    double T2, B2, R2, L2;
-    AstroUtils().GetBounds(f2, &T2, &B2, &R2, &L2);
+    double ra_min2, ra_max2, dec_min2, dec_max2;
+    AstroUtils::GetBounds(f2, &ra_min2, &ra_max2, &dec_min2, &dec_max2);
 
-    // returns true if f2 is completely inside f1
-    return R2 > R1 && L2 < L1 && T2 < T1 && B2 > B1;
+    return ra_min1 <= ra_max2 && ra_max1 >= ra_min2 && dec_max1 >= dec_min2 && dec_min1 <= dec_max2;
 }
 
 double AstroUtils::arcsecPixel(std::string file)

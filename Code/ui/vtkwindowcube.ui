@@ -22,6 +22,12 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="title">
          <string>Threshold</string>
         </property>
@@ -52,6 +58,12 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
         </property>
         <property name="title">
          <string>Cutting plane</string>
@@ -561,7 +573,7 @@
   <customwidget>
    <class>QVTKOpenGLNativeWidget</class>
    <extends>QWidget</extends>
-   <header location="global">QVTKOpenGLNativeWidget.h</header>
+   <header>QVTKOpenGLNativeWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -99,6 +99,7 @@
 #include "vtkTransform.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkVertexGlyphFilter.h"
+#include "vtkwindowcube.h"
 
 #include "ds9region/DS9Region.h"
 #include "ds9region/DS9RegionParser.h"
@@ -1025,18 +1026,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
     ui->setupUi(this);
 
-#define WCS_J2000 1 /* J2000(FK5) right ascension and declination */
-#define WCS_B1950 2 /* B1950(FK4) right ascension and declination */
-#define WCS_GALACTIC 3 /* Galactic longitude and latitude */
-#define WCS_ECLIPTIC 4 /* Ecliptic longitude and latitude */
-#define WCS_ALTAZ 5 /* Azimuth and altitude/elevation */
-#define WCS_LINEAR 6 /* Linear with optional units */
-#define WCS_NPOLE 7 /* Longitude and north polar angle */
-#define WCS_SPA 8 /* Longitude and south polar angle */
-#define WCS_PLANET 9 /* Longitude and latitude on planet */
-#define WCS_XY 10 /* X-Y Cartesian coordinates */
-#define WCS_ICRS 11 /* ICRS right ascension and declination */
-
     auto wcsGroup = new QActionGroup(this);
     auto wcsItem = new QAction("Galactic", wcsGroup);
     wcsItem->setCheckable(true);
@@ -1125,7 +1114,12 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         QAction *filter = new QAction("Filter", this);
         connect(filter, &QAction::triggered, this, &vtkwindow_new::openFilterDialog);
         ui->menuWindow->addAction(filter);
+        auto actionImportLayer = new QAction("Add new FITS file...", this);
+        connect(actionImportLayer, &QAction::triggered, this,
+                &vtkwindow_new::addLocalFileTriggered);
+        ui->menuFile->addAction(actionImportLayer);
         QMenu *compact = ui->menuFile->addMenu("Add compact sources");
+        ui->menuFile->addAction(ui->actionSave_session);
         QAction *local = new QAction("Local", this);
         local->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
         connect(local, SIGNAL(triggered()), this, SLOT(addLocalSources()));
@@ -2387,15 +2381,10 @@ void vtkwindow_new::closeEvent(QCloseEvent *event)
             myParentVtkWindow->sessionModified();
     }
 
-    auto vl = &Singleton<ViaLactea>::Instance();
-    if (vl->isMasterWin(this)) {
-        if (!isSessionSaved() && !confirmSaveAndExit()) {
-            // Cancel button was clicked, therefore do not close
-            event->ignore();
-            return;
-        }
-
-        vl->resetMasterWin();
+    if (!isSessionSaved() && !confirmSaveAndExit()) {
+        // Cancel button was clicked, therefore do not close
+        event->ignore();
+        return;
     }
 
     if (lcustom) {
@@ -2891,6 +2880,35 @@ void vtkwindow_new::removeSingleEllipse(vtkSmartPointer<vtkLODActor> ellipseActo
     m_Ren1->RemoveActor(ellipseActor);
     ui->qVTK1->update();
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
+}
+
+void vtkwindow_new::addLocalFileTriggered()
+{
+    QString filepath = QFileDialog::getOpenFileName(this, tr("Import a FITS file"), QString(),
+                                                    tr("FITS files (*.fit *.fits)"));
+    if (filepath.isEmpty()) {
+        // Abort
+        return;
+    }
+
+    bool doOverlap = AstroUtils::CheckOverlap(this->myfits->GetFileName(), filepath.toStdString());
+    if (!doOverlap) {
+        QMessageBox::warning(
+                this, QObject::tr("Import image"),
+                QObject::tr("The regions do not overlap, the file cannot be imported."));
+        return;
+    }
+
+    if (AstroUtils::isFitsImage(filepath.toStdString())) {
+        auto fits = vtkSmartPointer<vtkFitsReader>::New();
+        fits->SetFileName(filepath.toStdString());
+        this->addLayerImage(fits);
+    } else {
+        auto win = new vtkWindowCube(this, filepath);
+        win->show();
+        win->activateWindow();
+        win->raise();
+    }
 }
 
 void vtkwindow_new::loadObservedObject(VisPoint *vis)

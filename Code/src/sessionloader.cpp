@@ -233,20 +233,15 @@ void SessionLoader::on_btnLoad_clicked()
         vq->setParent(this);
         connect(vq, &VialacteaInitialQuery::searchDone, this,
                 [this, vl, fitsReader](QList<QMap<QString, QString>> results) {
-            auto win = new vtkwindow_new(vl, fitsReader);
-            win->setDbElements(results);
-            win->loadSession(sessionFilepath, sessionRootFolder);
-            vl->setMasterWin(win);
-            vl->showMinimized();
-            this->close();
-        });
+                    auto win = new vtkwindow_new(vl, fitsReader);
+                    win->setDbElements(results);
+                    win->loadSession(sessionFilepath, sessionRootFolder);
+                    this->close();
+                });
         vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
     } else {
         auto win = new vtkwindow_new(vl, fitsReader);
         win->loadSession(sessionFilepath, sessionRootFolder);
-        auto vl = qobject_cast<ViaLactea *>(parent());
-        vl->setMasterWin(win);
-        vl->showMinimized();
         this->close();
     }
 }
