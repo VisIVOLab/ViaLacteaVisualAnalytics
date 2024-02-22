@@ -136,7 +136,7 @@ private slots:
     void selectionChanged();
     void mousePress(QMouseEvent *event);
     void mouseWheel();
-    //void mouseRelease(); TODO
+    void mouseRelease(QMouseEvent *event);
     void checkboxClicked(int cb);
 
     void removeSelectedGraph();
