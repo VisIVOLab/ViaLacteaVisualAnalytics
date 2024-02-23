@@ -37,7 +37,7 @@ protected:
 
 private:
     Ui::SEDVisualizerPlot *ui;
-    SED *sed;
+    //SED *sed; // TODO da rimuovere
     QHash<QString, SEDPlotPointCustom *> visualnode_hash;
     double minFlux, maxFlux, minWavelen, maxWavelen;
     vtkwindow_new *vtkwin;
@@ -61,6 +61,8 @@ private:
     void handleMouseMove(QMouseEvent *event);
     // calcolo del nodo più vicino
     QPair<QCPAbstractItem*, double> closestPointAndDistance(double mouseX, double mouseY);
+    // filtro sed list
+    QList <SEDNode *> filterSEDNodes(QList<SED *> listsed);
 
     // info ToolTip
     VialacteaStringDictWidget *stringDictWidget;
@@ -88,7 +90,7 @@ private:
 
     QStringList plottedSedLabels;
 
-    void getCoordinatesData(SEDNode* node, QVector<double>& x, QVector<double>& y, QVector<double>& y_err);
+    void addCoordinatesData(SEDNode* node, QVector<double>& x, QVector<double>& y, QVector<double>& y_err, QSet<QString>& visitedNodes);
 
     void readColumnsFromSedFitResults(const QJsonArray &columns);
     void plotSedFitModel(const QJsonArray &model, Qt::GlobalColor color);
@@ -144,7 +146,7 @@ private slots:
     //void contextMenuRequest(QPoint pos);
     void graphClicked(QCPAbstractPlottable *plottable);
     void drawPlot(SEDNode *node);
-    void drawNode(QList<SED *> sedlist);
+    void drawNode(QList<SEDNode *> sedlist);
     void insertNewPlotPoint(SEDNode *node);
     void doThinLocalFit();
     void doThickLocalFit();

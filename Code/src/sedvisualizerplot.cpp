@@ -70,17 +70,16 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     maxFlux = std::numeric_limits<int>::min();
 
     // filtro archi duplicati TODO
+    QList<SEDNode *> testLeo = filterSEDNodes(sed_list);
 
-
-
-           //qDebug() << s.count() << "root_nodes from da sed_list";
-    for (sedCount = 0; sedCount < s.count(); sedCount++) {
-        sed = s.at(sedCount);   //SED* sed-iesimo
+    //qDebug() << s.count() << "root_nodes from da sed_list";
+    for (sedCount = 0; sedCount < testLeo.count(); sedCount++) {
+        SEDNode * sed = testLeo.at(sedCount);   //SED* sed-iesimo
         //qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
-        drawPlot(sed->getRootNode());
+        drawPlot(sed);
     }
     //qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
-    drawNode(sed_list);
+    drawNode(testLeo);
 
     // TODO selezione rettangolare stats
     testDragMethod();
@@ -223,7 +222,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
 
     qDebug() <<"-- originalGraphs conterrà " << ui->customPlot->graphCount() << "grafici";
     // store in originalGraphs tutti i grafici presenti: TODO forse è il caso di graficare tutti i grafi - l'ultimo layer di nodi
-    for (int i = 0; i < ui->customPlot->graphCount(); i++) {
+    for (int i = 0; i < ui->customPlot->graphCount()-1; i++) {
         qDebug() <<"-- " << ui->customPlot->graph(i);
         originalGraphs.push_back(ui->customPlot->graph(i));
     }
@@ -334,6 +333,36 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
     return in;
 }
 
+
+QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
+
+    QList<SEDNode*> newList;  // nuova struttura dati di soli SEDNode
+    QSet<QPair<QString, QString>> seenPairs;  // struttura dati per memorizzare le coppie di designazioni
+
+    for (auto &sed : sedList) {
+        SEDNode *node = sed->getRootNode();
+        while(node->hasChild()){
+            QString currentDesignation = node->getDesignation();
+            QString childDesignation = node->getChild().values()[0]->getDesignation();
+            // coppia padre figlio
+            QPair<QString, QString> currentPair(currentDesignation, childDesignation);
+            //vice versa
+            QPair<QString, QString> currentPairVice(childDesignation, currentDesignation);
+            // arco mai visto
+            if (!seenPairs.contains(currentPair) or !seenPairs.contains(currentPairVice)) {
+                // new
+                seenPairs.insert(currentPair);
+                seenPairs.insert(currentPairVice);
+                qDebug() << "arco lecito" << currentPair << node->getWavelength() << node->getFlux() << node->getChild().values()[0]->getWavelength() <<  node->getChild().values()[0]->getFlux();
+                newList.append(node);   // nuovo arco padre--figlio lo ricavi
+            }
+            node = node->getChild().values()[0];
+        }
+    }
+    return newList;
+}
+
+
 /**
  * Insert new SEDNode point into the all_sed_node and visualnode_hash.
  * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
@@ -344,7 +373,6 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
 void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
     if (!visualnode_hash.contains(node->getDesignation())) {
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
-
         if (vtkwin != 0) {
             // set cp rgb color
             if (vtkwin->getDesignation2fileMap().values(node->getDesignation()).length() > 0) {
@@ -475,40 +503,44 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
  */
 void SEDVisualizerPlot::drawPlot(SEDNode *node)
 {
-    // update external structures if it's a new nodes
-    insertNewPlotPoint(node);
-
     QVector<double> x(2), y(2);
     // on 0 set current node values
     x[0] = node->getWavelength();
     y[0] = node->getFlux();
-    qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
+    //qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
     //qDebug() << "--Draw: il nodo ha figli" << node->getChild().count();
-    // if a child node exists, an edge is to be drawn
-    if (node->getChild().count() > 0){
-        // on 1 set child node values
-        x[1] = node->getChild().values()[0]->getWavelength();
-        y[1] = node->getChild().values()[0]->getFlux();
-        qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
+    // a child node exists, an edge is to be drawn
+    // on 1 set child node values
+    x[1] = node->getChild().values()[0]->getWavelength();
+    y[1] = node->getChild().values()[0]->getFlux();
+    //qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
 
-        // plot edge-i
-        ui->customPlot->addGraph();
-        ui->customPlot->graph()->setData(x, y);
-        ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
-        ui->customPlot->graph()->setSelectable(QCP::stNone);    // edge not selectable
-        drawPlot(node->getChild().values()[0]);
-    }
+    // plot edge-i
+    ui->customPlot->addGraph();
+    ui->customPlot->graph()->setData(x, y);
+    ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
+    ui->customPlot->graph()->setSelectable(QCP::stNone);    // edge not selectable
+    //qDebug() << "=============";
+
+    // plot nodes rgb and update external structures (if it's a new nodes)
+    insertNewPlotPoint(node);
+    insertNewPlotPoint(node->getChild().values()[0]);
+    //qDebug() << "======";
 }
 
 /**
  * @brief SEDVisualizerPlot::drawNode Draw sed nodes and their flux error
  * @param sedlist A list of sed objects to be visualized
  */
-void SEDVisualizerPlot::drawNode(QList<SED *> sedlist){
+void SEDVisualizerPlot::drawNode(QList<SEDNode *> sedlist){
     QVector<double> x, y, y_err;
+    QSet<QString> visitedNodes;
     for (int i = 0; i < sedlist.count(); i++) {
-        SEDNode *sedRootNode = sedlist.at(i)->getRootNode();
-        getCoordinatesData(sedRootNode, x, y, y_err);
+        SEDNode *sedRootNode = sedlist.at(i);
+        addCoordinatesData(sedRootNode, x, y, y_err, visitedNodes);
+        if (!sedRootNode->getChild().isEmpty()) {
+            addCoordinatesData(sedRootNode->getChild().values()[0], x, y, y_err, visitedNodes);
+        }
     }
     // plot nodes
     ui->customPlot->addGraph();
@@ -531,21 +563,22 @@ void SEDVisualizerPlot::drawNode(QList<SED *> sedlist){
     ui->customPlot->replot();
 }
 
+
 /**
  * The function performs a recursive traversal of a structure of SED nodes, extracting the wavelength, flux, and flux-error data from each node.
  * The extracted data is appended to the provided QVector objects.
- * @brief SEDVisualizerPlot::getCoordinatesData
+ * @brief SEDVisualizerPlot::addCoordinatesData
  * @param node SEDNode*. The method will visit this node and all its descendants.
  * @param x Reference QVector of double. Collect the wavelength data of each node.
  * @param y Reference QVector of double. Collect flux data of each node.
  * @param y_err Reference QVector of double. Collect flux-error data of each node.
  */
-void SEDVisualizerPlot::getCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y, QVector<double> &y_err) {
-    x.append(node->getWavelength());
-    y.append(node->getFlux());
-    y_err.append(node->getErrFlux());
-    for(int i = 0; i < node->getChild().count(); i++){
-        getCoordinatesData(node->getChild().values()[i], x, y, y_err);
+void SEDVisualizerPlot::addCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y, QVector<double> &y_err, QSet<QString> &visitedNodes) {
+    if (!visitedNodes.contains(node->getDesignation())) {
+        visitedNodes.insert(node->getDesignation());
+        x.append(node->getWavelength());
+        y.append(node->getFlux());
+        y_err.append(node->getErrFlux());
     }
 }
 
@@ -600,6 +633,7 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 
 
 /**
+ * TODO si può eliminare
  * Drag selection update current selected nodes on selectedNodes
  * @brief SEDVisualizerPlot::selectionChanged
  */
@@ -618,16 +652,15 @@ void SEDVisualizerPlot::selectionChanged()
 
 
 void SEDVisualizerPlot::mouseRelease(QMouseEvent *event) {
-    // disable right click function
+    // disable mouse right click function
     if (event->button() == Qt::RightButton){
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
     }
-
 }
 
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    // disable right click function
+    // disable mouse right click function
     if (event->button() == Qt::RightButton){
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
     }
@@ -758,11 +791,11 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     QList<QCPAbstractItem *> list_items;
 
     // drag selection
-    QCPDataSelection newNodeSelection = graphSEDNodes->selection();
+    QCPDataSelection nodeSelection = graphSEDNodes->selection();
     // for each range of data selected on drag mode
-    for (int i=0; i<newNodeSelection.dataRangeCount(); ++i)
+    for (int i=0; i<nodeSelection.dataRangeCount(); ++i)
     {
-        QCPDataRange dataRange = newNodeSelection.dataRange(i);
+        QCPDataRange dataRange = nodeSelection.dataRange(i);
         for (int j=dataRange.begin(); j<dataRange.end(); ++j)
         {
             // get data-i (not element) selected
