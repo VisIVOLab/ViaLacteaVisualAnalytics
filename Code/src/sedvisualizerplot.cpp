@@ -327,28 +327,34 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
     return in;
 }
 
-
+/**
+ * This method filters the root SEDNodes to be displayed in the graph.
+ * All root nodes have references to their child nodes.
+ * @brief SEDVisualizerPlot::filterSEDNodes
+ * @param sedList
+ * @return SEDNode list
+ */
 QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
 
-    QList<SEDNode*> newList;  // nuova struttura dati di soli SEDNode
-    QSet<QPair<QString, QString>> seenPairs;  // struttura dati per memorizzare le coppie di designazioni
+    QList<SEDNode*> newList;
+    QSet<QPair<QString, QString>> seenPairs;  // support data structure
 
     for (auto &sed : sedList) {
         SEDNode *node = sed->getRootNode();
         while(node->hasChild()){
             QString currentDesignation = node->getDesignation();
             QString childDesignation = node->getChild().values()[0]->getDesignation();
-            // coppia padre figlio
+            // check pair: root-child
             QPair<QString, QString> currentPair(currentDesignation, childDesignation);
-            //vice versa
+            // check pair: child-root
             QPair<QString, QString> currentPairVice(childDesignation, currentDesignation);
-            // arco mai visto
+            // new edge
             if (!seenPairs.contains(currentPair) or !seenPairs.contains(currentPairVice)) {
                 // new
                 seenPairs.insert(currentPair);
                 seenPairs.insert(currentPairVice);
-                qDebug() << "arco lecito" << currentPair << node->getWavelength() << node->getFlux() << node->getChild().values()[0]->getWavelength() <<  node->getChild().values()[0]->getFlux();
-                newList.append(node);   // nuovo arco padre--figlio lo ricavi
+                //qDebug() << "arco lecito" << currentPair << node->getWavelength() << node->getFlux() << node->getChild().values()[0]->getWavelength() <<  node->getChild().values()[0]->getFlux();
+                newList.append(node);
             }
             node = node->getChild().values()[0];
         }
@@ -358,13 +364,13 @@ QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
 
 
 /**
- * Insert new SEDNode point into the all_sed_node and visualnode_hash.
+ * Insert new SEDNode point into the all_sed_node
  * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
  * It also updates the maximum and minimum wavelength and flux values.
- * @brief SEDVisualizerPlot::insertNewPlotPoint
+ * @brief SEDVisualizerPlot::updateSEDPlotPoint
  * @param node SEDNode to insert
  */
-void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
+void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node){
     if (!visualnode_hash.contains(node->getDesignation())) {
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
         if (vtkwin != 0) {
@@ -421,13 +427,13 @@ void SEDVisualizerPlot::insertNewPlotPoint(SEDNode *node){
 }
 
 /**
- * Detect the distance and SED node closest to the mouse cursor
- * @brief SEDVisualizerPlot::closestPointAndDistance
+ * Detect distance and SED node closest to the mouse cursor
+ * @brief SEDVisualizerPlot::closestSEDNode
  * @param mouseX Axis mouse
  * @param mouseY Axis mouse
  * @return pair element of closest SED node to mouse cursor and his distance
  */
-QPair<QCPAbstractItem*, double> SEDVisualizerPlot::closestPointAndDistance(double mouseX, double mouseY) {
+QPair<QCPAbstractItem*, double> SEDVisualizerPlot::closestSEDNode(double mouseX, double mouseY) {
     QCPAbstractItem* closestSED = nullptr;
     double minDistance = std::numeric_limits<double>::max();
 
@@ -446,16 +452,17 @@ QPair<QCPAbstractItem*, double> SEDVisualizerPlot::closestPointAndDistance(doubl
     return qMakePair(closestSED, minDistance);
 }
 
-
-
+/**
+ * Manage the Tooltip information
+ * @brief SEDVisualizerPlot::handleMouseMove
+ * @param event mouse position
+ */
 void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
 {
-
     double x = event->pos().x();
     double y = event->pos().y();
 
-    // Calcola la distanza tra la posizione del mouse e il nodo più vicino
-    QPair<QCPAbstractItem*, double> distance = closestPointAndDistance(x, y);
+    QPair<QCPAbstractItem*, double> distance = closestSEDNode(x, y);
 
     // threshold distance
     if (distance.second <= 8) {
@@ -491,7 +498,7 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
 
 
 /**
- * Draw a plot(edge) for every child of a given SEDNode
+ * Draw an edge bethween SEDNode(root) and its child
  * @brief SEDVisualizerPlot::drawPlot
  * @param SEDNode
  */
@@ -501,25 +508,19 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
     // on 0 set current node values
     x[0] = node->getWavelength();
     y[0] = node->getFlux();
-    //qDebug() << "--Draw: Padre X:" << x[0] << "Y:" << y[0] << "Name:" << node->getDesignation();
-    //qDebug() << "--Draw: il nodo ha figli" << node->getChild().count();
-    // a child node exists, an edge is to be drawn
     // on 1 set child node values
     x[1] = node->getChild().values()[0]->getWavelength();
     y[1] = node->getChild().values()[0]->getFlux();
-    //qDebug() << "--Draw: Figlio X:" << x[1] << "Y:" << y[1] << "Name:" << node->getChild().values()[0]->getDesignation();
 
-    // plot edge-i
+    // plot edge
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
     ui->customPlot->graph()->setSelectable(QCP::stNone);    // edge not selectable
-    //qDebug() << "=============";
 
-    // plot nodes rgb and update external structures (if it's a new nodes)
-    insertNewPlotPoint(node);
-    insertNewPlotPoint(node->getChild().values()[0]);
-    //qDebug() << "======";
+    // plot nodes rgb and update external structures (if it's a new entry nodes)
+    updateSEDPlotPoint(node);
+    updateSEDPlotPoint(node->getChild().values()[0]);
 }
 
 /**

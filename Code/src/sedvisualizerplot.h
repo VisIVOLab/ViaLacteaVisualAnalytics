@@ -58,7 +58,7 @@ private:
     // test mouse over
     void handleMouseMove(QMouseEvent *event);
     // calcolo del nodo più vicino
-    QPair<QCPAbstractItem*, double> closestPointAndDistance(double mouseX, double mouseY);
+    QPair<QCPAbstractItem*, double> closestSEDNode(double mouseX, double mouseY);
     // filtro sed list
     QList <SEDNode *> filterSEDNodes(QList<SED *> listsed);
 
@@ -145,7 +145,7 @@ private slots:
     void graphClicked(QCPAbstractPlottable *plottable);
     void drawPlot(SEDNode *node);
     void drawNodes(QList<SEDNode *> sedlist);
-    void insertNewPlotPoint(SEDNode *node);
+    void updateSEDPlotPoint(SEDNode *node);
     void doThinLocalFit();
     void doThickLocalFit();
 
