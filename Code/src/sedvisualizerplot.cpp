@@ -92,7 +92,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
 
-    connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
     connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*)));
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
     connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease(QMouseEvent*)));
@@ -627,25 +626,6 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
 }
 
 
-/**
- * TODO si può eliminare
- * Drag selection update current selected nodes on selectedNodes
- * @brief SEDVisualizerPlot::selectionChanged
- */
-void SEDVisualizerPlot::selectionChanged()
-{
-    QCPDataSelection newNodeSelection = graphSEDNodes->selection();
-    qDebug() <<"+++selezione del grafico" << newNodeSelection;
-
-    selectedNodes.clear();
-    foreach (QCPDataRange dataRange, newNodeSelection.dataRanges()) {
-        for (int i = dataRange.begin(); i < dataRange.end(); ++i)
-            selectedNodes.insert(i);
-    }
-    qDebug() << "+++Supporto selectedNodes:" << selectedNodes;
-}
-
-
 void SEDVisualizerPlot::mouseRelease(QMouseEvent *event) {
     // disable mouse right click function
     if (event->button() == Qt::RightButton){
@@ -663,7 +643,7 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     // Deselect all pending SED nodes: every drag selection is a new selection
     if(!multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton){
         ui->customPlot->deselectAll();
-        selectedNodes.clear();
+        //selectedNodes.clear();
         ui->customPlot->replot();
         qDebug() << "--selectedNode reset - supporto:" << selectedNodes << "- video"<< graphSEDNodes->selection();
     }
@@ -1021,7 +1001,7 @@ void SEDVisualizerPlot::loadSedFitOutput(QString filename)
 {
     double chi2 = 99999999999;
 
-           // Models Map chi2 -> Model
+    // Models Map chi2 -> Model
     models.clear();
 
     QFile file(filename);
