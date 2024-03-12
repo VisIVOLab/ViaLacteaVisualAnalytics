@@ -188,9 +188,6 @@ private slots:
     void on_greyBodyPushButton_clicked();
     void on_Thick_clicked();
     void on_thinButton_clicked();
-    void on_singleSelectRadioButton_toggled(bool checked);
-    void on_multiSelectRadioButton_toggled(bool checked);
-    void on_dragSelectRadioButton_toggled(bool checked);
 };
 
 QDataStream &operator<<(QDataStream &out, QList<SED *> &sedlist);

@@ -524,7 +524,7 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
 }
 
 /**
- * @brief SEDVisualizerPlot::drawNode Draw sed nodes and their flux error
+ * @brief SEDVisualizerPlot::drawNode Draw selectable sed nodes and their flux error
  * @param sedlist A list of sed objects to be visualized
  */
 void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
@@ -560,7 +560,7 @@ void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
 
 
 /**
- * The function performs a recursive traversal of a structure of SED nodes, extracting the wavelength, flux, and flux-error data from each node.
+ * Extract the wavelength, flux, and flux-error data from a given sed node.
  * The extracted data is appended to the provided QVector objects.
  * @brief SEDVisualizerPlot::addCoordinatesData
  * @param node SEDNode*. The method will visit this node and all its descendants.
@@ -2321,58 +2321,6 @@ void SEDVisualizerPlot::on_thinButton_clicked()
     on_ThinLocalFit_triggered();
 }
 
-// TODO considerazioni che possono essere rimosse se queste inserite negli else degli altri 2 radiobutton
-void SEDVisualizerPlot::on_singleSelectRadioButton_toggled(bool checked)
-{
-    if (checked){
-        // reset previus pending selection TODO (può servire da nota nella gestione dei nodi)
-        //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-        //for (int i = 0; i < list_items.size(); i++) {
-        //    list_items.at(i)->setSelected(false);
-        //}
-        if (ui->customPlot->graphCount() > 0)   // set last graph() layer of nodes selectable on single data
-            graphSEDNodes->setSelectable(QCP::stSingleData);
-        // set 'control/command' shortcut for multi selection
-        ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-    } else {
-        // unset 'control/ctrl' shortcut for multi selection
-        ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
-        ui->customPlot->deselectAll();
-
-    }
-    ui->customPlot->replot();
-}
-
-void SEDVisualizerPlot::on_multiSelectRadioButton_toggled(bool checked)
-{
-    if (checked) {
-        if (ui->customPlot->graphCount() > 0)   // set last graph() layer of nodes selectable on multi data
-            graphSEDNodes->setSelectable(QCP::stSingleData);    // TODO mistero mezzo risolto
-    } else {
-        ui->customPlot->deselectAll();
-
-    }
-    ui->customPlot->replot();
-}
-
-
-void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
-{
-    if (checked){
-        ui->customPlot->setSelectionRectMode(QCP::srmSelect);
-        if (ui->customPlot->graphCount() > 0){   // set last graph() layer of nodes selectable on drag data
-            graphSEDNodes->setSelectable(QCP::stMultipleDataRanges);
-        }
-
-    } else {
-        ui->customPlot->setSelectionRectMode(QCP::srmNone);
-        graphSEDNodes->setScatterStyle(QCPScatterStyle::ssNone);    // unset dragselectable nodes
-        ui->customPlot->deselectAll();
-        selectedNodes.clear();
-
-    }
-    ui->customPlot->replot();
-}
 
 /**
  * Method for setting SEDNodes decorator style on drag selection
