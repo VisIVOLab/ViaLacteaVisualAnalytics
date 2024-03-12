@@ -68,22 +68,23 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
-    // avoid multiple same SEDNodes and edge graphing
+    // draw SEDNodes
+    // avoid multiple SEDNodes and edge graphing
     QList<SEDNode *> duplicateFreeSEDNodes = filterSEDNodes(sed_list);
-
     //qDebug() << s.count() << "root_nodes from da sed_list";
     for (sedCount = 0; sedCount < duplicateFreeSEDNodes.count(); sedCount++) {
-        SEDNode * sed = duplicateFreeSEDNodes.at(sedCount);   //SED* sed-i
+        SEDNode * sed = duplicateFreeSEDNodes.at(sedCount);
         //qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
         drawPlot(sed);
     }
     //qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
-    drawNode(duplicateFreeSEDNodes);
+    drawNodes(duplicateFreeSEDNodes);
 
+    // set drag selection parameters
     setDragSelection();
-    //qDebug() <<"-- how many graph()?"<< ui->customPlot->graphCount() << " + drag nodes layer";
     multiSelectionPointStatus = false;
-    shiftMovingStatus = false;  // evita che si deselezionino nodi durante la navigazione dei grafi
+    shiftMovingStatus = false;
+
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
 
     double x_deltaRange = (maxWavelen - minWavelen) * 0.02;
@@ -92,25 +93,24 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
 
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
-    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*))); // TODO da modificare credo
+    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*)));
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
     connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease(QMouseEvent*)));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
             SLOT(setRange(QCPRange)));
-    // QObject::connect: No such signal QCustomPlot::titleDoubleClick(QMouseEvent *, QCPTextElement *) TODO
+    // TODO: error QObject::connect: No such signal QCustomPlot::titleDoubleClick(QMouseEvent *, QCPTextElement *)
     connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
             SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
-    // QObject::connect: No such signal QCustomPlot::plottableClick(QCPAbstractPlottable *, QMouseEvent *) TODO
+    // TODO: QObject::connect: No such signal QCustomPlot::plottableClick(QCPAbstractPlottable *, QMouseEvent *)
     connect(ui->customPlot, SIGNAL(plottableClick(QCPAbstractPlottable *, QMouseEvent *)), this,
             SLOT(graphClicked(QCPAbstractPlottable *)));
     //ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu); // TODO to place again?
     //connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextMenuRequest(QPoint)));
-    // mouseMove connect per gestire la QToolTip
     connect(ui->customPlot, &QCustomPlot::mouseMove, this, &SEDVisualizerPlot::handleMouseMove);
 
 
@@ -205,22 +205,19 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     doubleClicked = false;
     temporaryRow = 0;
     this->setFocus();
-    this->activateWindow(); // porta la finestra al top dello stack delle finestre
+    this->activateWindow(); // set the windows above all windows stack
     QFile sedFile(QDir::homePath()
                           .append(QDir::separator())
                           .append("VisIVODesktopTemp/tmp_download/SEDList.dat"));
     if (!sedFile.exists()) {
         sedFile.open(QIODevice::WriteOnly);
         QDataStream out(&sedFile);
-        out << sed_list; // serialize the object    // TODO should save the duplicateFreeSEDNodes?
+        out << sed_list; // serialize the object    // TODO should save the duplicateFreeSEDNodes instead?
     }
     sedFile.flush();
     sedFile.close();
 
-    qDebug() <<"-- originalGraphs conterrà " << ui->customPlot->graphCount() << "grafici";
-    // store in originalGraphs tutti i grafici presenti: TODO forse è il caso di graficare tutti i grafi - l'ultimo layer di nodi
     for (int i = 0; i < ui->customPlot->graphCount()-1; i++) {
-        qDebug() <<"-- " << ui->customPlot->graph(i);
         originalGraphs.push_back(ui->customPlot->graph(i));
     }
 
@@ -529,7 +526,7 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
  * @brief SEDVisualizerPlot::drawNode Draw sed nodes and their flux error
  * @param sedlist A list of sed objects to be visualized
  */
-void SEDVisualizerPlot::drawNode(QList<SEDNode *> sedlist){
+void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
     QVector<double> x, y, y_err;
     QSet<QString> visitedNodes;
     for (int i = 0; i < sedlist.count(); i++) {
@@ -2414,7 +2411,8 @@ void SEDVisualizerPlot::setDragSelection(){
 }
 
 /**
- * In drag selection mode, holding 'shift' allows graph navigation by disabling drag selection
+ * Holding 'shift' allows graph navigation (by disabling drag selection)
+ * Holding 'Control/Command' allows multi selection/deselection
  * @brief SEDVisualizerPlot::keyPressEvent
  * @param event
  */
