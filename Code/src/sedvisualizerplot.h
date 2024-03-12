@@ -49,8 +49,6 @@ private:
     bool multiSelectionPointStatus;
     // shift key press status to avoid deselecting pending nodes
     bool shiftMovingStatus;
-    // data structure to support the drag item remove
-    QSet<int> selectedNodes;
     // data structure to support drag item selection
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
     // setting drag selection

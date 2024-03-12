@@ -643,9 +643,7 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     // Deselect all pending SED nodes: every drag selection is a new selection
     if(!multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton){
         ui->customPlot->deselectAll();
-        //selectedNodes.clear();
         ui->customPlot->replot();
-        qDebug() << "--selectedNode reset - supporto:" << selectedNodes << "- video"<< graphSEDNodes->selection();
     }
 
    // if an axis is selected, only allow the direction of that axis to be dragged
