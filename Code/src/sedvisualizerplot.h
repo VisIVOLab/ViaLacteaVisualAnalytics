@@ -45,8 +45,6 @@ private:
     QList<SED *> sed_list;
     QList<SEDNode *> selected_sed_list;
     QMap<int, bool> selectedPointsMap; // TODO da rimuovere?
-    // drag remove status to avoid deselecting all
-    bool dragRemovingStatus;
     // multi selection status to avoid deselecting pending nodes
     bool multiSelectionPointStatus;
     // shift key press status to avoid deselecting pending nodes
@@ -55,8 +53,8 @@ private:
     QSet<int> selectedNodes;
     // data structure to support drag item selection
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
-    // drag settings
-    void testDragMethod();
+    // setting drag selection
+    void setDragSelection();
     // test mouse over
     void handleMouseMove(QMouseEvent *event);
     // calcolo del nodo più vicino

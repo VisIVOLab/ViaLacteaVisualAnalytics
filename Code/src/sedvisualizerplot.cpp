@@ -19,7 +19,6 @@
 #include <limits>
 
 
-
 SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::SEDVisualizerPlot)
 {
@@ -33,7 +32,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
                                     | QCP::iSelectPlottables
                                     | QCP::iMultiSelect | QCP::iSelectItems);
-    // filtro qui? TODO
+    // TODO: filterSEDNodes(sed_list) already here?
     sed_list = s;
     vtkwin = v;
 
@@ -69,22 +68,20 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
-    // filtro archi duplicati TODO
-    QList<SEDNode *> testLeo = filterSEDNodes(sed_list);
+    // avoid multiple same SEDNodes and edge graphing
+    QList<SEDNode *> duplicateFreeSEDNodes = filterSEDNodes(sed_list);
 
     //qDebug() << s.count() << "root_nodes from da sed_list";
-    for (sedCount = 0; sedCount < testLeo.count(); sedCount++) {
-        SEDNode * sed = testLeo.at(sedCount);   //SED* sed-iesimo
+    for (sedCount = 0; sedCount < duplicateFreeSEDNodes.count(); sedCount++) {
+        SEDNode * sed = duplicateFreeSEDNodes.at(sedCount);   //SED* sed-i
         //qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
         drawPlot(sed);
     }
     //qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
-    drawNode(testLeo);
+    drawNode(duplicateFreeSEDNodes);
 
-    // TODO selezione rettangolare stats
-    testDragMethod();
+    setDragSelection();
     //qDebug() <<"-- how many graph()?"<< ui->customPlot->graphCount() << " + drag nodes layer";
-    dragRemovingStatus = false; // TODO da rimuovere?
     multiSelectionPointStatus = false;
     shiftMovingStatus = false;  // evita che si deselezionino nodi durante la navigazione dei grafi
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
@@ -215,7 +212,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     if (!sedFile.exists()) {
         sedFile.open(QIODevice::WriteOnly);
         QDataStream out(&sedFile);
-        out << sed_list; // serialize the object
+        out << sed_list; // serialize the object    // TODO should save the duplicateFreeSEDNodes?
     }
     sedFile.flush();
     sedFile.close();
@@ -666,7 +663,7 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
     }
 
     // Deselect all pending SED nodes: every drag selection is a new selection
-    if(!dragRemovingStatus and !multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton){
+    if(!multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton){
         ui->customPlot->deselectAll();
         selectedNodes.clear();
         ui->customPlot->replot();
@@ -1283,7 +1280,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
     ui->customPlot->graph()->setSelectable(QCP::stNone);
     ui->customPlot->replot();
-    sed_list.insert(0, coll_sed);
+    sed_list.insert(0, coll_sed);   // TODO should manage the saving data structure? or everything is manage by the constructor
 }
 
 void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
@@ -2380,13 +2377,13 @@ void SEDVisualizerPlot::on_dragSelectRadioButton_toggled(bool checked)
 }
 
 /**
- * Metodo solo per settare il decorator style
+ * Method for setting SEDNodes decorator style on drag selection
  * @brief createScatterStyle
  * @param shape
  * @param size
  * @param color
  * @param penWidth
- * @return
+ * @return QCPScatterStyle
  */
 QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size, QColor color, double penWidth) {
     QCPScatterStyle scatterStyle;
@@ -2398,10 +2395,9 @@ QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double s
     return scatterStyle;
 }
 
-// TODO cambiare nome
-void SEDVisualizerPlot::testDragMethod(){
-    QCPScatterStyle myScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::transparent, 2.0);
-    QCPScatterStyle selectedScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::red, 2.0);
+void SEDVisualizerPlot::setDragSelection(){
+    QCPScatterStyle myScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::transparent, 2.0); // invisible by default
+    QCPScatterStyle selectedScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::red, 2.0);   // red circle selection
 
     QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
     decorator->setScatterStyle(selectedScatter);
@@ -2419,7 +2415,6 @@ void SEDVisualizerPlot::testDragMethod(){
 
 /**
  * In drag selection mode, holding 'shift' allows graph navigation by disabling drag selection
- *                      , holding 'tab' deselect any nodes selected again
  * @brief SEDVisualizerPlot::keyPressEvent
  * @param event
  */
@@ -2427,9 +2422,6 @@ void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Shift) {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
         shiftMovingStatus = true;
-    }
-    if(event->key() == Qt::Key_Tab){
-        dragRemovingStatus = true;
     }
     if(event->key() == Qt::Key_Control){
         multiSelectionPointStatus = true;
@@ -2440,7 +2432,7 @@ void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
 
 
 /**
- * Reset drag selection mode realeasing 'shift' and manage dragRemovingStatus releasing 'tab'
+ * Reset drag selection mode realeasing 'shift'
  * @brief SEDVisualizerPlot::keyReleaseEvent
  * @param event
  */
@@ -2448,9 +2440,6 @@ void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Shift) {
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         shiftMovingStatus = false;
-    }
-    if(event->key() == Qt::Key_Tab){
-        dragRemovingStatus = false;
     }
     if(event->key() == Qt::Key_Control){
         multiSelectionPointStatus = false;
