@@ -695,7 +695,7 @@ void SEDVisualizerPlot::removeAllGraphs()
 }
 
 /*
- * TODO da rimuovere?
+ * TODO should be removed?: right click is disabled right now on mouse press
 void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 {
 
@@ -727,11 +727,12 @@ SEDVisualizerPlot::~SEDVisualizerPlot()
     delete ui;
 }
 
+// TODO: to remove?
 void SEDVisualizerPlot::on_actionEdit_triggered() { }
-
+// TODO: to remove?
 void SEDVisualizerPlot::on_actionFit_triggered() { }
 
-// TODO non sembra mai usato o invocato da altre parti
+// TODO never invoked
 bool SEDVisualizerPlot::prepareInputForSedFit(SEDNode *node)
 {
     bool validFit = true;
@@ -778,8 +779,7 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
             list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
         }
     }
-    //
-    qDebug() << list_items;
+    // qDebug() << list_items;
 
     for (int i = 0; i < list_items.size(); i++) {
         QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
@@ -817,9 +817,10 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
 
     return validFit;
 }
-
+// TODO: to remove?
 void SEDVisualizerPlot::on_actionLocal_triggered() { }
 
+// TODO never invoked
 void SEDVisualizerPlot::readSedFitResultsHeader(QString header)
 {
     QList<QString> line_list_string = header.split(',');
@@ -2201,11 +2202,7 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
     }
 }
 
-/**
- * addNewTheoreticalFit è legata da SIGNAL & SLOT con una Fit Action aggiunta appositamente nel costruttore
- * si triggera a seguito dell'attivazione di addFitAction
- * @brief SEDVisualizerPlot::addNewTheoreticalFit
- */
+
 void SEDVisualizerPlot::addNewTheoreticalFit()
 {
     QModelIndex index = ui->resultsTableWidget->selectionModel()->selectedIndexes().first();

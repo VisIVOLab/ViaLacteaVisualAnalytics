@@ -37,14 +37,11 @@ protected:
 
 private:
     Ui::SEDVisualizerPlot *ui;
-    //SED *sed; // TODO da rimuovere
     QHash<QString, SEDPlotPointCustom *> visualnode_hash;
     double minFlux, maxFlux, minWavelen, maxWavelen;
     vtkwindow_new *vtkwin;
     int sedCount;
     QList<SED *> sed_list;
-    QList<SEDNode *> selected_sed_list;
-    QMap<int, bool> selectedPointsMap; // TODO da rimuovere?
     // multi selection status to avoid deselecting pending nodes
     bool multiSelectionPointStatus;
     // shift key press status to avoid deselecting pending nodes
@@ -53,11 +50,11 @@ private:
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
     // setting drag selection
     void setDragSelection();
-    // test mouse over
+    // mouse cursor event over sednodes
     void handleMouseMove(QMouseEvent *event);
-    // calcolo del nodo più vicino
+    // detect closest sednode
     QPair<QCPAbstractItem*, double> closestSEDNode(double mouseX, double mouseY);
-    // filtro sed list
+    // filter multiple sed nodes
     QList <SEDNode *> filterSEDNodes(QList<SED *> listsed);
 
     // info ToolTip
