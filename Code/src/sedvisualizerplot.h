@@ -32,7 +32,19 @@ public:
     void setTitle(QString t);
 
 protected:
+    /**
+     * Holding 'shift' allows graph navigation (by disabling drag selection)
+     * Holding 'Control/Command' allows multi selection/deselection
+     * @brief SEDVisualizerPlot::keyPressEvent
+     * @param event
+     */
     void keyPressEvent(QKeyEvent *event) override;
+    /**
+     * Reset drag selection mode realeasing 'shift'
+     * Reset multi selection mode realeasing 'Control/Command'
+     * @brief SEDVisualizerPlot::keyReleaseEvent
+     * @param event
+     */
     void keyReleaseEvent(QKeyEvent *event) override;
 
 private:
@@ -50,12 +62,28 @@ private:
     QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
     // setting drag selection
     void setDragSelection();
-    // mouse cursor event over sednodes
+    /**
+     * Manage the Tooltip information over mouse cursor event
+     * @brief SEDVisualizerPlot::handleMouseMove
+     * @param event mouse position
+     */
     void handleMouseMove(QMouseEvent *event);
-    // detect closest sednode
+    /**
+     * Detect distance and SED node closest to the mouse cursor
+     * @brief SEDVisualizerPlot::closestSEDNode
+     * @param mouseX Axis mouse
+     * @param mouseY Axis mouse
+     * @return pair element of closest SED node to mouse cursor and his distance
+     */
     QPair<QCPAbstractItem*, double> closestSEDNode(double mouseX, double mouseY);
-    // filter multiple sed nodes
-    QList <SEDNode *> filterSEDNodes(QList<SED *> listsed);
+    /**
+     * This method filters the root SEDNodes to be displayed in the graph.
+     * All root nodes have references to their child nodes.
+     * @brief SEDVisualizerPlot::filterSEDNodes
+     * @param sedList
+     * @return SEDNode list
+     */
+    QList <SEDNode *> filterSEDNodes(QList<SED *> sedList);
 
     // info ToolTip
     VialacteaStringDictWidget *stringDictWidget;
@@ -82,7 +110,15 @@ private:
     QMap<double, QJsonArray> models;
 
     QStringList plottedSedLabels;
-
+    /**
+     * Extract the wavelength, flux, and flux-error data from a given sed node.
+     * The extracted data is appended to the provided QVector objects.
+     * @brief SEDVisualizerPlot::addCoordinatesData
+     * @param node SEDNode*. The method will visit this node and all its descendants.
+     * @param x Reference QVector of double. Collect the wavelength data of each node.
+     * @param y Reference QVector of double. Collect flux data of each node.
+     * @param y_err Reference QVector of double. Collect flux-error data of each node.
+     */
     void addCoordinatesData(SEDNode* node, QVector<double>& x, QVector<double>& y, QVector<double>& y_err, QSet<QString>& visitedNodes);
 
     void readColumnsFromSedFitResults(const QJsonArray &columns);
@@ -137,8 +173,24 @@ private slots:
     void removeAllGraphs();
     //void contextMenuRequest(QPoint pos);
     void graphClicked(QCPAbstractPlottable *plottable);
+    /**
+     * Draw an edge bethween SEDNode<root> and its child
+     * @brief SEDVisualizerPlot::drawPlot
+     * @param SEDNode
+     */
     void drawPlot(SEDNode *node);
+    /**
+     * @brief SEDVisualizerPlot::drawNode Draw selectable sed nodes and their flux error
+     * @param sedlist A list of sed objects to be visualized
+     */
     void drawNodes(QList<SEDNode *> sedlist);
+    /**
+     * Insert new SEDNode point into all_sed_node
+     * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
+     * It also updates the maximum and minimum wavelength and flux values.
+     * @brief SEDVisualizerPlot::updateSEDPlotPoint
+     * @param node new SEDNode to insert
+     */
     void updateSEDPlotPoint(SEDNode *node);
     void doThinLocalFit();
     void doThickLocalFit();

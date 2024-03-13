@@ -363,11 +363,11 @@ QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
 
 
 /**
- * Insert new SEDNode point into the all_sed_node
+ * Insert new SEDNode point into all_sed_node
  * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
  * It also updates the maximum and minimum wavelength and flux values.
  * @brief SEDVisualizerPlot::updateSEDPlotPoint
- * @param node SEDNode to insert
+ * @param node new SEDNode to insert
  */
 void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node){
     if (!visualnode_hash.contains(node->getDesignation())) {
@@ -497,7 +497,7 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
 
 
 /**
- * Draw an edge bethween SEDNode(root) and its child
+ * Draw an edge bethween SEDNode<root> and its child
  * @brief SEDVisualizerPlot::drawPlot
  * @param SEDNode
  */
@@ -777,12 +777,10 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
             list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
         }
     }
-    //
-    qDebug() << list_items;
+    // qDebug() << list_items;
 
     for (int i = 0; i < list_items.size(); i++) {
         QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
-        qDebug() << "className" << className;
         QString refName = "SEDPlotPointCustom";
         if (QString::compare(className, refName) == 0) {
             SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(list_items.at(i));
@@ -966,7 +964,6 @@ void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3, vtkwin);
         cp->setAntialiased(true);
         cp->setPos(x, y);
-        qDebug() << x << y;
 
         cp->setDesignation("");
         cp->setX(0);
@@ -1584,6 +1581,7 @@ bool SEDVisualizerPlot::readThinFit(QString resultPath)
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
+    ui->customPlot->graph()->setSelectable(QCP::stNone);
     sedGraphs.push_back(ui->customPlot->graph());
     ui->customPlot->replot();
 
@@ -1631,6 +1629,7 @@ bool SEDVisualizerPlot::readThickFit(QString resultPath)
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
+    ui->customPlot->graph()->setSelectable(QCP::stNone);
     sedGraphs.push_back(ui->customPlot->graph());
     ui->customPlot->replot();
 
@@ -1905,7 +1904,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
     sedFitInputW = "[" + sedFitInputW;
     sedFitInputFflag = "[" + sedFitInputFflag;
     sedFitInputErrF = "[" + sedFitInputErrF;
-    qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW << sedFitInputErrF;
+    //qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW << sedFitInputErrF;
 
     QString sedWeights = "[" + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
             + ui->submmLineEdit->text() + "]";
@@ -2364,6 +2363,7 @@ void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
 
 /**
  * Reset drag selection mode realeasing 'shift'
+ * Reset multi selection mode realeasing 'Control/Command'
  * @brief SEDVisualizerPlot::keyReleaseEvent
  * @param event
  */
