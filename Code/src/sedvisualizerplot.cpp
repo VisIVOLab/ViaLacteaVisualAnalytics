@@ -204,7 +204,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     doubleClicked = false;
     temporaryRow = 0;
     this->setFocus();
-    this->activateWindow(); // set the windows above all windows stack
+    this->activateWindow(); // set the focus on this windows
     QFile sedFile(QDir::homePath()
                           .append(QDir::separator())
                           .append("VisIVODesktopTemp/tmp_download/SEDList.dat"));
@@ -760,11 +760,9 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     bool validFit = false;
 
     QMap<double, SEDNode *> selected_sed_map;
-    // previously used with multi selection command/ctrl
-    //QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
     QList<QCPAbstractItem *> list_items;
 
-    // drag selection
+    // get SEDNodes selected (drag selection) TODO: better performe
     QCPDataSelection nodeSelection = graphSEDNodes->selection();
     // for each range of data selected on drag mode
     for (int i=0; i<nodeSelection.dataRangeCount(); ++i)
@@ -779,17 +777,20 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
             list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
         }
     }
-    // qDebug() << list_items;
+    //
+    qDebug() << list_items;
 
     for (int i = 0; i < list_items.size(); i++) {
         QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
+        qDebug() << "className" << className;
         QString refName = "SEDPlotPointCustom";
         if (QString::compare(className, refName) == 0) {
             SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(list_items.at(i));
-            selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
+            selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode()); // the same dataPont->key ->value up before
         }
     }
     if (selected_sed_map.size() >= 2) {
+        // reconstruct sedFitInputX from last to first element
         QMap<double, SEDNode *>::iterator iter;
         iter = selected_sed_map.begin();
         SEDNode *node = iter.value();
@@ -965,6 +966,7 @@ void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3, vtkwin);
         cp->setAntialiased(true);
         cp->setPos(x, y);
+        qDebug() << x << y;
 
         cp->setDesignation("");
         cp->setX(0);
@@ -990,6 +992,7 @@ void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor
     ui->customPlot->graph()->setData(vec_x, vec_y);
     ui->customPlot->graph()->setPen(QPen(color));
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
+    ui->customPlot->graph()->setSelectable(QCP::stNone);    // disable graph selection
     ui->customPlot->replot();
 
     this->setFocus();
@@ -1891,12 +1894,18 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
     validFit = prepareSelectedInputForSedFit();
     if (!validFit) {
         return;
+        //TODO: manage as all the previus Thin/Thick elements
+        //      no message error, already handled by prepareSelectedInputForSedFit
+        //                    QMessageBox::critical(NULL, QObject::tr("Error"),
+        //                    QObject::tr("Could not execute SED fit with less than 2 points "
+        //                                "selected.\n\rPlease select more points and try again."));
     }
 
     sedFitInputF = "[" + sedFitInputF;
     sedFitInputW = "[" + sedFitInputW;
     sedFitInputFflag = "[" + sedFitInputFflag;
     sedFitInputErrF = "[" + sedFitInputErrF;
+    qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW << sedFitInputErrF;
 
     QString sedWeights = "[" + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
             + ui->submmLineEdit->text() + "]";
