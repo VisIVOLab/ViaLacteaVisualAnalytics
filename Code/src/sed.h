@@ -33,7 +33,6 @@ public:
     void updateMaxFlux(double f);
     void printSelf();
     double getMaxFlux() { return maxFlux; }
-    void scaleFlux();
     void printAll(SEDNode *node);
 
     SEDNode *getRootNode() { return rootNode; }

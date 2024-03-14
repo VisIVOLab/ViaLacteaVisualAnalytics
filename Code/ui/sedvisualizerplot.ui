@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>1010</height>
+    <height>1055</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -76,6 +76,9 @@
            <width>0</width>
            <height>0</height>
           </size>
+         </property>
+         <property name="contextMenuPolicy">
+          <enum>Qt::NoContextMenu</enum>
          </property>
          <attribute name="title">
           <string>SED</string>
@@ -314,34 +317,6 @@
         </size>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_3">
-        <item>
-         <widget class="QGroupBox" name="visualizationModeBox">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>10</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="title">
-           <string>Visualization mode:</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout">
-           <item>
-            <widget class="QCheckBox" name="multiSelectCheckBox">
-             <property name="text">
-              <string>Multi Select</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
         <item>
          <widget class="QGroupBox" name="showOutputBox">
           <property name="sizePolicy">
@@ -619,7 +594,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -698,16 +673,6 @@
   <action name="actionLoad">
    <property name="text">
     <string>Load</string>
-   </property>
-  </action>
-  <action name="ThinRemore">
-   <property name="text">
-    <string>Remote</string>
-   </property>
-  </action>
-  <action name="ThickRemote">
-   <property name="text">
-    <string>Remote</string>
    </property>
   </action>
   <action name="TheoreticalRemoteFit">

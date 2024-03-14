@@ -18,11 +18,6 @@ void SED::updateMaxFlux(double f)
         maxFlux = f;
 }
 
-void SED::scaleFlux()
-{
-    if (setted250) { }
-}
-
 void SED::printAll(SEDNode *node)
 {
     QList<SEDNode *> stack;

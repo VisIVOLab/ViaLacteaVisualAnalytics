@@ -52,16 +52,16 @@ void HigalSelectedSources::itemPressed(QListWidgetItem *cur)
         int id = table->getColId("fwhma");
         if (id == -1)
             id = table->getColId(
-                        "fwhma" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
+                    "fwhma" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
         if (id == -1)
-            qDebug() << "non esiste";
+            ;
         else
             semiMajorAxisLength = ::atof(table->getTableData()[id][row].c_str());
 
         id = table->getColId("fwhmb");
         if (id == -1)
             id = table->getColId(
-                        "fwhmb" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
+                    "fwhmb" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
         if (id == -1)
             ;
         else
@@ -70,7 +70,7 @@ void HigalSelectedSources::itemPressed(QListWidgetItem *cur)
         id = table->getColId("pa");
         if (id == -1)
             id = table->getColId(
-                        "pa" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
+                    "pa" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
         if (id == -1)
             ;
         else
@@ -79,7 +79,7 @@ void HigalSelectedSources::itemPressed(QListWidgetItem *cur)
         id = table->getColId("glon");
         if (id == -1)
             id = table->getColId(
-                        "glon" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
+                    "glon" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
         if (id == -1)
             ;
         else
@@ -88,7 +88,7 @@ void HigalSelectedSources::itemPressed(QListWidgetItem *cur)
         id = table->getColId("glat");
         if (id == -1)
             id = table->getColId(
-                        "glat" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
+                    "glat" + ui->tabWidget->tabText(ui->tabWidget->currentIndex()).toStdString());
         if (id == -1)
             ;
         else
