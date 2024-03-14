@@ -59,7 +59,7 @@ private:
     // shift key press status to avoid deselecting pending nodes
     bool shiftMovingStatus;
     // data structure to support drag item selection
-    QMap<QPair<double, double>, QCPAbstractItem*> sed_coordinte_to_element;
+    QMap<QPair<double, double>, QCPAbstractItem *> sed_coordinte_to_element;
     // setting drag selection
     void setDragSelection();
     /**
@@ -75,7 +75,7 @@ private:
      * @param mouseY Axis mouse
      * @return pair element of closest SED node to mouse cursor and his distance
      */
-    QPair<QCPAbstractItem*, double> closestSEDNode(double mouseX, double mouseY);
+    QPair<QCPAbstractItem *, double> closestSEDNode(double mouseX, double mouseY);
     /**
      * This method filters the root SEDNodes to be displayed in the graph.
      * All root nodes have references to their child nodes.
@@ -83,9 +83,9 @@ private:
      * @param sedList
      * @return SEDNode list
      */
-    QList <SEDNode *> filterSEDNodes(QList<SED *> sedList);
+    QList<SEDNode *> filterSEDNodes(QList<SED *> sedList);
 
-    // info ToolTip
+    // add info ToolTip
     VialacteaStringDictWidget *stringDictWidget;
     QString designation;
     double image_x;
@@ -94,8 +94,6 @@ private:
     double glat;
     double error_flux;
 
-
-    bool prepareInputForSedFit(SEDNode *node);
     bool prepareSelectedInputForSedFit();
     QMap<double, double> sedFitInput;
     QMap<int, QVector<double>> sedFitValues;
@@ -119,12 +117,12 @@ private:
      * @param y Reference QVector of double. Collect flux data of each node.
      * @param y_err Reference QVector of double. Collect flux-error data of each node.
      */
-    void addCoordinatesData(SEDNode* node, QVector<double>& x, QVector<double>& y, QVector<double>& y_err, QSet<QString>& visitedNodes);
+    void addCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y,
+                            QVector<double> &y_err, QSet<QString> &visitedNodes);
 
     void readColumnsFromSedFitResults(const QJsonArray &columns);
     void plotSedFitModel(const QJsonArray &model, Qt::GlobalColor color);
 
-    void readSedFitResultsHeader(QString header);
     void readSedFitOutput(QString filename);
     void loadSedFitOutput(QString filename);
     void loadSedFitThin(QString filename);
@@ -163,7 +161,7 @@ private:
 private slots:
     void titleDoubleClick(QMouseEvent *event, QCPTextElement *title);
     void axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part);
-    void legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item);
+    // void legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item);
     void mousePress(QMouseEvent *event);
     void mouseWheel();
     void mouseRelease(QMouseEvent *event);
@@ -171,8 +169,7 @@ private slots:
 
     void removeSelectedGraph();
     void removeAllGraphs();
-    //void contextMenuRequest(QPoint pos);
-    void graphClicked(QCPAbstractPlottable *plottable);
+    // void contextMenuRequest(QPoint pos);
     /**
      * Draw an edge bethween SEDNode<root> and its child
      * @brief SEDVisualizerPlot::drawPlot
@@ -186,8 +183,9 @@ private slots:
     void drawNodes(QList<SEDNode *> sedlist);
     /**
      * Insert new SEDNode point into all_sed_node
-     * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
-     * It also updates the maximum and minimum wavelength and flux values.
+     * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and
+     * ellipse of the SEDPlotPointCustom object. It also updates the maximum and minimum wavelength
+     * and flux values.
      * @brief SEDVisualizerPlot::updateSEDPlotPoint
      * @param node new SEDNode to insert
      */
@@ -198,9 +196,6 @@ private slots:
     void doThinRemoteFit();
     void doThickRemoteFit();
 
-    void on_actionEdit_triggered();
-    void on_actionFit_triggered();
-    void on_actionLocal_triggered();
     void on_actionScreenshot_triggered();
     void on_actionCollapse_triggered();
     void on_ThinLocalFit_triggered();

@@ -675,16 +675,6 @@
     <string>Load</string>
    </property>
   </action>
-  <action name="ThinRemore">
-   <property name="text">
-    <string>Remote</string>
-   </property>
-  </action>
-  <action name="ThickRemote">
-   <property name="text">
-    <string>Remote</string>
-   </property>
-  </action>
   <action name="TheoreticalRemoteFit">
    <property name="text">
     <string>Theoretical model</string>

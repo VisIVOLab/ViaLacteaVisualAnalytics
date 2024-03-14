@@ -2,22 +2,21 @@
 #include "loadingwidget.h"
 #include "sedfitgrid_thin.h"
 #include "sedplotpointcustom.h"
+#include "singleton.h"
 #include "ui_sedfitgrid_thick.h"
 #include "ui_sedfitgrid_thin.h"
 #include "ui_sedvisualizerplot.h"
 #include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
+#include <limits>
 #include <QCheckBox>
+#include <QDebug>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QSignalMapper>
 #include <QtConcurrent>
-#include "singleton.h"
-#include <QToolTip>
-#include <QDebug>
 #include <QtMath>
-#include <limits>
-
+#include <QToolTip>
 
 SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::SEDVisualizerPlot)
@@ -30,9 +29,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
-                                    | QCP::iSelectPlottables
-                                    | QCP::iMultiSelect | QCP::iSelectItems);
-    // TODO: filterSEDNodes(sed_list) already here?
+                                    | QCP::iSelectPlottables | QCP::iMultiSelect
+                                    | QCP::iSelectItems);
+
     sed_list = s;
     vtkwin = v;
 
@@ -50,18 +49,15 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->yAxis->setTicker(logTicker);
     ui->customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
     ui->customPlot->xAxis->setTicker(logTicker);
-    ui->customPlot->plotLayout()->insertRow(0); // inserisce una nuova riga all'inizio del layout grafico
-    ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));  // inserisce "SED" titolo centrale
+    ui->customPlot->plotLayout()->insertRow(
+            0); // inserisce una nuova riga all'inizio del layout grafico
+    ui->customPlot->plotLayout()->addElement(
+            0, 0, new QCPTextElement(ui->customPlot, "SED")); // inserisce "SED" titolo centrale
 
     QString sMu = u8"\u00b5";
     QString sLabelTextX = "Wavelength [" + sMu + "m]";
     ui->customPlot->xAxis->setLabel(sLabelTextX);
     ui->customPlot->yAxis->setLabel("Flux [Jy]");
-
-   // TODO, da tenere qui? o in mousePress?
-   // draggable axis-x and axis-y
-   //QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-   //ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 
     minWavelen = std::numeric_limits<int>::max();
     maxWavelen = std::numeric_limits<int>::min();
@@ -71,13 +67,13 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     // draw SEDNodes
     // avoid multiple SEDNodes and edge graphing
     QList<SEDNode *> duplicateFreeSEDNodes = filterSEDNodes(sed_list);
-    //qDebug() << s.count() << "root_nodes from da sed_list";
+    // qDebug() << s.count() << "root_nodes from da sed_list";
     for (sedCount = 0; sedCount < duplicateFreeSEDNodes.count(); sedCount++) {
-        SEDNode * sed = duplicateFreeSEDNodes.at(sedCount);
-        //qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
+        SEDNode *sed = duplicateFreeSEDNodes.at(sedCount);
+        // qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
         drawPlot(sed);
     }
-    //qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
+    // qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
     drawNodes(duplicateFreeSEDNodes);
 
     // set drag selection parameters
@@ -92,26 +88,26 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
 
-    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mousePress(QMouseEvent*)));
-    connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(mouseWheel()));
-    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(mouseRelease(QMouseEvent*)));
+    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent *)), this,
+            SLOT(mousePress(QMouseEvent *)));
+    connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
+    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent *)), this,
+            SLOT(mouseRelease(QMouseEvent *)));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
             SLOT(setRange(QCPRange)));
-    // TODO: error QObject::connect: No such signal QCustomPlot::titleDoubleClick(QMouseEvent *, QCPTextElement *)
+    // TODO: error QObject::connect: No such signal QCustomPlot::titleDoubleClick(QMouseEvent *,
+    // QCPTextElement *)
     connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
             SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
-    // TODO: QObject::connect: No such signal QCustomPlot::plottableClick(QCPAbstractPlottable *, QMouseEvent *)
-    connect(ui->customPlot, SIGNAL(plottableClick(QCPAbstractPlottable *, QMouseEvent *)), this,
-            SLOT(graphClicked(QCPAbstractPlottable *)));
-    //ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu); // TODO to place again?
-    //connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextMenuRequest(QPoint)));
+    // ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu); // TODO to place again?
+    // connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this,
+    // SLOT(contextMenuRequest(QPoint)));
     connect(ui->customPlot, &QCustomPlot::mouseMove, this, &SEDVisualizerPlot::handleMouseMove);
-
 
     modelFitBands.insert("wise1", 3.4);
     modelFitBands.insert("i1", 3.6);
@@ -211,12 +207,12 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     if (!sedFile.exists()) {
         sedFile.open(QIODevice::WriteOnly);
         QDataStream out(&sedFile);
-        out << sed_list; // serialize the object    // TODO should save the duplicateFreeSEDNodes instead?
+        out << sed_list; // serialize the object
     }
     sedFile.flush();
     sedFile.close();
 
-    for (int i = 0; i < ui->customPlot->graphCount()-1; i++) {
+    for (int i = 0; i < ui->customPlot->graphCount() - 1; i++) {
         originalGraphs.push_back(ui->customPlot->graph(i));
     }
 
@@ -333,14 +329,15 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
  * @param sedList
  * @return SEDNode list
  */
-QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
+QList<SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList<SED *> sedList)
+{
 
-    QList<SEDNode*> newList;
-    QSet<QPair<QString, QString>> seenPairs;  // support data structure
+    QList<SEDNode *> newList;
+    QSet<QPair<QString, QString>> seenPairs; // support data structure
 
     for (auto &sed : sedList) {
         SEDNode *node = sed->getRootNode();
-        while(node->hasChild()){
+        while (node->hasChild()) {
             QString currentDesignation = node->getDesignation();
             QString childDesignation = node->getChild().values()[0]->getDesignation();
             // check pair: root-child
@@ -352,7 +349,9 @@ QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
                 // new
                 seenPairs.insert(currentPair);
                 seenPairs.insert(currentPairVice);
-                //qDebug() << "arco lecito" << currentPair << node->getWavelength() << node->getFlux() << node->getChild().values()[0]->getWavelength() <<  node->getChild().values()[0]->getFlux();
+                // qDebug() << "arco lecito" << currentPair << node->getWavelength() <<
+                // node->getFlux() << node->getChild().values()[0]->getWavelength() <<
+                // node->getChild().values()[0]->getFlux();
                 newList.append(node);
             }
             node = node->getChild().values()[0];
@@ -361,15 +360,16 @@ QList <SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList <SED *> sedList){
     return newList;
 }
 
-
 /**
  * Insert new SEDNode point into all_sed_node
- * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and ellipse of the SEDPlotPointCustom object.
- * It also updates the maximum and minimum wavelength and flux values.
+ * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and
+ * ellipse of the SEDPlotPointCustom object. It also updates the maximum and minimum wavelength and
+ * flux values.
  * @brief SEDVisualizerPlot::updateSEDPlotPoint
  * @param node new SEDNode to insert
  */
-void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node){
+void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node)
+{
     if (!visualnode_hash.contains(node->getDesignation())) {
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
         if (vtkwin != 0) {
@@ -407,7 +407,7 @@ void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node){
                        node->getAngle(), node->getArcpix());
         cp->setNode(node);
 
-               // new visualnode_hash entry
+        // new visualnode_hash entry
         visualnode_hash.insert(node->getDesignation(), cp);
 
         if (node->getWavelength() > maxWavelen)
@@ -432,11 +432,12 @@ void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node){
  * @param mouseY Axis mouse
  * @return pair element of closest SED node to mouse cursor and his distance
  */
-QPair<QCPAbstractItem*, double> SEDVisualizerPlot::closestSEDNode(double mouseX, double mouseY) {
-    QCPAbstractItem* closestSED = nullptr;
+QPair<QCPAbstractItem *, double> SEDVisualizerPlot::closestSEDNode(double mouseX, double mouseY)
+{
+    QCPAbstractItem *closestSED = nullptr;
     double minDistance = std::numeric_limits<double>::max();
 
-    for (const auto& key : sed_coordinte_to_element.keys()) {
+    for (const auto &key : sed_coordinte_to_element.keys()) {
         double x = ui->customPlot->xAxis->coordToPixel(key.first);
         double y = ui->customPlot->yAxis->coordToPixel(key.second);
 
@@ -461,26 +462,28 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
     double x = event->pos().x();
     double y = event->pos().y();
 
-    QPair<QCPAbstractItem*, double> distance = closestSEDNode(x, y);
+    QPair<QCPAbstractItem *, double> distance = closestSEDNode(x, y);
 
     // threshold distance
     if (distance.second <= 8) {
         SEDPlotPointCustom *closestSED = qobject_cast<SEDPlotPointCustom *>(distance.first);
         QString toolTipText;
-        if (closestSED->getNode()->getX() != 0 && closestSED->getNode()->getY() != 0 && closestSED->getNode()->getDesignation().compare("") != 0) {
+        if (closestSED->getNode()->getX() != 0 && closestSED->getNode()->getY() != 0
+            && closestSED->getNode()->getDesignation().compare("") != 0) {
             QString wav = QString::number(closestSED->getNode()->getWavelength());
-            toolTipText = QString(stringDictWidget->getColUtypeStringDict().value(
-                                                  "vlkb_compactsources.sed_view_final.designation" + wav)
-                                          + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
-                                            "%6\nx: %7\ny: %8")
-                                          .arg(closestSED->getNode()->getDesignation())
-                                          .arg(closestSED->getNode()->getWavelength())
-                                          .arg(closestSED->getNode()->getFlux())
-                                          .arg(closestSED->getNode()->getErrFlux())
-                                          .arg(closestSED->getNode()->getLon())
-                                          .arg(closestSED->getNode()->getLat())
-                                          .arg(closestSED->getNode()->getX())
-                                          .arg(closestSED->getNode()->getY());
+            toolTipText =
+                    QString(stringDictWidget->getColUtypeStringDict().value(
+                                    "vlkb_compactsources.sed_view_final.designation" + wav)
+                            + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
+                              "%6\nx: %7\ny: %8")
+                            .arg(closestSED->getNode()->getDesignation())
+                            .arg(closestSED->getNode()->getWavelength())
+                            .arg(closestSED->getNode()->getFlux())
+                            .arg(closestSED->getNode()->getErrFlux())
+                            .arg(closestSED->getNode()->getLon())
+                            .arg(closestSED->getNode()->getLat())
+                            .arg(closestSED->getNode()->getX())
+                            .arg(closestSED->getNode()->getY());
             QToolTip::showText(event->globalPos(), toolTipText);
         } else {
             toolTipText = QString("wavelength: %1\nfint: %2\nerr_fin: %3")
@@ -492,9 +495,7 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
     } else {
         QToolTip::hideText();
     }
-
 }
-
 
 /**
  * Draw an edge bethween SEDNode<root> and its child
@@ -514,8 +515,9 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
     // plot edge
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
-    ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
-    ui->customPlot->graph()->setSelectable(QCP::stNone);    // edge not selectable
+    ui->customPlot->graph()->setScatterStyle(
+            QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
+    ui->customPlot->graph()->setSelectable(QCP::stNone); // edge not selectable
 
     // plot nodes rgb and update external structures (if it's a new entry nodes)
     updateSEDPlotPoint(node);
@@ -526,7 +528,8 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
  * @brief SEDVisualizerPlot::drawNode Draw selectable sed nodes and their flux error
  * @param sedlist A list of sed objects to be visualized
  */
-void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
+void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist)
+{
     QVector<double> x, y, y_err;
     QSet<QString> visitedNodes;
     for (int i = 0; i < sedlist.count(); i++) {
@@ -539,7 +542,7 @@ void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
     // plot nodes
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
-    ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone);    // no edge on nodes
+    ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone); // no edge on nodes
     graphSEDNodes = ui->customPlot->graph();
 
     // set error bar on node
@@ -557,7 +560,6 @@ void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
     ui->customPlot->replot();
 }
 
-
 /**
  * Extract the wavelength, flux, and flux-error data from a given sed node.
  * The extracted data is appended to the provided QVector objects.
@@ -567,7 +569,9 @@ void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist){
  * @param y Reference QVector of double. Collect flux data of each node.
  * @param y_err Reference QVector of double. Collect flux-error data of each node.
  */
-void SEDVisualizerPlot::addCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y, QVector<double> &y_err, QSet<QString> &visitedNodes) {
+void SEDVisualizerPlot::addCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y,
+                                           QVector<double> &y_err, QSet<QString> &visitedNodes)
+{
     if (!visitedNodes.contains(node->getDesignation())) {
         visitedNodes.insert(node->getDesignation());
         x.append(node->getWavelength());
@@ -606,6 +610,7 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
     }
 }
 
+/*
 void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item)
 {
     // Rename a graph by double clicking on its legend item
@@ -624,11 +629,12 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
         }
     }
 }
+*/
 
-
-void SEDVisualizerPlot::mouseRelease(QMouseEvent *event) {
+void SEDVisualizerPlot::mouseRelease(QMouseEvent *event)
+{
     // disable mouse right click function
-    if (event->button() == Qt::RightButton){
+    if (event->button() == Qt::RightButton) {
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
     }
 }
@@ -636,48 +642,29 @@ void SEDVisualizerPlot::mouseRelease(QMouseEvent *event) {
 void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
     // disable mouse right click function
-    if (event->button() == Qt::RightButton){
+    if (event->button() == Qt::RightButton) {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
     }
 
     // Deselect all pending SED nodes: every drag selection is a new selection
-    if(!multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton){
+    if (!multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton) {
         ui->customPlot->deselectAll();
         ui->customPlot->replot();
     }
-
-   // if an axis is selected, only allow the direction of that axis to be dragged
-   // if no axis is selected, both directions may be dragged
-    if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
-        ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->xAxis->orientation());
-    else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
-        ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->yAxis->orientation());
-    else
-        ui->customPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
-
-   // TODO
-   // https://stackoverflow.com/questions/39530718/qcustomplot-and-irangedrag-on-second-right-yaxis
-   // This part of code could be replaced in the constructor with the following:
-   // QList<QCPAxis *> draggableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-   // ui->customPlot->axisRect()->setRangeDragAxes(draggableAxes);
 }
 
 void SEDVisualizerPlot::mouseWheel()
 {
 
-           // if an axis is selected, only allow the direction of that axis to be zoomed
-           // if no axis is selected, both directions may be zoomed
+    // if an axis is selected, only allow the direction of that axis to be zoomed
+    // if no axis is selected, both directions may be zoomed
+
     if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeZoom(ui->customPlot->xAxis->orientation());
     else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
         ui->customPlot->axisRect()->setRangeZoom(ui->customPlot->yAxis->orientation());
     else
         ui->customPlot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
-
-           // This part of code could be replaced with the following: DO NOT WORK
-           //QList<QCPAxis *> zoomableAxes = {ui->customPlot->xAxis, ui->customPlot->yAxis};
-           //ui->customPlot->axisRect()->setRangeZoomAxes(zoomableAxes);
-
 }
 
 void SEDVisualizerPlot::removeSelectedGraph()
@@ -695,7 +682,7 @@ void SEDVisualizerPlot::removeAllGraphs()
 }
 
 /*
- * TODO should be removed?: right click is disabled right now on mouse press
+// TODO should be removed?: right click is disabled right now on mouse press
 void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 {
 
@@ -720,39 +707,9 @@ void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 }
 */
 
-void SEDVisualizerPlot::graphClicked(QCPAbstractPlottable *plottable) { }
-
 SEDVisualizerPlot::~SEDVisualizerPlot()
 {
     delete ui;
-}
-
-// TODO: to remove?
-void SEDVisualizerPlot::on_actionEdit_triggered() { }
-// TODO: to remove?
-void SEDVisualizerPlot::on_actionFit_triggered() { }
-
-// TODO never invoked
-bool SEDVisualizerPlot::prepareInputForSedFit(SEDNode *node)
-{
-    bool validFit = true;
-    sedFitInput.insert(node->getWavelength(), node->getFlux());
-    sedFitInputF = QString::number(node->getFlux()) + sedFitInputF;
-    sedFitInputErrF = QString::number(node->getErrFlux()) + sedFitInputErrF;
-    sedFitInputW = QString::number(node->getWavelength()) + sedFitInputW;
-
-    sedFitInputFflag = "1" + sedFitInputFflag;
-
-    for (int i = 0; i < node->getChild().count(); i++) {
-
-        sedFitInputF = "," + sedFitInputF;
-        sedFitInputErrF = "," + sedFitInputErrF;
-        sedFitInputW = "," + sedFitInputW;
-        sedFitInputFflag = "," + sedFitInputFflag;
-        prepareInputForSedFit(node->getChild().values()[i]);
-    }
-
-    return validFit;
 }
 
 bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
@@ -762,19 +719,18 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     QMap<double, SEDNode *> selected_sed_map;
     QList<QCPAbstractItem *> list_items;
 
-    // get SEDNodes selected (drag selection) TODO: better performe
+    // get SEDNodes selected (drag selection) FIXME: better performe:
     QCPDataSelection nodeSelection = graphSEDNodes->selection();
     // for each range of data selected on drag mode
-    for (int i=0; i<nodeSelection.dataRangeCount(); ++i)
-    {
+    for (int i = 0; i < nodeSelection.dataRangeCount(); ++i) {
         QCPDataRange dataRange = nodeSelection.dataRange(i);
-        for (int j=dataRange.begin(); j<dataRange.end(); ++j)
-        {
+        for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
             // get data-i (not element) selected
             QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
-            //qDebug() << dataPoint->key << dataPoint->value;
-            //update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
-            list_items.append(sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
+            // qDebug() << dataPoint->key << dataPoint->value;
+            // update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
+            list_items.append(
+                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
         }
     }
     // qDebug() << list_items;
@@ -784,7 +740,8 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
         QString refName = "SEDPlotPointCustom";
         if (QString::compare(className, refName) == 0) {
             SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(list_items.at(i));
-            selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode()); // the same dataPont->key ->value up before
+            selected_sed_map.insert(cp->getNode()->getWavelength(),
+                                    cp->getNode()); // the same dataPont->key->value up before
         }
     }
     if (selected_sed_map.size() >= 2) {
@@ -816,21 +773,6 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
 
     return validFit;
 }
-// TODO: to remove?
-void SEDVisualizerPlot::on_actionLocal_triggered() { }
-
-// TODO never invoked
-void SEDVisualizerPlot::readSedFitResultsHeader(QString header)
-{
-    QList<QString> line_list_string = header.split(',');
-    QString field;
-    for (int i = 0; i < line_list_string.size(); i++) {
-        field = line_list_string.at(i).simplified();
-        if (resultsOutputColumn.contains(field)) {
-            resultsOutputColumn.insert(field, i);
-        }
-    }
-}
 
 void SEDVisualizerPlot::readColumnsFromSedFitResults(const QJsonArray &columns)
 {
@@ -847,8 +789,8 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
 {
     double chi2 = 99999999999;
 
-           // Models Map chi2 -> Model
-           // QMap<double, QJsonArray> models;
+    // Models Map chi2 -> Model
+    // QMap<double, QJsonArray> models;
     models.clear();
 
     QVector<double> clump_mass;
@@ -940,7 +882,7 @@ void SEDVisualizerPlot::readSedFitOutput(QString filename)
     ui->resultsTableWidget->resizeColumnsToContents();
     ui->resultsTableWidget->resizeRowsToContents();
 
-           // Plot the best one
+    // Plot the best one
     plotSedFitModel(models.first(), Qt::blue);
 
     loading->close();
@@ -989,7 +931,7 @@ void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor
     ui->customPlot->graph()->setData(vec_x, vec_y);
     ui->customPlot->graph()->setPen(QPen(color));
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
-    ui->customPlot->graph()->setSelectable(QCP::stNone);    // disable graph selection
+    ui->customPlot->graph()->setSelectable(QCP::stNone); // disable graph selection
     ui->customPlot->replot();
 
     this->setFocus();
@@ -1257,7 +1199,8 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
     ui->customPlot->graph()->setSelectable(QCP::stNone);
     ui->customPlot->replot();
-    sed_list.insert(0, coll_sed);   // TODO should manage the saving data structure? or everything is manage by the constructor
+    sed_list.insert(0, coll_sed); // TODO should manage the saving data structure? or everything is
+                                  // manage by the constructor
 }
 
 void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
@@ -1893,18 +1836,14 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
     validFit = prepareSelectedInputForSedFit();
     if (!validFit) {
         return;
-        //TODO: manage as all the previus Thin/Thick elements
-        //      no message error, already handled by prepareSelectedInputForSedFit
-        //                    QMessageBox::critical(NULL, QObject::tr("Error"),
-        //                    QObject::tr("Could not execute SED fit with less than 2 points "
-        //                                "selected.\n\rPlease select more points and try again."));
     }
 
     sedFitInputF = "[" + sedFitInputF;
     sedFitInputW = "[" + sedFitInputW;
     sedFitInputFflag = "[" + sedFitInputFflag;
     sedFitInputErrF = "[" + sedFitInputErrF;
-    //qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW << sedFitInputErrF;
+    // qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW <<
+    sedFitInputErrF;
 
     QString sedWeights = "[" + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
             + ui->submmLineEdit->text() + "]";
@@ -1941,7 +1880,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
         nam->deleteLater();
         loading->close();
 
-               // Network Error
+        // Network Error
         if (reply->error()) {
             qDebug() << "Remote SEDFit service error:" << reply->errorString();
             ui->outputTextBrowser->append(reply->errorString());
@@ -1949,7 +1888,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
             return;
         }
 
-               // Service error
+        // Service error
         auto response = reply->readAll();
         QJsonParseError parseError;
         auto json = QJsonDocument::fromJson(response, &parseError);
@@ -2061,7 +2000,7 @@ void SEDVisualizerPlot::on_clearAllButton_clicked()
     temporaryRow = 0;
     QLayoutItem *item;
 
-           // the key point here is that the layout items are stored inside the layout in a stack
+    // the key point here is that the layout items are stored inside the layout in a stack
     while ((item = ui->generatedSedBox->layout()->takeAt(1)) != 0) {
         if (item->widget()) {
             ui->generatedSedBox->layout()->removeWidget(item->widget());
@@ -2210,7 +2149,6 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
     }
 }
 
-
 void SEDVisualizerPlot::addNewTheoreticalFit()
 {
     QModelIndex index = ui->resultsTableWidget->selectionModel()->selectedIndexes().first();
@@ -2304,7 +2242,6 @@ void SEDVisualizerPlot::on_thinButton_clicked()
     on_ThinLocalFit_triggered();
 }
 
-
 /**
  * Method for setting SEDNodes decorator style on drag selection
  * @brief createScatterStyle
@@ -2314,7 +2251,9 @@ void SEDVisualizerPlot::on_thinButton_clicked()
  * @param penWidth
  * @return QCPScatterStyle
  */
-QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size, QColor color, double penWidth) {
+QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size, QColor color,
+                                   double penWidth)
+{
     QCPScatterStyle scatterStyle;
     scatterStyle.setShape(shape);
     scatterStyle.setSize(size);
@@ -2324,9 +2263,12 @@ QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double s
     return scatterStyle;
 }
 
-void SEDVisualizerPlot::setDragSelection(){
-    QCPScatterStyle myScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::transparent, 2.0); // invisible by default
-    QCPScatterStyle selectedScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::red, 2.0);   // red circle selection
+void SEDVisualizerPlot::setDragSelection()
+{
+    QCPScatterStyle myScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::transparent,
+                                                   2.0); // invisible by default
+    QCPScatterStyle selectedScatter =
+            createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::red, 2.0); // red circle selection
 
     QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
     decorator->setScatterStyle(selectedScatter);
@@ -2348,18 +2290,18 @@ void SEDVisualizerPlot::setDragSelection(){
  * @brief SEDVisualizerPlot::keyPressEvent
  * @param event
  */
-void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
+void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event)
+{
     if (event->key() == Qt::Key_Shift) {
         ui->customPlot->setSelectionRectMode(QCP::srmNone);
         shiftMovingStatus = true;
     }
-    if(event->key() == Qt::Key_Control){
+    if (event->key() == Qt::Key_Control) {
         multiSelectionPointStatus = true;
     }
 
     QMainWindow::keyPressEvent(event);
 }
-
 
 /**
  * Reset drag selection mode realeasing 'shift'
@@ -2367,12 +2309,13 @@ void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event) {
  * @brief SEDVisualizerPlot::keyReleaseEvent
  * @param event
  */
-void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event) {
+void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event)
+{
     if (event->key() == Qt::Key_Shift) {
         ui->customPlot->setSelectionRectMode(QCP::srmSelect);
         shiftMovingStatus = false;
     }
-    if(event->key() == Qt::Key_Control){
+    if (event->key() == Qt::Key_Control) {
         multiSelectionPointStatus = false;
     }
 
