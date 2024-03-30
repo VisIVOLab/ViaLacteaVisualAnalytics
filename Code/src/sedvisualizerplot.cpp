@@ -97,10 +97,6 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
             SLOT(setRange(QCPRange)));
-    // TODO: error QObject::connect: No such signal QCustomPlot::titleDoubleClick(QMouseEvent *,
-    // QCPTextElement *)
-    connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
-            SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
@@ -577,20 +573,6 @@ void SEDVisualizerPlot::addCoordinatesData(SEDNode *node, QVector<double> &x, QV
         x.append(node->getWavelength());
         y.append(node->getFlux());
         y_err.append(node->getErrFlux());
-    }
-}
-
-// TODO do not work
-void SEDVisualizerPlot::titleDoubleClick(QMouseEvent *event, QCPTextElement *title)
-{
-    Q_UNUSED(event)
-    // Set the plot title by double clicking on it
-    bool ok;
-    QString newTitle = QInputDialog::getText(this, "SED Title", "New SED title:", QLineEdit::Normal,
-                                             title->text(), &ok);
-    if (ok) {
-        title->setText(newTitle);
-        ui->customPlot->replot();
     }
 }
 
@@ -1199,8 +1181,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
     ui->customPlot->graph()->setSelectable(QCP::stNone);
     ui->customPlot->replot();
-    sed_list.insert(0, coll_sed); // TODO should manage the saving data structure? or everything is
-                                  // manage by the constructor
+    // sed_list.insert(0, coll_sed);
 }
 
 void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
