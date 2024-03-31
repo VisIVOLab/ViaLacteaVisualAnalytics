@@ -87,7 +87,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     double y_deltaRange = (maxFlux - minFlux) * 0.02;
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
-
+    connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
     connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent *)), this,
             SLOT(mousePress(QMouseEvent *)));
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
@@ -592,6 +592,24 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
     }
 }
 
+/**
+ * @brief SEDVisualizerPlot::selectionChanged
+ */
+void SEDVisualizerPlot::selectionChanged()
+{
+
+    QCPDataSelection nodeSelection = graphSEDNodes->selection();
+    qDebug() << "+++selezione del grafico" << nodeSelection;
+    // confronto di designation per capire quale ellissi generare
+    for (auto i = visualnode_hash.begin(); i != visualnode_hash.end(); ++i) {
+        QString designation = i.key();
+        qDebug() << designation;
+        SEDPlotPointCustom *cp = i.value();
+        qDebug() << cp->getSemiMajorAxisLength() << cp->getSemiMinorAxisLength() << cp->getAngle()
+                 << cp->getNode()->getDesignation();
+    }
+}
+
 /*
 void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item)
 {
@@ -697,11 +715,9 @@ SEDVisualizerPlot::~SEDVisualizerPlot()
 bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
 {
     bool validFit = false;
-
     QMap<double, SEDNode *> selected_sed_map;
-    QList<QCPAbstractItem *> list_items;
 
-    // get SEDNodes selected (drag selection) FIXME: better performe:
+    // get SEDNodes selected (drag selection)
     QCPDataSelection nodeSelection = graphSEDNodes->selection();
     // for each range of data selected on drag mode
     for (int i = 0; i < nodeSelection.dataRangeCount(); ++i) {
@@ -709,21 +725,17 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
         for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
             // get data-i (not element) selected
             QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
-            // qDebug() << dataPoint->key << dataPoint->value;
             // update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
-            list_items.append(
-                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
-        }
-    }
-    // qDebug() << list_items;
-
-    for (int i = 0; i < list_items.size(); i++) {
-        QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
-        QString refName = "SEDPlotPointCustom";
-        if (QString::compare(className, refName) == 0) {
-            SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(list_items.at(i));
-            selected_sed_map.insert(cp->getNode()->getWavelength(),
-                                    cp->getNode()); // the same dataPont->key->value up before
+            QString className =
+                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
+                            ->metaObject()
+                            ->className();
+            if (QString::compare(className, "SEDPlotPointCustom") == 0) {
+                SEDPlotPointCustom *cp =
+                        qobject_cast<SEDPlotPointCustom *>(sed_coordinte_to_element.value(
+                                qMakePair(dataPoint->key, dataPoint->value)));
+                selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
+            }
         }
     }
     if (selected_sed_map.size() >= 2) {
