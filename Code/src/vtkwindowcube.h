@@ -129,6 +129,7 @@ private:
     void showContours();
     void removeContours();
     void calculateAndShowMomentMap(int order);
+    void saveMomentToFile();
     void generatePositionVelocityPlot(float x1, float y1, float x2, float y2);
     void resetCamera();
     void setCameraAzimuth(double az);

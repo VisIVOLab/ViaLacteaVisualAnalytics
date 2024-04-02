@@ -15,6 +15,7 @@
 #include "profilewindow.h"
 #include "vtkfitsreader.h"
 #include "vtkfitsreader2.h"
+#include "vtkFITSWriter.h"
 #include "vtklegendscaleactorwcs.h"
 #include "vtkwindow_new.h"
 #include "vtkwindowpv.h"
@@ -603,6 +604,26 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     changeSliceView(1);
     this->raise();
     this->activateWindow();
+    this->saveMomentToFile();
+}
+
+void vtkWindowCube::saveMomentToFile()
+{
+    const QDir outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp");
+    const QString fn = QFileInfo(this->filepath).baseName() + "_moment"
+            + QString::number(this->moment->getMomentOrder()) + ".fits";
+    const QString filepath = outDir.absoluteFilePath(fn);
+    if (QFile::exists(filepath)) {
+        // Do not overwrite existing file!
+        return;
+    }
+
+    vtkNew<vtkFITSWriter> writer;
+    writer->SetInputData(this->moment->GetOutput());
+    writer->SetFileName(filepath.toStdString().c_str());
+    writer->Write();
+    AstroUtils::setMomentFITSHeader(this->filepath.toStdString(), filepath.toStdString(),
+                                    this->moment->getMomentOrder());
 }
 
 void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, float y2)
