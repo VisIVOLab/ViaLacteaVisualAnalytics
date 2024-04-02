@@ -55,6 +55,11 @@ void SEDPlotPointCustom::selected(bool s)
                             .arg(error_flux));
             el = new vtkEllipse(semiMajorAxisLength / 2, semiMinorAxisLength / 2, angle, image_x,
                                 image_y, arcpix, 0, 0, designation, NULL);
+            qDebug() << "++"
+                     << "semiMajorAxisLength:" << semiMajorAxisLength / 2
+                     << "semiMinorAxisLength:" << semiMinorAxisLength / 2 << "angle:" << angle
+                     << "image_x:" << image_x << "image_y:" << image_y << "arcpix:" << arcpix
+                     << "designation:" << designation;
             drawSingleEllipse(el);
         } else {
             QToolTip::showText(QCursor::pos(),
@@ -104,13 +109,11 @@ void SEDPlotPointCustom::setColor(const QColor &color)
     setSelectedBrush(color);
 }
 
-
 void SEDPlotPointCustom::setVisible(bool on)
 {
     setSelectable(on); // we are movable only when visible
     QCPItemEllipse::setVisible(on);
 }
-
 
 void SEDPlotPointCustom::setPos(double x, double y)
 {
@@ -130,8 +133,8 @@ void SEDPlotPointCustom::onMousePress(QMouseEvent *event)
 
 void SEDPlotPointCustom::setEllipse(double smin, double smax, double a, double ar)
 {
-    semiMajorAxisLength = smin;
-    semiMinorAxisLength = smax;
+    semiMajorAxisLength = smax;
+    semiMinorAxisLength = smin;
     angle = a;
     arcpix = ar;
 }
