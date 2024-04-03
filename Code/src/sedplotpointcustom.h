@@ -50,11 +50,6 @@ signals:
 public slots:
     void setPos(double x, double y);
 
-private slots:
-    void selected(bool s);
-    bool selected();
-    void onMousePress(QMouseEvent *event);
-
 private:
     QCPItemTracer *mCenterTracer;
     QPointF mGripDelta;
@@ -66,8 +61,6 @@ private:
     QPointF mCurWantedPosPx;
     vtkwindow_new *vtkwin;
     QString designation;
-    void drawSingleEllipse(vtkEllipse *el);
-    vtkSmartPointer<vtkLODActor> ellipseActor;
 
     double image_x;
     double image_y;
@@ -81,7 +74,6 @@ private:
     double arcpix;
 
     SEDNode *sedNode;
-    bool isSelected;
 
     VialacteaStringDictWidget *stringDictWidget;
 };

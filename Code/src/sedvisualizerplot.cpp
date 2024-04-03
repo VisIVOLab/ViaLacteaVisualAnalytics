@@ -8,6 +8,7 @@
 #include "ui_sedvisualizerplot.h"
 #include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
+#include "vtkCleanPolyData.h"
 #include <limits>
 #include <QCheckBox>
 #include <QDebug>
@@ -593,21 +594,63 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
 }
 
 /**
+ *  Manage the creation of the ellipses actors
  * @brief SEDVisualizerPlot::selectionChanged
  */
 void SEDVisualizerPlot::selectionChanged()
 {
-
+    // Ellipses creation
     QCPDataSelection nodeSelection = graphSEDNodes->selection();
-    qDebug() << "+++selezione del grafico" << nodeSelection;
-    // confronto di designation per capire quale ellissi generare
-    for (auto i = visualnode_hash.begin(); i != visualnode_hash.end(); ++i) {
-        QString designation = i.key();
-        qDebug() << designation;
-        SEDPlotPointCustom *cp = i.value();
-        qDebug() << cp->getSemiMajorAxisLength() << cp->getSemiMinorAxisLength() << cp->getAngle()
-                 << cp->getNode()->getDesignation();
+    // for each range of data selected on drag mode
+    foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
+        for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
+            // get data-i (not element) selected
+            QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
+            SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(
+                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
+            if (cp->getNode()->getX() != 0 && cp->getNode()->getY() != 0
+                && cp->getNode()->getDesignation().compare("") != 0) {
+                vtkEllipse *el;
+                el = new vtkEllipse(
+                        cp->getSemiMajorAxisLength() / 2, cp->getSemiMinorAxisLength() / 2,
+                        cp->getAngle(), cp->getNode()->getX(), cp->getNode()->getY(),
+                        cp->getNode()->getArcpix(), 0, 0, cp->getNode()->getDesignation(), NULL);
+
+                drawSingleEllipse(el);
+            }
+        }
     }
+}
+
+/**
+ * @brief SEDVisualizerPlot::drawSingleEllipse
+ * @param ellipse
+ */
+void SEDVisualizerPlot::drawSingleEllipse(vtkEllipse *ellipse)
+{
+
+    vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputData(ellipse->getPolyData());
+    cleanFilter->Update();
+    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(cleanFilter->GetOutputPort());
+    ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+    ellipseActor->SetMapper(mapper);
+    ellipseActor->GetProperty()->SetColor(0, 0, 0);
+    ellipseActorList.append(ellipseActor); // support to remove all ellipseActor
+
+    // TODO perchè?
+    if (vtkwin != 0) {
+        vtkwin->drawSingleEllipse(ellipseActor);
+    }
+}
+
+void SEDVisualizerPlot::removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> ellipseActorList)
+{
+    foreach (vtkSmartPointer<vtkLODActor> ellipseActor, ellipseActorList) {
+        vtkwin->removeSingleEllipse(ellipseActor);
+    }
+    ellipseActorList.clear();
 }
 
 /*
@@ -651,6 +694,9 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
         ui->customPlot->deselectAll();
         ui->customPlot->replot();
     }
+
+    // Remove pending ellipse: each selection refer possibly to new ellipse
+    removeAllEllipse(ellipseActorList);
 }
 
 void SEDVisualizerPlot::mouseWheel()
@@ -720,12 +766,10 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     // get SEDNodes selected (drag selection)
     QCPDataSelection nodeSelection = graphSEDNodes->selection();
     // for each range of data selected on drag mode
-    for (int i = 0; i < nodeSelection.dataRangeCount(); ++i) {
-        QCPDataRange dataRange = nodeSelection.dataRange(i);
+    foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
         for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
             // get data-i (not element) selected
             QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
-            // update list_items throught sed_coordinte_to_element by data-i coordinate as key pair
             QString className =
                     sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
                             ->metaObject()

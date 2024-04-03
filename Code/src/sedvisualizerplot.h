@@ -54,6 +54,12 @@ private:
     vtkwindow_new *vtkwin;
     int sedCount;
     QList<SED *> sed_list;
+    // ellipse
+    vtkSmartPointer<vtkLODActor> ellipseActor;
+    QList<vtkSmartPointer<vtkLODActor>> ellipseActorList;
+    void drawSingleEllipse(vtkEllipse *el);
+    void removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> ellipseActorList);
+
     // multi selection status to avoid deselecting pending nodes
     bool multiSelectionPointStatus;
     // shift key press status to avoid deselecting pending nodes
