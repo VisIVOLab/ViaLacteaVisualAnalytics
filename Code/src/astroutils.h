@@ -32,6 +32,8 @@ public:
                                                                    double nulval);
     static bool isFitsImage(const std::string &filename);
 
+    static void setMomentFITSHeader(const std::string &src, const std::string &dst, int order);
+
 private:
     static WorldCoor *GetWCSFITS(char *filename, int verbose);
     static char *GetFITShead(char *filename, int verbose);

@@ -219,6 +219,8 @@ set(PROJECT_SOURCES
     src/vtkfitstoolswidget.h
     src/vtkfitstoolwidgetobject.cpp
     src/vtkfitstoolwidgetobject.h
+    src/vtkFITSWriter.cpp
+    src/vtkFITSWriter.h
     src/vtklegendscaleactorwcs.cpp
     src/vtklegendscaleactorwcs.h
     src/vtktoolswidget.cpp

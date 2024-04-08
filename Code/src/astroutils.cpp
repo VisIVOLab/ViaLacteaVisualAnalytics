@@ -193,6 +193,69 @@ bool AstroUtils::isFitsImage(const std::string &filename)
     return naxis == 2;
 }
 
+void AstroUtils::setMomentFITSHeader(const std::string &src, const std::string &dst, int order)
+{
+    char fin[FLEN_FILENAME];
+    snprintf(fin, FLEN_FILENAME, "%s", src.c_str());
+
+    char fout[FLEN_FILENAME];
+    snprintf(fout, FLEN_FILENAME, "%s", dst.c_str());
+
+    int lhead = 0;
+    int nbhead = 0;
+    char *header = fitsrhead(fin, &lhead, &nbhead);
+
+    // Fix NAXIS
+    hputi4(header, "NAXIS", 2);
+    hdel(header, "WCSAXES");
+
+    // Fix BUNIT
+    char key[FLEN_CARD];
+    hgets(header, "BUNIT", FLEN_VALUE, key);
+    std::string bunit(key);
+    hgets(header, "CUNIT3", FLEN_VALUE, key);
+    std::string cunit3(key);
+    if (!bunit.empty() && order == 0) {
+        bunit += " " + cunit3;
+    }
+    if (order == 1 || order == 2) {
+        bunit = cunit3;
+    }
+    // for orders 6, 8 and 10 bunit is unchanged
+    if (!bunit.empty()) {
+        hputs(header, "BUNIT", bunit.c_str());
+    }
+
+    // Remove NAXIS{3,4} keywords
+    for (int i = 3; i <= 4; ++i) {
+        std::snprintf(key, FLEN_KEYWORD, "NAXIS%d", i);
+        hdel(header, key);
+
+        std::snprintf(key, FLEN_KEYWORD, "CRPIX%d", i);
+        hdel(header, key);
+
+        std::snprintf(key, FLEN_KEYWORD, "CRVAL%d", i);
+        hdel(header, key);
+
+        std::snprintf(key, FLEN_KEYWORD, "CDELT%d", i);
+        hdel(header, key);
+
+        std::snprintf(key, FLEN_KEYWORD, "CTYPE%d", i);
+        hdel(header, key);
+
+        std::snprintf(key, FLEN_KEYWORD, "CUNIT%d", i);
+        hdel(header, key);
+    }
+
+    // Add HISTORY keyword
+    snprintf(key, FLEN_VALUE, "Moment %d Map", order);
+    hputs(header, "HISTORY", key);
+
+    int fd = fitswhead(fout, header);
+    close(fd);
+    free(header);
+}
+
 bool AstroUtils::CheckFullOverlap(std::string f1, std::string f2)
 {
     double ra_min1, ra_max1, dec_min1, dec_max1;
