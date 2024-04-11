@@ -50,10 +50,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->customPlot->yAxis->setTicker(logTicker);
     ui->customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
     ui->customPlot->xAxis->setTicker(logTicker);
-    ui->customPlot->plotLayout()->insertRow(
-            0); // inserisce una nuova riga all'inizio del layout grafico
+    ui->customPlot->plotLayout()->insertRow(0); // insert a new row on the graphic layout
     ui->customPlot->plotLayout()->addElement(
-            0, 0, new QCPTextElement(ui->customPlot, "SED")); // inserisce "SED" titolo centrale
+            0, 0, new QCPTextElement(ui->customPlot, "SED")); // set title "SED"
 
     QString sMu = u8"\u00b5";
     QString sLabelTextX = "Wavelength [" + sMu + "m]";
@@ -73,6 +72,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
         SEDNode *sed = duplicateFreeSEDNodes.at(sedCount);
         // qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
         drawPlot(sed);
+        // TODO createEllipseActors(sed);
     }
     // qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
     drawNodes(duplicateFreeSEDNodes);
@@ -628,24 +628,23 @@ void SEDVisualizerPlot::selectionChanged()
  */
 void SEDVisualizerPlot::drawSingleEllipse(vtkEllipse *ellipse)
 {
-
-    vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
-    cleanFilter->SetInputData(ellipse->getPolyData());
-    cleanFilter->Update();
-    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(cleanFilter->GetOutputPort());
-    ellipseActor = vtkSmartPointer<vtkLODActor>::New();
-    ellipseActor->SetMapper(mapper);
-    ellipseActor->GetProperty()->SetColor(0, 0, 0);
-    ellipseActorList.append(ellipseActor); // support to remove all ellipseActor
-
-    // TODO perchè?
     if (vtkwin != 0) {
+        vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+        cleanFilter->SetInputData(ellipse->getPolyData());
+        cleanFilter->Update();
+        vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+        mapper->SetInputConnection(cleanFilter->GetOutputPort());
+        ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+        ellipseActor->SetMapper(mapper);
+        ellipseActor->VisibilityOn();
+        ellipseActor->GetProperty()->SetColor(0, 0, 0);
+        ellipseActorList.append(ellipseActor); // support to remove all ellipseActor
         vtkwin->drawSingleEllipse(ellipseActor);
+        vtkwin->updateScene();
     }
 }
 
-void SEDVisualizerPlot::removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> ellipseActorList)
+void SEDVisualizerPlot::removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> &ellipseActorList)
 {
     foreach (vtkSmartPointer<vtkLODActor> ellipseActor, ellipseActorList) {
         vtkwin->removeSingleEllipse(ellipseActor);

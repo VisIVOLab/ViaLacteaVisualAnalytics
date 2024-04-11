@@ -58,7 +58,7 @@ private:
     vtkSmartPointer<vtkLODActor> ellipseActor;
     QList<vtkSmartPointer<vtkLODActor>> ellipseActorList;
     void drawSingleEllipse(vtkEllipse *el);
-    void removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> ellipseActorList);
+    void removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> &ellipseActorList);
 
     // multi selection status to avoid deselecting pending nodes
     bool multiSelectionPointStatus;
