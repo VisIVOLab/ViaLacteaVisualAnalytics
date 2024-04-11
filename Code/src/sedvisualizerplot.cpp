@@ -72,7 +72,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
         SEDNode *sed = duplicateFreeSEDNodes.at(sedCount);
         // qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
         drawPlot(sed);
-        // TODO createEllipseActors(sed);
+        // create Ellipse for each root and child filtered
+        createEllipseActors(sed);
+        createEllipseActors(sed->getChild().values()[0]);
     }
     // qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
     drawNodes(duplicateFreeSEDNodes);
@@ -329,7 +331,7 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
 QList<SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList<SED *> sedList)
 {
 
-    QList<SEDNode *> newList;
+    QList<SEDNode *> filterSedList;
     QSet<QPair<QString, QString>> seenPairs; // support data structure
 
     for (auto &sed : sedList) {
@@ -349,12 +351,12 @@ QList<SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList<SED *> sedList)
                 // qDebug() << "arco lecito" << currentPair << node->getWavelength() <<
                 // node->getFlux() << node->getChild().values()[0]->getWavelength() <<
                 // node->getChild().values()[0]->getFlux();
-                newList.append(node);
+                filterSedList.append(node);
             }
             node = node->getChild().values()[0];
         }
     }
-    return newList;
+    return filterSedList;
 }
 
 /**
@@ -521,6 +523,36 @@ void SEDVisualizerPlot::drawPlot(SEDNode *node)
     updateSEDPlotPoint(node->getChild().values()[0]);
 }
 
+/** Creation of all ellipse actors of SEDNodes in vtkwin on off visibility
+ * @brief SEDVisualizerPlot::createEllipseActors
+ * @param node SEDNode to create the ellipse
+ */
+void SEDVisualizerPlot::createEllipseActors(SEDNode *node)
+{
+    if (vtkwin != 0
+        && (node->getX() != 0 && node->getY() != 0 && node->getDesignation().compare("") != 0)) {
+        qDebug() << node->getDesignation() << node->getX() << node->getY();
+        // set ellipse
+        vtkEllipse *ellipse;
+        ellipse =
+                new vtkEllipse(node->getSemiMinorAxisLength() / 2,
+                               node->getSemiMajorAxisLength() / 2, node->getAngle(), node->getX(),
+                               node->getY(), node->getArcpix(), 0, 0, node->getDesignation(), NULL);
+        // set vtk settings
+        vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+        cleanFilter->SetInputData(ellipse->getPolyData());
+        cleanFilter->Update();
+        vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+        mapper->SetInputConnection(cleanFilter->GetOutputPort());
+        ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+        ellipseActor->SetMapper(mapper);
+        ellipseActor->GetProperty()->SetColor(0, 0, 0);
+        ellipseActor->VisibilityOff();
+        ellipseActorMap[node->getDesignation()] = ellipseActor;
+        vtkwin->drawSingleEllipse(ellipseActor);
+    }
+}
+
 /**
  * @brief SEDVisualizerPlot::drawNode Draw selectable sed nodes and their flux error
  * @param sedlist A list of sed objects to be visualized
@@ -594,12 +626,12 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
 }
 
 /**
- *  Manage the creation of the ellipses actors
+ *  Manage the visibility of ellipses actors of selected SEDNodes
  * @brief SEDVisualizerPlot::selectionChanged
  */
 void SEDVisualizerPlot::selectionChanged()
 {
-    // Ellipses creation
+    // node selection
     QCPDataSelection nodeSelection = graphSEDNodes->selection();
     // for each range of data selected on drag mode
     foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
@@ -608,48 +640,12 @@ void SEDVisualizerPlot::selectionChanged()
             QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
             SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(
                     sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
-            if (cp->getNode()->getX() != 0 && cp->getNode()->getY() != 0
-                && cp->getNode()->getDesignation().compare("") != 0) {
-                vtkEllipse *el;
-                el = new vtkEllipse(
-                        cp->getSemiMajorAxisLength() / 2, cp->getSemiMinorAxisLength() / 2,
-                        cp->getAngle(), cp->getNode()->getX(), cp->getNode()->getY(),
-                        cp->getNode()->getArcpix(), 0, 0, cp->getNode()->getDesignation(), NULL);
-
-                drawSingleEllipse(el);
+            if (ellipseActorMap[cp->getNode()->getDesignation()]) {
+                ellipseActorMap[cp->getNode()->getDesignation()]->VisibilityOn();
+                vtkwin->updateScene();
             }
         }
     }
-}
-
-/**
- * @brief SEDVisualizerPlot::drawSingleEllipse
- * @param ellipse
- */
-void SEDVisualizerPlot::drawSingleEllipse(vtkEllipse *ellipse)
-{
-    if (vtkwin != 0) {
-        vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
-        cleanFilter->SetInputData(ellipse->getPolyData());
-        cleanFilter->Update();
-        vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-        mapper->SetInputConnection(cleanFilter->GetOutputPort());
-        ellipseActor = vtkSmartPointer<vtkLODActor>::New();
-        ellipseActor->SetMapper(mapper);
-        ellipseActor->VisibilityOn();
-        ellipseActor->GetProperty()->SetColor(0, 0, 0);
-        ellipseActorList.append(ellipseActor); // support to remove all ellipseActor
-        vtkwin->drawSingleEllipse(ellipseActor);
-        vtkwin->updateScene();
-    }
-}
-
-void SEDVisualizerPlot::removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> &ellipseActorList)
-{
-    foreach (vtkSmartPointer<vtkLODActor> ellipseActor, ellipseActorList) {
-        vtkwin->removeSingleEllipse(ellipseActor);
-    }
-    ellipseActorList.clear();
 }
 
 /*
@@ -694,8 +690,12 @@ void SEDVisualizerPlot::mousePress(QMouseEvent *event)
         ui->customPlot->replot();
     }
 
-    // Remove pending ellipse: each selection refer possibly to new ellipse
-    removeAllEllipse(ellipseActorList);
+    // set all ellipses visibility off
+    for (auto ellipseActor = ellipseActorMap.constBegin();
+         ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
+        ellipseActor.value()->VisibilityOff();
+    }
+    vtkwin->updateScene();
 }
 
 void SEDVisualizerPlot::mouseWheel()

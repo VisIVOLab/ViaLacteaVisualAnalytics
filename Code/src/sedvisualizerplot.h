@@ -46,6 +46,25 @@ protected:
      * @param event
      */
     void keyReleaseEvent(QKeyEvent *event) override;
+    /**
+     * On windows closing, remove all visible ellipse
+     * @brief closeEvent
+     * @param event
+     */
+    void closeEvent(QCloseEvent *event) override
+    {
+        if (vtkwin != 0) {
+            // set all ellipses visibility off
+            for (auto ellipseActor = ellipseActorMap.constBegin();
+                 ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
+                ellipseActor.value()->VisibilityOff();
+            }
+            ellipseActorMap.clear();
+            vtkwin->updateScene();
+        }
+
+        event->accept();
+    };
 
 private:
     Ui::SEDVisualizerPlot *ui;
@@ -56,9 +75,8 @@ private:
     QList<SED *> sed_list;
     // ellipse
     vtkSmartPointer<vtkLODActor> ellipseActor;
-    QList<vtkSmartPointer<vtkLODActor>> ellipseActorList;
-    void drawSingleEllipse(vtkEllipse *el);
-    void removeAllEllipse(QList<vtkSmartPointer<vtkLODActor>> &ellipseActorList);
+    // map of ellipse actors by designation key
+    QMap<QString, vtkSmartPointer<vtkLODActor>> ellipseActorMap;
 
     // multi selection status to avoid deselecting pending nodes
     bool multiSelectionPointStatus;
@@ -196,6 +214,12 @@ private slots:
      * @param node new SEDNode to insert
      */
     void updateSEDPlotPoint(SEDNode *node);
+    /**
+     * Create EllipseActor for current node
+     * @brief createEllipseActors
+     * @param node
+     */
+    void createEllipseActors(SEDNode *node);
     void doThinLocalFit();
     void doThickLocalFit();
 
