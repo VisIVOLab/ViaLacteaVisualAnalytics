@@ -109,17 +109,14 @@ jobs:
 
       - name: Publish continuous release
         if: ${{github.ref_type == 'branch'}}
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: continuous
-          prerelease: true
-          files: |
-            ViaLacteaVisualAnalytics-${{github.ref_name}}-x86_64.AppImage
-          token: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          pyuploadtool ViaLacteaVisualAnalytics-${{github.ref_name}}-x86_64.AppImage
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
       - name: Publish release
         if: ${{github.ref_type == 'tag'}}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{github.ref_name}}
           files: |
