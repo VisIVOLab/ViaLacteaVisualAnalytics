@@ -29,7 +29,6 @@ SEDPlotPointCustom::SEDPlotPointCustom(QCustomPlot *parentPlot, double halfSize,
     setSelectedPen(QPen(Qt::red, halfSize));
     vtkwin = v;
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
-    connect(this, SIGNAL(selectionChanged(bool)), this, SLOT(selected(bool)));
 }
 
 QPointF SEDPlotPointCustom::pos() const
