@@ -54,15 +54,15 @@ protected:
     void closeEvent(QCloseEvent *event) override
     {
         if (vtkwin != 0) {
-            // set all ellipses visibility off
+            // remove all ellipses
             for (auto ellipseActor = ellipseActorMap.constBegin();
                  ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
-                ellipseActor.value()->VisibilityOff();
+                vtkwin->removeActor(ellipseActor.value());
             }
+            // clear ellipses support
             ellipseActorMap.clear();
             vtkwin->updateScene();
         }
-
         event->accept();
     };
 
