@@ -1,16 +1,16 @@
 name: CI/CD
+run-name: Releasing ${{github.ref_name}}
 
 on:
   push:
     branches:
       - master
+    tags:
+      - "*"
 
 jobs:
   build:
     runs-on: [self-hosted, linux, x64]
-
-    env:
-      BUILD_TYPE: Release
 
     steps:       
       - name: Checkout
@@ -19,22 +19,23 @@ jobs:
           sparse-checkout: |
             Code
 
-      - name: Prepare
+      - name: Setup
         env:
           KEYS: ${{secrets.KEYS}}
         run: echo $KEYS | base64 -d > Code/src/authkeys.h
 
       - name: Configure
         run: > 
-          cmake -GNinja
+          cmake
+          -G Ninja
           -S ${{github.workspace}}/Code
           -B ${{github.workspace}}/build
-          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          -DCMAKE_PREFIX_PATH=${{vars.Qt5_DIR}}
-          -DCMAKE_CXX_FLAGS_INIT="-fuse-ld=gold"
-          -DVTK_DIR=${{vars.VTK_DIR}}
-          -DCFITSIO_ROOT_DIR=${{vars.CFITSIO_DIR}}
-          -DBOOST_ROOT=${{vars.BOOST_DIR}}
+          -DCMAKE_BUILD_TYPE:STRING="Release"
+          -DCMAKE_PREFIX_PATH:PATH=${{vars.Qt5_DIR}}
+          -DCMAKE_CXX_FLAGS_INIT:STRING="-fuse-ld=gold"
+          -DVTK_DIR:PATH=${{vars.VTK_DIR}}
+          -DCFITSIO_ROOT_DIR:PATH=${{vars.CFITSIO_DIR}}
+          -DBOOST_ROOT:PATH=${{vars.BOOST_DIR}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --parallel
@@ -66,7 +67,7 @@ jobs:
         with:
           name: Binary
       
-      - name: Prepare
+      - name: Setup
         shell: bash
         run: |
           echo "${{vars.Qt5_DIR}}/bin" >> $GITHUB_PATH
@@ -93,13 +94,35 @@ jobs:
 
       - name: Create AppImage
         run: |
-          appimagetool "AppDir" ViaLacteaVisualAnalytics-master-x86_64.AppImage
+          appimagetool "AppDir" ViaLacteaVisualAnalytics-${{github.ref_name}}-x86_64.AppImage
 
-      - name: Create release
+      - name: Create deb package
+        if: ${{github.ref_type == 'tag'}}
+        run: |
+          mkdir -p ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/opt/ViaLacteaVisualAnalytics ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/usr/share/applications ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/usr/share/icons/hicolor/scalable/apps
+          mv AppDir/usr/* ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/opt/ViaLacteaVisualAnalytics
+          mv ViaLacteaVisualAnalytics.desktop ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/usr/share/applications
+          mv ViaLacteaVisualAnalytics.svg ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/usr/share/icons/hicolor/scalable/apps
+          echo ${{vars.DEBIAN}} | base64 -d | tar xzf - -C ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64
+          sed -i "s/.*Version:.*/Version: ${{github.ref_name}}/" ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64/DEBIAN/control
+          dpkg-deb --build --root-owner-group ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64
+
+      - name: Publish continuous release
+        if: ${{github.ref_type == 'branch'}}
         uses: softprops/action-gh-release@v1
         with:
           tag_name: continuous
           prerelease: true
           files: |
-            ViaLacteaVisualAnalytics-master-x86_64.AppImage
+            ViaLacteaVisualAnalytics-${{github.ref_name}}-x86_64.AppImage
+          token: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Publish release
+        if: ${{github.ref_type == 'tag'}}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{github.ref_name}}
+          files: |
+            ViaLacteaVisualAnalytics-${{github.ref_name}}-x86_64.AppImage
+            ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64.deb
           token: ${{secrets.GITHUB_TOKEN}}
