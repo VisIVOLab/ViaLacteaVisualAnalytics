@@ -86,6 +86,10 @@ private:
     QMap<QPair<double, double>, QCPAbstractItem *> sed_coordinte_to_element;
     // setting drag selection
     void setDragSelection();
+    // set scatter style on node drag selection: collapse and sed graphs
+    QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size,
+                                       QColor color, double penWidth);
+
     /**
      * Manage the Tooltip information over mouse cursor event
      * @brief SEDVisualizerPlot::handleMouseMove
@@ -172,6 +176,7 @@ private:
     QList<QCPGraph *> originalGraphs;
     QCPGraph *graphSEDNodes;
     QCPGraph *collapsedGraph;
+    QCPGraph *collapsedNodes;
     QList<SEDPlotPointCustom *> collapsedGraphPoints;
     QMap<int, QList<SEDPlotPointCustom *>> sedGraphPoints;
     bool temporaryMOD;

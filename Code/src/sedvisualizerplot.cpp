@@ -569,10 +569,9 @@ void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist)
         }
     }
     // plot nodes
-    ui->customPlot->addGraph();
+    graphSEDNodes = ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone); // no edge on nodes
-    graphSEDNodes = ui->customPlot->graph();
 
     // set error bar on node
     QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
@@ -1230,13 +1229,51 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     }
 
     coll_sed->setRootNode(tmp_node);
+
+    // generate line collapse-graph
     collapsedGraph = ui->customPlot->addGraph();
-    ui->customPlot->graph()->setData(x, y);
-    ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
-    ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
-    ui->customPlot->graph()->setSelectable(QCP::stNone);
+    collapsedGraph->setData(x, y);
+    collapsedGraph->setPen(QPen(Qt::red)); // line color red for second graph
+    collapsedGraph->setScatterStyle(QCPScatterStyle::ssNone); // Nessun punto
+    collapsedGraph->setSelectable(QCP::stNone); // Linee non selezionabili
+
+    // generate nodes collapse-graph
+    collapsedNodes = ui->customPlot->addGraph();
+    collapsedNodes->setData(x, y);
+    collapsedNodes->setLineStyle(QCPGraph::lsNone); // Nessuna linea
+
+    /*
+    QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
+    decorator->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::red, 6.0));
+    collapsedNodes->setSelectionDecorator(decorator);
+
+    collapsedNodes->setScatterStyle(
+            QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::transparent, 6.0));
+
+    collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
+    */
+    ///
+    // Utilizza la funzione per creare gli stili di dispersione
+    QCPScatterStyle scatterStyless =
+            createScatterStyle(QCPScatterStyle::ssCircle, 6, Qt::transparent, 2.0);
+    QCPScatterStyle scatterStylenn = createScatterStyle(QCPScatterStyle::ssCircle, 6, Qt::red, 2.0);
+
+    QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
+    decorator->setScatterStyle(scatterStylenn);
+
+    collapsedNodes->setSelectionDecorator(decorator);
+    collapsedNodes->setScatterStyle(scatterStyless);
+
+    collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
+    // coll_sed->setRootNode(tmp_node);
+    // collapsedGraph = ui->customPlot->addGraph();
+    // ui->customPlot->graph()->setData(x, y);
+    // ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
+    // ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone); // Nessun punto
+    // ui->customPlot->graph()->setSelectable(QCP::stNone); // Linee non selezionabili
     ui->customPlot->replot();
-    // sed_list.insert(0, coll_sed);
+
+    // sed_list.insert(0, coll_sed); // to save/export it
 }
 
 void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
@@ -1817,15 +1854,16 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
         process_download.start("curl -k -F m=download -F ID=" + output.simplified()
                                + " -F pass=hp39A11 -o sed_fit/output.zip "
                                  "http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
-        process_download
-                .waitForFinished(); // sets current thread to sleep and waits for process end
+        process_download.waitForFinished(); // sets current thread to sleep and waits for
+                                            // process end
         QString output_download(process_download.readAll());
         QProcess process_unzip;
         process_unzip.start("unzip sed_fit/output.zip -d "
                             + QDir::homePath()
                                       .append(QDir::separator())
                                       .append("VisIVODesktopTemp/tmp_download/"));
-        process_unzip.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_unzip.waitForFinished(); // sets current thread to sleep and waits for
+                                         // process end
         QString output_unzip(process_unzip.readAll());
         QStringList pieces = output_unzip.split(" ");
         QString path = pieces[pieces.length() - 3];
@@ -1836,7 +1874,8 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
                               + QDir::homePath()
                                         .append(QDir::separator())
                                         .append("VisIVODesktopTemp/tmp_download/"));
-        process_unzip_2.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_unzip_2.waitForFinished(); // sets current thread to sleep and waits for
+                                           // process end
         QString output_unzip_2(process_unzip_2.readAll());
     }
 }
@@ -1850,7 +1889,8 @@ bool SEDVisualizerPlot::checkIDRemoteCall(QString id)
     while (output_status.compare("finished") != 0) {
         process_status.start("curl -k -F m=info -F pass=hp39A11 -F ID=" + id
                              + " http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
-        process_status.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_status.waitForFinished(); // sets current thread to sleep and waits for
+                                          // process end
         output_status = process_status.readAll().simplified();
         if (output_status.compare("error") == 0) {
             return false;
@@ -1878,7 +1918,8 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
     sedFitInputW = "[" + sedFitInputW;
     sedFitInputFflag = "[" + sedFitInputFflag;
     sedFitInputErrF = "[" + sedFitInputErrF;
-    // qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW <<
+    // qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW
+    // <<
     sedFitInputErrF;
 
     QString sedWeights = "[" + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
@@ -2073,7 +2114,8 @@ void SEDVisualizerPlot::on_actionSave_triggered()
     for (int i = 0; i < dirList.size(); i++) {
         QString sedPath = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/" + dirList.at(i);
         process_zip.start("zip -j " + sedZipPath + " " + sedPath);
-        process_zip.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_zip.waitForFinished(); // sets current thread to sleep and waits for process
+                                       // end
         QString output_zip(process_zip.readAll());
     }
 
@@ -2164,8 +2206,9 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
 }
 
 void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
-{
+{ // TODO risalire al graph() index corretto
     if (checked) {
+        graphSEDNodes->setSelectable(QCP::stNone); // disable graphSEDNodes selection
         this->on_actionCollapse_triggered();
     } else {
         QPen pen;
@@ -2175,12 +2218,14 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
             originalGraphs.at(i)->setPen(pen);
         }
         ui->customPlot->removeGraph(collapsedGraph);
+        ui->customPlot->removeGraph(collapsedNodes);
         for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
             SEDPlotPointCustom *cp;
             cp = collapsedGraphPoints.at(i);
             ui->customPlot->removeItem(cp);
         }
         collapsedGraphPoints.clear();
+        graphSEDNodes->setSelectable(QCP::stMultipleDataRanges); // enable graphSEDNodes selection
         ui->customPlot->replot();
     }
 }
@@ -2279,7 +2324,7 @@ void SEDVisualizerPlot::on_thinButton_clicked()
 }
 
 /**
- * Method for setting SEDNodes decorator style on drag selection
+ * Method for setting SEDNodes and CollapseNodes decorator style on drag selection
  * @brief createScatterStyle
  * @param shape
  * @param size
@@ -2287,8 +2332,8 @@ void SEDVisualizerPlot::on_thinButton_clicked()
  * @param penWidth
  * @return QCPScatterStyle
  */
-QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size, QColor color,
-                                   double penWidth)
+QCPScatterStyle SEDVisualizerPlot::createScatterStyle(QCPScatterStyle::ScatterShape shape,
+                                                      double size, QColor color, double penWidth)
 {
     QCPScatterStyle scatterStyle;
     scatterStyle.setShape(shape);
