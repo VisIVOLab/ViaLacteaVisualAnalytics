@@ -2,16 +2,22 @@
 #include "loadingwidget.h"
 #include "sedfitgrid_thin.h"
 #include "sedplotpointcustom.h"
+#include "singleton.h"
 #include "ui_sedfitgrid_thick.h"
 #include "ui_sedfitgrid_thin.h"
 #include "ui_sedvisualizerplot.h"
 #include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
+#include "vtkCleanPolyData.h"
+#include <limits>
 #include <QCheckBox>
+#include <QDebug>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QSignalMapper>
 #include <QtConcurrent>
+#include <QtMath>
+#include <QToolTip>
 
 SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::SEDVisualizerPlot)
@@ -24,25 +30,29 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
-                                    | QCP::iSelectLegend | QCP::iSelectPlottables
-                                    | QCP::iMultiSelect | QCP::iSelectItems);
+                                    | QCP::iSelectPlottables | QCP::iMultiSelect
+                                    | QCP::iSelectItems);
+
     sed_list = s;
     vtkwin = v;
 
+    // logfile print table
     ui->resultsTableWidget->hide();
     ui->resultsTableWidget->setContextMenuPolicy(Qt::ActionsContextMenu);
     QAction *addFitAction = new QAction("Add this fit", ui->resultsTableWidget);
     ui->resultsTableWidget->addAction(addFitAction);
     connect(addFitAction, SIGNAL(triggered()), this, SLOT(addNewTheoreticalFit()));
+
+    // ticker to generate axes labels
     QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
     logTicker->setLogBase(10);
-
     ui->customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
     ui->customPlot->yAxis->setTicker(logTicker);
     ui->customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
     ui->customPlot->xAxis->setTicker(logTicker);
-    ui->customPlot->plotLayout()->insertRow(0);
-    ui->customPlot->plotLayout()->addElement(0, 0, new QCPTextElement(ui->customPlot, "SED"));
+    ui->customPlot->plotLayout()->insertRow(0); // insert a new row on the graphic layout
+    ui->customPlot->plotLayout()->addElement(
+            0, 0, new QCPTextElement(ui->customPlot, "SED")); // set title "SED"
 
     QString sMu = u8"\u00b5";
     QString sLabelTextX = "Wavelength [" + sMu + "m]";
@@ -54,33 +64,49 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     minFlux = std::numeric_limits<int>::max();
     maxFlux = std::numeric_limits<int>::min();
 
-    QString name;
-    for (sedCount = 0; sedCount < s.count(); sedCount++) {
-        sed = s.at(sedCount);
-        drawNode(sed->getRootNode());
+    // draw SEDNodes
+    // avoid multiple SEDNodes and edge graphing
+    QList<SEDNode *> duplicateFreeSEDNodes = filterSEDNodes(sed_list);
+    // qDebug() << s.count() << "root_nodes from da sed_list";
+    for (sedCount = 0; sedCount < duplicateFreeSEDNodes.count(); sedCount++) {
+        SEDNode *sed = duplicateFreeSEDNodes.at(sedCount);
+        // qDebug() << "-- draw root_nodes"<< sed->getRootNode()->getDesignation();
+        drawPlot(sed);
+        // create Ellipse for each root and child filtered
+        createEllipseActors(sed);
+        createEllipseActors(sed->getChild().values()[0]);
     }
+    // qDebug() <<"-- how many graph()"<< ui->customPlot->graphCount();
+    drawNodes(duplicateFreeSEDNodes);
+
+    // set drag selection parameters
+    setDragSelection();
+    multiSelectionPointStatus = false;
+    shiftMovingStatus = false;
+
+    stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
+
     double x_deltaRange = (maxWavelen - minWavelen) * 0.02;
     double y_deltaRange = (maxFlux - minFlux) * 0.02;
     ui->customPlot->yAxis->setRange(minFlux - y_deltaRange, maxFlux + y_deltaRange);
     ui->customPlot->xAxis->setRange(minWavelen - x_deltaRange, maxWavelen + x_deltaRange);
     connect(ui->customPlot, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
-    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent *)), this, SLOT(mousePress()));
+    connect(ui->customPlot, SIGNAL(mousePress(QMouseEvent *)), this,
+            SLOT(mousePress(QMouseEvent *)));
     connect(ui->customPlot, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
-    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent *)), this, SLOT(mouseRelease()));
+    connect(ui->customPlot, SIGNAL(mouseRelease(QMouseEvent *)), this,
+            SLOT(mouseRelease(QMouseEvent *)));
     connect(ui->customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->xAxis2,
             SLOT(setRange(QCPRange)));
     connect(ui->customPlot->yAxis, SIGNAL(rangeChanged(QCPRange)), ui->customPlot->yAxis2,
             SLOT(setRange(QCPRange)));
-    connect(ui->customPlot, SIGNAL(titleDoubleClick(QMouseEvent *, QCPTextElement *)), this,
-            SLOT(titleDoubleClick(QMouseEvent *, QCPTextElement *)));
     connect(ui->customPlot,
             SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this,
             SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
-    connect(ui->customPlot, SIGNAL(plottableClick(QCPAbstractPlottable *, QMouseEvent *)), this,
-            SLOT(graphClicked(QCPAbstractPlottable *)));
-    ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this,
-            SLOT(contextMenuRequest(QPoint)));
+    // ui->customPlot->setContextMenuPolicy(Qt::CustomContextMenu); // TODO to place again?
+    // connect(ui->customPlot, SIGNAL(customContextMenuRequested(QPoint)), this,
+    // SLOT(contextMenuRequest(QPoint)));
+    connect(ui->customPlot, &QCustomPlot::mouseMove, this, &SEDVisualizerPlot::handleMouseMove);
 
     modelFitBands.insert("wise1", 3.4);
     modelFitBands.insert("i1", 3.6);
@@ -169,12 +195,11 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
 
     ui->generatedSedBox->setHidden(true);
     nSED = 0;
-    multiSelectMOD = false;
     temporaryMOD = false;
     doubleClicked = false;
     temporaryRow = 0;
     this->setFocus();
-    this->activateWindow();
+    this->activateWindow(); // set the focus on this windows
     QFile sedFile(QDir::homePath()
                           .append(QDir::separator())
                           .append("VisIVODesktopTemp/tmp_download/SEDList.dat"));
@@ -186,7 +211,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     sedFile.flush();
     sedFile.close();
 
-    for (int i = 0; i < ui->customPlot->graphCount(); i++) {
+    for (int i = 0; i < ui->customPlot->graphCount() - 1; i++) {
         originalGraphs.push_back(ui->customPlot->graph(i));
     }
 
@@ -296,13 +321,58 @@ QDataStream &operator>>(QDataStream &in, QList<SED *> &sedlist)
     return in;
 }
 
-void SEDVisualizerPlot::drawNode(SEDNode *node)
+/**
+ * This method filters the root SEDNodes to be displayed in the graph.
+ * All root nodes have references to their child nodes.
+ * @brief SEDVisualizerPlot::filterSEDNodes
+ * @param sedList
+ * @return SEDNode list
+ */
+QList<SEDNode *> SEDVisualizerPlot::filterSEDNodes(QList<SED *> sedList)
+{
+
+    QList<SEDNode *> filterSedList;
+    QSet<QPair<QString, QString>> seenPairs; // support data structure
+
+    for (auto &sed : sedList) {
+        SEDNode *node = sed->getRootNode();
+        while (node->hasChild()) {
+            QString currentDesignation = node->getDesignation();
+            QString childDesignation = node->getChild().values()[0]->getDesignation();
+            // check pair: root-child
+            QPair<QString, QString> currentPair(currentDesignation, childDesignation);
+            // check pair: child-root
+            QPair<QString, QString> currentPairVice(childDesignation, currentDesignation);
+            // new edge
+            if (!seenPairs.contains(currentPair) or !seenPairs.contains(currentPairVice)) {
+                // new
+                seenPairs.insert(currentPair);
+                seenPairs.insert(currentPairVice);
+                // qDebug() << "arco lecito" << currentPair << node->getWavelength() <<
+                // node->getFlux() << node->getChild().values()[0]->getWavelength() <<
+                // node->getChild().values()[0]->getFlux();
+                filterSedList.append(node);
+            }
+            node = node->getChild().values()[0];
+        }
+    }
+    return filterSedList;
+}
+
+/**
+ * Insert new SEDNode point into all_sed_node
+ * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and
+ * ellipse of the SEDPlotPointCustom object. It also updates the maximum and minimum wavelength and
+ * flux values.
+ * @brief SEDVisualizerPlot::updateSEDPlotPoint
+ * @param node new SEDNode to insert
+ */
+void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node)
 {
     if (!visualnode_hash.contains(node->getDesignation())) {
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
-
         if (vtkwin != 0) {
-
+            // set cp rgb color
             if (vtkwin->getDesignation2fileMap().values(node->getDesignation()).length() > 0) {
                 double r = vtkwin->getEllipseActorList()
                                    .value(vtkwin->getDesignation2fileMap().value(
@@ -323,6 +393,7 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
                 cp->setColor(QColor(r * 255, g * 255, b * 255));
             }
         }
+        // set cp component
         cp->setAntialiased(true);
         cp->setPos(node->getWavelength(), node->getFlux());
         cp->setDesignation(node->getDesignation());
@@ -331,12 +402,13 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
         cp->setLat(node->getLat());
         cp->setLon(node->getLon());
         cp->setErrorFlux(node->getErrFlux());
-
         cp->setEllipse(node->getSemiMinorAxisLength(), node->getSemiMajorAxisLength(),
                        node->getAngle(), node->getArcpix());
-
         cp->setNode(node);
+
+        // new visualnode_hash entry
         visualnode_hash.insert(node->getDesignation(), cp);
+
         if (node->getWavelength() > maxWavelen)
             maxWavelen = node->getWavelength();
         if (node->getWavelength() < minWavelen)
@@ -348,47 +420,191 @@ void SEDVisualizerPlot::drawNode(SEDNode *node)
             minFlux = node->getFlux();
         }
         all_sed_node.insert(node->getWavelength(), node);
-    }
-    QVector<double> x(2), y(2), y_err(2);
-
-    x[0] = node->getWavelength();
-    y[0] = node->getFlux();
-    y_err[0] = node->getErrFlux();
-    for (int i = 0; i < node->getChild().count(); i++) {
-        drawNode(node->getChild().values()[i]);
-
-        x[1] = node->getChild().values()[i]->getWavelength();
-        y[1] = node->getChild().values()[i]->getFlux();
-        y_err[1] = node->getChild().values()[i]->getErrFlux();
-
-        ui->customPlot->addGraph();
-        ui->customPlot->graph()->setData(x, y);
-        ui->customPlot->graph()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDot, 1));
-        ui->customPlot->graph()->setSelectable(QCP::stNone);
-
-        QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
-        errorBars->removeFromLegend();
-        errorBars->setAntialiased(true);
-        errorBars->setData(y_err);
-        errorBars->setDataPlottable(ui->customPlot->graph());
-        errorBars->setPen(QPen(QColor(180, 180, 180)));
-        errorBars->setSelectable(QCP::stNone);
-        ui->customPlot->graph()->setPen(QPen(Qt::black));
-        ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
-        ui->customPlot->graph()->setAntialiased(true);
+        sed_coordinte_to_element.insert(qMakePair(node->getWavelength(), node->getFlux()), cp);
     }
 }
 
-void SEDVisualizerPlot::titleDoubleClick(QMouseEvent *event, QCPTextElement *title)
+/**
+ * Detect distance and SED node closest to the mouse cursor
+ * @brief SEDVisualizerPlot::closestSEDNode
+ * @param mouseX Axis mouse
+ * @param mouseY Axis mouse
+ * @return pair element of closest SED node to mouse cursor and his distance
+ */
+QPair<QCPAbstractItem *, double> SEDVisualizerPlot::closestSEDNode(double mouseX, double mouseY)
 {
-    Q_UNUSED(event)
-    // Set the plot title by double clicking on it
-    bool ok;
-    QString newTitle = QInputDialog::getText(this, "SED Title", "New SED title:", QLineEdit::Normal,
-                                             title->text(), &ok);
-    if (ok) {
-        title->setText(newTitle);
-        ui->customPlot->replot();
+    QCPAbstractItem *closestSED = nullptr;
+    double minDistance = std::numeric_limits<double>::max();
+
+    for (const auto &key : sed_coordinte_to_element.keys()) {
+        double x = ui->customPlot->xAxis->coordToPixel(key.first);
+        double y = ui->customPlot->yAxis->coordToPixel(key.second);
+
+        double distance = qSqrt(qPow(mouseX - x, 2) + qPow(mouseY - y, 2));
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestSED = sed_coordinte_to_element[key];
+        }
+    }
+
+    return qMakePair(closestSED, minDistance);
+}
+
+/**
+ * Manage the Tooltip information
+ * @brief SEDVisualizerPlot::handleMouseMove
+ * @param event mouse position
+ */
+void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
+{
+    double x = event->pos().x();
+    double y = event->pos().y();
+
+    QPair<QCPAbstractItem *, double> distance = closestSEDNode(x, y);
+
+    // threshold distance
+    if (distance.second <= 8) {
+        SEDPlotPointCustom *closestSED = qobject_cast<SEDPlotPointCustom *>(distance.first);
+        QString toolTipText;
+        if (closestSED->getNode()->getX() != 0 && closestSED->getNode()->getY() != 0
+            && closestSED->getNode()->getDesignation().compare("") != 0) {
+            QString wav = QString::number(closestSED->getNode()->getWavelength());
+            toolTipText =
+                    QString(stringDictWidget->getColUtypeStringDict().value(
+                                    "vlkb_compactsources.sed_view_final.designation" + wav)
+                            + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
+                              "%6\nx: %7\ny: %8")
+                            .arg(closestSED->getNode()->getDesignation())
+                            .arg(closestSED->getNode()->getWavelength())
+                            .arg(closestSED->getNode()->getFlux())
+                            .arg(closestSED->getNode()->getErrFlux())
+                            .arg(closestSED->getNode()->getLon())
+                            .arg(closestSED->getNode()->getLat())
+                            .arg(closestSED->getNode()->getX())
+                            .arg(closestSED->getNode()->getY());
+            QToolTip::showText(event->globalPos(), toolTipText);
+        } else {
+            toolTipText = QString("wavelength: %1\nfint: %2\nerr_fin: %3")
+                                  .arg(closestSED->getNode()->getWavelength())
+                                  .arg(closestSED->getNode()->getFlux())
+                                  .arg(closestSED->getNode()->getErrFlux());
+            QToolTip::showText(event->globalPos(), toolTipText);
+        }
+    } else {
+        QToolTip::hideText();
+    }
+}
+
+/**
+ * Draw an edge bethween SEDNode<root> and its child
+ * @brief SEDVisualizerPlot::drawPlot
+ * @param SEDNode
+ */
+void SEDVisualizerPlot::drawPlot(SEDNode *node)
+{
+    QVector<double> x(2), y(2);
+    // on 0 set current node values
+    x[0] = node->getWavelength();
+    y[0] = node->getFlux();
+    // on 1 set child node values
+    x[1] = node->getChild().values()[0]->getWavelength();
+    y[1] = node->getChild().values()[0]->getFlux();
+
+    // plot edge
+    ui->customPlot->addGraph();
+    ui->customPlot->graph()->setData(x, y);
+    ui->customPlot->graph()->setScatterStyle(
+            QCPScatterStyle(QCPScatterStyle::ssNone)); // nodes not selectables
+    ui->customPlot->graph()->setSelectable(QCP::stNone); // edge not selectable
+
+    // plot nodes rgb and update external structures (if it's a new entry nodes)
+    updateSEDPlotPoint(node);
+    updateSEDPlotPoint(node->getChild().values()[0]);
+}
+
+/** Creation of all ellipse actors of SEDNodes in vtkwin on off visibility
+ * @brief SEDVisualizerPlot::createEllipseActors
+ * @param node SEDNode to create the ellipse
+ */
+void SEDVisualizerPlot::createEllipseActors(SEDNode *node)
+{
+    if (vtkwin != 0
+        && (node->getX() != 0 && node->getY() != 0 && node->getDesignation().compare("") != 0)) {
+        qDebug() << node->getDesignation() << node->getX() << node->getY();
+        // set ellipse
+        vtkEllipse *ellipse;
+        ellipse =
+                new vtkEllipse(node->getSemiMinorAxisLength() / 2,
+                               node->getSemiMajorAxisLength() / 2, node->getAngle(), node->getX(),
+                               node->getY(), node->getArcpix(), 0, 0, node->getDesignation(), NULL);
+        // set vtk settings
+        vtkSmartPointer<vtkCleanPolyData> cleanFilter = vtkSmartPointer<vtkCleanPolyData>::New();
+        cleanFilter->SetInputData(ellipse->getPolyData());
+        cleanFilter->Update();
+        vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+        mapper->SetInputConnection(cleanFilter->GetOutputPort());
+        ellipseActor = vtkSmartPointer<vtkLODActor>::New();
+        ellipseActor->SetMapper(mapper);
+        ellipseActor->GetProperty()->SetColor(0, 0, 0);
+        ellipseActor->VisibilityOff();
+        ellipseActorMap[node->getDesignation()] = ellipseActor;
+        vtkwin->drawSingleEllipse(ellipseActor);
+    }
+}
+
+/**
+ * @brief SEDVisualizerPlot::drawNode Draw selectable sed nodes and their flux error
+ * @param sedlist A list of sed objects to be visualized
+ */
+void SEDVisualizerPlot::drawNodes(QList<SEDNode *> sedlist)
+{
+    QVector<double> x, y, y_err;
+    QSet<QString> visitedNodes;
+    for (int i = 0; i < sedlist.count(); i++) {
+        SEDNode *sedRootNode = sedlist.at(i);
+        addCoordinatesData(sedRootNode, x, y, y_err, visitedNodes);
+        if (!sedRootNode->getChild().isEmpty()) {
+            addCoordinatesData(sedRootNode->getChild().values()[0], x, y, y_err, visitedNodes);
+        }
+    }
+    // plot nodes
+    graphSEDNodes = ui->customPlot->addGraph();
+    ui->customPlot->graph()->setData(x, y);
+    ui->customPlot->graph()->setLineStyle(QCPGraph::lsNone); // no edge on nodes
+
+    // set error bar on node
+    QCPErrorBars *errorBars = new QCPErrorBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    errorBars->removeFromLegend();
+    errorBars->setAntialiased(true);
+    errorBars->setData(y_err);
+    errorBars->setDataPlottable(ui->customPlot->graph());
+    errorBars->setPen(QPen(QColor(180, 180, 180)));
+    errorBars->setSelectable(QCP::stNone);
+    ui->customPlot->graph()->setPen(QPen(Qt::black));
+    ui->customPlot->graph()->selectionDecorator()->setPen(QPen(Qt::red));
+    ui->customPlot->graph()->setAntialiased(true);
+
+    ui->customPlot->replot();
+}
+
+/**
+ * Extract the wavelength, flux, and flux-error data from a given sed node.
+ * The extracted data is appended to the provided QVector objects.
+ * @brief SEDVisualizerPlot::addCoordinatesData
+ * @param node SEDNode*. The method will visit this node and all its descendants.
+ * @param x Reference QVector of double. Collect the wavelength data of each node.
+ * @param y Reference QVector of double. Collect flux data of each node.
+ * @param y_err Reference QVector of double. Collect flux-error data of each node.
+ */
+void SEDVisualizerPlot::addCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y,
+                                           QVector<double> &y_err, QSet<QString> &visitedNodes)
+{
+    if (!visitedNodes.contains(node->getDesignation())) {
+        visitedNodes.insert(node->getDesignation());
+        x.append(node->getWavelength());
+        y.append(node->getFlux());
+        y_err.append(node->getErrFlux());
     }
 }
 
@@ -408,6 +624,30 @@ void SEDVisualizerPlot::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectableP
     }
 }
 
+/**
+ *  Manage the visibility of ellipses actors of selected SEDNodes
+ * @brief SEDVisualizerPlot::selectionChanged
+ */
+void SEDVisualizerPlot::selectionChanged()
+{
+    // node selection
+    QCPDataSelection nodeSelection = graphSEDNodes->selection();
+    // for each range of data selected on drag mode
+    foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
+        for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
+            // get data-i (not element) selected
+            QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
+            SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(
+                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
+            if (ellipseActorMap[cp->getNode()->getDesignation()]) {
+                ellipseActorMap[cp->getNode()->getDesignation()]->VisibilityOn();
+                vtkwin->updateScene();
+            }
+        }
+    }
+}
+
+/*
 void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item)
 {
     // Rename a graph by double clicking on its legend item
@@ -426,41 +666,40 @@ void SEDVisualizerPlot::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendIt
         }
     }
 }
+*/
 
-void SEDVisualizerPlot::selectionChanged()
+void SEDVisualizerPlot::mouseRelease(QMouseEvent *event)
 {
-    if (multiSelectMOD) { // on "multi select mode" prevent a graph to be clicked. Only nodes can be
-                          // selected.
-        ui->customPlot->graph()->setSelection(
-                QCPDataSelection(QCPDataRange(0, 0))); // graph(i)->setSelected(true);
+    // disable mouse right click function
+    if (event->button() == Qt::RightButton) {
+        ui->customPlot->setSelectionRectMode(QCP::srmSelect);
     }
 }
 
-void SEDVisualizerPlot::mouseRelease() { }
-
-void SEDVisualizerPlot::mousePress()
+void SEDVisualizerPlot::mousePress(QMouseEvent *event)
 {
-    if (multiSelectMOD) {
-        QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-    } else {
-        for (int i = 0; i < ui->customPlot->graphCount(); ++i)
-            ui->customPlot->graph()->setSelection(
-                    QCPDataSelection(QCPDataRange(i - 1, i))); // graph(i)->setSelected(true);
+    // disable mouse right click function
+    if (event->button() == Qt::RightButton) {
+        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+    }
+
+    // Deselect all pending SED nodes: every drag selection is a new selection
+    if (!multiSelectionPointStatus and !shiftMovingStatus and event->button() == Qt::LeftButton) {
+        ui->customPlot->deselectAll();
         ui->customPlot->replot();
     }
 
-    // if an axis is selected, only allow the direction of that axis to be dragged
-    // if no axis is selected, both directions may be dragged
-    if (ui->customPlot->xAxis->selectedParts().testFlag(QCPAxis::spAxis))
-        ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->xAxis->orientation());
-    else if (ui->customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
-        ui->customPlot->axisRect()->setRangeDrag(ui->customPlot->yAxis->orientation());
-    else
-        ui->customPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
+    // set all ellipses visibility off
+    for (auto ellipseActor = ellipseActorMap.constBegin();
+         ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
+        ellipseActor.value()->VisibilityOff();
+    }
+    vtkwin->updateScene();
 }
 
 void SEDVisualizerPlot::mouseWheel()
 {
+
     // if an axis is selected, only allow the direction of that axis to be zoomed
     // if no axis is selected, both directions may be zoomed
 
@@ -486,79 +725,69 @@ void SEDVisualizerPlot::removeAllGraphs()
     ui->customPlot->replot();
 }
 
+/*
+// TODO should be removed?: right click is disabled right now on mouse press
 void SEDVisualizerPlot::contextMenuRequest(QPoint pos)
 {
 
-    QMenu *menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
+ QMenu *menu = new QMenu(this);
+ menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    if (ui->customPlot->legend->selectTest(pos, false) >= 0) // context menu on legend requested
-    {
-        menu->addAction("Move to top left", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignTop | Qt::AlignLeft));
-        menu->addAction("Move to top center", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignTop | Qt::AlignHCenter));
-        menu->addAction("Move to top right", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignTop | Qt::AlignRight));
-        menu->addAction("Move to bottom right", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignBottom | Qt::AlignRight));
-        menu->addAction("Move to bottom left", this, SLOT(moveLegend()))
-                ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
-    } else // general context menu on graphs requested
-    {
-    }
+ if (ui->customPlot->legend->selectTest(pos, false) >= 0) // context menu on legend requested
+ {
+     menu->addAction("Move to top left", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignTop | Qt::AlignLeft));
+     menu->addAction("Move to top center", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignTop | Qt::AlignHCenter));
+     menu->addAction("Move to top right", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignTop | Qt::AlignRight));
+     menu->addAction("Move to bottom right", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignBottom | Qt::AlignRight));
+     menu->addAction("Move to bottom left", this, SLOT(moveLegend()))
+             ->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
+ }
 
-    menu->popup(ui->customPlot->mapToGlobal(pos));
+ menu->popup(ui->customPlot->mapToGlobal(pos));
 }
-
-void SEDVisualizerPlot::graphClicked(QCPAbstractPlottable *plottable) { }
+*/
 
 SEDVisualizerPlot::~SEDVisualizerPlot()
 {
     delete ui;
 }
 
-void SEDVisualizerPlot::on_actionEdit_triggered() { }
-
-void SEDVisualizerPlot::on_actionFit_triggered() { }
-
-bool SEDVisualizerPlot::prepareInputForSedFit(SEDNode *node)
-{
-    bool validFit = true;
-    sedFitInput.insert(node->getWavelength(), node->getFlux());
-    sedFitInputF = QString::number(node->getFlux()) + sedFitInputF;
-    sedFitInputErrF = QString::number(node->getErrFlux()) + sedFitInputErrF;
-    sedFitInputW = QString::number(node->getWavelength()) + sedFitInputW;
-
-    sedFitInputFflag = "1" + sedFitInputFflag;
-
-    for (int i = 0; i < node->getChild().count(); i++) {
-
-        sedFitInputF = "," + sedFitInputF;
-        sedFitInputErrF = "," + sedFitInputErrF;
-        sedFitInputW = "," + sedFitInputW;
-        sedFitInputFflag = "," + sedFitInputFflag;
-        prepareInputForSedFit(node->getChild().values()[i]);
-    }
-
-    return validFit;
-}
-
 bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
 {
     bool validFit = false;
-
     QMap<double, SEDNode *> selected_sed_map;
-    QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-    for (int i = 0; i < list_items.size(); i++) {
-        QString className = QString::fromUtf8(list_items.at(i)->metaObject()->className());
-        QString refName = "SEDPlotPointCustom";
-        if (QString::compare(className, refName) == 0) {
-            SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(list_items.at(i));
-            selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
+    QCPDataSelection nodeSelection;
+
+    // get selected (drag selection)
+    if (!graphSEDNodes->selection().isEmpty()) {
+        nodeSelection = graphSEDNodes->selection();
+    } else if (!collapsedNodes->selection().isEmpty()) {
+        nodeSelection = collapsedNodes->selection();
+    }
+
+    // for each range of data selected on drag mode
+    foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
+        for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
+            // get data-i (not element) selected
+            QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
+            QString className =
+                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
+                            ->metaObject()
+                            ->className();
+            if (QString::compare(className, "SEDPlotPointCustom") == 0) {
+                SEDPlotPointCustom *cp =
+                        qobject_cast<SEDPlotPointCustom *>(sed_coordinte_to_element.value(
+                                qMakePair(dataPoint->key, dataPoint->value)));
+                selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
+            }
         }
     }
     if (selected_sed_map.size() >= 2) {
+        // reconstruct sedFitInputX from last to first element
         QMap<double, SEDNode *>::iterator iter;
         iter = selected_sed_map.begin();
         SEDNode *node = iter.value();
@@ -585,20 +814,6 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     }
 
     return validFit;
-}
-
-void SEDVisualizerPlot::on_actionLocal_triggered() { }
-
-void SEDVisualizerPlot::readSedFitResultsHeader(QString header)
-{
-    QList<QString> line_list_string = header.split(',');
-    QString field;
-    for (int i = 0; i < line_list_string.size(); i++) {
-        field = line_list_string.at(i).simplified();
-        if (resultsOutputColumn.contains(field)) {
-            resultsOutputColumn.insert(field, i);
-        }
-    }
 }
 
 void SEDVisualizerPlot::readColumnsFromSedFitResults(const QJsonArray &columns)
@@ -758,6 +973,7 @@ void SEDVisualizerPlot::plotSedFitModel(const QJsonArray &model, Qt::GlobalColor
     ui->customPlot->graph()->setData(vec_x, vec_y);
     ui->customPlot->graph()->setPen(QPen(color));
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
+    ui->customPlot->graph()->setSelectable(QCP::stNone); // disable graph selection
     ui->customPlot->replot();
 
     this->setFocus();
@@ -1017,15 +1233,29 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
         collapsedGraphPoints.push_back(cp);
         cnt++;
     }
-
     coll_sed->setRootNode(tmp_node);
+
+    // generate line collapse-graph
     collapsedGraph = ui->customPlot->addGraph();
-    ui->customPlot->graph()->setData(x, y);
-    ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
-    ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
-    ui->customPlot->graph()->setSelectable(QCP::stNone);
+    collapsedGraph->setData(x, y);
+    collapsedGraph->setPen(QPen(Qt::red)); // line color red for second graph
+    collapsedGraph->setScatterStyle(QCPScatterStyle::ssNone); // no nodes
+    collapsedGraph->setSelectable(QCP::stNone); // no line selectable
+
+    // generate nodes collapse-graph
+    collapsedNodes = ui->customPlot->addGraph();
+    collapsedNodes->setData(x, y);
+    collapsedNodes->setLineStyle(QCPGraph::lsNone);
+    QCPScatterStyle scatterStyless =
+            createScatterStyle(QCPScatterStyle::ssCircle, 6, Qt::transparent, 2.0);
+    QCPScatterStyle scatterStylenn = createScatterStyle(QCPScatterStyle::ssCircle, 6, Qt::red, 2.0);
+    QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
+    decorator->setScatterStyle(scatterStylenn);
+    collapsedNodes->setSelectionDecorator(decorator);
+    collapsedNodes->setScatterStyle(scatterStyless);
+    collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
     ui->customPlot->replot();
-    sed_list.insert(0, coll_sed);
+    // sed_list.insert(0, coll_sed); // to save/export it
 }
 
 void SEDVisualizerPlot::finishedTheoreticalRemoteFit()
@@ -1349,6 +1579,7 @@ bool SEDVisualizerPlot::readThinFit(QString resultPath)
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
+    ui->customPlot->graph()->setSelectable(QCP::stNone);
     sedGraphs.push_back(ui->customPlot->graph());
     ui->customPlot->replot();
 
@@ -1396,6 +1627,7 @@ bool SEDVisualizerPlot::readThickFit(QString resultPath)
     ui->customPlot->addGraph();
     ui->customPlot->graph()->setData(x, y);
     ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone);
+    ui->customPlot->graph()->setSelectable(QCP::stNone);
     sedGraphs.push_back(ui->customPlot->graph());
     ui->customPlot->replot();
 
@@ -1604,15 +1836,16 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
         process_download.start("curl -k -F m=download -F ID=" + output.simplified()
                                + " -F pass=hp39A11 -o sed_fit/output.zip "
                                  "http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
-        process_download
-                .waitForFinished(); // sets current thread to sleep and waits for process end
+        process_download.waitForFinished(); // sets current thread to sleep and waits for
+                                            // process end
         QString output_download(process_download.readAll());
         QProcess process_unzip;
         process_unzip.start("unzip sed_fit/output.zip -d "
                             + QDir::homePath()
                                       .append(QDir::separator())
                                       .append("VisIVODesktopTemp/tmp_download/"));
-        process_unzip.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_unzip.waitForFinished(); // sets current thread to sleep and waits for
+                                         // process end
         QString output_unzip(process_unzip.readAll());
         QStringList pieces = output_unzip.split(" ");
         QString path = pieces[pieces.length() - 3];
@@ -1623,7 +1856,8 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
                               + QDir::homePath()
                                         .append(QDir::separator())
                                         .append("VisIVODesktopTemp/tmp_download/"));
-        process_unzip_2.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_unzip_2.waitForFinished(); // sets current thread to sleep and waits for
+                                           // process end
         QString output_unzip_2(process_unzip_2.readAll());
     }
 }
@@ -1637,7 +1871,8 @@ bool SEDVisualizerPlot::checkIDRemoteCall(QString id)
     while (output_status.compare("finished") != 0) {
         process_status.start("curl -k -F m=info -F pass=hp39A11 -F ID=" + id
                              + " http://via-lactea-sg00.iaps.inaf.it:8080/wspgrade/RemoteServlet");
-        process_status.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_status.waitForFinished(); // sets current thread to sleep and waits for
+                                          // process end
         output_status = process_status.readAll().simplified();
         if (output_status.compare("error") == 0) {
             return false;
@@ -1665,6 +1900,9 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
     sedFitInputW = "[" + sedFitInputW;
     sedFitInputFflag = "[" + sedFitInputFflag;
     sedFitInputErrF = "[" + sedFitInputErrF;
+    // qDebug() <<"--sedFitInput data:" <<sedFitInputFflag << sedFitInputF << sedFitInputW
+    // <<
+    sedFitInputErrF;
 
     QString sedWeights = "[" + ui->mid_irLineEdit->text() + "," + ui->far_irLineEdit->text() + ","
             + ui->submmLineEdit->text() + "]";
@@ -1846,22 +2084,6 @@ void SEDVisualizerPlot::on_clearAllButton_clicked()
     plottedSedLabels.clear();
 }
 
-void SEDVisualizerPlot::on_normalRadioButton_toggled(bool selectNormal)
-{
-    if (selectNormal == true) {
-        multiSelectMOD = false;
-        ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-        QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-        for (int i = 0; i < list_items.size(); i++) {
-            list_items.at(i)->setSelected(false);
-        }
-        ui->customPlot->replot();
-    } else {
-        multiSelectMOD = true;
-        ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
-    }
-}
-
 void SEDVisualizerPlot::on_actionSave_triggered()
 {
     QProcess process_zip;
@@ -1874,7 +2096,8 @@ void SEDVisualizerPlot::on_actionSave_triggered()
     for (int i = 0; i < dirList.size(); i++) {
         QString sedPath = QDir::homePath() + "/VisIVODesktopTemp/tmp_download/" + dirList.at(i);
         process_zip.start("zip -j " + sedZipPath + " " + sedPath);
-        process_zip.waitForFinished(); // sets current thread to sleep and waits for process end
+        process_zip.waitForFinished(); // sets current thread to sleep and waits for process
+                                       // end
         QString output_zip(process_zip.readAll());
     }
 
@@ -1967,6 +2190,7 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
 void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
 {
     if (checked) {
+        graphSEDNodes->setSelectable(QCP::stNone); // disable graphSEDNodes selection
         this->on_actionCollapse_triggered();
     } else {
         QPen pen;
@@ -1976,28 +2200,14 @@ void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
             originalGraphs.at(i)->setPen(pen);
         }
         ui->customPlot->removeGraph(collapsedGraph);
+        ui->customPlot->removeGraph(collapsedNodes);
         for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
             SEDPlotPointCustom *cp;
             cp = collapsedGraphPoints.at(i);
             ui->customPlot->removeItem(cp);
         }
         collapsedGraphPoints.clear();
-        ui->customPlot->replot();
-    }
-}
-
-void SEDVisualizerPlot::on_multiSelectCheckBox_toggled(bool checked)
-{
-    if (checked == true) {
-        multiSelectMOD = true;
-        ui->customPlot->setMultiSelectModifier(Qt::NoModifier);
-    } else {
-        multiSelectMOD = false;
-        ui->customPlot->setMultiSelectModifier(Qt::ControlModifier);
-        QList<QCPAbstractItem *> list_items = ui->customPlot->selectedItems();
-        for (int i = 0; i < list_items.size(); i++) {
-            list_items.at(i)->setSelected(false);
-        }
+        graphSEDNodes->setSelectable(QCP::stMultipleDataRanges); // enable graphSEDNodes selection
         ui->customPlot->replot();
     }
 }
@@ -2093,4 +2303,84 @@ void SEDVisualizerPlot::on_Thick_clicked()
 void SEDVisualizerPlot::on_thinButton_clicked()
 {
     on_ThinLocalFit_triggered();
+}
+
+/**
+ * Method for setting SEDNodes and CollapseNodes decorator style on drag selection
+ * @brief createScatterStyle
+ * @param shape
+ * @param size
+ * @param color
+ * @param penWidth
+ * @return QCPScatterStyle
+ */
+QCPScatterStyle SEDVisualizerPlot::createScatterStyle(QCPScatterStyle::ScatterShape shape,
+                                                      double size, QColor color, double penWidth)
+{
+    QCPScatterStyle scatterStyle;
+    scatterStyle.setShape(shape);
+    scatterStyle.setSize(size);
+    QPen pen(color);
+    pen.setWidthF(penWidth);
+    scatterStyle.setPen(pen);
+    return scatterStyle;
+}
+
+void SEDVisualizerPlot::setDragSelection()
+{
+    QCPScatterStyle myScatter = createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::transparent,
+                                                   2.0); // invisible by default
+    QCPScatterStyle selectedScatter =
+            createScatterStyle(QCPScatterStyle::ssCircle, 8, Qt::red, 2.0); // red circle selection
+
+    QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
+    decorator->setScatterStyle(selectedScatter);
+
+    graphSEDNodes->setSelectionDecorator(decorator);
+    graphSEDNodes->setScatterStyle(myScatter);
+
+    // or
+    // graphSEDNodes->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 16));
+
+    // drag selection mode
+    ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+    graphSEDNodes->setSelectable(QCP::stMultipleDataRanges);
+}
+
+/**
+ * Holding 'shift' allows graph navigation (by disabling drag selection)
+ * Holding 'Control/Command' allows multi selection/deselection
+ * @brief SEDVisualizerPlot::keyPressEvent
+ * @param event
+ */
+void SEDVisualizerPlot::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Shift) {
+        ui->customPlot->setSelectionRectMode(QCP::srmNone);
+        shiftMovingStatus = true;
+    }
+    if (event->key() == Qt::Key_Control) {
+        multiSelectionPointStatus = true;
+    }
+
+    QMainWindow::keyPressEvent(event);
+}
+
+/**
+ * Reset drag selection mode realeasing 'shift'
+ * Reset multi selection mode realeasing 'Control/Command'
+ * @brief SEDVisualizerPlot::keyReleaseEvent
+ * @param event
+ */
+void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Shift) {
+        ui->customPlot->setSelectionRectMode(QCP::srmSelect);
+        shiftMovingStatus = false;
+    }
+    if (event->key() == Qt::Key_Control) {
+        multiSelectionPointStatus = false;
+    }
+
+    QMainWindow::keyPressEvent(event);
 }

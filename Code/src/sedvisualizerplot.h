@@ -31,16 +31,97 @@ public:
     void setDistances(double dist);
     void setTitle(QString t);
 
+protected:
+    /**
+     * Holding 'shift' allows graph navigation (by disabling drag selection)
+     * Holding 'Control/Command' allows multi selection/deselection
+     * @brief SEDVisualizerPlot::keyPressEvent
+     * @param event
+     */
+    void keyPressEvent(QKeyEvent *event) override;
+    /**
+     * Reset drag selection mode realeasing 'shift'
+     * Reset multi selection mode realeasing 'Control/Command'
+     * @brief SEDVisualizerPlot::keyReleaseEvent
+     * @param event
+     */
+    void keyReleaseEvent(QKeyEvent *event) override;
+    /**
+     * On windows closing, remove all visible ellipse
+     * @brief closeEvent
+     * @param event
+     */
+    void closeEvent(QCloseEvent *event) override
+    {
+        if (vtkwin != 0) {
+            // remove all ellipses
+            for (auto ellipseActor = ellipseActorMap.constBegin();
+                 ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
+                vtkwin->removeActor(ellipseActor.value());
+            }
+            // clear ellipses support
+            ellipseActorMap.clear();
+            vtkwin->updateScene();
+        }
+        event->accept();
+    };
+
 private:
     Ui::SEDVisualizerPlot *ui;
-    SED *sed;
     QHash<QString, SEDPlotPointCustom *> visualnode_hash;
     double minFlux, maxFlux, minWavelen, maxWavelen;
     vtkwindow_new *vtkwin;
     int sedCount;
     QList<SED *> sed_list;
-    QList<SEDNode *> selected_sed_list;
-    bool prepareInputForSedFit(SEDNode *node);
+    // ellipse
+    vtkSmartPointer<vtkLODActor> ellipseActor;
+    // map of ellipse actors by designation key
+    QMap<QString, vtkSmartPointer<vtkLODActor>> ellipseActorMap;
+
+    // multi selection status to avoid deselecting pending nodes
+    bool multiSelectionPointStatus;
+    // shift key press status to avoid deselecting pending nodes
+    bool shiftMovingStatus;
+    // data structure to support drag item selection
+    QMap<QPair<double, double>, QCPAbstractItem *> sed_coordinte_to_element;
+    // setting drag selection
+    void setDragSelection();
+    // set scatter style on node drag selection: collapse and sed graphs
+    QCPScatterStyle createScatterStyle(QCPScatterStyle::ScatterShape shape, double size,
+                                       QColor color, double penWidth);
+
+    /**
+     * Manage the Tooltip information over mouse cursor event
+     * @brief SEDVisualizerPlot::handleMouseMove
+     * @param event mouse position
+     */
+    void handleMouseMove(QMouseEvent *event);
+    /**
+     * Detect distance and SED node closest to the mouse cursor
+     * @brief SEDVisualizerPlot::closestSEDNode
+     * @param mouseX Axis mouse
+     * @param mouseY Axis mouse
+     * @return pair element of closest SED node to mouse cursor and his distance
+     */
+    QPair<QCPAbstractItem *, double> closestSEDNode(double mouseX, double mouseY);
+    /**
+     * This method filters the root SEDNodes to be displayed in the graph.
+     * All root nodes have references to their child nodes.
+     * @brief SEDVisualizerPlot::filterSEDNodes
+     * @param sedList
+     * @return SEDNode list
+     */
+    QList<SEDNode *> filterSEDNodes(QList<SED *> sedList);
+
+    // add info ToolTip
+    VialacteaStringDictWidget *stringDictWidget;
+    QString designation;
+    double image_x;
+    double image_y;
+    double glon;
+    double glat;
+    double error_flux;
+
     bool prepareSelectedInputForSedFit();
     QMap<double, double> sedFitInput;
     QMap<int, QVector<double>> sedFitValues;
@@ -55,11 +136,21 @@ private:
     QMap<double, QJsonArray> models;
 
     QStringList plottedSedLabels;
+    /**
+     * Extract the wavelength, flux, and flux-error data from a given sed node.
+     * The extracted data is appended to the provided QVector objects.
+     * @brief SEDVisualizerPlot::addCoordinatesData
+     * @param node SEDNode*. The method will visit this node and all its descendants.
+     * @param x Reference QVector of double. Collect the wavelength data of each node.
+     * @param y Reference QVector of double. Collect flux data of each node.
+     * @param y_err Reference QVector of double. Collect flux-error data of each node.
+     */
+    void addCoordinatesData(SEDNode *node, QVector<double> &x, QVector<double> &y,
+                            QVector<double> &y_err, QSet<QString> &visitedNodes);
 
     void readColumnsFromSedFitResults(const QJsonArray &columns);
     void plotSedFitModel(const QJsonArray &model, Qt::GlobalColor color);
 
-    void readSedFitResultsHeader(QString header);
     void readSedFitOutput(QString filename);
     void loadSedFitOutput(QString filename);
     void loadSedFitThin(QString filename);
@@ -83,10 +174,11 @@ private:
     void addNewSEDCheckBox(QString label);
     QList<QCPGraph *> sedGraphs;
     QList<QCPGraph *> originalGraphs;
+    QCPGraph *graphSEDNodes;
     QCPGraph *collapsedGraph;
+    QCPGraph *collapsedNodes;
     QList<SEDPlotPointCustom *> collapsedGraphPoints;
     QMap<int, QList<SEDPlotPointCustom *>> sedGraphPoints;
-    bool multiSelectMOD;
     bool temporaryMOD;
     int temporaryRow;
     QCPGraph *temporaryGraph;
@@ -96,29 +188,49 @@ private:
     QProcess *process;
 
 private slots:
-    void titleDoubleClick(QMouseEvent *event, QCPTextElement *title);
     void axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part);
-    void legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item);
+    // void legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item);
     void selectionChanged();
-    void mousePress();
+    void mousePress(QMouseEvent *event);
     void mouseWheel();
-    void mouseRelease();
+    void mouseRelease(QMouseEvent *event);
     void checkboxClicked(int cb);
 
     void removeSelectedGraph();
     void removeAllGraphs();
-    void contextMenuRequest(QPoint pos);
-    void graphClicked(QCPAbstractPlottable *plottable);
-    void drawNode(SEDNode *node);
+    // void contextMenuRequest(QPoint pos);
+    /**
+     * Draw an edge bethween SEDNode<root> and its child
+     * @brief SEDVisualizerPlot::drawPlot
+     * @param SEDNode
+     */
+    void drawPlot(SEDNode *node);
+    /**
+     * @brief SEDVisualizerPlot::drawNode Draw selectable sed nodes and their flux error
+     * @param sedlist A list of sed objects to be visualized
+     */
+    void drawNodes(QList<SEDNode *> sedlist);
+    /**
+     * Insert new SEDNode point into all_sed_node
+     * The method sets the color, position, designation, X, Y, latitude, longitude, error flux, and
+     * ellipse of the SEDPlotPointCustom object. It also updates the maximum and minimum wavelength
+     * and flux values.
+     * @brief SEDVisualizerPlot::updateSEDPlotPoint
+     * @param node new SEDNode to insert
+     */
+    void updateSEDPlotPoint(SEDNode *node);
+    /**
+     * Create EllipseActor for current node
+     * @brief createEllipseActors
+     * @param node
+     */
+    void createEllipseActors(SEDNode *node);
     void doThinLocalFit();
     void doThickLocalFit();
 
     void doThinRemoteFit();
     void doThickRemoteFit();
 
-    void on_actionEdit_triggered();
-    void on_actionFit_triggered();
-    void on_actionLocal_triggered();
     void on_actionScreenshot_triggered();
     void on_actionCollapse_triggered();
     void on_ThinLocalFit_triggered();
@@ -134,11 +246,9 @@ private slots:
     void handleFinished();
     void on_clearAllButton_clicked();
     void on_SEDCheckboxClicked(int n);
-    void on_normalRadioButton_toggled(bool checked);
     void on_actionSave_triggered();
     void on_actionLoad_triggered();
     void on_collapseCheckBox_toggled(bool checked);
-    void on_multiSelectCheckBox_toggled(bool checked);
     void on_resultsTableWidget_clicked(const QModelIndex &index);
     void addNewTheoreticalFit();
     void sectionClicked(int index);
