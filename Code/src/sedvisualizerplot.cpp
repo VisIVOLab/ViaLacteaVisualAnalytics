@@ -760,9 +760,15 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
 {
     bool validFit = false;
     QMap<double, SEDNode *> selected_sed_map;
+    QCPDataSelection nodeSelection;
 
-    // get SEDNodes selected (drag selection)
-    QCPDataSelection nodeSelection = graphSEDNodes->selection();
+    // get selected (drag selection)
+    if (!graphSEDNodes->selection().isEmpty()) {
+        nodeSelection = graphSEDNodes->selection();
+    } else if (!collapsedNodes->selection().isEmpty()) {
+        nodeSelection = collapsedNodes->selection();
+    }
+
     // for each range of data selected on drag mode
     foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
         for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
@@ -1227,52 +1233,28 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
         collapsedGraphPoints.push_back(cp);
         cnt++;
     }
-
     coll_sed->setRootNode(tmp_node);
 
     // generate line collapse-graph
     collapsedGraph = ui->customPlot->addGraph();
     collapsedGraph->setData(x, y);
     collapsedGraph->setPen(QPen(Qt::red)); // line color red for second graph
-    collapsedGraph->setScatterStyle(QCPScatterStyle::ssNone); // Nessun punto
-    collapsedGraph->setSelectable(QCP::stNone); // Linee non selezionabili
+    collapsedGraph->setScatterStyle(QCPScatterStyle::ssNone); // no nodes
+    collapsedGraph->setSelectable(QCP::stNone); // no line selectable
 
     // generate nodes collapse-graph
     collapsedNodes = ui->customPlot->addGraph();
     collapsedNodes->setData(x, y);
-    collapsedNodes->setLineStyle(QCPGraph::lsNone); // Nessuna linea
-
-    /*
-    QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
-    decorator->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::red, 6.0));
-    collapsedNodes->setSelectionDecorator(decorator);
-
-    collapsedNodes->setScatterStyle(
-            QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::transparent, 6.0));
-
-    collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
-    */
-    ///
-    // Utilizza la funzione per creare gli stili di dispersione
+    collapsedNodes->setLineStyle(QCPGraph::lsNone);
     QCPScatterStyle scatterStyless =
             createScatterStyle(QCPScatterStyle::ssCircle, 6, Qt::transparent, 2.0);
     QCPScatterStyle scatterStylenn = createScatterStyle(QCPScatterStyle::ssCircle, 6, Qt::red, 2.0);
-
     QCPSelectionDecorator *decorator = new QCPSelectionDecorator();
     decorator->setScatterStyle(scatterStylenn);
-
     collapsedNodes->setSelectionDecorator(decorator);
     collapsedNodes->setScatterStyle(scatterStyless);
-
     collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
-    // coll_sed->setRootNode(tmp_node);
-    // collapsedGraph = ui->customPlot->addGraph();
-    // ui->customPlot->graph()->setData(x, y);
-    // ui->customPlot->graph()->setPen(QPen(Qt::red)); // line color red for second graph
-    // ui->customPlot->graph()->setScatterStyle(QCPScatterStyle::ssNone); // Nessun punto
-    // ui->customPlot->graph()->setSelectable(QCP::stNone); // Linee non selezionabili
     ui->customPlot->replot();
-
     // sed_list.insert(0, coll_sed); // to save/export it
 }
 
@@ -2206,7 +2188,7 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
 }
 
 void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
-{ // TODO risalire al graph() index corretto
+{
     if (checked) {
         graphSEDNodes->setSelectable(QCP::stNone); // disable graphSEDNodes selection
         this->on_actionCollapse_triggered();
