@@ -119,6 +119,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{github.ref_name}}
+          generate_release_notes: true
+          make_latest: true
           files: |
             ViaLacteaVisualAnalytics-${{github.ref_name}}-x86_64.AppImage
             ViaLacteaVisualAnalytics-${{github.ref_name}}-amd64.deb
