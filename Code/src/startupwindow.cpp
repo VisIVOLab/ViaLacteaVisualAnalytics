@@ -6,11 +6,14 @@
 #include "vtkfitsreader.h"
 #include "vtkwindow_new.h"
 #include "vtkWindowCube.h"
+#include "fitsheadermodifierdialog.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
 
-StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::StartupWindow)
+StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::StartupWindow),
+          settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
+          settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
 
@@ -24,9 +27,6 @@ StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::Star
 
     ui->logoArea->setAutoFillBackground(true);
     ui->logoArea->setPalette(pal2);
-
-    //    ui->historyArea->setAutoFillBackground(true);
-    //   ui->historyArea->setPalette(pal2);
 
     ui->buttonArea->setAutoFillBackground(true);
     ui->buttonArea->setPalette(pal2);
@@ -81,8 +81,8 @@ void StartupWindow::openLocalDC(const QString &fn)
                     std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
                         qMissing << QString::fromStdString(key);
                     });
-                    //  auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
-                    //  dialog->show();
+                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
+                    dialog->show();
                     return;
                 }
             }
@@ -90,12 +90,11 @@ void StartupWindow::openLocalDC(const QString &fn)
             QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
             return;
         }
-
         new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
         return;
     }
 
-    // long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
+    long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
     long size = QFileInfo(fn).size() / 1024; // B -> KB
     int ScaleFactor = 1; // AstroUtils::calculateResizeFactor(size, maxSize);
 
