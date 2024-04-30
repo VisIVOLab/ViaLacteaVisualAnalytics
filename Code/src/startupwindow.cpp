@@ -7,6 +7,7 @@
 #include "vtkwindow_new.h"
 #include "vtkWindowCube.h"
 #include "fitsheadermodifierdialog.h"
+#include "settingform.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -106,3 +107,15 @@ void StartupWindow::openLocalDC(const QString &fn)
     // Aggiungi alcuni file recenti di esempio al gestore dei file recenti
     this->historyModel->addRecentFile(fn);
 }
+
+
+void StartupWindow::on_settingsPushButton_clicked()
+{
+    if (!settingForm) {
+        settingForm = new SettingForm(this);
+    }
+    settingForm->show();
+    settingForm->activateWindow();
+    settingForm->raise();
+}
+

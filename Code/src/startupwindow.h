@@ -3,12 +3,14 @@
 
 #include <QWidget>
 #include <QSettings>
+#include <QPointer>
 
 namespace Ui {
 class StartupWindow;
 }
 
 class RecentFilesManager;
+class SettingForm;
 
 class StartupWindow : public QWidget
 {
@@ -23,11 +25,15 @@ private slots:
     void openLocalDC(const QString &fn);
     void on_clearPushButton_clicked();
 
+    void on_settingsPushButton_clicked();
+
 private:
     Ui::StartupWindow *ui;
     RecentFilesManager *historyModel;
     QString settingsFile;
     QSettings settings;
+    QPointer<SettingForm> settingForm;
+
 };
 
 #endif // STARTUPWINDOW_H
