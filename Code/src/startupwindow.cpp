@@ -5,10 +5,11 @@
 #include "recentfilesmanager.h"
 #include "vtkfitsreader.h"
 #include "vtkwindow_new.h"
-#include "vtkWindowCube.h"
+#include "vtkwindowcube.h"
 #include "fitsheadermodifierdialog.h"
 #include "settingform.h"
 #include "vialactea.h"
+#include "fitsheaderviewer.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -100,6 +101,7 @@ void StartupWindow::openLocalDC(const QString &fn)
             return;
         }
         new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
+        this->historyModel->addRecentFile(fn);
         return;
     }
 
@@ -138,5 +140,22 @@ void StartupWindow::on_vlkbPushButton_clicked()
 {
     ViaLactea *vialactealWin = new ViaLactea();
     vialactealWin->show();
+}
+
+
+void StartupWindow::on_infoPushButton_clicked()
+{
+    QString fn;
+    QModelIndexList selectedIndexes = ui->historyArea->selectionModel()->selectedIndexes();
+    if (!selectedIndexes.isEmpty()) {
+        QModelIndex selectedIndex = selectedIndexes.at(0);
+        fn = selectedIndex.data(Qt::DisplayRole).toString();
+    }
+
+    if (fn.isEmpty()) {
+        return;
+    }
+    FitsHeaderViewer *fitsHeaderViewer = new FitsHeaderViewer(fn);
+    fitsHeaderViewer->show();
 }
 

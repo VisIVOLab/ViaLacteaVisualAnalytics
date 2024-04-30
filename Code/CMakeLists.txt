@@ -93,6 +93,8 @@ set(PROJECT_SOURCES
     src/extendedglyph3d.h
     src/fitsheadermodifierdialog.cpp
     src/fitsheadermodifierdialog.h
+    src/fitsheaderviewer.h
+    src/fitsheaderviewer.cpp
     src/FilterFITSDialog.cpp
     src/FilterFITSDialog.h
     src/higalselectedsources.cpp
@@ -245,6 +247,7 @@ set(PROJECT_UI
     ui/caesarwindow.ui
     ui/dbquery.ui
     ui/fitsheadermodifierdialog.ui
+    ui/fitsheaderviewer.ui
     ui/FilterFITSDialog.ui
     ui/higalselectedsources.ui
     ui/loadingwidget.ui
