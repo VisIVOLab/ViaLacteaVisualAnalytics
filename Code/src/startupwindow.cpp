@@ -13,8 +13,8 @@
 #include <QMessageBox>
 
 StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::StartupWindow),
-          settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
-          settings(settingsFile, QSettings::IniFormat)
+    settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
+    settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
 
@@ -42,10 +42,20 @@ StartupWindow::~StartupWindow()
     delete ui;
 }
 
-void StartupWindow::on_localOpenPushButton_clicked()
+void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory=false)
 {
-    QString fn = QFileDialog::getOpenFileName(this, tr("Import an image file"), QString(),
-                                              tr("FITS images (*.fit *.fits)"));
+    QString fn;
+    if (!fromHistory)
+        fn = QFileDialog::getOpenFileName(this, tr("Import an image file"), QString(),
+                                          tr("FITS images (*.fit *.fits)"));
+    else{
+        QModelIndexList selectedIndexes = ui->historyArea->selectionModel()->selectedIndexes();
+        if (!selectedIndexes.isEmpty()) {
+            QModelIndex selectedIndex = selectedIndexes.at(0);
+            fn = selectedIndex.data(Qt::DisplayRole).toString();
+        }
+    }
+
     if (fn.isEmpty()) {
         return;
     }
@@ -117,5 +127,11 @@ void StartupWindow::on_settingsPushButton_clicked()
     settingForm->show();
     settingForm->activateWindow();
     settingForm->raise();
+}
+
+
+void StartupWindow::on_openPushButton_clicked()
+{
+    on_localOpenPushButton_clicked(true);
 }
 

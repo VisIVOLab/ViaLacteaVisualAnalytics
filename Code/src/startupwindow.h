@@ -21,11 +21,13 @@ public:
     ~StartupWindow();
 
 private slots:
-    void on_localOpenPushButton_clicked();
+    void on_localOpenPushButton_clicked(bool fromHistory);
     void openLocalDC(const QString &fn);
     void on_clearPushButton_clicked();
 
     void on_settingsPushButton_clicked();
+
+    void on_openPushButton_clicked();
 
 private:
     Ui::StartupWindow *ui;
