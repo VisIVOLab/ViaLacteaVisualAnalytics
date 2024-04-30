@@ -15,9 +15,14 @@ public:
     explicit StartupWindow(QWidget *parent = nullptr);
     ~StartupWindow();
 
+private slots:
+    void on_localOpenPushButton_clicked();
+    void openLocalDC(const QString &fn);
+
+
 private:
     Ui::StartupWindow *ui;
-    void PoulateHistory();
+    void PopulateHistory();
 
 };
 
