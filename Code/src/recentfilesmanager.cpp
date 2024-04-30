@@ -37,6 +37,7 @@ void RecentFilesManager::addRecentFile(const QString &filename)
         // Item exists and is not the most recent one -> move to top
         this->history.removeAt(idx);
         this->history.prepend(filename);
+        emit this->dataChanged(this->index(0), this->index(idx));
         return;
     }
 
