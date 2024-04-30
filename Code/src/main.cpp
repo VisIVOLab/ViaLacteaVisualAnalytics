@@ -12,6 +12,8 @@
 
 #include <clocale>
 
+#include "startupwindow.h"
+
 namespace py = pybind11;
 
 int main(int argc, char *argv[])
@@ -41,7 +43,11 @@ int main(int argc, char *argv[])
     std::setlocale(LC_ALL, "C");
     QLocale::setDefault(QLocale::c());
 
-    Singleton<MainWindow>::Instance();
+   // Singleton<MainWindow>::Instance();
+
+    StartupWindow startupWindow;
+    startupWindow.show();
+
 
     return a.exec();
 }

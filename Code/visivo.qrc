@@ -70,5 +70,8 @@
         <file>icons/visivo48.png</file>
         <file>icons/visivo128.png</file>
         <file>icons/visivo256.png</file>
+        <file>icons/folder_open_black_36dp.svg</file>
+        <file>icons/cloud_black_48dp.svg</file>
+        <file>icons/settings_black_48dp.svg</file>
     </qresource>
 </RCC>

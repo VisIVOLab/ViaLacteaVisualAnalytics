@@ -169,6 +169,8 @@ set(PROJECT_SOURCES
     src/simpleconesearchform.cpp
     src/simpleconesearchform.h
     src/singleton.h
+    src/startupwindow.cpp
+    src/startupwindow.h
     src/source.cpp
     src/source.h
     src/sourcewidget.cpp
@@ -259,6 +261,7 @@ set(PROJECT_UI
     ui/sfilterdialog.ui
     ui/simcollapsedialog.ui
     ui/simpleconesearchform.ui
+    ui/startupwindow.ui
     ui/sourcewidget.ui
     ui/usertablewindow.ui
     ui/vialactea.ui
