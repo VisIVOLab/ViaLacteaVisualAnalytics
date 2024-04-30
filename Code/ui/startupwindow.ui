@@ -137,7 +137,7 @@
    </item>
    <item>
     <widget class="QWidget" name="rigthContainer" native="true">
-     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0,0">
+     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
       <item>
        <widget class="QLabel" name="label_5">
         <property name="text">
@@ -182,49 +182,6 @@
           <widget class="QPushButton" name="openPushButton">
            <property name="text">
             <string>Open</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
-      <item>
-       <widget class="QWidget" name="logoArea" native="true">
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Supporting projects:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string/>
-           </property>
-           <property name="pixmap">
-            <pixmap resource="../visivo.qrc">:/icons/ecogal.png</pixmap>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string/>
-           </property>
-           <property name="pixmap">
-            <pixmap resource="../visivo.qrc">:/icons/cirasa.png</pixmap>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string/>
-           </property>
-           <property name="pixmap">
-            <pixmap resource="../visivo.qrc">:/icons/NEANIAS.jpg</pixmap>
            </property>
           </widget>
          </item>

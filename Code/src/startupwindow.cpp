@@ -8,6 +8,7 @@
 #include "vtkWindowCube.h"
 #include "fitsheadermodifierdialog.h"
 #include "settingform.h"
+#include "vialactea.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -25,9 +26,6 @@ StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::Star
 
     QPalette pal2 = QPalette();
     pal2.setColor(QPalette::Window, Qt::white);
-
-    ui->logoArea->setAutoFillBackground(true);
-    ui->logoArea->setPalette(pal2);
 
     ui->buttonArea->setAutoFillBackground(true);
     ui->buttonArea->setPalette(pal2);
@@ -133,5 +131,12 @@ void StartupWindow::on_settingsPushButton_clicked()
 void StartupWindow::on_openPushButton_clicked()
 {
     on_localOpenPushButton_clicked(true);
+}
+
+
+void StartupWindow::on_vlkbPushButton_clicked()
+{
+    ViaLactea *vialactealWin = new ViaLactea();
+    vialactealWin->show();
 }
 

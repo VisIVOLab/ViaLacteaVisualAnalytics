@@ -29,6 +29,8 @@ private slots:
 
     void on_openPushButton_clicked();
 
+    void on_vlkbPushButton_clicked();
+
 private:
     Ui::StartupWindow *ui;
     RecentFilesManager *historyModel;
