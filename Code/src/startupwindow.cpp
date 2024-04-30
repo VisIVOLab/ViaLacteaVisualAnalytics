@@ -1,21 +1,21 @@
 #include "startupwindow.h"
 #include "ui_startupwindow.h"
-#include "recentfilesmanager.h"
-#include <QFileDialog>
+
 #include "astroutils.h"
+#include "recentfilesmanager.h"
 #include "vtkfitsreader.h"
-#include <QMessageBox>
 #include "vtkwindow_new.h"
 #include "vtkWindowCube.h"
 
-StartupWindow::StartupWindow(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::StartupWindow)
+#include <QFileDialog>
+#include <QMessageBox>
+
+StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::StartupWindow)
 {
     ui->setupUi(this);
 
     QPalette pal = QPalette();
-    pal.setColor(QPalette::Window, QColor::fromRgb(234,233,229));
+    pal.setColor(QPalette::Window, QColor::fromRgb(234, 233, 229));
     ui->leftContainer->setAutoFillBackground(true);
     ui->leftContainer->setPalette(pal);
 
@@ -31,32 +31,15 @@ StartupWindow::StartupWindow(QWidget *parent) :
     ui->buttonArea->setAutoFillBackground(true);
     ui->buttonArea->setPalette(pal2);
 
-    PopulateHistory();
-
+    // Setup History Manager
+    this->historyModel = new RecentFilesManager(this);
+    ui->historyArea->setModel(this->historyModel);
 }
 
 StartupWindow::~StartupWindow()
 {
     delete ui;
 }
-
-
-void StartupWindow::PopulateHistory()
-{
-    RecentFilesManager *recentFilesManager = new RecentFilesManager(this);
-    QStringList recentFiles = recentFilesManager->recentFiles();
-
-    // Pulisci la lista widget
-    ui->historyArea->clear();
-
-    // Aggiungi i file recenti alla lista widget
-    foreach(const QString &file, recentFiles) {
-        QListWidgetItem *item = new QListWidgetItem(file);
-        ui->historyArea->addItem(item);
-    }
-}
-
-
 
 void StartupWindow::on_localOpenPushButton_clicked()
 {
@@ -73,6 +56,10 @@ void StartupWindow::on_localOpenPushButton_clicked()
     }
 }
 
+void StartupWindow::on_clearPushButton_clicked()
+{
+    this->historyModel->clearHistory();
+}
 
 void StartupWindow::openLocalDC(const QString &fn)
 {
@@ -108,21 +95,15 @@ void StartupWindow::openLocalDC(const QString &fn)
         return;
     }
 
-
-    //long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
+    // long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
     long size = QFileInfo(fn).size() / 1024; // B -> KB
-    int ScaleFactor = 1;// AstroUtils::calculateResizeFactor(size, maxSize);
+    int ScaleFactor = 1; // AstroUtils::calculateResizeFactor(size, maxSize);
 
     vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
     win->show();
     win->activateWindow();
     win->raise();
 
-    // Creazione del gestore dei file recenti
-    RecentFilesManager *recentFilesManager = new RecentFilesManager(this);
-
     // Aggiungi alcuni file recenti di esempio al gestore dei file recenti
-    recentFilesManager->addRecentFile(fn);
-    PopulateHistory();
+    this->historyModel->addRecentFile(fn);
 }
-

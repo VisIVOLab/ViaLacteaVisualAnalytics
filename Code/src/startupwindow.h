@@ -7,6 +7,8 @@ namespace Ui {
 class StartupWindow;
 }
 
+class RecentFilesManager;
+
 class StartupWindow : public QWidget
 {
     Q_OBJECT
@@ -19,13 +21,11 @@ private slots:
     void on_localOpenPushButton_clicked();
     void openLocalDC(const QString &fn);
 
+    void on_clearPushButton_clicked();
 
 private:
     Ui::StartupWindow *ui;
-    void PopulateHistory();
-
+    RecentFilesManager *historyModel;
 };
-
-
 
 #endif // STARTUPWINDOW_H

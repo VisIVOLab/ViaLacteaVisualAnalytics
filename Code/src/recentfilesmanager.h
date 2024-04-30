@@ -1,21 +1,29 @@
 #ifndef RECENTFILESMANAGER_H
 #define RECENTFILESMANAGER_H
 
-#include <QObject>
+#include <QAbstractListModel>
+
 #include <QSettings>
 
-class RecentFilesManager : public QObject {
+class RecentFilesManager : public QAbstractListModel
+{
     Q_OBJECT
 
 public:
     RecentFilesManager(QObject *parent = nullptr);
+    ~RecentFilesManager() override;
 
-    void addRecentFile(const QString& filename);
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
+    void addRecentFile(const QString &filename);
     QStringList recentFiles() const;
+    void clearHistory();
 
 private:
-    QSettings *settings;
-    const int maxRecentFiles = 10;
+    QStringList history;
+    const int maxRecentFiles;
+    QSettings settings;
 };
 
 #endif // RECENTFILESMANAGER_H
