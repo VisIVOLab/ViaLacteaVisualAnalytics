@@ -131,6 +131,8 @@ set(PROJECT_SOURCES
     src/profilewindow.h
     src/qcustomplot.cpp
     src/qcustomplot.h
+    src/recentfilesmanager.h
+    src/recentfilesmanager.cpp
     src/sed.cpp
     src/sed.h
     src/sedfitgrid_thick.cpp

@@ -17,6 +17,10 @@ public:
 
 private:
     Ui::StartupWindow *ui;
+    void PoulateHistory();
+
 };
+
+
 
 #endif // STARTUPWINDOW_H

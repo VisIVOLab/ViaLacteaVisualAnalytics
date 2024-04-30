@@ -1,5 +1,6 @@
 #include "startupwindow.h"
 #include "ui_startupwindow.h"
+#include "recentfilesmanager.h"
 
 StartupWindow::StartupWindow(QWidget *parent) :
     QWidget(parent),
@@ -18,11 +19,13 @@ StartupWindow::StartupWindow(QWidget *parent) :
     ui->logoArea->setAutoFillBackground(true);
     ui->logoArea->setPalette(pal2);
 
-    ui->historyArea->setAutoFillBackground(true);
-    ui->historyArea->setPalette(pal2);
+    //    ui->historyArea->setAutoFillBackground(true);
+    //   ui->historyArea->setPalette(pal2);
 
     ui->buttonArea->setAutoFillBackground(true);
     ui->buttonArea->setPalette(pal2);
+
+    PoulateHistory();
 
 }
 
@@ -30,3 +33,21 @@ StartupWindow::~StartupWindow()
 {
     delete ui;
 }
+
+
+void StartupWindow::PoulateHistory()
+{
+    RecentFilesManager *recentFilesManager = new RecentFilesManager(this);
+    QStringList recentFiles = recentFilesManager->recentFiles();
+
+    // Pulisci la lista widget
+    ui->historyArea->clear();
+
+    // Aggiungi i file recenti alla lista widget
+    foreach(const QString &file, recentFiles) {
+        QListWidgetItem *item = new QListWidgetItem(file);
+        ui->historyArea->addItem(item);
+    }
+}
+
+
