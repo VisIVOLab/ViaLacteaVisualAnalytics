@@ -2,7 +2,6 @@
 #define FITSHEADERVIEWER_H
 
 #include <QWidget>
-#include "fitsio.h"
 
 namespace Ui {
 class FitsHeaderViewer;
@@ -13,9 +12,11 @@ class FitsHeaderViewer : public QWidget
     Q_OBJECT
 
 public:
-    explicit     FitsHeaderViewer(const QString &fitsFilePath, QWidget *parent = nullptr);
+    explicit FitsHeaderViewer(QWidget *parent = nullptr);
 
     ~FitsHeaderViewer();
+
+    void showHeader(const QString &filepath);
 
 private:
     Ui::FitsHeaderViewer *ui;

@@ -16,6 +16,14 @@
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
     <widget class="QTextEdit" name="headerText">
+     <property name="font">
+      <font>
+       <family>Monospace</family>
+      </font>
+     </property>
+     <property name="lineWrapMode">
+      <enum>QTextEdit::NoWrap</enum>
+     </property>
      <property name="readOnly">
       <bool>true</bool>
      </property>

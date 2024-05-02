@@ -19,7 +19,7 @@ int RecentFilesManager::rowCount(const QModelIndex &parent) const
 
 QVariant RecentFilesManager::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid()) {
+    if (!index.isValid() || this->history.empty()) {
         return QVariant();
     }
 
@@ -33,8 +33,8 @@ QVariant RecentFilesManager::data(const QModelIndex &index, int role) const
 void RecentFilesManager::addRecentFile(const QString &filename)
 {
     int idx = this->history.indexOf(filename);
-    if (idx > 0) {
-        // Item exists and is not the most recent one -> move to top
+    if (idx > -1) {
+        // Item exists -> move to top
         this->history.removeAt(idx);
         this->history.prepend(filename);
         emit this->dataChanged(this->index(0), this->index(idx));

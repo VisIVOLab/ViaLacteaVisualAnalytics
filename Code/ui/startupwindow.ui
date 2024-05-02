@@ -137,7 +137,7 @@
    </item>
    <item>
     <widget class="QWidget" name="rigthContainer" native="true">
-     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <widget class="QLabel" name="label_5">
         <property name="text">
@@ -146,7 +146,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QListView" name="historyArea"/>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QListView" name="historyArea"/>
+        </item>
+        <item>
+         <widget class="FitsHeaderViewer" name="headerViewer" native="true"/>
+        </item>
+       </layout>
       </item>
       <item>
        <widget class="QWidget" name="buttonArea" native="true">
@@ -172,13 +179,6 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="infoPushButton">
-           <property name="text">
-            <string>Info</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QPushButton" name="openPushButton">
            <property name="text">
             <string>Open</string>
@@ -193,6 +193,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FitsHeaderViewer</class>
+   <extends>QWidget</extends>
+   <header location="global">src/fitsheaderviewer.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../visivo.qrc"/>
  </resources>

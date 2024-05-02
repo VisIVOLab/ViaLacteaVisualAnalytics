@@ -2,23 +2,26 @@
 #include "ui_startupwindow.h"
 
 #include "astroutils.h"
+#include "fitsheadermodifierdialog.h"
+#include "fitsheaderviewer.h"
 #include "recentfilesmanager.h"
+#include "settingform.h"
+#include "vialactea.h"
 #include "vtkfitsreader.h"
 #include "vtkwindow_new.h"
 #include "vtkwindowcube.h"
-#include "fitsheadermodifierdialog.h"
-#include "settingform.h"
-#include "vialactea.h"
-#include "fitsheaderviewer.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
 
-StartupWindow::StartupWindow(QWidget *parent) : QWidget(parent), ui(new Ui::StartupWindow),
-    settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
-    settings(settingsFile, QSettings::IniFormat)
+StartupWindow::StartupWindow(QWidget *parent)
+    : QWidget(parent),
+      ui(new Ui::StartupWindow),
+      settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
+      settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
+    ui->headerViewer->hide();
 
     QPalette pal = QPalette();
     pal.setColor(QPalette::Window, QColor::fromRgb(234, 233, 229));
@@ -41,13 +44,13 @@ StartupWindow::~StartupWindow()
     delete ui;
 }
 
-void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory=false)
+void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory = false)
 {
     QString fn;
     if (!fromHistory)
         fn = QFileDialog::getOpenFileName(this, tr("Import an image file"), QString(),
                                           tr("FITS images (*.fit *.fits)"));
-    else{
+    else {
         QModelIndexList selectedIndexes = ui->historyArea->selectionModel()->selectedIndexes();
         if (!selectedIndexes.isEmpty()) {
             QModelIndex selectedIndex = selectedIndexes.at(0);
@@ -68,6 +71,7 @@ void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory=false)
 
 void StartupWindow::on_clearPushButton_clicked()
 {
+    ui->headerViewer->hide();
     this->historyModel->clearHistory();
 }
 
@@ -118,6 +122,13 @@ void StartupWindow::openLocalDC(const QString &fn)
     this->historyModel->addRecentFile(fn);
 }
 
+void StartupWindow::showFitsHeader(const QString &fn)
+{
+    if (!fn.isEmpty()) {
+        ui->headerViewer->showHeader(fn);
+        ui->headerViewer->show();
+    }
+}
 
 void StartupWindow::on_settingsPushButton_clicked()
 {
@@ -129,12 +140,10 @@ void StartupWindow::on_settingsPushButton_clicked()
     settingForm->raise();
 }
 
-
 void StartupWindow::on_openPushButton_clicked()
 {
     on_localOpenPushButton_clicked(true);
 }
-
 
 void StartupWindow::on_vlkbPushButton_clicked()
 {
@@ -142,20 +151,20 @@ void StartupWindow::on_vlkbPushButton_clicked()
     vialactealWin->show();
 }
 
-
-void StartupWindow::on_infoPushButton_clicked()
+void StartupWindow::on_historyArea_activated(const QModelIndex &index)
 {
-    QString fn;
-    QModelIndexList selectedIndexes = ui->historyArea->selectionModel()->selectedIndexes();
-    if (!selectedIndexes.isEmpty()) {
-        QModelIndex selectedIndex = selectedIndexes.at(0);
-        fn = selectedIndex.data(Qt::DisplayRole).toString();
-    }
-
-    if (fn.isEmpty()) {
+    if (!index.isValid()) {
         return;
     }
-    FitsHeaderViewer *fitsHeaderViewer = new FitsHeaderViewer(fn);
-    fitsHeaderViewer->show();
+
+    this->showFitsHeader(index.data().toString());
 }
 
+void StartupWindow::on_historyArea_clicked(const QModelIndex &index)
+{
+    if (!index.isValid()) {
+        return;
+    }
+
+    this->showFitsHeader(index.data().toString());
+}
