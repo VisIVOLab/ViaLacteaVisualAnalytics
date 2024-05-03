@@ -29,7 +29,7 @@ void FitsHeaderViewer::showHeader(const QString &filepath)
     }
 
     char headerBuffer[FLEN_CARD];
-    QString headerText;
+    QString headerText = "<pre>";
 
     int nKeys;
     fits_get_hdrspace(fitsFile, &nKeys, nullptr, &status);
@@ -43,9 +43,14 @@ void FitsHeaderViewer::showHeader(const QString &filepath)
                     QString("Errore durante la lettura dell'header: %1").arg(errorBuffer));
             break;
         }
-        headerText += headerBuffer;
-        headerText += '\n';
+
+        QString card(headerBuffer);
+        if (!card.simplified().isEmpty()) {
+            headerText += highlightKeyword(card);
+            headerText += "<br/>";
+        }
     }
+    headerText += "</pre>";
 
     fits_close_file(fitsFile, &status);
 
@@ -57,5 +62,11 @@ void FitsHeaderViewer::showHeader(const QString &filepath)
         return;
     }
 
-    ui->headerText->setPlainText(headerText);
+    ui->headerText->setHtml(headerText);
+}
+
+QString FitsHeaderViewer::highlightKeyword(QString card) const
+{
+    QString colored = "<span style='color:blue;'>" + card.left(8) + "</span>";
+    return card.replace(0, 8, colored);
 }

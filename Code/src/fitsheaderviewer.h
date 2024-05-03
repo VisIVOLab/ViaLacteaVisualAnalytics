@@ -13,13 +13,14 @@ class FitsHeaderViewer : public QWidget
 
 public:
     explicit FitsHeaderViewer(QWidget *parent = nullptr);
-
     ~FitsHeaderViewer();
 
     void showHeader(const QString &filepath);
 
 private:
     Ui::FitsHeaderViewer *ui;
+
+    QString highlightKeyword(QString card) const;
 };
 
 #endif // FITSHEADERVIEWER_H
