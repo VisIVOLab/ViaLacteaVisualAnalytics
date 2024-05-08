@@ -358,65 +358,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menuBar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1366</width>
-     <height>24</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menuCamera">
-    <property name="title">
-     <string>Camera</string>
-    </property>
-    <addaction name="actionFront"/>
-    <addaction name="actionBack"/>
-    <addaction name="actionTop"/>
-    <addaction name="actionRight"/>
-    <addaction name="actionBottom"/>
-    <addaction name="actionLeft"/>
-   </widget>
-   <widget class="QMenu" name="menuMoment">
-    <property name="title">
-     <string>Moment</string>
-    </property>
-    <addaction name="actionCalculate_order_0"/>
-    <addaction name="actionCalculate_order_1"/>
-    <addaction name="actionCalculate_order_2"/>
-    <addaction name="actionCalculate_order_6"/>
-    <addaction name="actionCalculate_order_8"/>
-    <addaction name="actionCalculate_order_10"/>
-   </widget>
-   <widget class="QMenu" name="menuView">
-    <property name="title">
-     <string>View</string>
-    </property>
-    <addaction name="actionSlice_Lookup_Table"/>
-    <addaction name="separator"/>
-    <addaction name="actionShowSlice"/>
-    <addaction name="actionShowMomentMap"/>
-   </widget>
-   <widget class="QMenu" name="menuWCS">
-    <property name="title">
-     <string>WCS</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menuAction">
-    <property name="title">
-     <string>Action</string>
-    </property>
-    <addaction name="actionExtract_spectrum"/>
-    <addaction name="actionPV"/>
-    <addaction name="actionFilter"/>
-   </widget>
-   <addaction name="menuCamera"/>
-   <addaction name="menuWCS"/>
-   <addaction name="menuView"/>
-   <addaction name="menuMoment"/>
-   <addaction name="menuAction"/>
-  </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionFront">
    <property name="icon">

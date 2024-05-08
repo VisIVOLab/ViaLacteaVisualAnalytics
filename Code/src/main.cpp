@@ -13,6 +13,8 @@
 #include <clocale>
 
 #include "startupwindow.h"
+#include "visivomenu.h"
+#include <QLayout>
 
 namespace py = pybind11;
 
@@ -45,7 +47,9 @@ int main(int argc, char *argv[])
 
    // Singleton<MainWindow>::Instance();
 
+    VisIVOMenu visIVOMenu;
     StartupWindow startupWindow;
+    startupWindow.layout()->setMenuBar(&visIVOMenu);
     startupWindow.show();
 
 

@@ -52,6 +52,8 @@
 #include <cmath>
 #include <string>
 
+#include "visivomenu.h"
+
 namespace py = pybind11;
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor,
@@ -67,6 +69,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(filepath);
+
 
     readFitsHeader();
 
@@ -92,7 +95,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
 
-    ui->menuWCS->addActions(wcsGroup->actions());
+   // ui->menuWCS->addActions(wcsGroup->actions());
 
     readerCube = vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
@@ -282,13 +285,13 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
         legendActorCube->setWCS(WCS_GALACTIC);
         legendActorSlice->setWCS(WCS_GALACTIC);
         legendActorMoment->setWCS(WCS_GALACTIC);
-        ui->menuWCS->actions().at(1)->setChecked(true);
+       // ui->menuWCS->actions().at(1)->setChecked(true);
     } else if (ctype1.startsWith("RA")) {
         // FK5
         legendActorCube->setWCS(WCS_J2000);
         legendActorSlice->setWCS(WCS_J2000);
         legendActorMoment->setWCS(WCS_J2000);
-        ui->menuWCS->actions().at(2)->setChecked(true);
+       // ui->menuWCS->actions().at(2)->setChecked(true);
     }
 
     bunit = fitsHeader.value("BUNIT");
@@ -303,6 +306,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 
     currentSlice = 0;
     updateSliceDatacube();
+
+    VisIVOMenu visIVOMenu;
+    this->setMenuBar(&visIVOMenu);
 }
 
 vtkWindowCube::~vtkWindowCube()

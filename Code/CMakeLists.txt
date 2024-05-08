@@ -199,6 +199,8 @@ set(PROJECT_SOURCES
     src/viewselectedsourcedataset.h
     src/visivoimporterdesktop.cpp
     src/visivoimporterdesktop.h
+    src/visivomenu.h
+    src/visivomenu.cpp
     src/visivoutilsdesktop.cpp
     src/visivoutilsdesktop.h
     src/vispoint.cpp
