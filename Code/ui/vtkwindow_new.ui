@@ -1501,65 +1501,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>4064</width>
-     <height>24</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menuFile">
-    <property name="title">
-     <string>File</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menuWindow">
-    <property name="title">
-     <string>Window</string>
-    </property>
-    <addaction name="actionTools"/>
-    <addaction name="actionInfo"/>
-   </widget>
-   <widget class="QMenu" name="menuMoment">
-    <property name="title">
-     <string>Moment</string>
-    </property>
-    <addaction name="actionCalculate_order_0"/>
-    <addaction name="actionCalculate_order_1"/>
-   </widget>
-   <widget class="QMenu" name="menuCamera">
-    <property name="title">
-     <string>Camera</string>
-    </property>
-    <addaction name="actionFront"/>
-    <addaction name="actionBack"/>
-    <addaction name="actionTop"/>
-    <addaction name="actionRight"/>
-    <addaction name="actionBottom"/>
-    <addaction name="actionLeft"/>
-   </widget>
-   <widget class="QMenu" name="menuTools">
-    <property name="title">
-     <string>Tools</string>
-    </property>
-    <addaction name="actionCAESAR"/>
-    <addaction name="actionProfile"/>
-   </widget>
-   <widget class="QMenu" name="menuWCS">
-    <property name="title">
-     <string>WCS</string>
-    </property>
-    <addaction name="separator"/>
-   </widget>
-   <addaction name="menuFile"/>
-   <addaction name="menuWindow"/>
-   <addaction name="menuCamera"/>
-   <addaction name="menuMoment"/>
-   <addaction name="menuTools"/>
-   <addaction name="menuWCS"/>
-  </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionTools">
    <property name="text">

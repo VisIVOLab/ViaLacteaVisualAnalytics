@@ -934,7 +934,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint *vis)
     ui->setupUi(this);
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     ui->actionSave_session->setEnabled(false);
-    ui->menuMoment->menuAction()->setVisible(false);
+   // ui->menuMoment->menuAction()->setVisible(false);
     ui->ElementListWidget->hide();
     ui->tableWidget->hide();
     ui->listWidget->hide();
@@ -1048,7 +1048,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC); });
 
-    ui->menuWCS->addActions(wcsGroup->actions());
+    //ui->menuWCS->addActions(wcsGroup->actions());
 
     switch (b) {
     case 0: {
@@ -1056,8 +1056,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
         this->setWindowTitle(myfits->GetFileName().c_str());
         this->isDatacube = false;
-        ui->menuCamera->menuAction()->setVisible(false);
-        ui->menuMoment->menuAction()->setVisible(false);
+  //      ui->menuCamera->menuAction()->setVisible(false);
+  //      ui->menuMoment->menuAction()->setVisible(false);
         ui->cameraControlgroupBox->hide();
         ui->selectionGroupBox->hide();
         ui->ThresholdGroupBox->hide();
@@ -1106,24 +1106,24 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         QAction *select = new QAction("Select", this);
         select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
         connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
-        ui->menuWindow->addAction(select);
+        //ui->menuWindow->addAction(select);
         QAction *extract = new QAction("Extract", this);
         extract->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_E));
         connect(extract, &QAction::triggered, this, &vtkwindow_new::setVtkInteractorExtractSources);
-        ui->menuWindow->addAction(extract);
+      //  ui->menuWindow->addAction(extract);
         QAction *filter = new QAction("Filter", this);
         connect(filter, &QAction::triggered, this, &vtkwindow_new::openFilterDialog);
-        ui->menuWindow->addAction(filter);
+    //    ui->menuWindow->addAction(filter);
         auto actionImportLayer = new QAction("Add new FITS file...", this);
         connect(actionImportLayer, &QAction::triggered, this,
                 &vtkwindow_new::addLocalFileTriggered);
-        ui->menuFile->addAction(actionImportLayer);
-        QMenu *compact = ui->menuFile->addMenu("Add compact sources");
-        ui->menuFile->addAction(ui->actionSave_session);
+      //  ui->menuFile->addAction(actionImportLayer);
+        //QMenu *compact = ui->menuFile->addMenu("Add compact sources");
+      //  ui->menuFile->addAction(ui->actionSave_session);
         QAction *local = new QAction("Local", this);
         local->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
         connect(local, SIGNAL(triggered()), this, SLOT(addLocalSources()));
-        compact->addAction(local);
+     //   compact->addAction(local);
         QAction *localJson = new QAction("From JSON catalogue");
         connect(localJson, &QAction::triggered, this, [this]() {
             QString fn = QFileDialog::getOpenFileName(this, "Open JSON Catalogue", QDir::homePath(),
@@ -1132,22 +1132,22 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
                 addSourcesFromJson(fn);
             }
         });
-        compact->addAction(localJson);
+      //  compact->addAction(localJson);
         QAction *ds9 = new QAction("From DS9 Region");
         connect(ds9, &QAction::triggered, this, &vtkwindow_new::loadDS9RegionFile);
-        compact->addAction(ds9);
+      //  compact->addAction(ds9);
         QAction *remote = new QAction("Remote", this);
         remote->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
         connect(remote, SIGNAL(triggered()), this, SLOT(setSkyRegionSelectorInteractorStyle()));
-        compact->addAction(remote);
+   //     compact->addAction(remote);
         QAction *normal_selector = new QAction("Normal", this);
         normal_selector->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_N));
         connect(normal_selector, SIGNAL(triggered()), this, SLOT(setVtkInteractorStyleImage()));
-        compact->addAction(normal_selector);
+      //  compact->addAction(normal_selector);
         QAction *selector_3D = new QAction("3D", this);
         selector_3D->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_3));
         connect(selector_3D, SIGNAL(triggered()), this, SLOT(on_tdRectPushButton_clicked()));
-        compact->addAction(selector_3D);
+        // compact->addAction(selector_3D);
         setVtkInteractorStyleImage();
         vtkSmartPointer<vtkImageShiftScale> resultScale =
                 vtkSmartPointer<vtkImageShiftScale>::New();
@@ -1183,10 +1183,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         legendScaleActorImage->setFitsFile(myfits->GetFileName());
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
             legendScaleActorImage->setWCS(3);
-            ui->menuWCS->actions().at(1)->setChecked(true);
+           // ui->menuWCS->actions().at(1)->setChecked(true);
         } else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive) == 0) {
             legendScaleActorImage->setWCS(1);
-            ui->menuWCS->actions().at(2)->setChecked(true);
+            //ui->menuWCS->actions().at(2)->setChecked(true);
         }
 
         m_Ren1->AddActor(legendScaleActorImage);
@@ -1209,7 +1209,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         this->naxis3 = vis->GetNaxes(2);
 
         // ui->setupUi(this);
-        ui->menuTools->menuAction()->setVisible(false);
+        // ui->menuTools->menuAction()->setVisible(false);
         ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
@@ -1238,13 +1238,13 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->filterGroupBox->hide();
         if (myfits->ctypeXY) {
             // Replace moment with a collapse option
-            ui->menuMoment->menuAction()->setVisible(false);
-            ui->menuWCS->menuAction()->setVisible(false);
-            auto m = new QMenu("Actions", ui->menubar);
-            auto a = new QAction("Collapse", m);
-            connect(a, &QAction::triggered, this, &vtkwindow_new::actionCollapseTriggered);
-            m->addAction(a);
-            ui->menubar->addMenu(m);
+          //  ui->menuMoment->menuAction()->setVisible(false);
+          //  ui->menuWCS->menuAction()->setVisible(false);
+         //   auto m = new QMenu("Actions", ui->menubar);
+           // auto a = new QAction("Collapse", m);
+           // connect(a, &QAction::triggered, this, &vtkwindow_new::actionCollapseTriggered);
+            //m->addAction(a);
+        //    ui->menubar->addMenu(m);
         }
         ui->minLineEdit->setText(QString::number(min, 'f', 4));
         ui->maxLineEdit->setText(QString::number(max, 'f', 4));
@@ -1336,10 +1336,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         legendScaleActorImage->setFitsFile(myfits->GetFileName());
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
             legendScaleActorImage->setWCS(3);
-            ui->menuWCS->actions().at(1)->setChecked(true);
+         //   ui->menuWCS->actions().at(1)->setChecked(true);
         } else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive) == 0) {
             legendScaleActorImage->setWCS(1);
-            ui->menuWCS->actions().at(2)->setChecked(true);
+           // ui->menuWCS->actions().at(2)->setChecked(true);
         }
 
         m_Ren1->AddActor(legendScaleActorImage);
@@ -1378,10 +1378,10 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         legendScale3DActor->setFitsFile(myfits->GetFileName());
         if (QString::compare(myfits->getCtype1().left(2), "GL", Qt::CaseInsensitive) == 0) {
             legendScale3DActor->setWCS(3);
-            ui->menuWCS->actions().at(1)->setChecked(true);
+            //ui->menuWCS->actions().at(1)->setChecked(true);
         } else if (QString::compare(myfits->getCtype1().left(2), "RA", Qt::CaseInsensitive) == 0) {
             legendScale3DActor->setWCS(1);
-            ui->menuWCS->actions().at(2)->setChecked(true);
+            //ui->menuWCS->actions().at(2)->setChecked(true);
         }
 
         m_Ren2->AddActor(legendScale3DActor);

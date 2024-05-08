@@ -12,14 +12,27 @@ public:
     explicit VisIVOMenu(QWidget *parent = nullptr);
 private:
     QMenu *fileMenu;
+    QMenu *fileAddCompactMenu;
     QMenu *cameraMenu;
     QMenu *momentMenu;
     QMenu *viewMenu;
     QMenu *wcsMenu;
     QMenu *actionMenu;
+    QMenu *windowMenu;
+    QMenu *toolsMenu;
 
 private slots:
+    //file
+    void actionAddFitsFileTriggered();
+    void actionLocalCompactSourcesTriggered();
+    void actionJsonCompactSourcesTriggered();
+    void actionDS9CompactSourcesTriggered();
+    void actionRemoteCompactSourcesTriggered();
+    void action3DCompactSourcesTriggered();
+    void actionSaveSessionTriggered();
     void exitApplication();
+
+    //action
     void actionFrontTriggered();
     void actionBackTriggered();
     void actionTopTriggered();
@@ -41,6 +54,15 @@ private slots:
     void actionExtract_spectrumTriggered();
     void actionPVTriggered();
     void actionFilterTriggered();
+    //window
+    void actionInfoWindowTriggered();
+    void actionSelectWindowTriggered();
+    void actionExtractWindowTriggered();
+    void actionFilterWindowTriggered();
+    //tools
+    void actionSouceFindersTriggered();
+    void actionProfileTriggered();
+
 
 };
 

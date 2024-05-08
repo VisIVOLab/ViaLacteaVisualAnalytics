@@ -8,10 +8,36 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
     fileMenu = addMenu("File");
 
+    QAction *actionAddFitsFile = fileMenu->addAction("Add new FITS file");
+    connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
+
+    fileAddCompactMenu = fileMenu->addMenu("Add compact sources");
+    QAction *localCompactSources = fileAddCompactMenu->addAction("Local");
+    connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionLocalCompactSourcesTriggered);
+    QAction *jsonCompactSources = fileAddCompactMenu->addAction("From JSON catalogue");
+    connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionJsonCompactSourcesTriggered);
+    QAction *ds9CompactSources = fileAddCompactMenu->addAction("From DS9 Region");
+    connect(ds9CompactSources, &QAction::triggered, this, &VisIVOMenu::actionDS9CompactSourcesTriggered);
+    QAction *remoteCompactSources = fileAddCompactMenu->addAction("Remote");
+    connect(remoteCompactSources, &QAction::triggered, this, &VisIVOMenu::actionRemoteCompactSourcesTriggered);
+    QAction *tdCompactSources = fileAddCompactMenu->addAction("3D");
+    connect(tdCompactSources, &QAction::triggered, this, &VisIVOMenu::action3DCompactSourcesTriggered);
+
+    QAction *saveSessionFile = fileMenu->addAction("Save Session");
+    connect(saveSessionFile, &QAction::triggered, this, &VisIVOMenu::actionSaveSessionTriggered);
+
     fileMenu->addSeparator();
 
     QAction *exitAction = fileMenu->addAction("Exit");
     connect(exitAction, &QAction::triggered, this, &VisIVOMenu::exitApplication);
+
+    actionMenu= addMenu("Action");
+    QAction *actionExtract_spectrum = actionMenu->addAction("Extract Spectrum");
+    connect(actionExtract_spectrum, &QAction::triggered, this, &VisIVOMenu::actionExtract_spectrumTriggered);
+    QAction *actionPV = actionMenu->addAction("Position-Velocity plot");
+    connect(actionPV, &QAction::triggered, this, &VisIVOMenu::actionPVTriggered);
+    QAction *actionFilter = actionMenu->addAction("Spatial Filter");
+    connect(actionFilter, &QAction::triggered, this, &VisIVOMenu::actionFilterTriggered);
 
     cameraMenu = addMenu("Camera");
     QAction *actionFront = cameraMenu->addAction("Front");
@@ -40,6 +66,12 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionCalculate_order_8, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_8Triggered);
     QAction *actionCalculate_order_10 = cameraMenu->addAction("10 - the minimum value of the spectrum");
     connect(actionCalculate_order_10, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_10Triggered);
+
+    toolsMenu= addMenu("Tools");
+    QAction *actionSourceFinders = toolsMenu->addAction("Source Finders");
+    connect(actionSourceFinders, &QAction::triggered, this, &VisIVOMenu::actionSouceFindersTriggered);
+    QAction *actionProfileFinders = toolsMenu->addAction("Profile");
+    connect(actionProfileFinders, &QAction::triggered, this, &VisIVOMenu::actionProfileTriggered);
 
     viewMenu = addMenu("View");
     QAction *actionSlice_Lookup_Table = viewMenu->addAction("Edit Lookup Table");
@@ -89,17 +121,48 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
     wcsMenu->addActions(wcsGroup->actions());
 
-    actionMenu= addMenu("Action");
-    QAction *actionExtract_spectrum = actionMenu->addAction("Extract Spectrum");
-    connect(actionExtract_spectrum, &QAction::triggered, this, &VisIVOMenu::actionExtract_spectrumTriggered);
-    QAction *actionPV = actionMenu->addAction("Position-Velocity plot");
-    connect(actionPV, &QAction::triggered, this, &VisIVOMenu::actionPVTriggered);
-    QAction *actionFilter = actionMenu->addAction("Spatial Filter");
-    connect(actionFilter, &QAction::triggered, this, &VisIVOMenu::actionFilterTriggered);
+    windowMenu= addMenu("Window");
+    QAction *actionInfoWindow = windowMenu->addAction("Info");
+    connect(actionInfoWindow, &QAction::triggered, this, &VisIVOMenu::actionInfoWindowTriggered);
+    QAction *actionSelectWindow = windowMenu->addAction("Select");
+    connect(actionSelectWindow, &QAction::triggered, this, &VisIVOMenu::actionSelectWindowTriggered);
+    QAction *actionExtractWindow = windowMenu->addAction("Extract");
+    connect(actionExtractWindow, &QAction::triggered, this, &VisIVOMenu::actionExtractWindowTriggered);
+    QAction *actionFilterWindow = windowMenu->addAction("Filter");
+    connect(actionFilterWindow, &QAction::triggered, this, &VisIVOMenu::actionFilterWindowTriggered);
+
 }
 
 
 //file menu actions
+void VisIVOMenu::actionAddFitsFileTriggered()
+{
+
+}
+void VisIVOMenu::actionLocalCompactSourcesTriggered()
+{
+
+}
+void VisIVOMenu::actionJsonCompactSourcesTriggered()
+{
+
+}
+void VisIVOMenu::actionDS9CompactSourcesTriggered()
+{
+
+}
+void VisIVOMenu::actionRemoteCompactSourcesTriggered()
+{
+
+}
+void VisIVOMenu::action3DCompactSourcesTriggered()
+{
+
+}
+void VisIVOMenu::actionSaveSessionTriggered()
+{
+
+}
 void VisIVOMenu::exitApplication()
 {
     QMessageBox::StandardButton reply;
@@ -197,6 +260,33 @@ void VisIVOMenu::actionPVTriggered()
 }
 
 void VisIVOMenu::actionFilterTriggered()
+{
+
+}
+
+//window
+void VisIVOMenu::actionInfoWindowTriggered()
+{
+
+}
+void VisIVOMenu::actionSelectWindowTriggered()
+{
+
+}
+void VisIVOMenu::actionExtractWindowTriggered()
+{
+
+}
+void VisIVOMenu::actionFilterWindowTriggered()
+{
+
+}
+//tools
+void VisIVOMenu::actionSouceFindersTriggered()
+{
+
+}
+void VisIVOMenu::actionProfileTriggered()
 {
 
 }
