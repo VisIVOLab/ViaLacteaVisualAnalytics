@@ -23,6 +23,7 @@ public:
 private slots:
     void on_localOpenPushButton_clicked(bool fromHistory);
     void openLocalDC(const QString &fn);
+    void openLocalImage(const QString &fn);
     void showFitsHeader(const QString &fn);
     void on_clearPushButton_clicked();
     void on_settingsPushButton_clicked();

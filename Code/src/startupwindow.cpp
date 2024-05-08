@@ -63,7 +63,7 @@ void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory = false)
     }
 
     if (AstroUtils::isFitsImage(fn.toStdString())) {
-        //    openLocalImage(fn);
+        openLocalImage(fn);
     } else {
         openLocalDC(fn);
     }
@@ -73,6 +73,34 @@ void StartupWindow::on_clearPushButton_clicked()
 {
     ui->headerViewer->hide();
     this->historyModel->clearHistory();
+}
+void StartupWindow::openLocalImage(const QString &fn)
+{
+    auto fits = vtkSmartPointer<vtkFitsReader>::New();
+    fits->SetFileName(fn.toStdString());
+/*
+    bool doSearch = settings.value("vlkb.search", false).toBool();
+
+    if (doSearch) {
+        double coords[2], rectSize[2];
+        AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils::GetRectSize(fn.toStdString(), rectSize);
+
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone, this,
+                [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
+                    auto win = new vtkwindow_new(this, fits);
+                    win->setDbElements(results);
+                    vq->deleteLater();
+                });
+
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    } else
+    */{
+        new vtkwindow_new(this, fits);
+    }
+    this->historyModel->addRecentFile(fn);
+
 }
 
 void StartupWindow::openLocalDC(const QString &fn)
@@ -111,7 +139,7 @@ void StartupWindow::openLocalDC(const QString &fn)
 
     long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
     long size = QFileInfo(fn).size() / 1024; // B -> KB
-    int ScaleFactor = 1; // AstroUtils::calculateResizeFactor(size, maxSize);
+    int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
 
     vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
     win->show();
