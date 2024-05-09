@@ -38,6 +38,25 @@ private:
     QAction *actionRight;
     QAction *actionBottom;
     QAction *actionLeft;
+    QAction *actionCalculate_order_0;
+    QAction *actionCalculate_order_1;
+    QAction *actionCalculate_order_2;
+    QAction *actionCalculate_order_6;
+    QAction *actionCalculate_order_8;
+    QAction *actionCalculate_order_10;
+    QAction *actionSourceFinders;
+    QAction *actionProfileFinders;
+    QAction *actionSlice_Lookup_Table;
+    QAction *actionShowSlice;
+    QAction *actionShowMomentMap;
+    QAction *actionInfoWindow;
+    QAction *actionSelectWindow;
+    QAction *actionExtractWindow;
+    QAction *actionFilterWindow;
+
+
+
+
 private slots:
     //file
     void actionLoadLocalFitsTriggered();

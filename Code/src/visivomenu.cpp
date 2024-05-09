@@ -65,27 +65,27 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionLeft, &QAction::triggered, this, &VisIVOMenu::actionLeftTriggered);
 
     cameraMenu = addMenu("Moment");
-    QAction *actionCalculate_order_0 = cameraMenu->addAction("0 - the integrated value of the spectrum");
+    actionCalculate_order_0 = cameraMenu->addAction("0 - the integrated value of the spectrum");
     connect(actionCalculate_order_0, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_0Triggered);
-    QAction *actionCalculate_order_1 = cameraMenu->addAction("1 - the intensity weighted coordinate");
+    actionCalculate_order_1 = cameraMenu->addAction("1 - the intensity weighted coordinate");
     connect(actionCalculate_order_1, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_1Triggered);
-    QAction *actionCalculate_order_2 = cameraMenu->addAction("2 - the intensity weighted dispersion of the coordinate");
+    actionCalculate_order_2 = cameraMenu->addAction("2 - the intensity weighted dispersion of the coordinate");
     connect(actionCalculate_order_2, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_2Triggered);
-    QAction *actionCalculate_order_6 = cameraMenu->addAction("6 - root mean square of the spectrum (noise map)");
+    actionCalculate_order_6 = cameraMenu->addAction("6 - root mean square of the spectrum (noise map)");
     connect(actionCalculate_order_6, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_6Triggered);
-    QAction *actionCalculate_order_8 = cameraMenu->addAction("8 - maximum value of the spectrum (peak map)");
+    actionCalculate_order_8 = cameraMenu->addAction("8 - maximum value of the spectrum (peak map)");
     connect(actionCalculate_order_8, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_8Triggered);
-    QAction *actionCalculate_order_10 = cameraMenu->addAction("10 - the minimum value of the spectrum");
+    actionCalculate_order_10 = cameraMenu->addAction("10 - the minimum value of the spectrum");
     connect(actionCalculate_order_10, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_10Triggered);
 
     toolsMenu= addMenu("Tools");
-    QAction *actionSourceFinders = toolsMenu->addAction("Source Finders");
+    actionSourceFinders = toolsMenu->addAction("Source Finders");
     connect(actionSourceFinders, &QAction::triggered, this, &VisIVOMenu::actionSouceFindersTriggered);
-    QAction *actionProfileFinders = toolsMenu->addAction("Profile");
+    actionProfileFinders = toolsMenu->addAction("Profile");
     connect(actionProfileFinders, &QAction::triggered, this, &VisIVOMenu::actionProfileTriggered);
 
     viewMenu = addMenu("View");
-    QAction *actionSlice_Lookup_Table = viewMenu->addAction("Edit Lookup Table");
+    actionSlice_Lookup_Table = viewMenu->addAction("Edit Lookup Table");
     connect(actionSlice_Lookup_Table, &QAction::triggered, this, &VisIVOMenu::actionSlice_Lookup_TableTriggered);
     viewMenu->addSeparator();
     // Setup context menu to toggle slice/moment renderers
@@ -98,10 +98,10 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
    */
 
     QActionGroup *grp = new QActionGroup(this);
-    QAction *actionShowSlice = new QAction("Show Slice",grp);
+    actionShowSlice = new QAction("Show Slice",grp);
     actionShowSlice->setCheckable(true);
     actionShowSlice->setChecked(true);
-    QAction *actionShowMomentMap = new QAction("Show Moment Map",grp);
+    actionShowMomentMap = new QAction("Show Moment Map",grp);
     actionShowMomentMap->setCheckable(true);
     actionShowMomentMap->setChecked(false);
     grp->addAction(actionShowSlice);
@@ -133,13 +133,13 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     wcsMenu->addActions(wcsGroup->actions());
 
     windowMenu= addMenu("Window");
-    QAction *actionInfoWindow = windowMenu->addAction("Info");
+    actionInfoWindow = windowMenu->addAction("Info");
     connect(actionInfoWindow, &QAction::triggered, this, &VisIVOMenu::actionInfoWindowTriggered);
-    QAction *actionSelectWindow = windowMenu->addAction("Select");
+    actionSelectWindow = windowMenu->addAction("Select");
     connect(actionSelectWindow, &QAction::triggered, this, &VisIVOMenu::actionSelectWindowTriggered);
-    QAction *actionExtractWindow = windowMenu->addAction("Extract");
+    actionExtractWindow = windowMenu->addAction("Extract");
     connect(actionExtractWindow, &QAction::triggered, this, &VisIVOMenu::actionExtractWindowTriggered);
-    QAction *actionFilterWindow = windowMenu->addAction("Filter");
+    actionFilterWindow = windowMenu->addAction("Filter");
     connect(actionFilterWindow, &QAction::triggered, this, &VisIVOMenu::actionFilterWindowTriggered);
 
 }
@@ -320,6 +320,22 @@ void VisIVOMenu::configureStartupMenu()
     actionRight->setEnabled(false);
     actionBottom->setEnabled(false);
     actionLeft->setEnabled(false);
+    actionCalculate_order_0->setEnabled(false);
+    actionCalculate_order_1->setEnabled(false);
+    actionCalculate_order_2->setEnabled(false);
+    actionCalculate_order_6->setEnabled(false);
+    actionCalculate_order_8->setEnabled(false);
+    actionCalculate_order_10->setEnabled(false);
+    actionSourceFinders->setEnabled(false);
+    actionProfileFinders->setEnabled(false);
+    actionSlice_Lookup_Table->setEnabled(false);
+    actionShowSlice->setEnabled(false);
+    actionShowMomentMap->setEnabled(false);
+    wcsMenu->setEnabled(false);
+    actionInfoWindow->setEnabled(false);
+    actionSelectWindow->setEnabled(false);
+    actionExtractWindow->setEnabled(false);
+    actionFilterWindow->setEnabled(false);
 }
 
 void VisIVOMenu::configureCubeWindowMenu()
