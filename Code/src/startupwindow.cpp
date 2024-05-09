@@ -13,9 +13,11 @@
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include "visivomenu.h"
 
-StartupWindow::StartupWindow(QWidget *parent)
+StartupWindow::StartupWindow(VisIVOMenu *menu, QWidget *parent)
     : QWidget(parent),
+      visivoMenu(menu),
       ui(new Ui::StartupWindow),
       settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
       settings(settingsFile, QSettings::IniFormat)
@@ -37,6 +39,9 @@ StartupWindow::StartupWindow(QWidget *parent)
     // Setup History Manager
     this->historyModel = new RecentFilesManager(this);
     ui->historyArea->setModel(this->historyModel);
+
+    this->layout()->setMenuBar(visivoMenu);
+
 }
 
 StartupWindow::~StartupWindow()
@@ -78,7 +83,7 @@ void StartupWindow::openLocalImage(const QString &fn)
 {
     auto fits = vtkSmartPointer<vtkFitsReader>::New();
     fits->SetFileName(fn.toStdString());
-/*
+    /*
     bool doSearch = settings.value("vlkb.search", false).toBool();
 
     if (doSearch) {
@@ -195,4 +200,12 @@ void StartupWindow::on_historyArea_clicked(const QModelIndex &index)
     }
 
     this->showFitsHeader(index.data().toString());
+}
+
+
+void StartupWindow::changeEvent(QEvent *e)
+{
+    if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
+        visivoMenu->configureStartupMenu();
+    }
 }

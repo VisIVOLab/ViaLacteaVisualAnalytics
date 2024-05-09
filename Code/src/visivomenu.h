@@ -10,8 +10,13 @@ class VisIVOMenu : public QMenuBar
 
 public:
     explicit VisIVOMenu(QWidget *parent = nullptr);
+    void configureStartupMenu();
+    void configureCubeWindowMenu();
+    void configureImageWindowMenu();
+
 private:
     QMenu *fileMenu;
+    QMenu *fileLoadMenu;
     QMenu *fileAddCompactMenu;
     QMenu *cameraMenu;
     QMenu *momentMenu;
@@ -21,8 +26,21 @@ private:
     QMenu *windowMenu;
     QMenu *toolsMenu;
 
+    QAction *actionAddFitsFile;
+    QAction *actionLoadLocalFitsFile;
+    QAction *saveSessionFile;
+    QAction *actionExtract_spectrum;
+    QAction *actionPV;
+    QAction *actionFilter;
+    QAction *actionFront;
+    QAction *actionBack;
+    QAction *actionTop;
+    QAction *actionRight;
+    QAction *actionBottom;
+    QAction *actionLeft;
 private slots:
     //file
+    void actionLoadLocalFitsTriggered();
     void actionAddFitsFileTriggered();
     void actionLocalCompactSourcesTriggered();
     void actionJsonCompactSourcesTriggered();

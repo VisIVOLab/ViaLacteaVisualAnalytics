@@ -47,11 +47,10 @@ int main(int argc, char *argv[])
 
    // Singleton<MainWindow>::Instance();
 
-    VisIVOMenu visIVOMenu;
-    StartupWindow startupWindow;
-    startupWindow.layout()->setMenuBar(&visIVOMenu);
-    startupWindow.show();
-
+    VisIVOMenu *visIVOMenu = new VisIVOMenu();
+    StartupWindow *startupWindow = new StartupWindow(visIVOMenu);
+    //startupWindow.layout()->setMenuBar(&visIVOMenu);
+    startupWindow->show();
 
     return a.exec();
 }

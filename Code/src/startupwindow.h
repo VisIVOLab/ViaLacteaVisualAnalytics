@@ -11,14 +11,18 @@ class StartupWindow;
 
 class RecentFilesManager;
 class SettingForm;
+class VisIVOMenu;
 
 class StartupWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit StartupWindow(QWidget *parent = nullptr);
+    explicit StartupWindow(VisIVOMenu *menu, QWidget *parent = nullptr);
     ~StartupWindow();
+
+protected:
+    void changeEvent(QEvent *e);
 
 private slots:
     void on_localOpenPushButton_clicked(bool fromHistory);
@@ -38,6 +42,8 @@ private:
     QString settingsFile;
     QSettings settings;
     QPointer<SettingForm> settingForm;
+    VisIVOMenu *visivoMenu; // Puntatore a VisIVOMenu
+
 };
 
 #endif // STARTUPWINDOW_H

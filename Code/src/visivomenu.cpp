@@ -3,12 +3,17 @@
 #include <QAction>
 #include <QMessageBox>
 #include <QApplication>
+#include "stdio.h"
+#include "iostream"
 
 VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
     fileMenu = addMenu("File");
 
-    QAction *actionAddFitsFile = fileMenu->addAction("Add new FITS file");
+    fileLoadMenu = fileMenu->addMenu("Load");
+    actionLoadLocalFitsFile = fileLoadMenu->addAction("Load Local FITS");
+    connect(actionLoadLocalFitsFile, &QAction::triggered, this, &VisIVOMenu::actionLoadLocalFitsTriggered);
+    actionAddFitsFile = fileLoadMenu->addAction("Add new FITS file");
     connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
 
     fileAddCompactMenu = fileMenu->addMenu("Add compact sources");
@@ -23,7 +28,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     QAction *tdCompactSources = fileAddCompactMenu->addAction("3D");
     connect(tdCompactSources, &QAction::triggered, this, &VisIVOMenu::action3DCompactSourcesTriggered);
 
-    QAction *saveSessionFile = fileMenu->addAction("Save Session");
+    saveSessionFile = fileMenu->addAction("Save Session");
     connect(saveSessionFile, &QAction::triggered, this, &VisIVOMenu::actionSaveSessionTriggered);
 
     fileMenu->addSeparator();
@@ -32,25 +37,31 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(exitAction, &QAction::triggered, this, &VisIVOMenu::exitApplication);
 
     actionMenu= addMenu("Action");
-    QAction *actionExtract_spectrum = actionMenu->addAction("Extract Spectrum");
+    actionExtract_spectrum = actionMenu->addAction("Extract Spectrum");
     connect(actionExtract_spectrum, &QAction::triggered, this, &VisIVOMenu::actionExtract_spectrumTriggered);
-    QAction *actionPV = actionMenu->addAction("Position-Velocity plot");
+    actionPV = actionMenu->addAction("Position-Velocity plot");
     connect(actionPV, &QAction::triggered, this, &VisIVOMenu::actionPVTriggered);
-    QAction *actionFilter = actionMenu->addAction("Spatial Filter");
+    actionFilter = actionMenu->addAction("Spatial Filter");
     connect(actionFilter, &QAction::triggered, this, &VisIVOMenu::actionFilterTriggered);
 
     cameraMenu = addMenu("Camera");
-    QAction *actionFront = cameraMenu->addAction("Front");
+    actionFront = cameraMenu->addAction("Front");
+    actionFront->setIcon(QIcon(":/icons/PIC_FRONT.bmp"));
     connect(actionFront, &QAction::triggered, this, &VisIVOMenu::actionFrontTriggered);
-    QAction *actionBack = cameraMenu->addAction("Back");
+    actionBack = cameraMenu->addAction("Back");
+    actionBack->setIcon(QIcon(":/icons/PIC_BACK.bmp"));
     connect(actionBack, &QAction::triggered, this, &VisIVOMenu::actionBackTriggered);
-    QAction *actionTop = cameraMenu->addAction("Top");
+    actionTop = cameraMenu->addAction("Top");
+    actionTop->setIcon(QIcon(":/icons/PIC_TOP.bmp"));
     connect(actionTop, &QAction::triggered, this, &VisIVOMenu::actionTopTriggered);
-    QAction *actionRight = cameraMenu->addAction("Right");
+    actionRight = cameraMenu->addAction("Right");
+    actionRight->setIcon(QIcon(":/icons/PIC_RIGHT.bmp"));
     connect(actionRight, &QAction::triggered, this, &VisIVOMenu::actionRightTriggered);
-    QAction *actionBottom = cameraMenu->addAction("Front");
+    actionBottom = cameraMenu->addAction("Front");
+    actionBottom->setIcon(QIcon(":/icons/PIC_BOTTOM.bmp"));
     connect(actionBottom, &QAction::triggered, this, &VisIVOMenu::actionBottomTriggered);
-    QAction *actionLeft = cameraMenu->addAction("Left");
+    actionLeft = cameraMenu->addAction("Left");
+    actionLeft->setIcon(QIcon(":/icons/PIC_LEFT.bmp"));
     connect(actionLeft, &QAction::triggered, this, &VisIVOMenu::actionLeftTriggered);
 
     cameraMenu = addMenu("Moment");
@@ -135,6 +146,10 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 
 
 //file menu actions
+void VisIVOMenu::actionLoadLocalFitsTriggered()
+{
+
+}
 void VisIVOMenu::actionAddFitsFileTriggered()
 {
 
@@ -287,6 +302,31 @@ void VisIVOMenu::actionSouceFindersTriggered()
 
 }
 void VisIVOMenu::actionProfileTriggered()
+{
+
+}
+
+void VisIVOMenu::configureStartupMenu()
+{
+    actionAddFitsFile->setEnabled(false);
+    fileAddCompactMenu->setEnabled(false);
+    saveSessionFile->setEnabled(false);
+    actionExtract_spectrum->setEnabled(false);
+    actionPV->setEnabled(false);
+    actionFilter->setEnabled(false);
+    actionFront->setEnabled(false);
+    actionBack->setEnabled(false);
+    actionTop->setEnabled(false);
+    actionRight->setEnabled(false);
+    actionBottom->setEnabled(false);
+    actionLeft->setEnabled(false);
+}
+
+void VisIVOMenu::configureCubeWindowMenu()
+{
+
+}
+void VisIVOMenu::configureImageWindowMenu()
 {
 
 }
