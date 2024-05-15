@@ -56,15 +56,15 @@
 
 namespace py = pybind11;
 
-vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor,
-                             QString velocityUnit)
+vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor, QString velocityUnit, VisIVOMenu *menu)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowCube),
       filepath(filepath),
       ScaleFactor(ScaleFactor),
       parentWindow(qobject_cast<vtkwindow_new *>(parent)),
       currentSlice(0),
-      velocityUnit(velocityUnit)
+      velocityUnit(velocityUnit),
+      visivoMenu(menu)
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
@@ -307,8 +307,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     currentSlice = 0;
     updateSliceDatacube();
 
-    VisIVOMenu visIVOMenu;
-    this->setMenuBar(&visIVOMenu);
+    this->layout()->setMenuBar(visivoMenu);
 }
 
 vtkWindowCube::~vtkWindowCube()

@@ -146,7 +146,7 @@ void StartupWindow::openLocalDC(const QString &fn)
     long size = QFileInfo(fn).size() / 1024; // B -> KB
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
 
-    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
+    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor,"km/s", visivoMenu);
     win->show();
     win->activateWindow();
     win->raise();
