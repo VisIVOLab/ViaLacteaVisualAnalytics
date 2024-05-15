@@ -5,6 +5,7 @@
 #include <QApplication>
 #include "stdio.h"
 #include "iostream"
+#include "qdebug.h"
 
 VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
@@ -13,6 +14,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     fileLoadMenu = fileMenu->addMenu("Load");
     actionLoadLocalFitsFile = fileLoadMenu->addAction("Load Local FITS");
     connect(actionLoadLocalFitsFile, &QAction::triggered, this, &VisIVOMenu::actionLoadLocalFitsTriggered);
+    
     actionAddFitsFile = fileLoadMenu->addAction("Add new FITS file");
     connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
 
@@ -57,7 +59,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     actionRight = cameraMenu->addAction("Right");
     actionRight->setIcon(QIcon(":/icons/PIC_RIGHT.bmp"));
     connect(actionRight, &QAction::triggered, this, &VisIVOMenu::actionRightTriggered);
-    actionBottom = cameraMenu->addAction("Front");
+    actionBottom = cameraMenu->addAction("Bottom");
     actionBottom->setIcon(QIcon(":/icons/PIC_BOTTOM.bmp"));
     connect(actionBottom, &QAction::triggered, this, &VisIVOMenu::actionBottomTriggered);
     actionLeft = cameraMenu->addAction("Left");
@@ -148,7 +150,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 //file menu actions
 void VisIVOMenu::actionLoadLocalFitsTriggered()
 {
-
+    emit loadLocalFitsFileRequested();
 }
 void VisIVOMenu::actionAddFitsFileTriggered()
 {
@@ -190,32 +192,32 @@ void VisIVOMenu::exitApplication()
 //Camera menu actions
 void VisIVOMenu::actionFrontTriggered()
 {
-
+    emit cameraFrontTriggered();
 }
 
 void VisIVOMenu::actionBackTriggered()
 {
-
+    emit cameraBackTriggered();
 }
 
 void VisIVOMenu::actionTopTriggered()
 {
-
+    emit cameraTopTriggered();
 }
 
 void VisIVOMenu::actionRightTriggered()
 {
-
+    emit cameraRightTriggered();
 }
 
 void VisIVOMenu::actionBottomTriggered()
 {
-
+    emit cameraBottomTriggered();
 }
 
 void VisIVOMenu::actionLeftTriggered()
 {
-
+    emit cameraLeftTriggered();
 }
 
 //moment

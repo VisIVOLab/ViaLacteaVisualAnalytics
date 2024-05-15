@@ -43,7 +43,6 @@ private:
     QSettings settings;
     QPointer<SettingForm> settingForm;
     VisIVOMenu *visivoMenu; // Puntatore a VisIVOMenu
-
 };
 
 #endif // STARTUPWINDOW_H

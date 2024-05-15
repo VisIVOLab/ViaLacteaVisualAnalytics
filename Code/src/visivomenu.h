@@ -54,12 +54,15 @@ private:
     QAction *actionExtractWindow;
     QAction *actionFilterWindow;
 
+public slots:
+    void actionLoadLocalFitsTriggered();
+    //action
+    void actionFrontTriggered();
 
 
 
 private slots:
     //file
-    void actionLoadLocalFitsTriggered();
     void actionAddFitsFileTriggered();
     void actionLocalCompactSourcesTriggered();
     void actionJsonCompactSourcesTriggered();
@@ -70,7 +73,6 @@ private slots:
     void exitApplication();
 
     //action
-    void actionFrontTriggered();
     void actionBackTriggered();
     void actionTopTriggered();
     void actionRightTriggered();
@@ -100,6 +102,14 @@ private slots:
     void actionSouceFindersTriggered();
     void actionProfileTriggered();
 
+signals:
+    void loadLocalFitsFileRequested();
+    void cameraFrontTriggered();
+    void cameraBackTriggered();
+    void cameraTopTriggered();
+    void cameraRightTriggered();
+    void cameraLeftTriggered();
+    void cameraBottomTriggered();
 
 };
 

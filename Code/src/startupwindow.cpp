@@ -41,7 +41,6 @@ settings(settingsFile, QSettings::IniFormat)
     ui->historyArea->setModel(this->historyModel);
     
     this->layout()->setMenuBar(visivoMenu);
-    
 }
 
 StartupWindow::~StartupWindow()
@@ -207,5 +206,8 @@ void StartupWindow::changeEvent(QEvent *e)
 {
     if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
         visivoMenu->configureStartupMenu();
+        connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
+            on_localOpenPushButton_clicked(false); });
+
     }
 }

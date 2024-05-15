@@ -959,5 +959,14 @@ void vtkWindowCube::changeEvent(QEvent *e)
 {
     if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
         visivoMenu->configureCubeWindowMenu();
+        connect(visivoMenu, &VisIVOMenu::cameraFrontTriggered, this, &vtkWindowCube::on_actionFront_triggered);
+        connect(visivoMenu, &VisIVOMenu::cameraBackTriggered, this, &vtkWindowCube::on_actionBack_triggered);
+        connect(visivoMenu, &VisIVOMenu::cameraTopTriggered, this, 
+                &vtkWindowCube::on_actionTop_triggered);
+        connect(visivoMenu, &VisIVOMenu::cameraBottomTriggered, this, &vtkWindowCube::on_actionBottom_triggered);
+        connect(visivoMenu, &VisIVOMenu::cameraLeftTriggered, this, &vtkWindowCube::on_actionLeft_triggered);
+        connect(visivoMenu, &VisIVOMenu::cameraRightTriggered, this, &vtkWindowCube::on_actionRight_triggered);
+
+
     }
 }
