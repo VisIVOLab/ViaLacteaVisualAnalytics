@@ -119,6 +119,8 @@
 #include "ui_lutcustomize.h"
 #include "ui_profilewindow.h"
 
+#include "visivomenu.h"
+
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
 VTK_MODULE_INIT(vtkRenderingFreeType)
@@ -999,8 +1001,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint *vis)
 }
 
 vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis, int b,
-                             vtkwindow_new *p, bool activate)
-    : QMainWindow(parent), ui(new Ui::vtkwindow_new)
+                             vtkwindow_new *p, bool activate, VisIVOMenu *menu)
+    : QMainWindow(parent), ui(new Ui::vtkwindow_new), visivoMenu(menu)
 {
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
@@ -1025,6 +1027,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     liveUpdateProfile = false;
 
     ui->setupUi(this);
+
+    this->layout()->setMenuBar(visivoMenu);
+    visivoMenu->configureImageWindowMenu();
 
     auto wcsGroup = new QActionGroup(this);
     auto wcsItem = new QAction("Galactic", wcsGroup);
@@ -4946,4 +4951,11 @@ void vtkwindow_new::on_toolButton_2_clicked()
     lcustom->configureFitsImage();
     lcustom->show();
     // changeFitsScale("Gray",selected_scale);
+}
+
+void vtkwindow_new::changeEvent(QEvent *e)
+{
+    if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
+        visivoMenu->configureImageWindowMenu();
+    }
 }

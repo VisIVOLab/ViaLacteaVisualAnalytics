@@ -103,7 +103,7 @@ private:
     double lowerBound;
     double upperBound;
     
-    VisIVOMenu *visivoMenu; // Puntatore a VisIVOMenu
+    VisIVOMenu *visivoMenu;
 
 
     vtkSmartPointer<vtkRenderer> rendererSlice;
@@ -137,6 +137,10 @@ private:
     void resetCamera();
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);
+
+protected:
+    void changeEvent(QEvent *e);
+
 };
 
 #endif // VTKWINDOWCUBE_H

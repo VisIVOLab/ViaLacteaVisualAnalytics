@@ -307,6 +307,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     currentSlice = 0;
     updateSliceDatacube();
 
+    visivoMenu->configureCubeWindowMenu();
     this->layout()->setMenuBar(visivoMenu);
 }
 
@@ -952,4 +953,11 @@ void vtkWindowCube::on_actionFilter_triggered()
 {
     FilterFITSDialog d(this->filepath, this);
     d.exec();
+}
+
+void vtkWindowCube::changeEvent(QEvent *e)
+{
+    if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
+        visivoMenu->configureCubeWindowMenu();
+    }
 }

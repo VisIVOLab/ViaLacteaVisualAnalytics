@@ -16,32 +16,32 @@
 #include "visivomenu.h"
 
 StartupWindow::StartupWindow(VisIVOMenu *menu, QWidget *parent)
-    : QWidget(parent),
-      visivoMenu(menu),
-      ui(new Ui::StartupWindow),
-      settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
-      settings(settingsFile, QSettings::IniFormat)
+: QWidget(parent),
+visivoMenu(menu),
+ui(new Ui::StartupWindow),
+settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
+settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
     ui->headerViewer->hide();
-
+    
     QPalette pal = QPalette();
     pal.setColor(QPalette::Window, QColor::fromRgb(234, 233, 229));
     ui->leftContainer->setAutoFillBackground(true);
     ui->leftContainer->setPalette(pal);
-
+    
     QPalette pal2 = QPalette();
     pal2.setColor(QPalette::Window, Qt::white);
-
+    
     ui->buttonArea->setAutoFillBackground(true);
     ui->buttonArea->setPalette(pal2);
-
+    
     // Setup History Manager
     this->historyModel = new RecentFilesManager(this);
     ui->historyArea->setModel(this->historyModel);
-
+    
     this->layout()->setMenuBar(visivoMenu);
-
+    
 }
 
 StartupWindow::~StartupWindow()
@@ -62,11 +62,11 @@ void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory = false)
             fn = selectedIndex.data(Qt::DisplayRole).toString();
         }
     }
-
+    
     if (fn.isEmpty()) {
         return;
     }
-
+    
     if (AstroUtils::isFitsImage(fn.toStdString())) {
         openLocalImage(fn);
     } else {
@@ -84,28 +84,28 @@ void StartupWindow::openLocalImage(const QString &fn)
     auto fits = vtkSmartPointer<vtkFitsReader>::New();
     fits->SetFileName(fn.toStdString());
     /*
-    bool doSearch = settings.value("vlkb.search", false).toBool();
-
-    if (doSearch) {
-        double coords[2], rectSize[2];
-        AstroUtils::GetCenterCoords(fn.toStdString(), coords);
-        AstroUtils::GetRectSize(fn.toStdString(), rectSize);
-
-        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-        connect(vq, &VialacteaInitialQuery::searchDone, this,
-                [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
-                    auto win = new vtkwindow_new(this, fits);
-                    win->setDbElements(results);
-                    vq->deleteLater();
-                });
-
-        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-    } else
-    */{
-        new vtkwindow_new(this, fits);
+     bool doSearch = settings.value("vlkb.search", false).toBool();
+     
+     if (doSearch) {
+     double coords[2], rectSize[2];
+     AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+     AstroUtils::GetRectSize(fn.toStdString(), rectSize);
+     
+     VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+     connect(vq, &VialacteaInitialQuery::searchDone, this,
+     [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
+     auto win = new vtkwindow_new(this, fits);
+     win->setDbElements(results);
+     vq->deleteLater();
+     });
+     
+     vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+     } else
+     */
+    {
+        new vtkwindow_new(this, fits,0,0, true, visivoMenu);
     }
     this->historyModel->addRecentFile(fn);
-
 }
 
 void StartupWindow::openLocalDC(const QString &fn)
@@ -122,7 +122,7 @@ void StartupWindow::openLocalDC(const QString &fn)
                                                 "The header does not contain all the necessary "
                                                 "keywords!\nDo you want to add them?",
                                                 QMessageBox::Yes | QMessageBox::No);
-
+                
                 if (res == QMessageBox::Yes) {
                     QStringList qMissing;
                     std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
@@ -137,20 +137,20 @@ void StartupWindow::openLocalDC(const QString &fn)
             QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
             return;
         }
-        new vtkwindow_new(this, fitsReader_dc, 1, nullptr);
+        new vtkwindow_new(this, fitsReader_dc, 1, nullptr, true, visivoMenu);
         this->historyModel->addRecentFile(fn);
         return;
     }
-
+    
     long maxSize = settings.value("downscaleSize", 1024).toInt() * 1024; // MB->KB
     long size = QFileInfo(fn).size() / 1024; // B -> KB
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
-
+    
     vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor,"km/s", visivoMenu);
     win->show();
     win->activateWindow();
     win->raise();
-
+    
     // Aggiungi alcuni file recenti di esempio al gestore dei file recenti
     this->historyModel->addRecentFile(fn);
 }
@@ -189,7 +189,7 @@ void StartupWindow::on_historyArea_activated(const QModelIndex &index)
     if (!index.isValid()) {
         return;
     }
-
+    
     this->showFitsHeader(index.data().toString());
 }
 
@@ -198,7 +198,7 @@ void StartupWindow::on_historyArea_clicked(const QModelIndex &index)
     if (!index.isValid()) {
         return;
     }
-
+    
     this->showFitsHeader(index.data().toString());
 }
 

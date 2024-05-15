@@ -340,9 +340,64 @@ void VisIVOMenu::configureStartupMenu()
 
 void VisIVOMenu::configureCubeWindowMenu()
 {
+    actionAddFitsFile->setEnabled(false);
+    fileAddCompactMenu->setEnabled(false);
+    saveSessionFile->setEnabled(false);
+    actionExtract_spectrum->setEnabled(true);
+    actionPV->setEnabled(true);
+    actionFilter->setEnabled(true);
+    actionFront->setEnabled(true);
+    actionBack->setEnabled(true);
+    actionTop->setEnabled(true);
+    actionRight->setEnabled(true);
+    actionBottom->setEnabled(true);
+    actionLeft->setEnabled(true);
+    actionCalculate_order_0->setEnabled(true);
+    actionCalculate_order_1->setEnabled(true);
+    actionCalculate_order_2->setEnabled(true);
+    actionCalculate_order_6->setEnabled(true);
+    actionCalculate_order_8->setEnabled(true);
+    actionCalculate_order_10->setEnabled(true);
+    actionSourceFinders->setEnabled(false);
+    actionProfileFinders->setEnabled(false);
+    actionSlice_Lookup_Table->setEnabled(false);
+    actionShowSlice->setEnabled(true);
+    actionShowMomentMap->setEnabled(true);
+    wcsMenu->setEnabled(true);
+    actionInfoWindow->setEnabled(false);
+    actionSelectWindow->setEnabled(false);
+    actionExtractWindow->setEnabled(false);
+    actionFilterWindow->setEnabled(false);
 
 }
 void VisIVOMenu::configureImageWindowMenu()
 {
-
+    actionAddFitsFile->setEnabled(true);
+    fileAddCompactMenu->setEnabled(true);
+    saveSessionFile->setEnabled(true);
+    actionExtract_spectrum->setEnabled(false);
+    actionPV->setEnabled(false);
+    actionFilter->setEnabled(false);
+    actionFront->setEnabled(false);
+    actionBack->setEnabled(false);
+    actionTop->setEnabled(false);
+    actionRight->setEnabled(false);
+    actionBottom->setEnabled(false);
+    actionLeft->setEnabled(false);
+    actionCalculate_order_0->setEnabled(false);
+    actionCalculate_order_1->setEnabled(false);
+    actionCalculate_order_2->setEnabled(false);
+    actionCalculate_order_6->setEnabled(false);
+    actionCalculate_order_8->setEnabled(false);
+    actionCalculate_order_10->setEnabled(false);
+    actionSourceFinders->setEnabled(true);
+    actionProfileFinders->setEnabled(true);
+    actionSlice_Lookup_Table->setEnabled(false);
+    actionShowSlice->setEnabled(false);
+    actionShowMomentMap->setEnabled(false);
+    wcsMenu->setEnabled(true);
+    actionInfoWindow->setEnabled(true);
+    actionSelectWindow->setEnabled(true);
+    actionExtractWindow->setEnabled(true);
+    actionFilterWindow->setEnabled(true);
 }

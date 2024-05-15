@@ -67,6 +67,7 @@ class FitsImageStatisiticInfo;
 class DS9Region;
 class Catalogue;
 class LutCustomize;
+class VisIVOMenu;
 
 namespace Ui {
 class vtkwindow_new;
@@ -83,7 +84,7 @@ class vtkwindow_new : public QMainWindow
 public:
     explicit vtkwindow_new(QWidget *parent = 0, VisPoint *vis = 0);
     explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis = 0, int b = 0,
-                           vtkwindow_new *p = 0, bool activate = true);
+                           vtkwindow_new *p = 0, bool activate = true, VisIVOMenu *menu= NULL);
     // explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
 
@@ -304,6 +305,8 @@ private:
     vtkSmartPointer<vtkLegendScaleActorWCS> legendScale3DActor;
     vtkSmartPointer<vtkScalarBarActor> scalarBar;
     QPointer<LutCustomize> lcustom;
+    VisIVOMenu *visivoMenu;
+
 
 public slots:
     // void updateCoords(vtkObject*);
@@ -354,6 +357,8 @@ protected:
     // vtkEventQtSlotConnect* Connections;
     vtkVolume *m_volume;
     void closeEvent(QCloseEvent *event);
+    void changeEvent(QEvent *e);
+
 
 private slots:
     void addLayer(vtkfitstoolwidgetobject *o, bool enabled = true);
