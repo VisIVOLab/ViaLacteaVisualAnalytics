@@ -218,6 +218,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->histogramPlot->hide();
     connect(ui->resultsTableWidget->horizontalHeader(), SIGNAL(sectionClicked(int)), this,
             SLOT(sectionClicked(int)));
+
+    // create collapsed Nodes and set invisible
+    on_actionCollapse_triggered();
 }
 
 QDataStream &operator<<(QDataStream &out, QList<SED *> &sedlist)
@@ -1180,13 +1183,6 @@ void SEDVisualizerPlot::on_actionScreenshot_triggered()
 
 void SEDVisualizerPlot::on_actionCollapse_triggered()
 {
-    QPen pen;
-    pen.setStyle(Qt::DashLine);
-    pen.setColor(Qt::lightGray);
-
-    for (int i = 0; i < originalGraphs.size(); i++) {
-        originalGraphs.at(i)->setPen(pen);
-    }
 
     SED *coll_sed = new SED();
     QVector<double> x, y;
@@ -1230,7 +1226,9 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
         cp->setLon(0);
         cp->setErrorFlux(err_flux_sum);
         cp->setNode(tmp_node);
+        cp->setVisible(false);
         collapsedGraphPoints.push_back(cp);
+        collapse_coordinate_to_element.insert(qMakePair(j, flux_sum), cp);
         cnt++;
     }
     coll_sed->setRootNode(tmp_node);
@@ -1241,6 +1239,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     collapsedGraph->setPen(QPen(Qt::red)); // line color red for second graph
     collapsedGraph->setScatterStyle(QCPScatterStyle::ssNone); // no nodes
     collapsedGraph->setSelectable(QCP::stNone); // no line selectable
+    collapsedGraph->setVisible(false);
 
     // generate nodes collapse-graph
     collapsedNodes = ui->customPlot->addGraph();
@@ -1254,6 +1253,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     collapsedNodes->setSelectionDecorator(decorator);
     collapsedNodes->setScatterStyle(scatterStyless);
     collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
+    collapsedNodes->setVisible(false);
     ui->customPlot->replot();
     // sed_list.insert(0, coll_sed); // to save/export it
 }
@@ -2189,27 +2189,37 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
 
 void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
 {
+    collapsedGraph->setVisible(checked);
+    collapsedNodes->setVisible(checked);
+    for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
+        SEDPlotPointCustom *cp;
+        cp = collapsedGraphPoints.at(i);
+        cp->setVisible(checked);
+    }
+    QPen pen;
+
     if (checked) {
         graphSEDNodes->setSelectable(QCP::stNone); // disable graphSEDNodes selection
-        this->on_actionCollapse_triggered();
+        // set originalgraph in dotline gray
+        pen.setStyle(Qt::DashLine);
+        pen.setColor(Qt::lightGray);
+        // TODO rendere selezionabile i collapse node (già gestita dalla setVisible?)
     } else {
-        QPen pen;
+        // set original graph line blue
         pen.setStyle(Qt::SolidLine);
-        pen.setColor(Qt::black);
-        for (int i = 0; i < originalGraphs.size(); i++) {
-            originalGraphs.at(i)->setPen(pen);
-        }
-        ui->customPlot->removeGraph(collapsedGraph);
-        ui->customPlot->removeGraph(collapsedNodes);
-        for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
-            SEDPlotPointCustom *cp;
-            cp = collapsedGraphPoints.at(i);
-            ui->customPlot->removeItem(cp);
-        }
-        collapsedGraphPoints.clear();
+        pen.setColor(Qt::blue);
+
+        // TODO alla chiusura della finestra eliminare tutto
+        // collapsedGraphPoints.clear();
+        // removeItem(cp)
+        // TODO rendere non selezionabile i collpase nodi (già gestita dalla setVisible?)
         graphSEDNodes->setSelectable(QCP::stMultipleDataRanges); // enable graphSEDNodes selection
-        ui->customPlot->replot();
     }
+    // set originalGraphs style dash-lightGray or soliline-blue
+    for (int i = 0; i < originalGraphs.size(); i++) {
+        originalGraphs.at(i)->setPen(pen);
+    }
+    ui->customPlot->replot();
 }
 
 void SEDVisualizerPlot::addNewTheoreticalFit()

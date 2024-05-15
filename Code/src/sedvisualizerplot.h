@@ -82,8 +82,10 @@ private:
     bool multiSelectionPointStatus;
     // shift key press status to avoid deselecting pending nodes
     bool shiftMovingStatus;
-    // data structure to support drag item selection
+    // data structure to support drag sednodes selections
     QMap<QPair<double, double>, QCPAbstractItem *> sed_coordinte_to_element;
+    // data structure to support drag collapsenodes selections
+    QMap<QPair<double, double>, QCPAbstractItem *> collapse_coordinate_to_element;
     // setting drag selection
     void setDragSelection();
     // set scatter style on node drag selection: collapse and sed graphs
