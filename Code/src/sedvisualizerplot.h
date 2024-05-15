@@ -51,20 +51,7 @@ protected:
      * @brief closeEvent
      * @param event
      */
-    void closeEvent(QCloseEvent *event) override
-    {
-        if (vtkwin != 0) {
-            // remove all ellipses
-            for (auto ellipseActor = ellipseActorMap.constBegin();
-                 ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
-                vtkwin->removeActor(ellipseActor.value());
-            }
-            // clear ellipses support
-            ellipseActorMap.clear();
-            vtkwin->updateScene();
-        }
-        event->accept();
-    };
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     Ui::SEDVisualizerPlot *ui;
@@ -234,7 +221,7 @@ private slots:
     void doThickRemoteFit();
 
     void on_actionScreenshot_triggered();
-    void on_actionCollapse_triggered();
+    void createCollapseNodes();
     void on_ThinLocalFit_triggered();
     void on_ThickLocalFit_triggered();
     void on_TheoreticalRemoteFit_triggered();

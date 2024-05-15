@@ -220,7 +220,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
             SLOT(sectionClicked(int)));
 
     // create collapsed Nodes and set invisible
-    on_actionCollapse_triggered();
+    createCollapseNodes();
 }
 
 QDataStream &operator<<(QDataStream &out, QList<SED *> &sedlist)
@@ -534,8 +534,8 @@ void SEDVisualizerPlot::createEllipseActors(SEDNode *node)
 {
     if (vtkwin != 0
         && (node->getX() != 0 && node->getY() != 0 && node->getDesignation().compare("") != 0)) {
-        qDebug() << node->getDesignation() << node->getX() << node->getY();
-        // set ellipse
+        // qDebug() << node->getDesignation() << node->getX() << node->getY();
+        //  set ellipse
         vtkEllipse *ellipse;
         ellipse =
                 new vtkEllipse(node->getSemiMinorAxisLength() / 2,
@@ -764,27 +764,32 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     bool validFit = false;
     QMap<double, SEDNode *> selected_sed_map;
     QCPDataSelection nodeSelection;
+    QCPGraph *nodes;
+    QMap<QPair<double, double>, QCPAbstractItem *> coordinate_to_element;
 
-    // get selected (drag selection)
-    if (!graphSEDNodes->selection().isEmpty()) {
+    // get selected sednodes or collapse (drag selection)
+    if (!ui->collapseCheckBox->isChecked()) {
         nodeSelection = graphSEDNodes->selection();
-    } else if (!collapsedNodes->selection().isEmpty()) {
+        nodes = graphSEDNodes;
+        coordinate_to_element = sed_coordinte_to_element;
+    } else {
         nodeSelection = collapsedNodes->selection();
+        nodes = collapsedNodes;
+        coordinate_to_element = collapse_coordinate_to_element;
     }
 
     // for each range of data selected on drag mode
     foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
         for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
             // get data-i (not element) selected
-            QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
+            QCPGraphDataContainer::const_iterator dataPoint = nodes->data()->at(j);
             QString className =
-                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
+                    coordinate_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
                             ->metaObject()
                             ->className();
             if (QString::compare(className, "SEDPlotPointCustom") == 0) {
-                SEDPlotPointCustom *cp =
-                        qobject_cast<SEDPlotPointCustom *>(sed_coordinte_to_element.value(
-                                qMakePair(dataPoint->key, dataPoint->value)));
+                SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(
+                        coordinate_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
                 selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
             }
         }
@@ -1181,7 +1186,7 @@ void SEDVisualizerPlot::on_actionScreenshot_triggered()
     bool b = qImage.save(fileName);
 }
 
-void SEDVisualizerPlot::on_actionCollapse_triggered()
+void SEDVisualizerPlot::createCollapseNodes()
 {
 
     SED *coll_sed = new SED();
@@ -2393,4 +2398,19 @@ void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event)
     }
 
     QMainWindow::keyPressEvent(event);
+}
+
+void SEDVisualizerPlot::closeEvent(QCloseEvent *event)
+{
+    if (vtkwin != 0) {
+        // remove all ellipses
+        for (auto ellipseActor = ellipseActorMap.constBegin();
+             ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
+            vtkwin->removeActor(ellipseActor.value());
+        }
+        // clear ellipses support
+        ellipseActorMap.clear();
+        vtkwin->updateScene();
+    }
+    event->accept();
 }
