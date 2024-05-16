@@ -19,6 +19,7 @@ public:
 
 private slots:
     void sendQuery();
+    void on_comboFormat_currentIndexChanged(int index);
 
 private:
     Ui::HiPS2FITSForm *ui;

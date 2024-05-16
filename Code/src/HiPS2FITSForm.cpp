@@ -36,6 +36,8 @@ HiPS2FITSForm::HiPS2FITSForm(QWidget *parent)
     ui->lineDec->setValidator(doubleValidator);
     ui->lineFoV->setValidator(doubleValidator);
     ui->lineRotationAngle->setValidator(doubleValidator);
+    ui->lineMinCut->setValidator(doubleValidator);
+    ui->lineMaxCut->setValidator(doubleValidator);
 
     this->nam = new QNetworkAccessManager(this);
 
@@ -120,6 +122,14 @@ void HiPS2FITSForm::sendQuery()
     params.addQueryItem("fov", ui->lineFoV->text());
     params.addQueryItem("rotation_angle", ui->lineRotationAngle->text());
     params.addQueryItem("coordsys", ui->comboSystem->currentText());
+    params.addQueryItem("format", ui->comboFormat->currentText());
+
+    if (ui->comboFormat->currentIndex() > 0) {
+        params.addQueryItem("min_cut", ui->lineMinCut->text() + "%");
+        params.addQueryItem("max_cut", ui->lineMaxCut->text() + "%");
+        params.addQueryItem("stretch", ui->comboStretch->currentText());
+    }
+
     url.setQuery(params);
 
     auto loading = new LoadingWidget;
@@ -143,7 +153,9 @@ void HiPS2FITSForm::sendQuery()
         }
 
         QDir dir = QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download");
-        QString filename = QString("cutout-%1.fits").arg(QString(hips).replace("/", "_"));
+        QString filename =
+                QString("cutout-%1.%2")
+                        .arg(QString(hips).replace("/", "_"), ui->comboFormat->currentText());
         QString filepath = dir.absoluteFilePath(filename);
 
         QFile f(filepath);
@@ -159,4 +171,12 @@ void HiPS2FITSForm::sendQuery()
 
     loading->setLoadingProcess(reply);
     loading->show();
+}
+
+void HiPS2FITSForm::on_comboFormat_currentIndexChanged(int index)
+{
+    bool isImage = index > 0;
+    ui->lineMinCut->setEnabled(isImage);
+    ui->lineMaxCut->setEnabled(isImage);
+    ui->comboStretch->setEnabled(isImage);
 }

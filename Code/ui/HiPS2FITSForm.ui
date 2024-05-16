@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>498</width>
-    <height>283</height>
+    <height>420</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,127 +16,6 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>HiPS survey</string>
-       </property>
-       <property name="buddy">
-        <cstring>comboHiPS</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Dimensions (pixels)</string>
-       </property>
-       <property name="buddy">
-        <cstring>lineWidth</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="lineWidth">
-       <property name="toolTip">
-        <string>Width in pixels of the output image</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>x</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-       <property name="buddy">
-        <cstring>lineHeight</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3">
-      <widget class="QLineEdit" name="lineHeight">
-       <property name="toolTip">
-        <string>Height in pixels of the output image</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>RA</string>
-       </property>
-       <property name="buddy">
-        <cstring>lineRA</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="lineRA">
-       <property name="toolTip">
-        <string>Right ascension in decimal degrees of the center of the output image</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="2">
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>Dec</string>
-       </property>
-       <property name="buddy">
-        <cstring>lineDec</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="3">
-      <widget class="QLineEdit" name="lineDec">
-       <property name="toolTip">
-        <string>Declination in decimal degrees of the center of the output image</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>Projection</string>
-       </property>
-       <property name="buddy">
-        <cstring>comboProjection</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>FoV (degrees)</string>
-       </property>
-       <property name="buddy">
-        <cstring>lineFoV</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QLineEdit" name="lineFoV">
-       <property name="toolTip">
-        <string>Size (FoV) of the cutout on the sky</string>
-       </property>
-       <property name="text">
-        <string>0.5</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_8">
-       <property name="text">
-        <string>CoordSys</string>
-       </property>
-       <property name="buddy">
-        <cstring>comboSystem</cstring>
-       </property>
-      </widget>
-     </item>
      <item row="5" column="1">
       <widget class="QComboBox" name="comboSystem">
        <property name="toolTip">
@@ -154,23 +33,50 @@
        </item>
       </widget>
      </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_9">
+     <item row="2" column="2">
+      <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Rotation angle (degrees)</string>
+        <string>Dec</string>
        </property>
        <property name="buddy">
-        <cstring>lineRotationAngle</cstring>
+        <cstring>lineDec</cstring>
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="lineRotationAngle">
-       <property name="toolTip">
-        <string>Angle value (in decimal degrees) to be applied to the projection</string>
-       </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
        <property name="text">
-        <string>0</string>
+        <string>HiPS survey</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboHiPS</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>RA</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineRA</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLineEdit" name="lineDec">
+       <property name="toolTip">
+        <string>Declination in decimal degrees of the center of the output image</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Dimensions (pixels)</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineWidth</cstring>
        </property>
       </widget>
      </item>
@@ -299,6 +205,223 @@
        </item>
       </widget>
      </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Rotation angle (degrees)</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineRotationAngle</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="0">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>Max Cut (percentile)</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineMaxCut</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="lineFoV">
+       <property name="toolTip">
+        <string>Size (FoV) of the cutout on the sky</string>
+       </property>
+       <property name="text">
+        <string>0.5</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Projection</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboProjection</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLineEdit" name="lineHeight">
+       <property name="toolTip">
+        <string>Height in pixels of the output image</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QComboBox" name="comboFormat">
+       <property name="toolTip">
+        <string>Format of the output image</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>fits</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>jpg</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>png</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="lineRA">
+       <property name="toolTip">
+        <string>Right ascension in decimal degrees of the center of the output image</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="lineRotationAngle">
+       <property name="toolTip">
+        <string>Angle value (in decimal degrees) to be applied to the projection</string>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>CoordSys</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboSystem</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>FoV (degrees)</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineFoV</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Format</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboFormat</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Min Cut (percentile)</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineMinCut</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="lineWidth">
+       <property name="toolTip">
+        <string>Width in pixels of the output image</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>x</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="buddy">
+        <cstring>lineHeight</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="0">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>Stretch</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboStretch</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="1">
+      <widget class="QComboBox" name="comboStretch">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Stretch function used for contrast adjustment</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>linear</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>power</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>sqrt</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>log</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>asinh</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="8" column="1">
+      <widget class="QLineEdit" name="lineMinCut">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Minimal value considered for contrast adjustment normalization</string>
+       </property>
+       <property name="text">
+        <string>0.5</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="1">
+      <widget class="QLineEdit" name="lineMaxCut">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Maximal value considered for contrast adjustment normalization</string>
+       </property>
+       <property name="text">
+        <string>99.5</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item alignment="Qt::AlignHCenter">
@@ -320,6 +443,11 @@
   <tabstop>lineFoV</tabstop>
   <tabstop>comboSystem</tabstop>
   <tabstop>lineRotationAngle</tabstop>
+  <tabstop>comboFormat</tabstop>
+  <tabstop>lineMinCut</tabstop>
+  <tabstop>lineMaxCut</tabstop>
+  <tabstop>comboStretch</tabstop>
+  <tabstop>pushButton</tabstop>
  </tabstops>
  <resources/>
  <connections/>
