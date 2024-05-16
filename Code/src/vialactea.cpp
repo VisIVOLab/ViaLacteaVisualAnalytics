@@ -4,6 +4,7 @@
 #include "aboutform.h"
 #include "astroutils.h"
 #include "fitsheadermodifierdialog.h"
+#include "HiPS2FITSForm.h"
 #include "mcutoutsummary.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
@@ -387,6 +388,17 @@ void ViaLactea::on_actionConeSearch_triggered()
     coneForm->show();
     coneForm->activateWindow();
     coneForm->raise();
+}
+
+void ViaLactea::on_actionHiPS2FITS_triggered()
+{
+    if (!hipsForm) {
+        hipsForm = new HiPS2FITSForm;
+    }
+
+    hipsForm->show();
+    hipsForm->activateWindow();
+    hipsForm->raise();
 }
 
 void ViaLactea::on_select3dPushButton_clicked()

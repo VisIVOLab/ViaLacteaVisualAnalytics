@@ -12,6 +12,7 @@
 class AboutForm;
 class SettingForm;
 class SimpleConeSearchForm;
+class HiPS2FITSForm;
 
 namespace Ui {
 class ViaLactea;
@@ -71,6 +72,7 @@ private slots:
     void on_actionLoad_session_triggered();
     void on_loadTableButton_clicked();
     void on_actionConeSearch_triggered();
+    void on_actionHiPS2FITS_triggered();
     void on_openLoadDataPushButton_clicked();
 
 private:
@@ -78,6 +80,7 @@ private:
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
     QPointer<SimpleConeSearchForm> coneForm;
+    QPointer<HiPS2FITSForm> hipsForm;
 
     // for javascript communication procedures
     WebProcess *webobj;
