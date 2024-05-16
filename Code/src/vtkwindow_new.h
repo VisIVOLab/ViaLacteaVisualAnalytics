@@ -84,7 +84,7 @@ class vtkwindow_new : public QMainWindow
 public:
     explicit vtkwindow_new(QWidget *parent = 0, VisPoint *vis = 0);
     explicit vtkwindow_new(QWidget *parent = 0, vtkSmartPointer<vtkFitsReader> vis = 0, int b = 0,
-                           vtkwindow_new *p = 0, bool activate = true, VisIVOMenu *menu= NULL);
+                           vtkwindow_new *p = 0, bool activate = true);
     // explicit vtkwindow_new(QWidget *parent = 0, vtkImageActor *vis=0);
     ~vtkwindow_new();
 

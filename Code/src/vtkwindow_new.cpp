@@ -1000,9 +1000,8 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint *vis)
     isDatacube = false;
 }
 
-vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis, int b,
-                             vtkwindow_new *p, bool activate, VisIVOMenu *menu)
-    : QMainWindow(parent), ui(new Ui::vtkwindow_new), visivoMenu(menu)
+vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis, int b, vtkwindow_new *p, bool activate)
+    : QMainWindow(parent), ui(new Ui::vtkwindow_new)
 {
     QSettings settings(QDir::homePath()
                                .append(QDir::separator())
@@ -1028,6 +1027,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
 
     ui->setupUi(this);
 
+    visivoMenu = new VisIVOMenu();
     this->layout()->setMenuBar(visivoMenu);
     visivoMenu->configureImageWindowMenu();
 

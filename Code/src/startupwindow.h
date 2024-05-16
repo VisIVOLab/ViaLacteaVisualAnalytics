@@ -18,7 +18,7 @@ class StartupWindow : public QWidget
     Q_OBJECT
 
 public:
-    explicit StartupWindow(VisIVOMenu *menu, QWidget *parent = nullptr);
+    explicit StartupWindow(QWidget *parent = nullptr);
     ~StartupWindow();
 
 protected:

@@ -15,9 +15,8 @@
 #include <QMessageBox>
 #include "visivomenu.h"
 
-StartupWindow::StartupWindow(VisIVOMenu *menu, QWidget *parent)
+StartupWindow::StartupWindow(QWidget *parent)
 : QWidget(parent),
-visivoMenu(menu),
 ui(new Ui::StartupWindow),
 settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
 settings(settingsFile, QSettings::IniFormat)
@@ -40,6 +39,7 @@ settings(settingsFile, QSettings::IniFormat)
     this->historyModel = new RecentFilesManager(this);
     ui->historyArea->setModel(this->historyModel);
     
+    visivoMenu = new VisIVOMenu();
     this->layout()->setMenuBar(visivoMenu);
 }
 
@@ -102,7 +102,7 @@ void StartupWindow::openLocalImage(const QString &fn)
      } else
      */
     {
-        new vtkwindow_new(this, fits,0,0, true, visivoMenu);
+        new vtkwindow_new(this, fits);
     }
     this->historyModel->addRecentFile(fn);
 }
@@ -136,7 +136,7 @@ void StartupWindow::openLocalDC(const QString &fn)
             QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
             return;
         }
-        new vtkwindow_new(this, fitsReader_dc, 1, nullptr, true, visivoMenu);
+        new vtkwindow_new(this, fitsReader_dc, 1);
         this->historyModel->addRecentFile(fn);
         return;
     }
@@ -145,7 +145,7 @@ void StartupWindow::openLocalDC(const QString &fn)
     long size = QFileInfo(fn).size() / 1024; // B -> KB
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
     
-    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor,"km/s", visivoMenu);
+    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
     win->show();
     win->activateWindow();
     win->raise();

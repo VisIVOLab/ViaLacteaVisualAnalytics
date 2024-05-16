@@ -36,7 +36,7 @@ class vtkWindowCube : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor = 1, QString velocityUnit = "km/s", VisIVOMenu *menu= NULL);
+    explicit vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor = 1, QString velocityUnit = "km/s");
     ~vtkWindowCube();
     void showColorbar(bool checked, double min, double max);
     void changeFitsScale(std::string palette, std::string scale, float min, float max);
@@ -140,6 +140,7 @@ private:
 
 protected:
     void changeEvent(QEvent *e);
+    void initializeMenuConnections();
 
 };
 

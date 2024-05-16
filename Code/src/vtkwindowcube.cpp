@@ -56,52 +56,50 @@
 
 namespace py = pybind11;
 
-vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor, QString velocityUnit, VisIVOMenu *menu)
-    : QMainWindow(parent),
-      ui(new Ui::vtkWindowCube),
-      filepath(filepath),
-      ScaleFactor(ScaleFactor),
-      parentWindow(qobject_cast<vtkwindow_new *>(parent)),
-      currentSlice(0),
-      velocityUnit(velocityUnit),
-      visivoMenu(menu)
-{
+vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor, QString velocityUnit)
+: QMainWindow(parent),
+ui(new Ui::vtkWindowCube),
+filepath(filepath),
+ScaleFactor(ScaleFactor),
+parentWindow(qobject_cast<vtkwindow_new *>(parent)),
+currentSlice(0),
+velocityUnit(velocityUnit){
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(filepath);
-
-
+    
+    
     readFitsHeader();
-
+    
     auto wcsGroup = new QActionGroup(this);
     auto wcsItem = new QAction("Galactic", wcsGroup);
     wcsItem->setCheckable(true);
     wcsItem->setChecked(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
-
+    
     wcsItem = new QAction("FK5", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
-
+    
     wcsItem = new QAction("FK4", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
-
+    
     wcsItem = new QAction("Ecliptic", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
-
-   // ui->menuWCS->addActions(wcsGroup->actions());
-
+    
+    // ui->menuWCS->addActions(wcsGroup->actions());
+    
     readerCube = vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
     readerCube->SetScaleFactor(ScaleFactor);
     readerCube->Update();
-
+    
     float rms = readerCube->GetRMS();
     double bounds[6];
     readerCube->GetBounds(bounds);
@@ -109,21 +107,21 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     readerCube->GetValueRange(rangeCube);
     lowerBound = 3 * rms;
     upperBound = rangeCube[1];
-
+    
     // Start datacube pipeline
     auto renWinCube = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkCube->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkCube->setRenderWindow(renWinCube);
-
+    
     auto rendererCube = vtkSmartPointer<vtkRenderer>::New();
     rendererCube->SetBackground(0.21, 0.23, 0.25);
     rendererCube->GlobalWarningDisplayOff();
     renWinCube->AddRenderer(rendererCube);
-
+    
     ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));
     ui->upperBoundText->setText(QString::number(upperBound, 'f', 4));
-
+    
     // Outline
     auto outlineFilter = vtkSmartPointer<vtkOutlineFilter>::New();
     outlineFilter->SetInputConnection(readerCube->GetOutputPort());
@@ -133,7 +131,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     auto outlineActor = vtkSmartPointer<vtkActor>::New();
     outlineActor->SetMapper(outlineMapper);
     rendererCube->AddActor(outlineActor);
-
+    
     // Isosurface
     isosurface = vtkSmartPointer<vtkFlyingEdges3D>::New();
     isosurface->SetInputConnection(readerCube->GetOutputPort());
@@ -146,7 +144,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     isosurfaceActor->SetMapper(isosurfaceMapper);
     isosurfaceActor->GetProperty()->SetColor(1.0, 0.5, 1.0);
     rendererCube->AddActor(isosurfaceActor);
-
+    
     // Plane
     auto planes = vtkSmartPointer<vtkPlanes>::New();
     planes->SetBounds(bounds[0], bounds[1], bounds[2], bounds[3], 0, 1);
@@ -158,7 +156,7 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     planeActor = vtkSmartPointer<vtkActor>::New();
     planeActor->SetMapper(planeMapper);
     rendererCube->AddActor(planeActor);
-
+    
     // Axes
     auto axesActor = vtkSmartPointer<vtkAxesActor>::New();
     axesActor->SetXAxisLabelText("X");
@@ -175,34 +173,34 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     axesWidget->SetViewport(0.0, 0.0, 0.2, 0.2);
     axesWidget->SetEnabled(1);
     axesWidget->InteractiveOff();
-
+    
     // Legend
     legendActorCube = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorCube->LegendVisibilityOff();
     legendActorCube->setFitsFile(readerCube->GetFileName());
     rendererCube->AddActor(legendActorCube);
-
+    
     rendererCube->GetActiveCamera()->GetPosition(initialCameraPosition);
     rendererCube->GetActiveCamera()->GetFocalPoint(initialCameraFocalPoint);
-
+    
     rendererCube->ResetCamera();
     renWinCube->GetInteractor()->Render();
     //  End datacube pipeline
-
+    
     // Start slice pipeline
     readerSlice = vtkSmartPointer<vtkFitsReader2>::New();
     readerSlice->SetFileName(filepath.toStdString().c_str());
     readerSlice->SliceModeOn();
     readerSlice->SetSlice(0);
     readerSlice->Update();
-
+    
     float rangeSlice[2];
     readerSlice->GetValueRange(rangeSlice);
-
+    
     auto renWinSlice = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
-
+    
     // Setup context menu to toggle slice/moment renderers
     QActionGroup *grp = new QActionGroup(this);
     grp->addAction(ui->actionShowSlice);
@@ -215,34 +213,34 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
             changeSliceView(1);
         }
     });
-
+    
     rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
     rendererSlice->GlobalWarningDisplayOff();
-
+    
     rendererMoment = vtkSmartPointer<vtkRenderer>::New();
     rendererMoment->SetBackground(0.21, 0.23, 0.25);
     rendererMoment->GlobalWarningDisplayOff();
-
+    
     legendActorMoment = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorMoment->LegendVisibilityOff();
     legendActorMoment->setFitsFile(readerSlice->GetFileName());
     rendererMoment->AddActor(legendActorMoment);
-
+    
     momViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     momViewer->SetRenderer(rendererMoment);
     momViewer->SetRenderWindow(renWinSlice);
     momViewer->GetImageActor()->InterpolateOff();
-
+    
     // Show cube slices by default
     currentVisOnSlicePanel = 0;
     changeSliceView(currentVisOnSlicePanel);
-
+    
     lutName = "Gray";
     lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(rangeSlice[0], rangeSlice[1]);
     SelectLookTable(lutName, lutSlice);
-
+    
     sliceViewer = vtkSmartPointer<vtkResliceImageViewer>::New();
     sliceViewer->SetInputData(readerSlice->GetOutput());
     sliceViewer->GetWindowLevel()->SetOutputFormatToRGB();
@@ -252,23 +250,23 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     sliceViewer->SetRenderer(rendererSlice);
     ui->sliceSlider->setRange(1, readerSlice->GetNumberOfSlices());
     ui->sliceSpinBox->setRange(1, readerSlice->GetNumberOfSlices());
-
+    
     // Added to renderers when the contour checkbox is checked
     contoursActor = vtkSmartPointer<vtkLODActor>::New();
     contoursActor->GetProperty()->SetLineWidth(1);
     contoursActorForParent = vtkSmartPointer<vtkLODActor>::New();
     contoursActorForParent->GetProperty()->SetLineWidth(1);
-
+    
     legendActorSlice = vtkSmartPointer<vtkLegendScaleActorWCS>::New();
     legendActorSlice->LegendVisibilityOff();
     legendActorSlice->setFitsFile(readerSlice->GetFileName());
     rendererSlice->AddActor(legendActorSlice);
-
+    
     setInteractorStyleImage();
-
+    
     rendererSlice->ResetCamera();
     renWinSlice->GetInteractor()->Render();
-
+    
     // Show FITS Stats
     ui->lineCubeMin->setText(QString::number(readerCube->GetValueRange()[0], 'f', 4));
     ui->lineCubeMax->setText(QString::number(readerCube->GetValueRange()[1], 'f', 4));
@@ -278,35 +276,36 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
     ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
     ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
-
+    
     // Set legend WCS
     QString ctype1 = fitsHeader.value("CTYPE1").toUpper();
     if (ctype1.startsWith("GL")) {
         legendActorCube->setWCS(WCS_GALACTIC);
         legendActorSlice->setWCS(WCS_GALACTIC);
         legendActorMoment->setWCS(WCS_GALACTIC);
-       // ui->menuWCS->actions().at(1)->setChecked(true);
+        // ui->menuWCS->actions().at(1)->setChecked(true);
     } else if (ctype1.startsWith("RA")) {
         // FK5
         legendActorCube->setWCS(WCS_J2000);
         legendActorSlice->setWCS(WCS_J2000);
         legendActorMoment->setWCS(WCS_J2000);
-       // ui->menuWCS->actions().at(2)->setChecked(true);
+        // ui->menuWCS->actions().at(2)->setChecked(true);
     }
-
+    
     bunit = fitsHeader.value("BUNIT");
     bunit.replace("'", QString());
     bunit.replace("\"", QString());
     bunit = bunit.simplified();
-
+    
     if (!bunit.isEmpty()) {
         ui->thresholdGroupBox->setTitle(ui->thresholdGroupBox->title() + " (" + bunit + ")");
         ui->contourGroupBox->setTitle(ui->contourGroupBox->title() + " (" + bunit + ")");
     }
-
+    
     currentSlice = 0;
     updateSliceDatacube();
-
+    
+    visivoMenu = new VisIVOMenu();
     visivoMenu->configureCubeWindowMenu();
     this->layout()->setMenuBar(visivoMenu);
 }
@@ -314,54 +313,54 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
 vtkWindowCube::~vtkWindowCube()
 {
     setInteractorStyleImage();
-
+    
     if (parentWindow) {
         parentWindow->removeActor(contoursActorForParent);
     }
-
+    
     if (profileWin) {
         profileWin->deleteLater();
     }
-
+    
     delete ui;
 }
 
 void vtkWindowCube::changeSliceView(int mode)
 {
     switch (mode) {
-    case 0:
-        currentVisOnSlicePanel = 0;
-        ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
-        ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
-
-        ui->labelImg->setText("Slice");
-        ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
-        ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
-        ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
-        ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
-
-        if (lcustom) {
-            lcustom->configureFits3D();
-        }
-        break;
-    case 1:
-        currentVisOnSlicePanel = 1;
-        ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
-        ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
-        ui->actionShowMomentMap->setChecked(true);
-
-        ui->labelImg->setText("Moment");
-        ui->lineImgMin->setText(QString::number(moment->GetMin(), 'f', 4));
-        ui->lineImgMax->setText(QString::number(moment->GetMax(), 'f', 4));
-        ui->lineImgMean->setText(QString::number(moment->GetMedia(), 'f', 4));
-        ui->lineImgRMS->setText(QString::number(moment->GetRMS(), 'f', 4));
-
-        if (lcustom) {
-            lcustom->configureMoment();
-        }
-        break;
+        case 0:
+            currentVisOnSlicePanel = 0;
+            ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
+            ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
+            
+            ui->labelImg->setText("Slice");
+            ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
+            ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
+            ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
+            ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
+            
+            if (lcustom) {
+                lcustom->configureFits3D();
+            }
+            break;
+        case 1:
+            currentVisOnSlicePanel = 1;
+            ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
+            ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
+            ui->actionShowMomentMap->setChecked(true);
+            
+            ui->labelImg->setText("Moment");
+            ui->lineImgMin->setText(QString::number(moment->GetMin(), 'f', 4));
+            ui->lineImgMax->setText(QString::number(moment->GetMax(), 'f', 4));
+            ui->lineImgMean->setText(QString::number(moment->GetMedia(), 'f', 4));
+            ui->lineImgRMS->setText(QString::number(moment->GetRMS(), 'f', 4));
+            
+            if (lcustom) {
+                lcustom->configureMoment();
+            }
+            break;
     }
-
+    
     ui->qVtkSlice->renderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
     ui->qVtkSlice->renderWindow()->Render();
 }
@@ -380,7 +379,7 @@ void vtkWindowCube::setInteractorStyleProfile(bool liveMode)
     vtkNew<vtkInteractorStyleProfile> interactorStyle;
     interactorStyle->SetCoordsCallback([this](std::string str) { showStatusBarMessage(str); });
     interactorStyle->SetProfileCallback(
-            [this](double x, double y, bool live) { extractSpectrum(x, y, live); });
+                                        [this](double x, double y, bool live) { extractSpectrum(x, y, live); });
     interactorStyle->SetReader(readerSlice);
     interactorStyle->SetLiveMode(liveMode);
     ui->qVtkSlice->renderWindow()->GetInteractor()->SetInteractorStyle(interactorStyle);
@@ -403,21 +402,21 @@ void vtkWindowCube::setInteractorStyleDrawLine()
 int vtkWindowCube::readFitsHeader()
 {
     this->fitsHeader.clear();
-
+    
     fitsfile *fptr;
     int status = 0;
     if (fits_open_data(&fptr, this->filepath.toUtf8().data(), READONLY, &status)) {
         fits_report_error(stderr, status);
         return 1;
     }
-
+    
     // Get number of keys in header
     int nKeys = 0;
     if (fits_get_hdrspace(fptr, &nKeys, 0, &status)) {
         fits_report_error(stderr, status);
         return 2;
     }
-
+    
     // Get header keys and values
     char name[80];
     char value[80];
@@ -426,7 +425,7 @@ int vtkWindowCube::readFitsHeader()
             fits_report_error(stderr, status);
             return 3;
         }
-
+        
         // Skip empty names, HISTORY and COMMENT keyworks
         QString s_name(QString::fromUtf8(name));
         QString s_value(QString::fromUtf8(value));
@@ -434,10 +433,10 @@ int vtkWindowCube::readFitsHeader()
             || (s_name.compare("COMMENT", Qt::CaseInsensitive) == 0)) {
             continue;
         }
-
+        
         this->fitsHeader.insert(s_name, s_value);
     }
-
+    
     fits_close_file(fptr, &status);
     return 0;
 }
@@ -452,10 +451,10 @@ void vtkWindowCube::updateSliceDatacube()
     planeActor->SetPosition(0, 0, currentSlice);
     readerSlice->SetSlice(currentSlice);
     readerSlice->Update();
-
+    
     float range[2];
     readerSlice->GetValueRange(range);
-
+    
     auto lutSlice = vtkSmartPointer<vtkLookupTable>::New();
     lutSlice->SetTableRange(range[0], range[1]);
     SelectLookTable(lutName, lutSlice);
@@ -463,11 +462,11 @@ void vtkWindowCube::updateSliceDatacube()
     sliceViewer->GetWindowLevel()->SetLookupTable(lutSlice);
     if (lcustom && currentVisOnSlicePanel == 0)
         lcustom->configureFits3D();
-
+    
     sliceViewer->GetRenderer()->ResetCamera();
     sliceViewer->Render();
     ui->qVtkCube->renderWindow()->GetInteractor()->Render();
-
+    
     if (currentVisOnSlicePanel == 0) {
         // Update stats widget only if needed
         ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
@@ -475,7 +474,7 @@ void vtkWindowCube::updateSliceDatacube()
         ui->lineImgMean->setText(QString::number(readerSlice->GetMean(), 'f', 4));
         ui->lineImgRMS->setText(QString::number(readerSlice->GetRMS(), 'f', 4));
     }
-
+    
     if (parentWindow && ui->contourCheckBox->isChecked()) {
         removeContours();
         showContours();
@@ -487,15 +486,15 @@ void vtkWindowCube::updateVelocityText()
     double crval3 = fitsHeader.value("CRVAL3").toDouble();
     double cdelt3 = fitsHeader.value("CDELT3").toDouble();
     double crpix3 = fitsHeader.value("CRPIX3").toDouble();
-
+    
     double initSlice = crval3 - (cdelt3 * (crpix3 - 1));
     double value = initSlice + cdelt3 * currentSlice;
-
+    
     QString cunit3 = fitsHeader.value("CUNIT3");
     cunit3.replace("'", QString());
     cunit3.replace("\"", QString());
     cunit3 = cunit3.simplified();
-
+    
     if (cunit3.startsWith("m")) {
         // Return value in km/s
         value /= 1000;
@@ -519,58 +518,58 @@ void vtkWindowCube::showContours()
     int level = ui->levelText->text().toInt();
     double min = ui->lowerBoundText->text().toDouble();
     double max = ui->upperBoundText->text().toDouble();
-
+    
     auto contoursFilter = vtkSmartPointer<vtkFlyingEdges2D>::New();
     contoursFilter->GenerateValues(level, min, max);
     contoursFilter->SetInputConnection(readerSlice->GetOutputPort());
-
+    
     auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputConnection(contoursFilter->GetOutputPort());
     mapper->SetScalarRange(min, max);
     mapper->ScalarVisibilityOn();
     mapper->SetScalarModeToUsePointData();
     mapper->SetColorModeToMapScalars();
-
+    
     contoursActor->SetMapper(mapper);
     rendererSlice->AddActor(contoursActor);
     ui->qVtkSlice->renderWindow()->Render();
-
+    
     if (parentWindow) {
         double sky_coord_gal[2];
         AstroUtils::xy2sky(filepath.toStdString(), 0, 0, sky_coord_gal, WCS_GALACTIC);
-
+        
         double coord[3];
         AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
                            sky_coord_gal[1], coord);
-
+        
         double angle = 0;
         double x1 = coord[0];
         double y1 = coord[1];
-
+        
         AstroUtils::xy2sky(filepath.toStdString(), 0, 100, sky_coord_gal, WCS_GALACTIC);
         AstroUtils::sky2xy(parentWindow->getFitsImage()->GetFileName(), sky_coord_gal[0],
                            sky_coord_gal[1], coord);
-
+        
         if (x1 != coord[0]) {
             double m = fabs((coord[1] - y1) / (coord[0] - x1));
             angle = 90 - atan(m) * 180 / M_PI;
         }
-
+        
         double bounds[6];
         readerCube->GetBounds(bounds);
-
+        
         double scaledPixel = AstroUtils::arcsecPixel(filepath.toStdString())
-                / AstroUtils::arcsecPixel(parentWindow->getFitsImage()->GetFileName());
-
+        / AstroUtils::arcsecPixel(parentWindow->getFitsImage()->GetFileName());
+        
         auto transform = vtkSmartPointer<vtkTransform>::New();
         transform->Translate(0, 0, -1 * sliceViewer->GetSlice());
         transform->Translate(bounds[0], bounds[2], 0);
         transform->RotateWXYZ(angle, 0, 0, 1);
         transform->Translate(-bounds[0], -bounds[2], 0);
-
+        
         auto mapperForParent = vtkSmartPointer<vtkPolyDataMapper>::New();
         mapperForParent->ShallowCopy(mapper);
-
+        
         contoursActorForParent = vtkSmartPointer<vtkActor>::New();
         contoursActorForParent->SetMapper(mapperForParent);
         contoursActorForParent->SetScale(scaledPixel, scaledPixel, 1);
@@ -585,7 +584,7 @@ void vtkWindowCube::removeContours()
 {
     rendererSlice->RemoveActor(contoursActor);
     ui->qVtkSlice->renderWindow()->Render();
-
+    
     if (parentWindow) {
         parentWindow->removeActor(contoursActorForParent);
     }
@@ -597,14 +596,14 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     moment->SetFileName(filepath.toStdString());
     moment->isMoment3D = true;
     moment->setMomentOrder(order);
-
+    
     if (parentWindow && parentWindow->isVisible()) {
         parentWindow->addLayerImage(moment);
     } else {
         parentWindow = new vtkwindow_new(nullptr, moment, 0, 0, false);
         parentWindow->show();
     }
-
+    
     momViewer->SetInputData(moment->GetOutput());
     momViewer->Render();
     changeSliceView(1);
@@ -617,13 +616,13 @@ void vtkWindowCube::saveMomentToFile()
 {
     const QDir outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp");
     const QString fn = QFileInfo(this->filepath).baseName() + "_moment"
-            + QString::number(this->moment->getMomentOrder()) + ".fits";
+    + QString::number(this->moment->getMomentOrder()) + ".fits";
     const QString filepath = outDir.absoluteFilePath(fn);
     if (QFile::exists(filepath)) {
         // Do not overwrite existing file!
         return;
     }
-
+    
     vtkNew<vtkFITSWriter> writer;
     writer->SetInputData(this->moment->GetOutput());
     writer->SetFileName(filepath.toStdString().c_str());
@@ -640,10 +639,10 @@ void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, f
         line.append(std::make_tuple(x1, y1));
         line.append(std::make_tuple(x2, y2));
         std::string outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp").toStdString();
-
+        
         py::module_ pvplot = py::module_::import("pvplot");
         std::string fout = pvplot.attr("extract_pv_plot")(fin, this->currentSlice, line, outDir)
-                                   .cast<std::string>();
+            .cast<std::string>();
         auto win = new vtkWindowPV(QString::fromStdString(fout), this->filepath, x1, y1, x2, y2);
         win->show();
     } catch (const std::exception &e) {
@@ -737,7 +736,7 @@ void vtkWindowCube::on_thresholdText_editingFinished()
     // Clamp threshold
     threshold = fmin(fmax(threshold, lowerBound), upperBound);
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
-
+    
     int tickPosition = 100 * (threshold - lowerBound) / (upperBound - lowerBound);
     ui->thresholdSlider->setValue(tickPosition);
     setThreshold(threshold);
@@ -746,7 +745,7 @@ void vtkWindowCube::on_thresholdText_editingFinished()
 void vtkWindowCube::on_thresholdSlider_sliderReleased()
 {
     double threshold =
-            (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
+    (ui->thresholdSlider->value() * (upperBound - lowerBound) / 100) + lowerBound;
     ui->thresholdText->setText(QString::number(threshold, 'f', 4));
     setThreshold(threshold);
 }
@@ -829,13 +828,13 @@ void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
     if (lutSlice->GetScale() != 0)
         selected_scale = "Log";
     lcustom->setScaling(selected_scale);
-
+    
     if (currentVisOnSlicePanel == 0) {
         lcustom->configureFits3D();
     } else {
         lcustom->configureMoment();
     }
-
+    
     lcustom->show();
 }
 
@@ -843,12 +842,12 @@ void vtkWindowCube::showColorbar(bool checked, double min, double max)
 {
     auto renderer = currentVisOnSlicePanel == 0 ? rendererSlice : rendererMoment;
     auto legend = currentVisOnSlicePanel == 0 ? legendActorSlice : legendActorMoment;
-
+    
     if (scalarBar != 0) {
         renderer->RemoveActor(scalarBar);
         scalarBar = nullptr;
     }
-
+    
     if (checked) {
         vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
         SelectLookTable(lcustom->ui->lutComboBox->currentText().toStdString().c_str(), lut);
@@ -866,14 +865,14 @@ void vtkWindowCube::showColorbar(bool checked, double min, double max)
     } else {
         legend->RightAxisVisibilityOn();
     }
-
+    
     ui->qVtkSlice->renderWindow()->Render();
 }
 
 void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, float min, float max)
 {
     vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-
+    
     QString myscale = scale.c_str();
     lutName = QString::fromUtf8(palette.c_str());
     lut->SetTableRange(min, max);
@@ -881,17 +880,17 @@ void vtkWindowCube::changeFitsScale(std::string palette, std::string scale, floa
         lut->SetScaleToLinear();
     else if (myscale == "Log")
         lut->SetScaleToLog10();
-
+    
     SelectLookTable(palette.c_str(), lut);
     if (currentVisOnSlicePanel == 0)
         sliceViewer->GetWindowLevel()->SetLookupTable(lut);
     else
         momViewer->GetWindowLevel()->SetLookupTable(lut);
-
+    
     if (scalarBar) {
         showColorbar(true, min, max);
     }
-
+    
     ui->qVtkSlice->renderWindow()->Render();
 }
 
@@ -911,7 +910,7 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
         cunit3.replace("'", QString());
         cunit3.replace("\"", QString());
         cunit3 = cunit3.simplified();
-
+        
         profileWin = new ProfileWindow(bunit);
         if (cunit3.contains("Hz")) {
             double restfrq = fitsHeader.value("RESTFRQ").toDouble();
@@ -920,7 +919,7 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
             profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, cunit3);
         }
         profileWin->show();
-
+        
         connect(profileWin, &ProfileWindow::liveUpdateStateChanged, this, [this](int status) {
             if (status) {
                 setInteractorStyleProfile(status);
@@ -928,16 +927,16 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
                 setInteractorStyleImage();
             }
         });
-
+        
         connect(profileWin, &ProfileWindow::destroyed, this,
                 &vtkWindowCube::setInteractorStyleImage);
     }
-
+    
     if (!live) {
         setInteractorStyleImage();
         profileWin->setLiveProfileFlag(live);
     }
-
+    
     double nulval = 0;
     auto vectors = AstroUtils::extractSpectrum(filepath.toStdString().c_str(), x, y, nulval);
     profileWin->plotSpectrum(vectors.first, vectors.second, x, y, nulval);
@@ -955,18 +954,31 @@ void vtkWindowCube::on_actionFilter_triggered()
     d.exec();
 }
 
+void vtkWindowCube::initializeMenuConnections()
+{
+    connect(visivoMenu, &VisIVOMenu::cameraFrontTriggered, this, &vtkWindowCube::on_actionFront_triggered);
+    connect(visivoMenu, &VisIVOMenu::cameraBackTriggered, this, &vtkWindowCube::on_actionBack_triggered);
+    connect(visivoMenu, &VisIVOMenu::cameraTopTriggered, this, &vtkWindowCube::on_actionTop_triggered);
+    connect(visivoMenu, &VisIVOMenu::cameraBottomTriggered, this, &vtkWindowCube::on_actionBottom_triggered);
+    connect(visivoMenu, &VisIVOMenu::cameraLeftTriggered, this, &vtkWindowCube::on_actionLeft_triggered);
+    connect(visivoMenu, &VisIVOMenu::cameraRightTriggered, this, &vtkWindowCube::on_actionRight_triggered);
+}
+
+
 void vtkWindowCube::changeEvent(QEvent *e)
 {
     if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
         visivoMenu->configureCubeWindowMenu();
-        connect(visivoMenu, &VisIVOMenu::cameraFrontTriggered, this, &vtkWindowCube::on_actionFront_triggered);
-        connect(visivoMenu, &VisIVOMenu::cameraBackTriggered, this, &vtkWindowCube::on_actionBack_triggered);
-        connect(visivoMenu, &VisIVOMenu::cameraTopTriggered, this, 
-                &vtkWindowCube::on_actionTop_triggered);
-        connect(visivoMenu, &VisIVOMenu::cameraBottomTriggered, this, &vtkWindowCube::on_actionBottom_triggered);
-        connect(visivoMenu, &VisIVOMenu::cameraLeftTriggered, this, &vtkWindowCube::on_actionLeft_triggered);
-        connect(visivoMenu, &VisIVOMenu::cameraRightTriggered, this, &vtkWindowCube::on_actionRight_triggered);
-
-
+        initializeMenuConnections(); // Chiamata solo quando l'oggetto è attivato
+        /*
+         connect(visivoMenu, &VisIVOMenu::cameraFrontTriggered, this, &vtkWindowCube::on_actionFront_triggered);
+         connect(visivoMenu, &VisIVOMenu::cameraBackTriggered, this, &vtkWindowCube::on_actionBack_triggered);
+         connect(visivoMenu, &VisIVOMenu::cameraTopTriggered, this,
+         &vtkWindowCube::on_actionTop_triggered);
+         connect(visivoMenu, &VisIVOMenu::cameraBottomTriggered, this, &vtkWindowCube::on_actionBottom_triggered);
+         connect(visivoMenu, &VisIVOMenu::cameraLeftTriggered, this, &vtkWindowCube::on_actionLeft_triggered);
+         connect(visivoMenu, &VisIVOMenu::cameraRightTriggered, this, &vtkWindowCube::on_actionRight_triggered);
+         */
+        
     }
 }
