@@ -1030,29 +1030,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     visivoMenu = new VisIVOMenu();
     this->layout()->setMenuBar(visivoMenu);
     visivoMenu->configureImageWindowMenu();
-
-    auto wcsGroup = new QActionGroup(this);
-    auto wcsItem = new QAction("Galactic", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsItem->setChecked(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_GALACTIC); });
-
-    wcsItem = new QAction("FK5", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_J2000); });
-
-    wcsItem = new QAction("FK4", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_B1950); });
-
-    wcsItem = new QAction("Ecliptic", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC); });
-
+    initializeMenuConnections();
     //ui->menuWCS->addActions(wcsGroup->actions());
 
     switch (b) {
@@ -4951,6 +4929,19 @@ void vtkwindow_new::on_toolButton_2_clicked()
     lcustom->configureFitsImage();
     lcustom->show();
     // changeFitsScale("Gray",selected_scale);
+}
+
+
+void vtkwindow_new::initializeMenuConnections()
+{
+    /*
+    
+    connect(visivoMenu, &VisIVOMenu::sliceLookupTableTriggered, this, &vtkWindowCube::on_actionSlice_Lookup_Table_triggered);
+    */
+    connect(visivoMenu, &VisIVOMenu::changeWCSGalacticTriggered, this, [=]() { changeWCS_clicked(WCS_GALACTIC); });
+    connect(visivoMenu, &VisIVOMenu::changeWCSFk5Triggered, this, [=]() { changeWCS_clicked(WCS_J2000); });
+    connect(visivoMenu, &VisIVOMenu::changeWCSFk4Triggered, this, [=]() { changeWCS_clicked(WCS_B1950); });
+    connect(visivoMenu, &VisIVOMenu::changeWCSEclipticTriggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC); });
 }
 
 void vtkwindow_new::changeEvent(QEvent *e)

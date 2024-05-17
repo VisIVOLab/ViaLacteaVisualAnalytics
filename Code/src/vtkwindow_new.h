@@ -358,7 +358,7 @@ protected:
     vtkVolume *m_volume;
     void closeEvent(QCloseEvent *event);
     void changeEvent(QEvent *e);
-
+    void initializeMenuConnections();
 
 private slots:
     void addLayer(vtkfitstoolwidgetobject *o, bool enabled = true);
