@@ -19,6 +19,7 @@ public:
 
 private slots:
     void sendQuery();
+    void openFile(const QString &filepath);
     void on_comboFormat_currentIndexChanged(int index);
 
 private:

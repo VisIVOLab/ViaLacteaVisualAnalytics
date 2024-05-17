@@ -2,9 +2,12 @@
 #include "ui_HiPS2FITSForm.h"
 
 #include "loadingwidget.h"
+#include "vtkfitsreader.h"
+#include "vtkwindow_new.h"
 
 #include <QCompleter>
 #include <QDebug>
+#include <QDesktopServices>
 #include <QDir>
 #include <QDoubleValidator>
 #include <QIntValidator>
@@ -166,11 +169,33 @@ void HiPS2FITSForm::sendQuery()
 
         f.write(reply->readAll());
         f.close();
-        QMessageBox::information(this, "Success", "File saved in " + filepath);
+        auto res = QMessageBox::information(
+                this, "Success", "File saved in " + filepath + ".\nWould you like to open it?",
+                QMessageBox::Yes | QMessageBox::No);
+        if (res == QMessageBox::Yes) {
+            this->openFile(filepath);
+        }
     });
 
     loading->setLoadingProcess(reply);
     loading->show();
+}
+
+void HiPS2FITSForm::openFile(const QString &filepath)
+{
+    if (filepath.endsWith(".png") || filepath.endsWith(".jpg")) {
+        // Open it with system's image viewer
+        QDesktopServices::openUrl(QUrl::fromLocalFile(filepath));
+        return;
+    }
+
+    // File is in FITS format
+    auto fits = vtkSmartPointer<vtkFitsReader>::New();
+    fits->SetFileName(filepath.toStdString());
+    auto win = new vtkwindow_new(nullptr, fits);
+    win->show();
+    win->activateWindow();
+    win->raise();
 }
 
 void HiPS2FITSForm::on_comboFormat_currentIndexChanged(int index)
