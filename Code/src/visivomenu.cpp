@@ -103,9 +103,11 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     actionShowSlice = new QAction("Show Slice",grp);
     actionShowSlice->setCheckable(true);
     actionShowSlice->setChecked(true);
+    connect(actionShowSlice, &QAction::triggered, this, &VisIVOMenu::actionShowSliceTriggered);
     actionShowMomentMap = new QAction("Show Moment Map",grp);
     actionShowMomentMap->setCheckable(true);
     actionShowMomentMap->setChecked(false);
+    connect(actionShowMomentMap, &QAction::triggered, this, &VisIVOMenu::actionShowMomentMapTriggered);
     grp->addAction(actionShowSlice);
     grp->addAction(actionShowMomentMap);
     viewMenu->addActions(grp->actions());
@@ -116,21 +118,26 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     wcsItem->setCheckable(true);
     wcsItem->setChecked(true);
     wcsGroup->addAction(wcsItem);
-    //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
+    connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSGalactic);
 
     wcsItem = new QAction("FK5", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
-    //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
+    connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSFk5);
+
 
     wcsItem = new QAction("FK4", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSFk4);
+
     //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
 
     wcsItem = new QAction("Ecliptic", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
+    connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSEcliptic);
+
     //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
     wcsMenu->addActions(wcsGroup->actions());
 
@@ -223,62 +230,62 @@ void VisIVOMenu::actionLeftTriggered()
 //moment
 void VisIVOMenu::actionCalculate_order_0Triggered()
 {
-
+    emit calculate_order_0Triggered();
 }
 
 void VisIVOMenu::actionCalculate_order_1Triggered()
 {
-
+    emit calculate_order_1Triggered();
 }
 
 void VisIVOMenu::actionCalculate_order_2Triggered()
 {
-
+    emit calculate_order_2Triggered();
 }
 
 void VisIVOMenu::actionCalculate_order_6Triggered()
 {
-
+    emit calculate_order_6Triggered();
 }
 
 void VisIVOMenu::actionCalculate_order_8Triggered()
 {
-
+    emit calculate_order_8Triggered();
 }
 
 void VisIVOMenu::actionCalculate_order_10Triggered()
 {
-
+    emit calculate_order_10Triggered();
 }
 
 void VisIVOMenu::actionSlice_Lookup_TableTriggered()
 {
-
+    emit sliceLookupTableTriggered();
 }
 
 void VisIVOMenu::actionShowSliceTriggered()
 {
-
+    emit showSliceTriggered();
 }
 
 void VisIVOMenu::actionShowMomentMapTriggered()
 {
-
+    emit showMomentMapTriggered();
 }
 
 void VisIVOMenu::actionExtract_spectrumTriggered()
 {
-
+    emit extractSpectrumTriggered();
 }
 
 void VisIVOMenu::actionPVTriggered()
 {
-
+    emit pvTriggered();
 }
 
 void VisIVOMenu::actionFilterTriggered()
 {
-
+    emit spatialFilterTriggered();
 }
 
 //window
@@ -306,6 +313,24 @@ void VisIVOMenu::actionSouceFindersTriggered()
 void VisIVOMenu::actionProfileTriggered()
 {
 
+}
+
+//wcs
+void VisIVOMenu::actionChangeWCSGalactic()
+{
+    emit changeWCSGalacticTriggered();
+}
+void VisIVOMenu::actionChangeWCSFk5()
+{
+    emit changeWCSFk5Triggered();
+}
+void VisIVOMenu::actionChangeWCSFk4()
+{
+    emit changeWCSFk4Triggered();
+}
+void VisIVOMenu::actionChangeWCSEcliptic()
+{
+    emit changeWCSEclipticTriggered();
 }
 
 void VisIVOMenu::configureStartupMenu()
@@ -362,7 +387,7 @@ void VisIVOMenu::configureCubeWindowMenu()
     actionCalculate_order_10->setEnabled(true);
     actionSourceFinders->setEnabled(false);
     actionProfileFinders->setEnabled(false);
-    actionSlice_Lookup_Table->setEnabled(false);
+    actionSlice_Lookup_Table->setEnabled(true);
     actionShowSlice->setEnabled(true);
     actionShowMomentMap->setEnabled(true);
     wcsMenu->setEnabled(true);

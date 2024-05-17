@@ -4955,7 +4955,9 @@ void vtkwindow_new::on_toolButton_2_clicked()
 
 void vtkwindow_new::changeEvent(QEvent *e)
 {
-    if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
-        visivoMenu->configureImageWindowMenu();
-    }
+    /*
+        if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
+            visivoMenu->configureImageWindowMenu();
+        }
+     */
 }

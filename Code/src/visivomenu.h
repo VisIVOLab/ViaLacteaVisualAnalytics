@@ -101,6 +101,12 @@ private slots:
     //tools
     void actionSouceFindersTriggered();
     void actionProfileTriggered();
+    //wcs
+    void actionChangeWCSGalactic();
+    void actionChangeWCSFk5();
+    void actionChangeWCSFk4();
+    void actionChangeWCSEcliptic();
+
 
 signals:
     void loadLocalFitsFileRequested();
@@ -110,6 +116,24 @@ signals:
     void cameraRightTriggered();
     void cameraLeftTriggered();
     void cameraBottomTriggered();
+    void extractSpectrumTriggered();
+    void pvTriggered();
+    void spatialFilterTriggered();
+    void calculate_order_0Triggered();
+    void calculate_order_1Triggered();
+    void calculate_order_2Triggered();
+    void calculate_order_6Triggered();
+    void calculate_order_8Triggered();
+    void calculate_order_10Triggered();
+    void showSliceTriggered();
+    void showMomentMapTriggered();
+    void sliceLookupTableTriggered();
+    void changeWCSGalacticTriggered();
+    void changeWCSFk5Triggered();
+    void changeWCSFk4Triggered();
+    void changeWCSEclipticTriggered();
+
+
 
 };
 

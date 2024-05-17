@@ -40,7 +40,12 @@ settings(settingsFile, QSettings::IniFormat)
     ui->historyArea->setModel(this->historyModel);
     
     visivoMenu = new VisIVOMenu();
+    visivoMenu->configureStartupMenu();
+
     this->layout()->setMenuBar(visivoMenu);
+    connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
+        on_localOpenPushButton_clicked(false); });
+
 }
 
 StartupWindow::~StartupWindow()
@@ -204,10 +209,13 @@ void StartupWindow::on_historyArea_clicked(const QModelIndex &index)
 
 void StartupWindow::changeEvent(QEvent *e)
 {
+    /*
     if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
         visivoMenu->configureStartupMenu();
+        qDebug()<<"connetto";
         connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
             on_localOpenPushButton_clicked(false); });
 
     }
+     */
 }

@@ -53,6 +53,7 @@
 #include <string>
 
 #include "visivomenu.h"
+#include "startupwindow.h"
 
 namespace py = pybind11;
 
@@ -70,30 +71,16 @@ velocityUnit(velocityUnit){
     
     
     readFitsHeader();
-    
-    auto wcsGroup = new QActionGroup(this);
-    auto wcsItem = new QAction("Galactic", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsItem->setChecked(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
-    
-    wcsItem = new QAction("FK5", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
-    
-    wcsItem = new QAction("FK4", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
-    
-    wcsItem = new QAction("Ecliptic", wcsGroup);
-    wcsItem->setCheckable(true);
-    wcsGroup->addAction(wcsItem);
-    connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
-    
-    // ui->menuWCS->addActions(wcsGroup->actions());
+    /*
+     
+     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
+     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
+     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
+     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
+     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
+     
+     // ui->menuWCS->addActions(wcsGroup->actions());
+     */
     
     readerCube = vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
@@ -201,19 +188,6 @@ velocityUnit(velocityUnit){
     ui->qVtkSlice->setDefaultCursor(Qt::ArrowCursor);
     ui->qVtkSlice->setRenderWindow(renWinSlice);
     
-    // Setup context menu to toggle slice/moment renderers
-    QActionGroup *grp = new QActionGroup(this);
-    grp->addAction(ui->actionShowSlice);
-    grp->addAction(ui->actionShowMomentMap);
-    connect(ui->actionShowSlice, &QAction::triggered, this, [=]() { changeSliceView(0); });
-    connect(ui->actionShowMomentMap, &QAction::triggered, this, [=]() {
-        if (moment.Get() == nullptr) {
-            calculateAndShowMomentMap(0);
-        } else {
-            changeSliceView(1);
-        }
-    });
-    
     rendererSlice = vtkSmartPointer<vtkRenderer>::New();
     rendererSlice->SetBackground(0.21, 0.23, 0.25);
     rendererSlice->GlobalWarningDisplayOff();
@@ -308,6 +282,7 @@ velocityUnit(velocityUnit){
     visivoMenu = new VisIVOMenu();
     visivoMenu->configureCubeWindowMenu();
     this->layout()->setMenuBar(visivoMenu);
+    initializeMenuConnections(); // Chiamata solo quando l'oggetto è
 }
 
 vtkWindowCube::~vtkWindowCube()
@@ -956,29 +931,53 @@ void vtkWindowCube::on_actionFilter_triggered()
 
 void vtkWindowCube::initializeMenuConnections()
 {
+    //camera menu
     connect(visivoMenu, &VisIVOMenu::cameraFrontTriggered, this, &vtkWindowCube::on_actionFront_triggered);
     connect(visivoMenu, &VisIVOMenu::cameraBackTriggered, this, &vtkWindowCube::on_actionBack_triggered);
     connect(visivoMenu, &VisIVOMenu::cameraTopTriggered, this, &vtkWindowCube::on_actionTop_triggered);
     connect(visivoMenu, &VisIVOMenu::cameraBottomTriggered, this, &vtkWindowCube::on_actionBottom_triggered);
     connect(visivoMenu, &VisIVOMenu::cameraLeftTriggered, this, &vtkWindowCube::on_actionLeft_triggered);
     connect(visivoMenu, &VisIVOMenu::cameraRightTriggered, this, &vtkWindowCube::on_actionRight_triggered);
+    
+    //action menu
+    connect(visivoMenu, &VisIVOMenu::extractSpectrumTriggered, this, &vtkWindowCube::on_actionExtract_spectrum_triggered);
+    connect(visivoMenu, &VisIVOMenu::pvTriggered, this, &vtkWindowCube::on_actionPV_triggered);
+    connect(visivoMenu, &VisIVOMenu::spatialFilterTriggered, this, &vtkWindowCube::on_actionFilter_triggered);
+    
+    //moment menu
+    connect(visivoMenu, &VisIVOMenu::calculate_order_0Triggered, this, &vtkWindowCube::on_actionCalculate_order_0_triggered);
+    connect(visivoMenu, &VisIVOMenu::calculate_order_1Triggered, this, &vtkWindowCube::on_actionCalculate_order_1_triggered);
+    connect(visivoMenu, &VisIVOMenu::calculate_order_2Triggered, this, &vtkWindowCube::on_actionCalculate_order_2_triggered);
+    connect(visivoMenu, &VisIVOMenu::calculate_order_6Triggered, this, &vtkWindowCube::on_actionCalculate_order_6_triggered);
+    connect(visivoMenu, &VisIVOMenu::calculate_order_8Triggered, this, &vtkWindowCube::on_actionCalculate_order_8_triggered);
+    connect(visivoMenu, &VisIVOMenu::extractSpectrumTriggered, this, &vtkWindowCube::on_actionCalculate_order_10_triggered);
+    
+    connect(visivoMenu, &VisIVOMenu::showSliceTriggered, this, [=]() {
+        changeSliceView(0); });
+    
+    connect(visivoMenu, &VisIVOMenu::showMomentMapTriggered, this, [=]() {
+        if (moment.Get() == nullptr) {
+            calculateAndShowMomentMap(0);
+        } else {
+            changeSliceView(1);
+        }
+    });
+    
+    connect(visivoMenu, &VisIVOMenu::sliceLookupTableTriggered, this, &vtkWindowCube::on_actionSlice_Lookup_Table_triggered);
+    
+    connect(visivoMenu, &VisIVOMenu::changeWCSGalacticTriggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
+    connect(visivoMenu, &VisIVOMenu::changeWCSFk5Triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
+    connect(visivoMenu, &VisIVOMenu::changeWCSFk4Triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
+    connect(visivoMenu, &VisIVOMenu::changeWCSEclipticTriggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
 }
 
 
 void vtkWindowCube::changeEvent(QEvent *e)
 {
-    if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
-        visivoMenu->configureCubeWindowMenu();
-        initializeMenuConnections(); // Chiamata solo quando l'oggetto è attivato
-        /*
-         connect(visivoMenu, &VisIVOMenu::cameraFrontTriggered, this, &vtkWindowCube::on_actionFront_triggered);
-         connect(visivoMenu, &VisIVOMenu::cameraBackTriggered, this, &vtkWindowCube::on_actionBack_triggered);
-         connect(visivoMenu, &VisIVOMenu::cameraTopTriggered, this,
-         &vtkWindowCube::on_actionTop_triggered);
-         connect(visivoMenu, &VisIVOMenu::cameraBottomTriggered, this, &vtkWindowCube::on_actionBottom_triggered);
-         connect(visivoMenu, &VisIVOMenu::cameraLeftTriggered, this, &vtkWindowCube::on_actionLeft_triggered);
-         connect(visivoMenu, &VisIVOMenu::cameraRightTriggered, this, &vtkWindowCube::on_actionRight_triggered);
-         */
-        
-    }
+    /* if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
+     visivoMenu->configureCubeWindowMenu();
+     initializeMenuConnections(); // Chiamata solo quando l'oggetto è attivato
+     
+     }
+     */
 }
