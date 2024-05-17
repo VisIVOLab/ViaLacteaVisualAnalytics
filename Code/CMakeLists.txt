@@ -97,6 +97,8 @@ set(PROJECT_SOURCES
     src/FilterFITSDialog.h
     src/higalselectedsources.cpp
     src/higalselectedsources.h
+    src/HiPS2FITSForm.cpp
+    src/HiPS2FITSForm.h
     src/imutils.cpp
     src/imutils.h
     src/interactors/vtkinteractorstyledrawarrow.h
@@ -243,6 +245,7 @@ set(PROJECT_UI
     ui/fitsheadermodifierdialog.ui
     ui/FilterFITSDialog.ui
     ui/higalselectedsources.ui
+    ui/HiPS2FITSForm.ui
     ui/loadingwidget.ui
     ui/lutcustomize.ui
     ui/mainwindow.ui
