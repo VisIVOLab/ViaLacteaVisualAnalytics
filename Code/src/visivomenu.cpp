@@ -19,15 +19,15 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
 
     fileAddCompactMenu = fileMenu->addMenu("Add compact sources");
-    QAction *localCompactSources = fileAddCompactMenu->addAction("Local");
+    localCompactSources = fileAddCompactMenu->addAction("Local");
     connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionLocalCompactSourcesTriggered);
-    QAction *jsonCompactSources = fileAddCompactMenu->addAction("From JSON catalogue");
+    jsonCompactSources = fileAddCompactMenu->addAction("From JSON catalogue");
     connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionJsonCompactSourcesTriggered);
-    QAction *ds9CompactSources = fileAddCompactMenu->addAction("From DS9 Region");
+    ds9CompactSources = fileAddCompactMenu->addAction("From DS9 Region");
     connect(ds9CompactSources, &QAction::triggered, this, &VisIVOMenu::actionDS9CompactSourcesTriggered);
-    QAction *remoteCompactSources = fileAddCompactMenu->addAction("Remote");
+    remoteCompactSources = fileAddCompactMenu->addAction("Remote");
     connect(remoteCompactSources, &QAction::triggered, this, &VisIVOMenu::actionRemoteCompactSourcesTriggered);
-    QAction *tdCompactSources = fileAddCompactMenu->addAction("3D");
+    tdCompactSources = fileAddCompactMenu->addAction("3D");
     connect(tdCompactSources, &QAction::triggered, this, &VisIVOMenu::action3DCompactSourcesTriggered);
 
     saveSessionFile = fileMenu->addAction("Save Session");
@@ -113,7 +113,8 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     viewMenu->addActions(grp->actions());
 
     wcsMenu = addMenu("WCS");
-    auto wcsGroup = new QActionGroup(this);
+    
+    wcsGroup = new QActionGroup(this);
     auto wcsItem = new QAction("Galactic", wcsGroup);
     wcsItem->setCheckable(true);
     wcsItem->setChecked(true);
@@ -335,96 +336,114 @@ void VisIVOMenu::actionChangeWCSEcliptic()
 
 void VisIVOMenu::configureStartupMenu()
 {
-    actionAddFitsFile->setEnabled(false);
-    fileAddCompactMenu->setEnabled(false);
-    saveSessionFile->setEnabled(false);
-    actionExtract_spectrum->setEnabled(false);
-    actionPV->setEnabled(false);
-    actionFilter->setEnabled(false);
-    actionFront->setEnabled(false);
-    actionBack->setEnabled(false);
-    actionTop->setEnabled(false);
-    actionRight->setEnabled(false);
-    actionBottom->setEnabled(false);
-    actionLeft->setEnabled(false);
-    actionCalculate_order_0->setEnabled(false);
-    actionCalculate_order_1->setEnabled(false);
-    actionCalculate_order_2->setEnabled(false);
-    actionCalculate_order_6->setEnabled(false);
-    actionCalculate_order_8->setEnabled(false);
-    actionCalculate_order_10->setEnabled(false);
-    actionSourceFinders->setEnabled(false);
-    actionProfileFinders->setEnabled(false);
-    actionSlice_Lookup_Table->setEnabled(false);
-    actionShowSlice->setEnabled(false);
-    actionShowMomentMap->setEnabled(false);
-    wcsMenu->setEnabled(false);
-    actionInfoWindow->setEnabled(false);
-    actionSelectWindow->setEnabled(false);
-    actionExtractWindow->setEnabled(false);
-    actionFilterWindow->setEnabled(false);
+    actionAddFitsFile->setVisible(false);
+    fileAddCompactMenu->setVisible(false);
+    fileMenu->removeAction(fileAddCompactMenu->menuAction());
+
+    localCompactSources->setVisible(false);
+    jsonCompactSources->setVisible(false);
+    ds9CompactSources->setVisible(false);
+    remoteCompactSources->setVisible(false);
+    tdCompactSources->setVisible(false);
+    
+    saveSessionFile->setVisible(false);
+    actionExtract_spectrum->setVisible(false);
+    actionPV->setVisible(false);
+    actionFilter->setVisible(false);
+    actionFront->setVisible(false);
+    actionBack->setVisible(false);
+    actionTop->setVisible(false);
+    actionRight->setVisible(false);
+    actionBottom->setVisible(false);
+    actionLeft->setVisible(false);
+    actionCalculate_order_0->setVisible(false);
+    actionCalculate_order_1->setVisible(false);
+    actionCalculate_order_2->setVisible(false);
+    actionCalculate_order_6->setVisible(false);
+    actionCalculate_order_8->setVisible(false);
+    actionCalculate_order_10->setVisible(false);
+    actionSourceFinders->setVisible(false);
+    actionProfileFinders->setVisible(false);
+    actionSlice_Lookup_Table->setVisible(false);
+    actionShowSlice->setVisible(false);
+    actionShowMomentMap->setVisible(false);
+    wcsMenu->setVisible(false);
+    foreach (QAction *action, wcsGroup->actions())
+        wcsMenu->removeAction(action);
+    actionInfoWindow->setVisible(false);
+    actionSelectWindow->setVisible(false);
+    actionExtractWindow->setVisible(false);
+    actionFilterWindow->setVisible(false);
 }
 
 void VisIVOMenu::configureCubeWindowMenu()
 {
-    actionAddFitsFile->setEnabled(false);
-    fileAddCompactMenu->setEnabled(false);
-    saveSessionFile->setEnabled(false);
-    actionExtract_spectrum->setEnabled(true);
-    actionPV->setEnabled(true);
-    actionFilter->setEnabled(true);
-    actionFront->setEnabled(true);
-    actionBack->setEnabled(true);
-    actionTop->setEnabled(true);
-    actionRight->setEnabled(true);
-    actionBottom->setEnabled(true);
-    actionLeft->setEnabled(true);
-    actionCalculate_order_0->setEnabled(true);
-    actionCalculate_order_1->setEnabled(true);
-    actionCalculate_order_2->setEnabled(true);
-    actionCalculate_order_6->setEnabled(true);
-    actionCalculate_order_8->setEnabled(true);
-    actionCalculate_order_10->setEnabled(true);
-    actionSourceFinders->setEnabled(false);
-    actionProfileFinders->setEnabled(false);
-    actionSlice_Lookup_Table->setEnabled(true);
-    actionShowSlice->setEnabled(true);
-    actionShowMomentMap->setEnabled(true);
-    wcsMenu->setEnabled(true);
-    actionInfoWindow->setEnabled(false);
-    actionSelectWindow->setEnabled(false);
-    actionExtractWindow->setEnabled(false);
-    actionFilterWindow->setEnabled(false);
+    actionAddFitsFile->setVisible(false);
+    fileAddCompactMenu->setVisible(false);
+    fileMenu->removeAction(fileAddCompactMenu->menuAction());
+    saveSessionFile->setVisible(false);
+    actionExtract_spectrum->setVisible(true);
+    actionPV->setVisible(true);
+    actionFilter->setVisible(true);
+    actionFront->setVisible(true);
+    actionBack->setVisible(true);
+    actionTop->setVisible(true);
+    actionRight->setVisible(true);
+    actionBottom->setVisible(true);
+    actionLeft->setVisible(true);
+    actionCalculate_order_0->setVisible(true);
+    actionCalculate_order_1->setVisible(true);
+    actionCalculate_order_2->setVisible(true);
+    actionCalculate_order_6->setVisible(true);
+    actionCalculate_order_8->setVisible(true);
+    actionCalculate_order_10->setVisible(true);
+    actionSourceFinders->setVisible(false);
+    actionProfileFinders->setVisible(false);
+    actionSlice_Lookup_Table->setVisible(true);
+    actionShowSlice->setVisible(true);
+    actionShowMomentMap->setVisible(true);
+    wcsMenu->setVisible(true);
+    foreach (QAction *action, wcsGroup->actions())
+        wcsMenu->addAction(action);
+
+    actionInfoWindow->setVisible(false);
+    actionSelectWindow->setVisible(false);
+    actionExtractWindow->setVisible(false);
+    actionFilterWindow->setVisible(false);
 
 }
 void VisIVOMenu::configureImageWindowMenu()
 {
-    actionAddFitsFile->setEnabled(true);
-    fileAddCompactMenu->setEnabled(true);
-    saveSessionFile->setEnabled(true);
-    actionExtract_spectrum->setEnabled(false);
-    actionPV->setEnabled(false);
-    actionFilter->setEnabled(false);
-    actionFront->setEnabled(false);
-    actionBack->setEnabled(false);
-    actionTop->setEnabled(false);
-    actionRight->setEnabled(false);
-    actionBottom->setEnabled(false);
-    actionLeft->setEnabled(false);
-    actionCalculate_order_0->setEnabled(false);
-    actionCalculate_order_1->setEnabled(false);
-    actionCalculate_order_2->setEnabled(false);
-    actionCalculate_order_6->setEnabled(false);
-    actionCalculate_order_8->setEnabled(false);
-    actionCalculate_order_10->setEnabled(false);
-    actionSourceFinders->setEnabled(true);
-    actionProfileFinders->setEnabled(true);
-    actionSlice_Lookup_Table->setEnabled(false);
-    actionShowSlice->setEnabled(false);
-    actionShowMomentMap->setEnabled(false);
-    wcsMenu->setEnabled(true);
-    actionInfoWindow->setEnabled(true);
-    actionSelectWindow->setEnabled(true);
-    actionExtractWindow->setEnabled(true);
-    actionFilterWindow->setEnabled(true);
+    actionAddFitsFile->setVisible(true);
+    fileAddCompactMenu->setVisible(true);
+    fileMenu->addAction(fileAddCompactMenu->menuAction());
+    saveSessionFile->setVisible(true);
+    actionExtract_spectrum->setVisible(false);
+    actionPV->setVisible(false);
+    actionFilter->setVisible(false);
+    actionFront->setVisible(false);
+    actionBack->setVisible(false);
+    actionTop->setVisible(false);
+    actionRight->setVisible(false);
+    actionBottom->setVisible(false);
+    actionLeft->setVisible(false);
+    actionCalculate_order_0->setVisible(false);
+    actionCalculate_order_1->setVisible(false);
+    actionCalculate_order_2->setVisible(false);
+    actionCalculate_order_6->setVisible(false);
+    actionCalculate_order_8->setVisible(false);
+    actionCalculate_order_10->setVisible(false);
+    actionSourceFinders->setVisible(true);
+    actionProfileFinders->setVisible(true);
+    actionSlice_Lookup_Table->setVisible(false);
+    actionShowSlice->setVisible(false);
+    actionShowMomentMap->setVisible(false);
+    wcsMenu->setVisible(true);
+    foreach (QAction *action, wcsGroup->actions())
+        wcsMenu->addAction(action);
+
+    actionInfoWindow->setVisible(true);
+    actionSelectWindow->setVisible(true);
+    actionExtractWindow->setVisible(true);
+    actionFilterWindow->setVisible(true);
 }

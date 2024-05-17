@@ -25,6 +25,13 @@ private:
     QMenu *actionMenu;
     QMenu *windowMenu;
     QMenu *toolsMenu;
+    
+    QAction *localCompactSources;
+    QAction *jsonCompactSources;
+    QAction *ds9CompactSources;
+    QAction *remoteCompactSources;
+    QAction *tdCompactSources;
+    QActionGroup *wcsGroup;
 
     QAction *actionAddFitsFile;
     QAction *actionLoadLocalFitsFile;
