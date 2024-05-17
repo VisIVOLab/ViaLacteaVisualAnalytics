@@ -1,7 +1,7 @@
 #include "recentfilesmanager.h"
 
 RecentFilesManager::RecentFilesManager(QObject *parent)
-    : QAbstractListModel(parent), maxRecentFiles(10), settings("MyCompany", "MyApp", this)
+    : QAbstractListModel(parent), maxRecentFiles(10), settings("it.inaf.oact", "VisIVO", this)
 {
     this->history = this->settings.value("recentFiles").toStringList();
 }
@@ -47,6 +47,8 @@ void RecentFilesManager::addRecentFile(const QString &filename)
     }
     this->history.prepend(filename);
     emit this->dataChanged(this->index(0), this->index(this->history.count() - 1));
+    this->settings.setValue("recentFiles", this->history);
+    this->settings.sync();
 }
 
 QStringList RecentFilesManager::recentFiles() const
@@ -58,4 +60,6 @@ void RecentFilesManager::clearHistory()
 {
     this->history.clear();
     emit this->dataChanged(this->index(0), this->index(0));
+    this->settings.setValue("recentFiles", this->history);
+    this->settings.sync();
 }
