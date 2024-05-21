@@ -14,6 +14,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include "visivomenu.h"
+#include "vialacteainitialquery.h"
 
 StartupWindow::StartupWindow(QWidget *parent)
 : QWidget(parent),
@@ -41,11 +42,11 @@ settings(settingsFile, QSettings::IniFormat)
     
     visivoMenu = new VisIVOMenu();
     visivoMenu->configureStartupMenu();
-
+    
     this->layout()->setMenuBar(visivoMenu);
     connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
         on_localOpenPushButton_clicked(false); });
-
+    
 }
 
 StartupWindow::~StartupWindow()
@@ -87,25 +88,25 @@ void StartupWindow::openLocalImage(const QString &fn)
 {
     auto fits = vtkSmartPointer<vtkFitsReader>::New();
     fits->SetFileName(fn.toStdString());
-    /*
-     bool doSearch = settings.value("vlkb.search", false).toBool();
-     
-     if (doSearch) {
-     double coords[2], rectSize[2];
-     AstroUtils::GetCenterCoords(fn.toStdString(), coords);
-     AstroUtils::GetRectSize(fn.toStdString(), rectSize);
-     
-     VialacteaInitialQuery *vq = new VialacteaInitialQuery;
-     connect(vq, &VialacteaInitialQuery::searchDone, this,
-     [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
-     auto win = new vtkwindow_new(this, fits);
-     win->setDbElements(results);
-     vq->deleteLater();
-     });
-     
-     vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
-     } else
-     */
+    
+    bool doSearch = settings.value("vlkb.search", false).toBool();
+    
+    if (doSearch) {
+        double coords[2], rectSize[2];
+        AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils::GetRectSize(fn.toStdString(), rectSize);
+        
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDone, this,
+                [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
+            auto win = new vtkwindow_new(this, fits);
+            win->setDbElements(results);
+            vq->deleteLater();
+        });
+        
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    }
+    else
     {
         new vtkwindow_new(this, fits);
     }
@@ -210,12 +211,12 @@ void StartupWindow::on_historyArea_clicked(const QModelIndex &index)
 void StartupWindow::changeEvent(QEvent *e)
 {
     /*
-    if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
-        visivoMenu->configureStartupMenu();
-        qDebug()<<"connetto";
-        connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
-            on_localOpenPushButton_clicked(false); });
-
-    }
+     if(e->type() == QEvent::ActivationChange && this->isActiveWindow()) {
+     visivoMenu->configureStartupMenu();
+     qDebug()<<"connetto";
+     connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
+     on_localOpenPushButton_clicked(false); });
+     
+     }
      */
 }

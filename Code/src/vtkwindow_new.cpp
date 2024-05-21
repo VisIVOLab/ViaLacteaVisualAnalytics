@@ -4942,6 +4942,9 @@ void vtkwindow_new::initializeMenuConnections()
     connect(visivoMenu, &VisIVOMenu::changeWCSFk5Triggered, this, [=]() { changeWCS_clicked(WCS_J2000); });
     connect(visivoMenu, &VisIVOMenu::changeWCSFk4Triggered, this, [=]() { changeWCS_clicked(WCS_B1950); });
     connect(visivoMenu, &VisIVOMenu::changeWCSEclipticTriggered, this, [=]() { changeWCS_clicked(WCS_ECLIPTIC); });
+    
+    connect(visivoMenu, &VisIVOMenu::saveSessionTriggered, this, &vtkwindow_new::on_actionSave_session_triggered);
+
 }
 
 void vtkwindow_new::changeEvent(QEvent *e)

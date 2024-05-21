@@ -186,8 +186,9 @@ void VisIVOMenu::action3DCompactSourcesTriggered()
 }
 void VisIVOMenu::actionSaveSessionTriggered()
 {
-
+    emit saveSessionTriggered();
 }
+
 void VisIVOMenu::exitApplication()
 {
     QMessageBox::StandardButton reply;

@@ -139,6 +139,7 @@ signals:
     void changeWCSFk5Triggered();
     void changeWCSFk4Triggered();
     void changeWCSEclipticTriggered();
+    void saveSessionTriggered();
 
 
 
