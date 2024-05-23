@@ -20,25 +20,25 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionLoadSEDFile, &QAction::triggered, this, &VisIVOMenu::actionLoadSEDFileTriggered);
 
     
-    actionAddFitsFile = fileLoadMenu->addAction("Add new FITS file");
+    actionAddFitsFile = fileLoadMenu->addAction("Add new layer (FITS)");
     connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
 
     fileAddCompactMenu = fileMenu->addMenu("Add compact sources");
     localCompactSources = fileAddCompactMenu->addAction("Local");
     connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionLocalCompactSourcesTriggered);
-    jsonCompactSources = fileAddCompactMenu->addAction("From JSON catalogue");
-    connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionJsonCompactSourcesTriggered);
-    ds9CompactSources = fileAddCompactMenu->addAction("From DS9 Region");
+    jsonCompactSources = fileAddCompactMenu->addAction("JSON catalogue");
+    connect(jsonCompactSources, &QAction::triggered, this, &VisIVOMenu::actionJsonCompactSourcesTriggered);
+    ds9CompactSources = fileAddCompactMenu->addAction("DS9 region");
     connect(ds9CompactSources, &QAction::triggered, this, &VisIVOMenu::actionDS9CompactSourcesTriggered);
-    remoteCompactSources = fileAddCompactMenu->addAction("Remote");
+    remoteCompactSources = fileAddCompactMenu->addAction("VLKB (remote)");
     connect(remoteCompactSources, &QAction::triggered, this, &VisIVOMenu::actionRemoteCompactSourcesTriggered);
-    tdCompactSources = fileAddCompactMenu->addAction("3D");
+    tdCompactSources = fileAddCompactMenu->addAction("3D distribution");
     connect(tdCompactSources, &QAction::triggered, this, &VisIVOMenu::action3DCompactSourcesTriggered);
 
     saveSessionFile = fileMenu->addAction("Save Session");
     connect(saveSessionFile, &QAction::triggered, this, &VisIVOMenu::actionSaveSessionTriggered);
 
-    fileMenu->addSeparator();
+//    fileMenu->addSeparator();
 
     QAction *exitAction = fileMenu->addAction("Exit");
     connect(exitAction, &QAction::triggered, this, &VisIVOMenu::exitApplication);
@@ -194,28 +194,32 @@ void VisIVOMenu::actionLoadLocalFitsTriggered()
 }
 void VisIVOMenu::actionAddFitsFileTriggered()
 {
-
+    emit addFitsFileTriggered();
 }
+
 void VisIVOMenu::actionLocalCompactSourcesTriggered()
 {
-
+    emit localCompactSourcesTriggered();
 }
+
 void VisIVOMenu::actionJsonCompactSourcesTriggered()
 {
-
+    emit jsonCompactSourcesTriggered();
 }
 void VisIVOMenu::actionDS9CompactSourcesTriggered()
 {
-
+    emit ds9CompactSourcesTriggered();
 }
 void VisIVOMenu::actionRemoteCompactSourcesTriggered()
 {
-
+    emit remoteCompactSourcesTriggered();
 }
+
 void VisIVOMenu::action3DCompactSourcesTriggered()
 {
-
+    emit compactSources3DTriggered();
 }
+
 void VisIVOMenu::actionSaveSessionTriggered()
 {
     emit saveSessionTriggered();
@@ -342,11 +346,12 @@ void VisIVOMenu::actionFilterWindowTriggered()
 //tools
 void VisIVOMenu::actionSouceFindersTriggered()
 {
-
+    emit souceFindersTriggered();
 }
+
 void VisIVOMenu::actionProfileTriggered()
 {
-
+    emit profileTriggered();
 }
 
 //wcs
@@ -478,6 +483,7 @@ void VisIVOMenu::configureCubeWindowMenu()
 
 void VisIVOMenu::configureImageWindowMenu()
 {
+    actionLoadLocalFitsFile->setVisible(false);
     actionAddFitsFile->setVisible(true);
     actionLoadSEDFile->setVisible(false);
     fileAddCompactMenu->setVisible(true);

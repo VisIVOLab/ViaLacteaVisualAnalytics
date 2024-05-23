@@ -185,8 +185,14 @@ void StartupWindow::on_openPushButton_clicked()
 
 void StartupWindow::on_vlkbPushButton_clicked()
 {
-    ViaLactea *vialactealWin = new ViaLactea();
+    if (!vialactealWin) {
+        vialactealWin = new ViaLactea;
+     }
     vialactealWin->show();
+    vialactealWin->activateWindow();
+    vialactealWin->raise();
+
+
 }
 
 void StartupWindow::on_historyArea_activated(const QModelIndex &index)

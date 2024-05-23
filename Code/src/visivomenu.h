@@ -160,8 +160,14 @@ signals:
     void saveSessionTriggered();
     void loadSEDFileTriggered();
     void coneSearchTriggered();
-
-
+    void addFitsFileTriggered();
+    void localCompactSourcesTriggered();
+    void jsonCompactSourcesTriggered();
+    void ds9CompactSourcesTriggered();
+    void remoteCompactSourcesTriggered();
+    void compactSources3DTriggered();
+    void souceFindersTriggered();
+    void profileTriggered();
 
 };
 

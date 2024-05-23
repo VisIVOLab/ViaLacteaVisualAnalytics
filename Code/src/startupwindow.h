@@ -12,6 +12,7 @@ class StartupWindow;
 class RecentFilesManager;
 class SettingForm;
 class VisIVOMenu;
+class ViaLactea;
 
 class StartupWindow : public QWidget
 {
@@ -44,6 +45,8 @@ private:
     QString settingsFile;
     QSettings settings;
     QPointer<SettingForm> settingForm;
+    QPointer<ViaLactea> vialactealWin;
+
     VisIVOMenu *visivoMenu; // Puntatore a VisIVOMenu
 };
 
