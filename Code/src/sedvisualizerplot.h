@@ -51,20 +51,7 @@ protected:
      * @brief closeEvent
      * @param event
      */
-    void closeEvent(QCloseEvent *event) override
-    {
-        if (vtkwin != 0) {
-            // remove all ellipses
-            for (auto ellipseActor = ellipseActorMap.constBegin();
-                 ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
-                vtkwin->removeActor(ellipseActor.value());
-            }
-            // clear ellipses support
-            ellipseActorMap.clear();
-            vtkwin->updateScene();
-        }
-        event->accept();
-    };
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     Ui::SEDVisualizerPlot *ui;
@@ -82,8 +69,10 @@ private:
     bool multiSelectionPointStatus;
     // shift key press status to avoid deselecting pending nodes
     bool shiftMovingStatus;
-    // data structure to support drag item selection
+    // data structure to support drag sednodes selections
     QMap<QPair<double, double>, QCPAbstractItem *> sed_coordinte_to_element;
+    // data structure to support drag collapsenodes selections
+    QMap<QPair<double, double>, QCPAbstractItem *> collapse_coordinate_to_element;
     // setting drag selection
     void setDragSelection();
     // set scatter style on node drag selection: collapse and sed graphs
@@ -232,7 +221,7 @@ private slots:
     void doThickRemoteFit();
 
     void on_actionScreenshot_triggered();
-    void on_actionCollapse_triggered();
+    void createCollapseNodes();
     void on_ThinLocalFit_triggered();
     void on_ThickLocalFit_triggered();
     void on_TheoreticalRemoteFit_triggered();

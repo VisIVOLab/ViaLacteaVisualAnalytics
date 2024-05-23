@@ -218,6 +218,9 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     ui->histogramPlot->hide();
     connect(ui->resultsTableWidget->horizontalHeader(), SIGNAL(sectionClicked(int)), this,
             SLOT(sectionClicked(int)));
+
+    // create collapsed Nodes and set invisible
+    createCollapseNodes();
 }
 
 QDataStream &operator<<(QDataStream &out, QList<SED *> &sedlist)
@@ -531,8 +534,8 @@ void SEDVisualizerPlot::createEllipseActors(SEDNode *node)
 {
     if (vtkwin != 0
         && (node->getX() != 0 && node->getY() != 0 && node->getDesignation().compare("") != 0)) {
-        qDebug() << node->getDesignation() << node->getX() << node->getY();
-        // set ellipse
+        // qDebug() << node->getDesignation() << node->getX() << node->getY();
+        //  set ellipse
         vtkEllipse *ellipse;
         ellipse =
                 new vtkEllipse(node->getSemiMinorAxisLength() / 2,
@@ -761,27 +764,32 @@ bool SEDVisualizerPlot::prepareSelectedInputForSedFit()
     bool validFit = false;
     QMap<double, SEDNode *> selected_sed_map;
     QCPDataSelection nodeSelection;
+    QCPGraph *nodes;
+    QMap<QPair<double, double>, QCPAbstractItem *> coordinate_to_element;
 
-    // get selected (drag selection)
-    if (!graphSEDNodes->selection().isEmpty()) {
+    // get selected sednodes or collapse (drag selection)
+    if (!ui->collapseCheckBox->isChecked()) {
         nodeSelection = graphSEDNodes->selection();
-    } else if (!collapsedNodes->selection().isEmpty()) {
+        nodes = graphSEDNodes;
+        coordinate_to_element = sed_coordinte_to_element;
+    } else {
         nodeSelection = collapsedNodes->selection();
+        nodes = collapsedNodes;
+        coordinate_to_element = collapse_coordinate_to_element;
     }
 
     // for each range of data selected on drag mode
     foreach (QCPDataRange dataRange, nodeSelection.dataRanges()) {
         for (int j = dataRange.begin(); j < dataRange.end(); ++j) {
             // get data-i (not element) selected
-            QCPGraphDataContainer::const_iterator dataPoint = graphSEDNodes->data()->at(j);
+            QCPGraphDataContainer::const_iterator dataPoint = nodes->data()->at(j);
             QString className =
-                    sed_coordinte_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
+                    coordinate_to_element.value(qMakePair(dataPoint->key, dataPoint->value))
                             ->metaObject()
                             ->className();
             if (QString::compare(className, "SEDPlotPointCustom") == 0) {
-                SEDPlotPointCustom *cp =
-                        qobject_cast<SEDPlotPointCustom *>(sed_coordinte_to_element.value(
-                                qMakePair(dataPoint->key, dataPoint->value)));
+                SEDPlotPointCustom *cp = qobject_cast<SEDPlotPointCustom *>(
+                        coordinate_to_element.value(qMakePair(dataPoint->key, dataPoint->value)));
                 selected_sed_map.insert(cp->getNode()->getWavelength(), cp->getNode());
             }
         }
@@ -1178,15 +1186,8 @@ void SEDVisualizerPlot::on_actionScreenshot_triggered()
     bool b = qImage.save(fileName);
 }
 
-void SEDVisualizerPlot::on_actionCollapse_triggered()
+void SEDVisualizerPlot::createCollapseNodes()
 {
-    QPen pen;
-    pen.setStyle(Qt::DashLine);
-    pen.setColor(Qt::lightGray);
-
-    for (int i = 0; i < originalGraphs.size(); i++) {
-        originalGraphs.at(i)->setPen(pen);
-    }
 
     SED *coll_sed = new SED();
     QVector<double> x, y;
@@ -1230,7 +1231,9 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
         cp->setLon(0);
         cp->setErrorFlux(err_flux_sum);
         cp->setNode(tmp_node);
+        cp->setVisible(false);
         collapsedGraphPoints.push_back(cp);
+        collapse_coordinate_to_element.insert(qMakePair(j, flux_sum), cp);
         cnt++;
     }
     coll_sed->setRootNode(tmp_node);
@@ -1241,6 +1244,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     collapsedGraph->setPen(QPen(Qt::red)); // line color red for second graph
     collapsedGraph->setScatterStyle(QCPScatterStyle::ssNone); // no nodes
     collapsedGraph->setSelectable(QCP::stNone); // no line selectable
+    collapsedGraph->setVisible(false);
 
     // generate nodes collapse-graph
     collapsedNodes = ui->customPlot->addGraph();
@@ -1254,6 +1258,7 @@ void SEDVisualizerPlot::on_actionCollapse_triggered()
     collapsedNodes->setSelectionDecorator(decorator);
     collapsedNodes->setScatterStyle(scatterStyless);
     collapsedNodes->setSelectable(QCP::stMultipleDataRanges);
+    collapsedNodes->setVisible(false);
     ui->customPlot->replot();
     // sed_list.insert(0, coll_sed); // to save/export it
 }
@@ -2189,27 +2194,37 @@ void SEDVisualizerPlot::loadSavedSED(QStringList dirList)
 
 void SEDVisualizerPlot::on_collapseCheckBox_toggled(bool checked)
 {
+    collapsedGraph->setVisible(checked);
+    collapsedNodes->setVisible(checked);
+    for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
+        SEDPlotPointCustom *cp;
+        cp = collapsedGraphPoints.at(i);
+        cp->setVisible(checked);
+    }
+    QPen pen;
+
     if (checked) {
         graphSEDNodes->setSelectable(QCP::stNone); // disable graphSEDNodes selection
-        this->on_actionCollapse_triggered();
+        // set originalgraph in dotline gray
+        pen.setStyle(Qt::DashLine);
+        pen.setColor(Qt::lightGray);
+        // TODO rendere selezionabile i collapse node (già gestita dalla setVisible?)
     } else {
-        QPen pen;
+        // set original graph line blue
         pen.setStyle(Qt::SolidLine);
-        pen.setColor(Qt::black);
-        for (int i = 0; i < originalGraphs.size(); i++) {
-            originalGraphs.at(i)->setPen(pen);
-        }
-        ui->customPlot->removeGraph(collapsedGraph);
-        ui->customPlot->removeGraph(collapsedNodes);
-        for (int i = 0; i < collapsedGraphPoints.size(); ++i) {
-            SEDPlotPointCustom *cp;
-            cp = collapsedGraphPoints.at(i);
-            ui->customPlot->removeItem(cp);
-        }
-        collapsedGraphPoints.clear();
+        pen.setColor(Qt::blue);
+
+        // TODO alla chiusura della finestra eliminare tutto
+        // collapsedGraphPoints.clear();
+        // removeItem(cp)
+        // TODO rendere non selezionabile i collpase nodi (già gestita dalla setVisible?)
         graphSEDNodes->setSelectable(QCP::stMultipleDataRanges); // enable graphSEDNodes selection
-        ui->customPlot->replot();
     }
+    // set originalGraphs style dash-lightGray or soliline-blue
+    for (int i = 0; i < originalGraphs.size(); i++) {
+        originalGraphs.at(i)->setPen(pen);
+    }
+    ui->customPlot->replot();
 }
 
 void SEDVisualizerPlot::addNewTheoreticalFit()
@@ -2383,4 +2398,19 @@ void SEDVisualizerPlot::keyReleaseEvent(QKeyEvent *event)
     }
 
     QMainWindow::keyPressEvent(event);
+}
+
+void SEDVisualizerPlot::closeEvent(QCloseEvent *event)
+{
+    if (vtkwin != 0) {
+        // remove all ellipses
+        for (auto ellipseActor = ellipseActorMap.constBegin();
+             ellipseActor != ellipseActorMap.constEnd(); ++ellipseActor) {
+            vtkwin->removeActor(ellipseActor.value());
+        }
+        // clear ellipses support
+        ellipseActorMap.clear();
+        vtkwin->updateScene();
+    }
+    event->accept();
 }

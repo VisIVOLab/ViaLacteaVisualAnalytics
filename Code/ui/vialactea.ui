@@ -573,6 +573,11 @@
     <string>Cone Search</string>
    </property>
   </action>
+  <action name="actionHiPS2FITS">
+   <property name="text">
+    <string>HiPS2FITS</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

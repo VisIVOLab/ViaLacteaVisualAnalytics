@@ -4,6 +4,7 @@
 #include "aboutform.h"
 #include "astroutils.h"
 #include "fitsheadermodifierdialog.h"
+#include "HiPS2FITSForm.h"
 #include "mcutoutsummary.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
