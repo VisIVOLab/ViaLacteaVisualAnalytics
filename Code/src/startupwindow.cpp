@@ -220,3 +220,19 @@ void StartupWindow::changeEvent(QEvent *e)
      }
      */
 }
+
+void StartupWindow::closeEvent(QCloseEvent *event)
+{
+    
+    auto res = QMessageBox::question(this, "Confirm exit",
+                                     "Do you want to exit?.\nClosing this "
+                                     "window will terminate ongoing processes.",
+                                     QMessageBox::Yes | QMessageBox::No);
+
+    if (res == QMessageBox::No) {
+        event->ignore();
+        return;
+    }
+
+    QApplication::quit();
+}

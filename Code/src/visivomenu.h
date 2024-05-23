@@ -3,6 +3,9 @@
 #define VISIVOMENU_H
 
 #include <QMenuBar>
+#include <QPointer>
+
+class SimpleConeSearchForm;
 
 class VisIVOMenu : public QMenuBar
 {
@@ -13,6 +16,7 @@ public:
     void configureStartupMenu();
     void configureCubeWindowMenu();
     void configureImageWindowMenu();
+    void configureVLKBWindowMenu();
 
 private:
     QMenu *fileMenu;
@@ -25,6 +29,7 @@ private:
     QMenu *actionMenu;
     QMenu *windowMenu;
     QMenu *toolsMenu;
+    QMenu *VOMenu;
     
     QAction *localCompactSources;
     QAction *jsonCompactSources;
@@ -35,6 +40,7 @@ private:
 
     QAction *actionAddFitsFile;
     QAction *actionLoadLocalFitsFile;
+    QAction * actionLoadSEDFile;
     QAction *saveSessionFile;
     QAction *actionExtract_spectrum;
     QAction *actionPV;
@@ -60,11 +66,16 @@ private:
     QAction *actionSelectWindow;
     QAction *actionExtractWindow;
     QAction *actionFilterWindow;
+    QAction *actionConeSearch;
+    
+    QPointer<SimpleConeSearchForm> coneForm;
+
 
 public slots:
     void actionLoadLocalFitsTriggered();
     //action
     void actionFrontTriggered();
+    void actionLoadSEDFileTriggered();
 
 
 
@@ -114,6 +125,8 @@ private slots:
     void actionChangeWCSFk4();
     void actionChangeWCSEcliptic();
 
+    void actionConeSearchTriggered();
+
 
 signals:
     void loadLocalFitsFileRequested();
@@ -140,6 +153,8 @@ signals:
     void changeWCSFk4Triggered();
     void changeWCSEclipticTriggered();
     void saveSessionTriggered();
+    void loadSEDFileTriggered();
+    void coneSearchTriggered();
 
 
 

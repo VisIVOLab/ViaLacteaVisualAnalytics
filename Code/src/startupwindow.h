@@ -23,6 +23,8 @@ public:
 
 protected:
     void changeEvent(QEvent *e);
+    void closeEvent(QCloseEvent *event);
+
 
 private slots:
     void on_localOpenPushButton_clicked(bool fromHistory);

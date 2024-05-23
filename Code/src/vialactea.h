@@ -11,7 +11,9 @@
 
 class AboutForm;
 class SettingForm;
-class SimpleConeSearchForm;
+//class SimpleConeSearchForm;
+class VisIVOMenu;
+
 
 namespace Ui {
 class ViaLactea;
@@ -70,14 +72,14 @@ private slots:
     void updateVLKBSetting();
     void on_actionLoad_session_triggered();
     void on_loadTableButton_clicked();
-    void on_actionConeSearch_triggered();
+   // void on_actionConeSearch_triggered();
     void on_openLoadDataPushButton_clicked();
 
 private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
-    QPointer<SimpleConeSearchForm> coneForm;
+   // QPointer<SimpleConeSearchForm> coneForm;
 
     // for javascript communication procedures
     WebProcess *webobj;
@@ -87,9 +89,12 @@ private:
     QSettings settings;
     QString tilePath;
     QMap<int, QPair<QString, QString>> mapSurvey;
+    VisIVOMenu *visivoMenu;
 
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
+    void initializeMenuConnections();
 
+    
 protected:
     void closeEvent(QCloseEvent *);
 };

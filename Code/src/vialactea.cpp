@@ -22,6 +22,8 @@
 #include <QSettings>
 #include <QWebChannel>
 
+#include "visivomenu.h"
+
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
 void WebProcess::jsCall(const QString &point, const QString &radius)
@@ -47,6 +49,12 @@ ViaLactea::ViaLactea(QWidget *parent)
     ui->fileNameLineEdit->setVisible(false);
     ui->selectFsPushButton->setVisible(false);
 
+    visivoMenu = new VisIVOMenu();
+    this->layout()->setMenuBar(visivoMenu);
+    visivoMenu->configureVLKBWindowMenu();
+    initializeMenuConnections();
+    
+    
     // Cleanup previous run tmp
     QDir dir_tmp(
             QDir::homePath().append(QDir::separator()).append("VisIVODesktopTemp/tmp_download"));
@@ -354,6 +362,7 @@ void ViaLactea::on_actionExit_triggered()
 
 void ViaLactea::closeEvent(QCloseEvent *event)
 {
+    /*
     auto res = QMessageBox::question(this, "Confirm exit",
                                      "Do you want to exit?.\nClosing this "
                                      "window will terminate ongoing processes.",
@@ -363,9 +372,9 @@ void ViaLactea::closeEvent(QCloseEvent *event)
         event->ignore();
         return;
     }
-
+*/
     ui->webView->page()->deleteLater();
-    QApplication::quit();
+   // QApplication::quit();
 }
 
 void ViaLactea::on_actionAbout_triggered()
@@ -378,6 +387,7 @@ void ViaLactea::on_actionAbout_triggered()
     aboutForm->raise();
 }
 
+/*
 void ViaLactea::on_actionConeSearch_triggered()
 {
     if (!coneForm) {
@@ -388,7 +398,7 @@ void ViaLactea::on_actionConeSearch_triggered()
     coneForm->activateWindow();
     coneForm->raise();
 }
-
+*/
 void ViaLactea::on_select3dPushButton_clicked()
 {
     VLKBSimpleQueryComposer *skyregionquery = new VLKBSimpleQueryComposer(NULL);
@@ -577,4 +587,10 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
     } else {
         openLocalDC(fn);
     }
+}
+
+void ViaLactea::initializeMenuConnections()
+{
+    connect(visivoMenu, &VisIVOMenu::loadSEDFileTriggered, this, &ViaLactea::on_actionLoad_SED_2_triggered);
+
 }

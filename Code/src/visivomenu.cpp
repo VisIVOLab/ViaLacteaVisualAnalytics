@@ -6,6 +6,7 @@
 #include "stdio.h"
 #include "iostream"
 #include "qdebug.h"
+#include "simpleconesearchform.h"
 
 VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
@@ -14,6 +15,9 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     fileLoadMenu = fileMenu->addMenu("Load");
     actionLoadLocalFitsFile = fileLoadMenu->addAction("Load Local FITS");
     connect(actionLoadLocalFitsFile, &QAction::triggered, this, &VisIVOMenu::actionLoadLocalFitsTriggered);
+    actionLoadSEDFile = fileLoadMenu->addAction("Load SED");
+    connect(actionLoadSEDFile, &QAction::triggered, this, &VisIVOMenu::actionLoadSEDFileTriggered);
+
     
     actionAddFitsFile = fileLoadMenu->addAction("Add new FITS file");
     connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
@@ -111,6 +115,10 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     grp->addAction(actionShowSlice);
     grp->addAction(actionShowMomentMap);
     viewMenu->addActions(grp->actions());
+    
+    VOMenu = addMenu("VO");
+    actionConeSearch = VOMenu->addAction("Cone Search");
+    connect(actionConeSearch, &QAction::triggered, this, &VisIVOMenu::actionConeSearchTriggered);
 
     wcsMenu = addMenu("WCS");
     
@@ -154,6 +162,17 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 
 }
 
+
+void VisIVOMenu::actionConeSearchTriggered()
+{
+    if (!coneForm) {
+        coneForm = new SimpleConeSearchForm(this);
+    }
+
+    coneForm->show();
+    coneForm->activateWindow();
+    coneForm->raise();
+}
 
 //file menu actions
 void VisIVOMenu::actionLoadLocalFitsTriggered()
@@ -335,8 +354,14 @@ void VisIVOMenu::actionChangeWCSEcliptic()
     emit changeWCSEclipticTriggered();
 }
 
+void VisIVOMenu::actionLoadSEDFileTriggered()
+{
+    emit loadSEDFileTriggered();
+}
+
 void VisIVOMenu::configureStartupMenu()
 {
+    actionLoadSEDFile->setVisible(false);
     actionAddFitsFile->setVisible(false);
     fileAddCompactMenu->setVisible(false);
     fileMenu->removeAction(fileAddCompactMenu->menuAction());
@@ -375,11 +400,16 @@ void VisIVOMenu::configureStartupMenu()
     actionSelectWindow->setVisible(false);
     actionExtractWindow->setVisible(false);
     actionFilterWindow->setVisible(false);
+    
+    VOMenu->setVisible(true);
+    actionConeSearch->setVisible(true);
+
 }
 
 void VisIVOMenu::configureCubeWindowMenu()
 {
     actionAddFitsFile->setVisible(false);
+    actionLoadSEDFile->setVisible(false);
     fileAddCompactMenu->setVisible(false);
     fileMenu->removeAction(fileAddCompactMenu->menuAction());
     saveSessionFile->setVisible(false);
@@ -411,11 +441,17 @@ void VisIVOMenu::configureCubeWindowMenu()
     actionSelectWindow->setVisible(false);
     actionExtractWindow->setVisible(false);
     actionFilterWindow->setVisible(false);
+    
+    VOMenu->setVisible(false);
+    actionConeSearch->setVisible(false);
+
 
 }
+
 void VisIVOMenu::configureImageWindowMenu()
 {
     actionAddFitsFile->setVisible(true);
+    actionLoadSEDFile->setVisible(false);
     fileAddCompactMenu->setVisible(true);
     fileMenu->addAction(fileAddCompactMenu->menuAction());
     saveSessionFile->setVisible(true);
@@ -447,4 +483,56 @@ void VisIVOMenu::configureImageWindowMenu()
     actionSelectWindow->setVisible(true);
     actionExtractWindow->setVisible(true);
     actionFilterWindow->setVisible(true);
+    
+    VOMenu->setVisible(false);
+    actionConeSearch->setVisible(false);
+
+}
+
+void VisIVOMenu::configureVLKBWindowMenu()
+{
+    actionLoadLocalFitsFile->setVisible(false);
+    actionLoadSEDFile->setVisible(true);
+    actionAddFitsFile->setVisible(false);
+    fileAddCompactMenu->setVisible(false);
+    fileMenu->removeAction(fileAddCompactMenu->menuAction());
+
+    localCompactSources->setVisible(false);
+    jsonCompactSources->setVisible(false);
+    ds9CompactSources->setVisible(false);
+    remoteCompactSources->setVisible(false);
+    tdCompactSources->setVisible(false);
+    
+    saveSessionFile->setVisible(false);
+    actionExtract_spectrum->setVisible(false);
+    actionPV->setVisible(false);
+    actionFilter->setVisible(false);
+    actionFront->setVisible(false);
+    actionBack->setVisible(false);
+    actionTop->setVisible(false);
+    actionRight->setVisible(false);
+    actionBottom->setVisible(false);
+    actionLeft->setVisible(false);
+    actionCalculate_order_0->setVisible(false);
+    actionCalculate_order_1->setVisible(false);
+    actionCalculate_order_2->setVisible(false);
+    actionCalculate_order_6->setVisible(false);
+    actionCalculate_order_8->setVisible(false);
+    actionCalculate_order_10->setVisible(false);
+    actionSourceFinders->setVisible(false);
+    actionProfileFinders->setVisible(false);
+    actionSlice_Lookup_Table->setVisible(false);
+    actionShowSlice->setVisible(false);
+    actionShowMomentMap->setVisible(false);
+    wcsMenu->setVisible(false);
+    foreach (QAction *action, wcsGroup->actions())
+        wcsMenu->removeAction(action);
+    actionInfoWindow->setVisible(false);
+    actionSelectWindow->setVisible(false);
+    actionExtractWindow->setVisible(false);
+    actionFilterWindow->setVisible(false);
+    
+    VOMenu->setVisible(false);
+    actionConeSearch->setVisible(false);
+
 }
