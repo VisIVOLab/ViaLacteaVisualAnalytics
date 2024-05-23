@@ -71,16 +71,11 @@ velocityUnit(velocityUnit){
     
     
     readFitsHeader();
-    /*
-     
-     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_GALACTIC); });
-     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_J2000); });
-     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
-     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
-     connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
-     
-     // ui->menuWCS->addActions(wcsGroup->actions());
-     */
+    visivoMenu = new VisIVOMenu();
+    visivoMenu->configureCubeWindowMenu();
+    this->layout()->setMenuBar(visivoMenu);
+    initializeMenuConnections();
+   
     
     readerCube = vtkSmartPointer<vtkFitsReader2>::New();
     readerCube->SetFileName(filepath.toStdString().c_str());
@@ -279,10 +274,6 @@ velocityUnit(velocityUnit){
     currentSlice = 0;
     updateSliceDatacube();
     
-    visivoMenu = new VisIVOMenu();
-    visivoMenu->configureCubeWindowMenu();
-    this->layout()->setMenuBar(visivoMenu);
-    initializeMenuConnections(); // Chiamata solo quando l'oggetto è
 }
 
 vtkWindowCube::~vtkWindowCube()
@@ -307,7 +298,8 @@ void vtkWindowCube::changeSliceView(int mode)
             currentVisOnSlicePanel = 0;
             ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererMoment);
             ui->qVtkSlice->renderWindow()->AddRenderer(rendererSlice);
-            
+            visivoMenu->setMomentOrSliceActive(mode);
+
             ui->labelImg->setText("Slice");
             ui->lineImgMin->setText(QString::number(readerSlice->GetValueRange()[0], 'f', 4));
             ui->lineImgMax->setText(QString::number(readerSlice->GetValueRange()[1], 'f', 4));
@@ -322,8 +314,7 @@ void vtkWindowCube::changeSliceView(int mode)
             currentVisOnSlicePanel = 1;
             ui->qVtkSlice->renderWindow()->RemoveRenderer(rendererSlice);
             ui->qVtkSlice->renderWindow()->AddRenderer(rendererMoment);
-            ui->actionShowMomentMap->setChecked(true);
-            
+            visivoMenu->setMomentOrSliceActive(mode);
             ui->labelImg->setText("Moment");
             ui->lineImgMin->setText(QString::number(moment->GetMin(), 'f', 4));
             ui->lineImgMax->setText(QString::number(moment->GetMax(), 'f', 4));
@@ -950,7 +941,7 @@ void vtkWindowCube::initializeMenuConnections()
     connect(visivoMenu, &VisIVOMenu::calculate_order_2Triggered, this, &vtkWindowCube::on_actionCalculate_order_2_triggered);
     connect(visivoMenu, &VisIVOMenu::calculate_order_6Triggered, this, &vtkWindowCube::on_actionCalculate_order_6_triggered);
     connect(visivoMenu, &VisIVOMenu::calculate_order_8Triggered, this, &vtkWindowCube::on_actionCalculate_order_8_triggered);
-    connect(visivoMenu, &VisIVOMenu::extractSpectrumTriggered, this, &vtkWindowCube::on_actionCalculate_order_10_triggered);
+    connect(visivoMenu, &VisIVOMenu::calculate_order_10Triggered, this, &vtkWindowCube::on_actionCalculate_order_10_triggered);
     
     connect(visivoMenu, &VisIVOMenu::showSliceTriggered, this, [=]() {
         changeSliceView(0); });

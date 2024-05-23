@@ -372,6 +372,19 @@ void VisIVOMenu::actionLoadSEDFileTriggered()
     emit loadSEDFileTriggered();
 }
 
+void VisIVOMenu::setMomentOrSliceActive(int a)
+{
+    switch (a)
+    {
+        case 0:
+            actionShowSlice->setChecked(true);
+            break;
+        case 1:
+            actionShowMomentMap->setChecked(true);
+            break;
+    }
+}
+
 void VisIVOMenu::configureStartupMenu()
 {
     actionLoadSEDFile->setVisible(false);
@@ -416,6 +429,7 @@ void VisIVOMenu::configureStartupMenu()
     
     VOMenu->setVisible(true);
     actionConeSearch->setVisible(true);
+    actionHips2Fits->setVisible(true);
 
 }
 
@@ -457,6 +471,7 @@ void VisIVOMenu::configureCubeWindowMenu()
     
     VOMenu->setVisible(false);
     actionConeSearch->setVisible(false);
+    actionHips2Fits->setVisible(false);
 
 
 }
@@ -499,6 +514,7 @@ void VisIVOMenu::configureImageWindowMenu()
     
     VOMenu->setVisible(false);
     actionConeSearch->setVisible(false);
+    actionHips2Fits->setVisible(false);
 
 }
 
@@ -547,5 +563,5 @@ void VisIVOMenu::configureVLKBWindowMenu()
     
     VOMenu->setVisible(false);
     actionConeSearch->setVisible(false);
-
+    actionHips2Fits->setVisible(false);
 }

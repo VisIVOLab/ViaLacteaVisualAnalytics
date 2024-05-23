@@ -19,6 +19,7 @@ public:
     void configureCubeWindowMenu();
     void configureImageWindowMenu();
     void configureVLKBWindowMenu();
+    void setMomentOrSliceActive(int a=0);
 
 private:
     QMenu *fileMenu;
