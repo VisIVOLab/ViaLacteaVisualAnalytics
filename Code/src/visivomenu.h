@@ -6,6 +6,8 @@
 #include <QPointer>
 
 class SimpleConeSearchForm;
+class HiPS2FITSForm;
+
 
 class VisIVOMenu : public QMenuBar
 {
@@ -67,8 +69,10 @@ private:
     QAction *actionExtractWindow;
     QAction *actionFilterWindow;
     QAction *actionConeSearch;
+    QAction *actionHips2Fits;
     
     QPointer<SimpleConeSearchForm> coneForm;
+    QPointer<HiPS2FITSForm> hipsForm;
 
 
 public slots:
@@ -124,9 +128,9 @@ private slots:
     void actionChangeWCSFk5();
     void actionChangeWCSFk4();
     void actionChangeWCSEcliptic();
-
+    //VO
     void actionConeSearchTriggered();
-
+    void actionHips2FitsTriggered();
 
 signals:
     void loadLocalFitsFileRequested();

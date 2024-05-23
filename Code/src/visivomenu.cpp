@@ -7,6 +7,7 @@
 #include "iostream"
 #include "qdebug.h"
 #include "simpleconesearchform.h"
+#include "HiPS2FITSForm.h"
 
 VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
@@ -119,6 +120,8 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     VOMenu = addMenu("VO");
     actionConeSearch = VOMenu->addAction("Cone Search");
     connect(actionConeSearch, &QAction::triggered, this, &VisIVOMenu::actionConeSearchTriggered);
+    actionHips2Fits = VOMenu->addAction("HiPS2FITS");
+    connect(actionHips2Fits, &QAction::triggered, this, &VisIVOMenu::actionHips2FitsTriggered);
 
     wcsMenu = addMenu("WCS");
     
@@ -172,6 +175,16 @@ void VisIVOMenu::actionConeSearchTriggered()
     coneForm->show();
     coneForm->activateWindow();
     coneForm->raise();
+}
+
+void VisIVOMenu::actionHips2FitsTriggered(){
+    if (!hipsForm) {
+         hipsForm = new HiPS2FITSForm;
+     }
+
+     hipsForm->show();
+     hipsForm->activateWindow();
+     hipsForm->raise();
 }
 
 //file menu actions

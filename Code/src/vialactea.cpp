@@ -4,7 +4,6 @@
 #include "aboutform.h"
 #include "astroutils.h"
 #include "fitsheadermodifierdialog.h"
-#include "HiPS2FITSForm.h"
 #include "mcutoutsummary.h"
 #include "sed.h"
 #include "sedvisualizerplot.h"
@@ -388,18 +387,7 @@ void ViaLactea::on_actionAbout_triggered()
     aboutForm->raise();
 }
 
-/*
-void ViaLactea::on_actionConeSearch_triggered()
-{
-    if (!coneForm) {
-        coneForm = new SimpleConeSearchForm(this);
-    }
 
-    coneForm->show();
-    coneForm->activateWindow();
-    coneForm->raise();
-}
-*/
 void ViaLactea::on_select3dPushButton_clicked()
 {
     VLKBSimpleQueryComposer *skyregionquery = new VLKBSimpleQueryComposer(NULL);

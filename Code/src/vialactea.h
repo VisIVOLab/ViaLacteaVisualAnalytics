@@ -11,7 +11,6 @@
 
 class AboutForm;
 class SettingForm;
-//class SimpleConeSearchForm;
 class VisIVOMenu;
 
 
@@ -72,14 +71,12 @@ private slots:
     void updateVLKBSetting();
     void on_actionLoad_session_triggered();
     void on_loadTableButton_clicked();
-    void on_actionHiPS2FITS_triggered();
     void on_openLoadDataPushButton_clicked();
 
 private:
     Ui::ViaLactea *ui;
     QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
-    QPointer<HiPS2FITSForm> hipsForm;
 
     // for javascript communication procedures
     WebProcess *webobj;
