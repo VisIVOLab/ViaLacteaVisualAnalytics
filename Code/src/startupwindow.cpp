@@ -161,7 +161,9 @@ void StartupWindow::openLocalDC(const QString &fn)
             QMessageBox::critical(this, "Error", QString::fromUtf8(e.what()));
             return;
         }
-        new vtkwindow_new(this, fitsReader_dc, 1);
+        auto win = new vtkwindow_new(this, fitsReader_dc, 1);
+        sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+
         this->historyModel->addRecentFile(fn);
         return;
     }
@@ -171,6 +173,8 @@ void StartupWindow::openLocalDC(const QString &fn)
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
     
     vtkWindowCube *win = new vtkWindowCube(this, fn, ScaleFactor);
+    sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+
     win->show();
     win->activateWindow();
     win->raise();

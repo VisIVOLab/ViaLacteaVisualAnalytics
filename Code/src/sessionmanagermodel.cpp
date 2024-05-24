@@ -3,7 +3,7 @@
 SessionManagerModel::SessionManagerModel(QObject *parent)
     : QStandardItemModel(parent)
 {
-    setHorizontalHeaderLabels(QStringList() << "Session Name" << "Type");
+    setHorizontalHeaderLabels(QStringList() << "Name" << "Type");
     rootItem = new QStandardItem("Open Windows");
     invisibleRootItem()->appendRow(rootItem);
     appendRow(rootItem);
