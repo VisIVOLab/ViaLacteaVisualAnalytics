@@ -157,8 +157,10 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     actionInfoWindow = windowMenu->addAction("Info");
     connect(actionInfoWindow, &QAction::triggered, this, &VisIVOMenu::actionInfoWindowTriggered);
     actionSelectWindow = windowMenu->addAction("Select");
+    actionSelectWindow->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
     connect(actionSelectWindow, &QAction::triggered, this, &VisIVOMenu::actionSelectWindowTriggered);
     actionExtractWindow = windowMenu->addAction("Extract");
+    actionExtractWindow->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_E));
     connect(actionExtractWindow, &QAction::triggered, this, &VisIVOMenu::actionExtractWindowTriggered);
     actionFilterWindow = windowMenu->addAction("Filter");
     connect(actionFilterWindow, &QAction::triggered, this, &VisIVOMenu::actionFilterWindowTriggered);
@@ -329,20 +331,24 @@ void VisIVOMenu::actionFilterTriggered()
 //window
 void VisIVOMenu::actionInfoWindowTriggered()
 {
-
+    emit infoWindowTriggered();
 }
+
 void VisIVOMenu::actionSelectWindowTriggered()
 {
-
+    emit selectWindowTriggered();
 }
+
 void VisIVOMenu::actionExtractWindowTriggered()
 {
-
+    emit extractWindowTriggered();
 }
+
 void VisIVOMenu::actionFilterWindowTriggered()
 {
-
+    emit filterWindowTriggered();
 }
+
 //tools
 void VisIVOMenu::actionSouceFindersTriggered()
 {

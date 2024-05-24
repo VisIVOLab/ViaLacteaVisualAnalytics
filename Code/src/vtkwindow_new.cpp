@@ -1086,16 +1086,9 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
             ui->qVTK1->setDefaultCursor(Qt::ArrowCursor);
             m_Ren1->GlobalWarningDisplayOff();
             m_Ren1->SetBackground(0.21, 0.23, 0.25);
-            QAction *select = new QAction("Select", this);
-            select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
-            connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
-            //ui->menuWindow->addAction(select);
-            QAction *extract = new QAction("Extract", this);
-            extract->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_E));
-            connect(extract, &QAction::triggered, this, &vtkwindow_new::setVtkInteractorExtractSources);
-            //  ui->menuWindow->addAction(extract);
-            QAction *filter = new QAction("Filter", this);
-            connect(filter, &QAction::triggered, this, &vtkwindow_new::openFilterDialog);
+        
+            //QUI
+      
             //    ui->menuWindow->addAction(filter);
             //  auto actionImportLayer = new QAction("Add new FITS file...", this);
             // connect(actionImportLayer, &QAction::triggered, this,         &vtkwindow_new::addLocalFileTriggered);
@@ -4939,7 +4932,10 @@ void vtkwindow_new::initializeMenuConnections()
 
     connect(visivoMenu, &VisIVOMenu::profileTriggered, this, &vtkwindow_new::on_actionProfile_triggered);
 
-        
+    connect(visivoMenu, &VisIVOMenu::selectWindowTriggered, this, &vtkwindow_new::setSelectionFitsViewerInteractorStyle);
+    connect(visivoMenu, &VisIVOMenu::extractWindowTriggered, this, &vtkwindow_new::setVtkInteractorExtractSources);
+    connect(visivoMenu, &VisIVOMenu::filterWindowTriggered, this, &vtkwindow_new::openFilterDialog);
+    connect(visivoMenu, &VisIVOMenu::infoWindowTriggered, this, &vtkwindow_new::createInfoWindow);
 }
 
 void vtkwindow_new::changeEvent(QEvent *e)

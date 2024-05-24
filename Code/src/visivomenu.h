@@ -168,6 +168,10 @@ signals:
     void compactSources3DTriggered();
     void souceFindersTriggered();
     void profileTriggered();
+    void selectWindowTriggered();
+    void extractWindowTriggered();
+    void filterWindowTriggered();
+    void infoWindowTriggered();
 
 };
 
