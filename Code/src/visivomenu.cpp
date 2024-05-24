@@ -13,17 +13,17 @@
 VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
     fileMenu = addMenu("File");
-
+    
     fileLoadMenu = fileMenu->addMenu("Load");
     actionLoadLocalFitsFile = fileLoadMenu->addAction("Load Local FITS");
     connect(actionLoadLocalFitsFile, &QAction::triggered, this, &VisIVOMenu::actionLoadLocalFitsTriggered);
     actionLoadSEDFile = fileLoadMenu->addAction("Load SED");
     connect(actionLoadSEDFile, &QAction::triggered, this, &VisIVOMenu::actionLoadSEDFileTriggered);
-
+    
     
     actionAddFitsFile = fileLoadMenu->addAction("Add new layer (FITS)");
     connect(actionAddFitsFile, &QAction::triggered, this, &VisIVOMenu::actionAddFitsFileTriggered);
-
+    
     fileAddCompactMenu = fileMenu->addMenu("Add compact sources");
     localCompactSources = fileAddCompactMenu->addAction("Local");
     connect(localCompactSources, &QAction::triggered, this, &VisIVOMenu::actionLocalCompactSourcesTriggered);
@@ -35,15 +35,15 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(remoteCompactSources, &QAction::triggered, this, &VisIVOMenu::actionRemoteCompactSourcesTriggered);
     tdCompactSources = fileAddCompactMenu->addAction("3D distribution");
     connect(tdCompactSources, &QAction::triggered, this, &VisIVOMenu::action3DCompactSourcesTriggered);
-
+    
     saveSessionFile = fileMenu->addAction("Save Session");
     connect(saveSessionFile, &QAction::triggered, this, &VisIVOMenu::actionSaveSessionTriggered);
-
-//    fileMenu->addSeparator();
-
+    
+    //    fileMenu->addSeparator();
+    
     QAction *exitAction = fileMenu->addAction("Exit");
     connect(exitAction, &QAction::triggered, this, &VisIVOMenu::exitApplication);
-
+    
     actionMenu= addMenu("Action");
     actionExtract_spectrum = actionMenu->addAction("Extract Spectrum");
     connect(actionExtract_spectrum, &QAction::triggered, this, &VisIVOMenu::actionExtract_spectrumTriggered);
@@ -51,7 +51,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionPV, &QAction::triggered, this, &VisIVOMenu::actionPVTriggered);
     actionFilter = actionMenu->addAction("Spatial Filter");
     connect(actionFilter, &QAction::triggered, this, &VisIVOMenu::actionFilterTriggered);
-
+    
     cameraMenu = addMenu("Camera");
     actionFront = cameraMenu->addAction("Front");
     actionFront->setIcon(QIcon(":/icons/PIC_FRONT.bmp"));
@@ -71,7 +71,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     actionLeft = cameraMenu->addAction("Left");
     actionLeft->setIcon(QIcon(":/icons/PIC_LEFT.bmp"));
     connect(actionLeft, &QAction::triggered, this, &VisIVOMenu::actionLeftTriggered);
-
+    
     cameraMenu = addMenu("Moment");
     actionCalculate_order_0 = cameraMenu->addAction("0 - the integrated value of the spectrum");
     connect(actionCalculate_order_0, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_0Triggered);
@@ -85,26 +85,26 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionCalculate_order_8, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_8Triggered);
     actionCalculate_order_10 = cameraMenu->addAction("10 - the minimum value of the spectrum");
     connect(actionCalculate_order_10, &QAction::triggered, this, &VisIVOMenu::actionCalculate_order_10Triggered);
-
+    
     toolsMenu= addMenu("Tools");
     actionSourceFinders = toolsMenu->addAction("Source Finders");
     connect(actionSourceFinders, &QAction::triggered, this, &VisIVOMenu::actionSouceFindersTriggered);
     actionProfileFinders = toolsMenu->addAction("Profile");
     connect(actionProfileFinders, &QAction::triggered, this, &VisIVOMenu::actionProfileTriggered);
-
+    
     viewMenu = addMenu("View");
     actionSlice_Lookup_Table = viewMenu->addAction("Edit Lookup Table");
     connect(actionSlice_Lookup_Table, &QAction::triggered, this, &VisIVOMenu::actionSlice_Lookup_TableTriggered);
     viewMenu->addSeparator();
     // Setup context menu to toggle slice/moment renderers
-
+    
     /*
-    QAction *actionShowSlice = viewMenu->addAction("Show Slice");
-    connect(actionShowSlice, &QAction::triggered, this, &VisIVOMenu::actionShowSliceTriggered);
-    QAction *actionShowMomentMap = viewMenu->addAction("Show Moment Map");
-    connect(actionShowMomentMap, &QAction::triggered, this, &VisIVOMenu::actionShowMomentMapTriggered);
-   */
-
+     QAction *actionShowSlice = viewMenu->addAction("Show Slice");
+     connect(actionShowSlice, &QAction::triggered, this, &VisIVOMenu::actionShowSliceTriggered);
+     QAction *actionShowMomentMap = viewMenu->addAction("Show Moment Map");
+     connect(actionShowMomentMap, &QAction::triggered, this, &VisIVOMenu::actionShowMomentMapTriggered);
+     */
+    
     QActionGroup *grp = new QActionGroup(this);
     actionShowSlice = new QAction("Show Slice",grp);
     actionShowSlice->setCheckable(true);
@@ -123,7 +123,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionConeSearch, &QAction::triggered, this, &VisIVOMenu::actionConeSearchTriggered);
     actionHips2Fits = VOMenu->addAction("HiPS2FITS");
     connect(actionHips2Fits, &QAction::triggered, this, &VisIVOMenu::actionHips2FitsTriggered);
-
+    
     wcsMenu = addMenu("WCS");
     
     wcsGroup = new QActionGroup(this);
@@ -132,25 +132,25 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     wcsItem->setChecked(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSGalactic);
-
+    
     wcsItem = new QAction("FK5", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSFk5);
-
-
+    
+    
     wcsItem = new QAction("FK4", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSFk4);
-
+    
     wcsItem = new QAction("Ecliptic", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSEcliptic);
-
+    
     wcsMenu->addActions(wcsGroup->actions());
-
+    
     windowMenu= addMenu("Window");
     actionInfoWindow = windowMenu->addAction("Info");
     connect(actionInfoWindow, &QAction::triggered, this, &VisIVOMenu::actionInfoWindowTriggered);
@@ -167,7 +167,7 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     helpMenu= addMenu("Help");
     actionAboutHelp = helpMenu->addAction("About");
     connect(actionAboutHelp, &QAction::triggered, this, &VisIVOMenu::actionAboutHelpTriggered);
-
+    
 }
 
 void VisIVOMenu::actionConeSearchTriggered()
@@ -175,7 +175,7 @@ void VisIVOMenu::actionConeSearchTriggered()
     if (!coneForm) {
         coneForm = new SimpleConeSearchForm(this);
     }
-
+    
     coneForm->show();
     coneForm->activateWindow();
     coneForm->raise();
@@ -183,12 +183,12 @@ void VisIVOMenu::actionConeSearchTriggered()
 
 void VisIVOMenu::actionHips2FitsTriggered(){
     if (!hipsForm) {
-         hipsForm = new HiPS2FITSForm;
-     }
-
-     hipsForm->show();
-     hipsForm->activateWindow();
-     hipsForm->raise();
+        hipsForm = new HiPS2FITSForm;
+    }
+    
+    hipsForm->show();
+    hipsForm->activateWindow();
+    hipsForm->raise();
 }
 
 //file menu actions
@@ -210,10 +210,12 @@ void VisIVOMenu::actionJsonCompactSourcesTriggered()
 {
     emit jsonCompactSourcesTriggered();
 }
+
 void VisIVOMenu::actionDS9CompactSourcesTriggered()
 {
     emit ds9CompactSourcesTriggered();
 }
+
 void VisIVOMenu::actionRemoteCompactSourcesTriggered()
 {
     emit remoteCompactSourcesTriggered();
@@ -414,7 +416,7 @@ void VisIVOMenu::configureStartupMenu()
     actionAddFitsFile->setVisible(false);
     fileAddCompactMenu->setVisible(false);
     fileMenu->removeAction(fileAddCompactMenu->menuAction());
-
+    
     localCompactSources->setVisible(false);
     jsonCompactSources->setVisible(false);
     ds9CompactSources->setVisible(false);
@@ -444,7 +446,7 @@ void VisIVOMenu::configureStartupMenu()
     actionShowMomentMap->setVisible(false);
     wcsMenu->setVisible(false);
     foreach (QAction *action, wcsGroup->actions())
-        wcsMenu->removeAction(action);
+    wcsMenu->removeAction(action);
     actionInfoWindow->setVisible(false);
     actionSelectWindow->setVisible(false);
     actionExtractWindow->setVisible(false);
@@ -456,7 +458,7 @@ void VisIVOMenu::configureStartupMenu()
     
     helpMenu->setVisible(true);
     actionAboutHelp->setVisible(true);
-
+    
 }
 
 void VisIVOMenu::configureCubeWindowMenu()
@@ -488,8 +490,8 @@ void VisIVOMenu::configureCubeWindowMenu()
     actionShowMomentMap->setVisible(true);
     wcsMenu->setVisible(true);
     foreach (QAction *action, wcsGroup->actions())
-        wcsMenu->addAction(action);
-
+    wcsMenu->addAction(action);
+    
     actionInfoWindow->setVisible(false);
     actionSelectWindow->setVisible(false);
     actionExtractWindow->setVisible(false);
@@ -501,8 +503,8 @@ void VisIVOMenu::configureCubeWindowMenu()
     
     helpMenu->setVisible(true);
     actionAboutHelp->setVisible(true);
-
-
+    
+    
 }
 
 void VisIVOMenu::configureImageWindowMenu()
@@ -535,8 +537,8 @@ void VisIVOMenu::configureImageWindowMenu()
     actionShowMomentMap->setVisible(false);
     wcsMenu->setVisible(true);
     foreach (QAction *action, wcsGroup->actions())
-        wcsMenu->addAction(action);
-
+    wcsMenu->addAction(action);
+    
     actionInfoWindow->setVisible(true);
     actionSelectWindow->setVisible(true);
     actionExtractWindow->setVisible(true);
@@ -548,8 +550,8 @@ void VisIVOMenu::configureImageWindowMenu()
     
     helpMenu->setVisible(true);
     actionAboutHelp->setVisible(true);
-
-
+    
+    
 }
 
 void VisIVOMenu::configureVLKBWindowMenu()
@@ -559,7 +561,7 @@ void VisIVOMenu::configureVLKBWindowMenu()
     actionAddFitsFile->setVisible(false);
     fileAddCompactMenu->setVisible(false);
     fileMenu->removeAction(fileAddCompactMenu->menuAction());
-
+    
     localCompactSources->setVisible(false);
     jsonCompactSources->setVisible(false);
     ds9CompactSources->setVisible(false);
@@ -589,7 +591,7 @@ void VisIVOMenu::configureVLKBWindowMenu()
     actionShowMomentMap->setVisible(false);
     wcsMenu->setVisible(false);
     foreach (QAction *action, wcsGroup->actions())
-        wcsMenu->removeAction(action);
+    wcsMenu->removeAction(action);
     actionInfoWindow->setVisible(false);
     actionSelectWindow->setVisible(false);
     actionExtractWindow->setVisible(false);
@@ -601,5 +603,5 @@ void VisIVOMenu::configureVLKBWindowMenu()
     
     helpMenu->setVisible(true);
     actionAboutHelp->setVisible(true);
-
+    
 }

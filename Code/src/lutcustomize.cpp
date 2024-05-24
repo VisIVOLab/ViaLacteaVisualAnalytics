@@ -14,6 +14,7 @@ LutCustomize::LutCustomize(vtkWindowCube *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::LutCustomize)
 {
     ui->setupUi(this);
+    this->setWindowFlag(Qt::Window);
     this->setWindowTitle("LUT Customizer");
     vtkwincube = v;
     isPoint3D = false;
@@ -28,6 +29,7 @@ LutCustomize::LutCustomize(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::LutCustomize)
 {
     ui->setupUi(this);
+    this->setWindowFlag(Qt::Window);
     this->setWindowTitle("LUT Customizer");
     vtkwin = v;
     isPoint3D = false;

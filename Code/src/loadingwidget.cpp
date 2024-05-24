@@ -5,6 +5,7 @@
 LoadingWidget::LoadingWidget(QWidget *parent) : QWidget(parent), ui(new Ui::LoadingWidget)
 {
     ui->setupUi(this);
+    this->setWindowFlag(Qt::Window);
     reply = 0;
 }
 

@@ -24,6 +24,7 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
     : QWidget(parent), ui(new Ui::VLKBSimpleQueryComposer)
 {
     ui->setupUi(this);
+    this->setWindowFlag(Qt::Window);
     vtkwin = v;
     loading = new LoadingWidget();
     isConnected = false;

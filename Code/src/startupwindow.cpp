@@ -133,7 +133,7 @@ void StartupWindow::openLocalDC(const QString &fn)
                     std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
                         qMissing << QString::fromStdString(key);
                     });
-                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
+                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing, this);
                     dialog->show();
                     return;
                 }
@@ -151,7 +151,7 @@ void StartupWindow::openLocalDC(const QString &fn)
     long size = QFileInfo(fn).size() / 1024; // B -> KB
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
     
-    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
+    vtkWindowCube *win = new vtkWindowCube(this, fn, ScaleFactor);
     win->show();
     win->activateWindow();
     win->raise();
@@ -186,13 +186,13 @@ void StartupWindow::on_openPushButton_clicked()
 void StartupWindow::on_vlkbPushButton_clicked()
 {
     if (!vialactealWin) {
-        vialactealWin = new ViaLactea;
-     }
+        vialactealWin = new ViaLactea(this);
+    }
     vialactealWin->show();
     vialactealWin->activateWindow();
     vialactealWin->raise();
-
-
+    
+    
 }
 
 void StartupWindow::on_historyArea_activated(const QModelIndex &index)
@@ -234,11 +234,11 @@ void StartupWindow::closeEvent(QCloseEvent *event)
                                      "Do you want to exit?.\nClosing this "
                                      "window will terminate ongoing processes.",
                                      QMessageBox::Yes | QMessageBox::No);
-
+    
     if (res == QMessageBox::No) {
         event->ignore();
         return;
     }
-
+    
     QApplication::quit();
 }

@@ -402,7 +402,7 @@ public:
         double w = world_end[0] - world_start[0];
         double h = world_end[1] - world_start[1];
         vtkRectf *rect = new vtkRectf(world_start[0], world_start[1], w, h);
-        HigalSelectedSources *selectedSources = new HigalSelectedSources(vtkwin);
+        HigalSelectedSources *selectedSources = new HigalSelectedSources(vtkwin, vtkwin);
         QHash<QString, vtkSmartPointer<vtkLODActor>>::iterator i;
         QHash<QString, vtkSmartPointer<vtkLODActor>> tmp = vtkwin->getEllipseActorList();
         QHash<QString, QListWidget *> listWidget_list;
@@ -740,7 +740,7 @@ public:
         
         if (!(vtkwin->isDatacube)) {
             
-            VLKBSimpleQueryComposer *skyregionquery = new VLKBSimpleQueryComposer(vtkwin);
+            VLKBSimpleQueryComposer *skyregionquery = new VLKBSimpleQueryComposer(vtkwin, vtkwin);
             
             if (isFilament) {
                 skyregionquery->setIsFilament();
@@ -757,7 +757,7 @@ public:
             vtkwin->setVtkInteractorStyleImage();
         } else {
             
-            dbquery *queryWindow = new dbquery();
+            dbquery *queryWindow = new dbquery(vtkwin);
             QString glong, glat;
             
             glong = QString::number(coor_end[0] + (coor_start[0] - coor_end[0]) / 2);
@@ -2567,7 +2567,7 @@ void vtkwindow_new::cutoutDatacube(QString c)
 {
     QStringList splittedStrings = c.split(";");
     
-    dbquery *queryWindow = new dbquery();
+    dbquery *queryWindow = new dbquery(this);
     queryWindow->setCoordinate(splittedStrings.at(0), splittedStrings.at(1));
     queryWindow->show();
 }
@@ -2925,7 +2925,7 @@ void vtkwindow_new::on_actionTools_triggered()
         vtkfitstoolsw->activateWindow();
         
     } else {
-        vtktoolswidget *vtktoolsw = new vtktoolswidget(this);
+        vtktoolswidget *vtktoolsw = new vtktoolswidget(this, this);
         vtktoolsw->show();
     }
 }
@@ -3848,7 +3848,7 @@ void vtkwindow_new::on_lut3dComboBox_activated(const QString &arg1)
 void vtkwindow_new::on_toolButton_clicked()
 {
     if (!lcustom)
-        lcustom = new LutCustomize(this);
+        lcustom = new LutCustomize(this, this);
     
     lcustom->configurePoint3D();
     lcustom->show();
@@ -4893,7 +4893,7 @@ void vtkwindow_new::on_actionSave_session_triggered()
 void vtkwindow_new::on_toolButton_2_clicked()
 {
     if (!lcustom)
-        lcustom = new LutCustomize(this);
+        lcustom = new LutCustomize(this, this);
     lcustom->setLut(ui->lutComboBox->currentText());
     lcustom->setScaling(selected_scale);
     lcustom->configureFitsImage();

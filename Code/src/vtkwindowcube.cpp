@@ -566,7 +566,7 @@ void vtkWindowCube::calculateAndShowMomentMap(int order)
     if (parentWindow && parentWindow->isVisible()) {
         parentWindow->addLayerImage(moment);
     } else {
-        parentWindow = new vtkwindow_new(nullptr, moment, 0, 0, false);
+        parentWindow = new vtkwindow_new(this, moment, 0, 0, false);
         parentWindow->show();
     }
     
@@ -609,7 +609,7 @@ void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, f
         py::module_ pvplot = py::module_::import("pvplot");
         std::string fout = pvplot.attr("extract_pv_plot")(fin, this->currentSlice, line, outDir)
             .cast<std::string>();
-        auto win = new vtkWindowPV(QString::fromStdString(fout), this->filepath, x1, y1, x2, y2);
+        auto win = new vtkWindowPV(QString::fromStdString(fout), this->filepath, x1, y1, x2, y2, this);
         win->show();
     } catch (const std::exception &e) {
         qDebug() << Q_FUNC_INFO << "Error" << e.what();
@@ -788,7 +788,7 @@ void vtkWindowCube::changeLegendWCS(int wcs)
 void vtkWindowCube::on_actionSlice_Lookup_Table_triggered()
 {
     if (!lcustom)
-        lcustom = new LutCustomize(this);
+        lcustom = new LutCustomize(this,this);
     lcustom->setLut(lutName);
     QString selected_scale = "Linear";
     if (lutSlice->GetScale() != 0)
@@ -877,7 +877,7 @@ void vtkWindowCube::extractSpectrum(double x, double y, bool live)
         cunit3.replace("\"", QString());
         cunit3 = cunit3.simplified();
         
-        profileWin = new ProfileWindow(bunit);
+        profileWin = new ProfileWindow(bunit, this);
         if (cunit3.contains("Hz")) {
             double restfrq = fitsHeader.value("RESTFRQ").toDouble();
             profileWin->setupSpectrumPlot(naxis3, crval3, cdelt3, crpix3, restfrq);

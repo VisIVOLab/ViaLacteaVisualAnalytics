@@ -329,7 +329,7 @@ void ViaLactea::openLocalDC(const QString &fn)
                     std::for_each(missing.cbegin(), missing.cend(), [&](const std::string &key) {
                         qMissing << QString::fromStdString(key);
                     });
-                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing);
+                    auto dialog = new FitsHeaderModifierDialog(fn, qMissing, this);
                     dialog->show();
                     return;
                 }
@@ -347,7 +347,7 @@ void ViaLactea::openLocalDC(const QString &fn)
     long size = QFileInfo(fn).size() / 1024; // B -> KB
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
 
-    vtkWindowCube *win = new vtkWindowCube(nullptr, fn, ScaleFactor);
+    vtkWindowCube *win = new vtkWindowCube(this, fn, ScaleFactor);
     win->show();
     win->activateWindow();
     win->raise();
@@ -377,7 +377,7 @@ void ViaLactea::closeEvent(QCloseEvent *event)
 
 void ViaLactea::on_select3dPushButton_clicked()
 {
-    VLKBSimpleQueryComposer *skyregionquery = new VLKBSimpleQueryComposer(NULL);
+    VLKBSimpleQueryComposer *skyregionquery = new VLKBSimpleQueryComposer(nullptr, this);
     skyregionquery->setIs3dSelections();
 
     skyregionquery->setLongitude(0, 360);
@@ -415,8 +415,8 @@ void ViaLactea::on_actionLoad_SED_2_triggered()
     QList<SED *> sed_list2;
     in >> sed_list2;
 
-    ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
-    SEDVisualizerPlot *sedv = new SEDVisualizerPlot(sed_list2, 0, vialactealWin);
+   // ViaLactea *vialactealWin = &Singleton<ViaLactea>::Instance();
+    SEDVisualizerPlot *sedv = new SEDVisualizerPlot(sed_list2, nullptr, this);
     sedv->show();
     sedv->loadSavedSED(dirList);
 }
