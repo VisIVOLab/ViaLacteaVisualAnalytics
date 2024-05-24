@@ -9,7 +9,6 @@
 #include <QPointer>
 #include <QSettings>
 
-class AboutForm;
 class SettingForm;
 class VisIVOMenu;
 
@@ -61,7 +60,6 @@ private slots:
     void on_actionSettings_triggered();
     void openLocalDC(const QString &fn);
     void on_actionExit_triggered();
-    void on_actionAbout_triggered();
     void on_select3dPushButton_clicked();
     void on_actionLoad_SED_2_triggered();
     void on_pointRadioButton_clicked(bool checked);
@@ -75,7 +73,6 @@ private slots:
 
 private:
     Ui::ViaLactea *ui;
-    QPointer<AboutForm> aboutForm;
     QPointer<SettingForm> settingForm;
 
     // for javascript communication procedures

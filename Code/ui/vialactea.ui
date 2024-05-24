@@ -548,11 +548,6 @@
     <string>Exit</string>
    </property>
   </action>
-  <action name="actionAbout">
-   <property name="text">
-    <string>About</string>
-   </property>
-  </action>
   <action name="actionLoad_SED">
    <property name="text">
     <string>Load SED</string>
@@ -566,16 +561,6 @@
   <action name="actionLoad_session">
    <property name="text">
     <string>Load session</string>
-   </property>
-  </action>
-  <action name="actionConeSearch">
-   <property name="text">
-    <string>Cone Search</string>
-   </property>
-  </action>
-  <action name="actionHiPS2FITS">
-   <property name="text">
-    <string>HiPS2FITS</string>
    </property>
   </action>
  </widget>

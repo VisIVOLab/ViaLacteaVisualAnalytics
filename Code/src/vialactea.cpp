@@ -1,7 +1,6 @@
 #include "vialactea.h"
 #include "ui_vialactea.h"
 
-#include "aboutform.h"
 #include "astroutils.h"
 #include "fitsheadermodifierdialog.h"
 #include "mcutoutsummary.h"
@@ -9,7 +8,6 @@
 #include "sedvisualizerplot.h"
 #include "sessionloader.h"
 #include "settingform.h"
-#include "simpleconesearchform.h"
 #include "singleton.h"
 #include "usertablewindow.h"
 #include "vialacteainitialquery.h"
@@ -376,17 +374,6 @@ void ViaLactea::closeEvent(QCloseEvent *event)
     ui->webView->page()->deleteLater();
    // QApplication::quit();
 }
-
-void ViaLactea::on_actionAbout_triggered()
-{
-    if (!aboutForm) {
-        aboutForm = new AboutForm(this);
-    }
-    aboutForm->show();
-    aboutForm->activateWindow();
-    aboutForm->raise();
-}
-
 
 void ViaLactea::on_select3dPushButton_clicked()
 {

@@ -8,6 +8,7 @@
 #include "qdebug.h"
 #include "simpleconesearchform.h"
 #include "HiPS2FITSForm.h"
+#include "aboutform.h"
 
 VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
 {
@@ -143,14 +144,11 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSFk4);
 
-    //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_B1950); });
-
     wcsItem = new QAction("Ecliptic", wcsGroup);
     wcsItem->setCheckable(true);
     wcsGroup->addAction(wcsItem);
     connect(wcsItem, &QAction::triggered, this, &VisIVOMenu::actionChangeWCSEcliptic);
 
-    //   connect(wcsItem, &QAction::triggered, this, [=]() { changeLegendWCS(WCS_ECLIPTIC); });
     wcsMenu->addActions(wcsGroup->actions());
 
     windowMenu= addMenu("Window");
@@ -164,9 +162,13 @@ VisIVOMenu::VisIVOMenu(QWidget *parent) : QMenuBar(parent)
     connect(actionExtractWindow, &QAction::triggered, this, &VisIVOMenu::actionExtractWindowTriggered);
     actionFilterWindow = windowMenu->addAction("Filter");
     connect(actionFilterWindow, &QAction::triggered, this, &VisIVOMenu::actionFilterWindowTriggered);
+    
+    
+    helpMenu= addMenu("Help");
+    actionAboutHelp = helpMenu->addAction("About");
+    connect(actionAboutHelp, &QAction::triggered, this, &VisIVOMenu::actionAboutHelpTriggered);
 
 }
-
 
 void VisIVOMenu::actionConeSearchTriggered()
 {
@@ -383,6 +385,16 @@ void VisIVOMenu::actionLoadSEDFileTriggered()
     emit loadSEDFileTriggered();
 }
 
+void VisIVOMenu::actionAboutHelpTriggered()
+{
+    if (!aboutForm) {
+        aboutForm = new AboutForm(this);
+    }
+    aboutForm->show();
+    aboutForm->activateWindow();
+    aboutForm->raise();
+}
+
 void VisIVOMenu::setMomentOrSliceActive(int a)
 {
     switch (a)
@@ -441,6 +453,9 @@ void VisIVOMenu::configureStartupMenu()
     VOMenu->setVisible(true);
     actionConeSearch->setVisible(true);
     actionHips2Fits->setVisible(true);
+    
+    helpMenu->setVisible(true);
+    actionAboutHelp->setVisible(true);
 
 }
 
@@ -483,6 +498,9 @@ void VisIVOMenu::configureCubeWindowMenu()
     VOMenu->setVisible(false);
     actionConeSearch->setVisible(false);
     actionHips2Fits->setVisible(false);
+    
+    helpMenu->setVisible(true);
+    actionAboutHelp->setVisible(true);
 
 
 }
@@ -527,6 +545,10 @@ void VisIVOMenu::configureImageWindowMenu()
     VOMenu->setVisible(false);
     actionConeSearch->setVisible(false);
     actionHips2Fits->setVisible(false);
+    
+    helpMenu->setVisible(true);
+    actionAboutHelp->setVisible(true);
+
 
 }
 
@@ -576,4 +598,8 @@ void VisIVOMenu::configureVLKBWindowMenu()
     VOMenu->setVisible(false);
     actionConeSearch->setVisible(false);
     actionHips2Fits->setVisible(false);
+    
+    helpMenu->setVisible(true);
+    actionAboutHelp->setVisible(true);
+
 }

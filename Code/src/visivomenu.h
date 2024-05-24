@@ -7,6 +7,7 @@
 
 class SimpleConeSearchForm;
 class HiPS2FITSForm;
+class AboutForm;
 
 
 class VisIVOMenu : public QMenuBar
@@ -33,6 +34,7 @@ private:
     QMenu *windowMenu;
     QMenu *toolsMenu;
     QMenu *VOMenu;
+    QMenu *helpMenu;
     
     QAction *localCompactSources;
     QAction *jsonCompactSources;
@@ -72,8 +74,11 @@ private:
     QAction *actionConeSearch;
     QAction *actionHips2Fits;
     
+    QAction *actionAboutHelp;
+    
     QPointer<SimpleConeSearchForm> coneForm;
     QPointer<HiPS2FITSForm> hipsForm;
+    QPointer<AboutForm> aboutForm;
 
 
 public slots:
@@ -132,6 +137,8 @@ private slots:
     //VO
     void actionConeSearchTriggered();
     void actionHips2FitsTriggered();
+    //help
+    void actionAboutHelpTriggered();
 
 signals:
     void loadLocalFitsFileRequested();
@@ -172,6 +179,8 @@ signals:
     void extractWindowTriggered();
     void filterWindowTriggered();
     void infoWindowTriggered();
+
+
 
 };
 
