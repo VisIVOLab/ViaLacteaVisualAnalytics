@@ -151,6 +151,8 @@ set(PROJECT_SOURCES
     src/sedvisualizerplot.h
     src/selectedsourcefieldsselect.cpp
     src/selectedsourcefieldsselect.h
+    src/sessionmanagermodel.cpp
+    src/sessionmanagermodel.h
     src/sessionloader.cpp
     src/sessionloader.h
     src/settingform.cpp

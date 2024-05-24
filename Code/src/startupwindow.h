@@ -13,6 +13,7 @@ class RecentFilesManager;
 class SettingForm;
 class VisIVOMenu;
 class ViaLactea;
+class SessionManagerModel;
 
 class StartupWindow : public QWidget
 {
@@ -38,6 +39,7 @@ private slots:
     void on_vlkbPushButton_clicked();
     void on_historyArea_activated(const QModelIndex &index);
     void on_historyArea_clicked(const QModelIndex &index);
+    void setupSessionManager();
 
 private:
     Ui::StartupWindow *ui;
@@ -46,6 +48,7 @@ private:
     QSettings settings;
     QPointer<SettingForm> settingForm;
     QPointer<ViaLactea> vialactealWin;
+    QPointer<SessionManagerModel> sessionModel;
 
     VisIVOMenu *visivoMenu; // Puntatore a VisIVOMenu
 };

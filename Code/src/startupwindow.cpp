@@ -16,13 +16,18 @@
 #include "visivomenu.h"
 #include "vialacteainitialquery.h"
 
+#include "sessionmanagermodel.h"
+
+
 StartupWindow::StartupWindow(QWidget *parent)
 : QWidget(parent),
 ui(new Ui::StartupWindow),
 settingsFile(QDir::homePath().append("/VisIVODesktopTemp/setting.ini")),
-settings(settingsFile, QSettings::IniFormat)
+settings(settingsFile, QSettings::IniFormat),
+sessionModel(nullptr)  // Initialize to nullptr
 {
     ui->setupUi(this);
+    ui->tabWidget->setCurrentIndex(0);
     ui->headerViewer->hide();
     
     QPalette pal = QPalette();
@@ -47,11 +52,22 @@ settings(settingsFile, QSettings::IniFormat)
     connect(visivoMenu, &VisIVOMenu::loadLocalFitsFileRequested, this, [this](){
         on_localOpenPushButton_clicked(false); });
     
+    setupSessionManager();
+    
 }
 
 StartupWindow::~StartupWindow()
 {
     delete ui;
+}
+
+void StartupWindow::setupSessionManager()
+{
+    sessionModel = new SessionManagerModel(this);
+    ui->sessionManagerTreeView->setModel(sessionModel);
+    ui->sessionManagerTreeView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->sessionManagerTreeView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->sessionManagerTreeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 }
 
 void StartupWindow::on_localOpenPushButton_clicked(bool fromHistory = false)
@@ -101,6 +117,7 @@ void StartupWindow::openLocalImage(const QString &fn)
                 [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
             auto win = new vtkwindow_new(this, fits);
             win->setDbElements(results);
+            sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
             vq->deleteLater();
         });
         
@@ -108,7 +125,9 @@ void StartupWindow::openLocalImage(const QString &fn)
     }
     else
     {
-        new vtkwindow_new(this, fits);
+        auto win = new vtkwindow_new(this, fits);
+        sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+
     }
     this->historyModel->addRecentFile(fn);
 }
