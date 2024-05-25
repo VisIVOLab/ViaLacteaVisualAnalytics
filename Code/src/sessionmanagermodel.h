@@ -10,11 +10,14 @@ class SessionManagerModel : public QStandardItemModel
 
 public:
     explicit SessionManagerModel(QObject *parent = nullptr);
-    void addSessionItem(const QString &name, QWidget *window);
+    void addSessionItem(const QString &name, QWidget *window, QStandardItem *parent = nullptr);
+    void addSessionItem(const QString &name, QWidget *window, const QString &parentName);
     void removeSessionItem(QWidget *window);
+    QStandardItem* findItemByName(const QString &name);
+
+    QStandardItem *rootItem;
 
 private:
-    QStandardItem *rootItem;
     QHash<QWidget *, QStandardItem *> windowItems;
 };
 

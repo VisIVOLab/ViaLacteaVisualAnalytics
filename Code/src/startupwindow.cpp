@@ -117,7 +117,7 @@ void StartupWindow::openLocalImage(const QString &fn)
                 [vq, fn, fits, this](QList<QMap<QString, QString>> results) {
             auto win = new vtkwindow_new(this, fits);
             win->setDbElements(results);
-            sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+            sessionModel->addSessionItem(QFileInfo(fn).baseName(), win, sessionModel->invisibleRootItem()->child(0));  // Add as child of root
             vq->deleteLater();
         });
         
@@ -126,7 +126,7 @@ void StartupWindow::openLocalImage(const QString &fn)
     else
     {
         auto win = new vtkwindow_new(this, fits);
-        sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+        sessionModel->addSessionItem(QFileInfo(fn).baseName(), win, sessionModel->invisibleRootItem()->child(0));  // Add as child of root
 
     }
     this->historyModel->addRecentFile(fn);
@@ -162,7 +162,7 @@ void StartupWindow::openLocalDC(const QString &fn)
             return;
         }
         auto win = new vtkwindow_new(this, fitsReader_dc, 1);
-        sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+        sessionModel->addSessionItem(QFileInfo(fn).baseName(), win, sessionModel->invisibleRootItem()->child(0));  // Add as child of root
 
         this->historyModel->addRecentFile(fn);
         return;
@@ -173,7 +173,7 @@ void StartupWindow::openLocalDC(const QString &fn)
     int ScaleFactor = AstroUtils::calculateResizeFactor(size, maxSize);
     
     vtkWindowCube *win = new vtkWindowCube(this, fn, ScaleFactor);
-    sessionModel->addSessionItem(QFileInfo(fn).baseName(), win);  // Add to session manager
+    sessionModel->addSessionItem(QFileInfo(fn).baseName(), win, sessionModel->invisibleRootItem()->child(0));  // Add as child of root
 
     win->show();
     win->activateWindow();
