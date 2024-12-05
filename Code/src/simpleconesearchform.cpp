@@ -45,8 +45,10 @@ void SimpleConeSearchForm::search()
     scs.setProgram(this->pythonExe);
     scs.setProcessChannelMode(QProcess::MergedChannels);
 
+    QDir dir(QApplication::applicationDirPath());
+
     QStringList args;
-    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_scs.py")
+    args << dir.absoluteFilePath("pyvo_scs.py")
          << QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download") << ui->textURL->text()
          << ui->textRA->text() << ui->textDec->text() << ui->textRadius->text()
          << QString::number(ui->comboVerbosity->currentIndex() + 1);

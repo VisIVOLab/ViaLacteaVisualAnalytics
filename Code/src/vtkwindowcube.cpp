@@ -633,8 +633,10 @@ void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, f
     pvplot.setProgram(pythonExe);
     pvplot.setProcessChannelMode(QProcess::MergedChannels);
 
+    QDir dir(QApplication::applicationDirPath());
+
     QStringList args;
-    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pvplot.py") << this->filepath
+    args << dir.absoluteFilePath("pvplot.py") << this->filepath
          << QString::number(this->currentSlice) << QString::number(x1) << QString::number(y1)
          << QString::number(x2) << QString::number(y2)
          << QDir::home().absoluteFilePath("VisIVODesktopTemp");

@@ -99,9 +99,10 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
     avail.setProgram(this->pythonExe);
     avail.setProcessChannelMode(QProcess::MergedChannels);
 
+    QDir dir(QApplication::applicationDirPath());
+
     QStringList args;
-    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_tap.py") << "avail"
-         << this->url;
+    args << dir.absoluteFilePath("pyvo_tap.py") << "avail" << this->url;
     avail.setArguments(args);
     avail.start();
     avail.waitForFinished();
@@ -140,9 +141,11 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
     QProcess proc;
     proc.setProgram(this->pythonExe);
 
+    QDir dir(QApplication::applicationDirPath());
+
     QStringList args;
-    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_tap.py") << "query"
-         << this->url << generateQuery() << output_file << "ascii.tab";
+    args << dir.absoluteFilePath("pyvo_tap.py") << "query" << this->url << generateQuery()
+         << output_file << "ascii.tab";
     proc.setArguments(args);
     proc.start();
     proc.waitForFinished();
@@ -199,9 +202,10 @@ void VLKBSimpleQueryComposer::fetchBandTables()
     QProcess proc;
     proc.setProgram(this->pythonExe);
 
+    QDir dir(QApplication::applicationDirPath());
+
     QStringList args;
-    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_tap.py") << "tables"
-         << this->url;
+    args << dir.absoluteFilePath("pyvo_tap.py") << "tables" << this->url;
     proc.setArguments(args);
     proc.start();
     proc.waitForFinished();
