@@ -1,7 +1,6 @@
-#include <pybind11/embed.h>
-
 #include "ui_lutcustomize.h"
 #include "ui_vtkwindowcube.h"
+
 #include "vtkwindowcube.h"
 
 #include "interactors/vtkinteractorstyledrawarrow.h"
@@ -51,8 +50,6 @@
 
 #include <cmath>
 #include <string>
-
-namespace py = pybind11;
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor,
                              QString velocityUnit)
@@ -628,22 +625,31 @@ void vtkWindowCube::saveMomentToFile()
 
 void vtkWindowCube::generatePositionVelocityPlot(float x1, float y1, float x2, float y2)
 {
-    try {
-        std::string fin = this->filepath.toStdString();
-        py::list line;
-        line.append(std::make_tuple(x1, y1));
-        line.append(std::make_tuple(x2, y2));
-        std::string outDir = QDir::home().absoluteFilePath("VisIVODesktopTemp").toStdString();
+    QSettings settings(QDir::homePath().append("/VisIVODesktopTemp/setting.ini"),
+                       QSettings::IniFormat);
+    QString pythonExe = settings.value("python.exe").toString();
 
-        py::module_ pvplot = py::module_::import("pvplot");
-        std::string fout = pvplot.attr("extract_pv_plot")(fin, this->currentSlice, line, outDir)
-                                   .cast<std::string>();
-        auto win = new vtkWindowPV(QString::fromStdString(fout), this->filepath, x1, y1, x2, y2);
-        win->show();
-    } catch (const std::exception &e) {
-        qDebug() << Q_FUNC_INFO << "Error" << e.what();
-        QMessageBox::critical(this, "Error", e.what());
+    QProcess pvplot;
+    pvplot.setProgram(pythonExe);
+    pvplot.setProcessChannelMode(QProcess::MergedChannels);
+
+    QStringList args;
+    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pvplot.py") << this->filepath
+         << QString::number(this->currentSlice) << QString::number(x1) << QString::number(y1)
+         << QString::number(x2) << QString::number(y2)
+         << QDir::home().absoluteFilePath("VisIVODesktopTemp");
+    pvplot.setArguments(args);
+    pvplot.start();
+    pvplot.waitForFinished();
+
+    if (pvplot.exitCode() != QProcess::NormalExit) {
+        QMessageBox::critical(this, QString(), pvplot.readAllStandardOutput());
+        return;
     }
+
+    QString fout = pvplot.readAllStandardOutput().simplified();
+    auto win = new vtkWindowPV(fout, this->filepath, x1, y1, x2, y2);
+    win->show();
 }
 
 void vtkWindowCube::resetCamera()

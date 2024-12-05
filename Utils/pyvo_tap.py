@@ -2,6 +2,7 @@ import os
 import pyvo as vo
 from pyvo_utils import *
 
+import sys
 
 def availability(url):
     """Check if the service is available
@@ -16,11 +17,12 @@ def availability(url):
     bool
         True if the service is available, False otherwise
     """
-    tap = vo.dal.TAPService(url)
     try:
-        return make_response(exit_code=0, payload=tap.available)
+        tap = vo.dal.TAPService(url)
+        return 0 if tap.available else 1
     except Exception as ex:
-        return make_response(exit_code=1, payload=str(ex))
+        print(str(ex), end='')
+        return 1
 
 
 def band_tables(url):
@@ -40,9 +42,11 @@ def band_tables(url):
     try:
         tables = [t.name[t.name.rfind('.')+1:] for t in tap.tables if t.name.find(
             'compactsources.band') > -1 and t.name.endswith('um')]
-        return make_response(exit_code=0, payload=tables)
+        print(",".join(tables))
+        return 0
     except Exception as ex:
-        return make_response(exit_code=1, payload=str(ex))
+        print(str(ex), end='')
+        return 1
 
 
 def search(url, query, out_file, out_format):
@@ -71,10 +75,39 @@ def search(url, query, out_file, out_format):
         rs = tap.search(query)
         table = rs.to_table().filled()
         nels = len(rs)
-        payload = dict(nels=nels)
+        print(nels)
         if nels != 0:
             table.write(out_file, format=out_format)
-            payload['filepath'] = os.path.abspath(out_file)
-        return make_response(exit_code=0, payload=payload)
+            print(os.path.abspath(out_file), end='')
+        return 0
     except Exception as ex:
-        return make_response(exit_code=1, payload=str(ex))
+        print(str(ex), end='')
+        return 1
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(f'Usage: {sys.argv[0]} <avail|tables|query> [args...]')
+        sys.exit(1)
+    
+    if sys.argv[1] == "avail":
+        if len(sys.argv) < 3:
+            print(f'Usage: {sys.argv[0]} avail <url>')
+            sys.exit(1)
+        sys.exit(availability(sys.argv[2]))
+    
+    if sys.argv[1] == "tables":
+        if len(sys.argv) < 3:
+            print(f'Usage: {sys.argv[0]} tables <url>')
+            sys.exit(1)
+        sys.exit(band_tables(sys.argv[2]))
+    
+    if sys.argv[1] == "query":
+        if len(sys.argv) < 6:
+            print(f'Usage: {sys.argv[0]} query <url> <query> <out_file> <out_format>')
+            sys.exit(1)
+        url, query, out_file, out_format = sys.argv[2:6]
+        sys.exit(search(url, query, out_file, out_format))
+    
+    print(f'Unknown operation')
+    sys.exit(1)

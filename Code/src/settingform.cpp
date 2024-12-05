@@ -10,6 +10,7 @@
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QProcess>
 #include <QSettings>
 
 SettingForm::SettingForm(QWidget *parent)
@@ -51,6 +52,8 @@ void SettingForm::readSettingsFromFile()
 
     QString tilePath = settings.value("tilepath", "").toString();
     ui->TileLineEdit->setText(tilePath);
+
+    ui->linePythonExe->setText(settings.value("python.exe", "").toString());
 
     QString glyphmax = settings.value("glyphmax", "2147483647").toString();
     ui->glyphLineEdit->setText(glyphmax);
@@ -130,6 +133,7 @@ void SettingForm::on_TilePushButton_clicked()
 void SettingForm::on_OkPushButton_clicked()
 {
     QSettings settings(m_settingsFile, QSettings::IniFormat);
+    settings.setValue("python.exe", ui->linePythonExe->text());
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
@@ -192,4 +196,37 @@ void SettingForm::on_caesarLogoutButton_clicked()
 void SettingForm::on_btnRegister_clicked()
 {
     QDesktopServices::openUrl(urlSignUp);
+}
+
+void SettingForm::on_btnLocatePython_clicked()
+{
+    QProcess whereis;
+    whereis.setProgram("whereis");
+
+    QStringList args;
+    args << "-b" << "python3";
+    whereis.setArguments(args);
+    whereis.start();
+
+    if (whereis.waitForFinished()) {
+        // output = "python3: [path]"
+        QString path = whereis.readAllStandardOutput().simplified().split(':')[1].simplified();
+        if (!path.isEmpty()) {
+            qInfo().noquote() << "Found python3:" << path;
+            ui->linePythonExe->setText(path);
+            return;
+        } else {
+            QMessageBox::warning(this, QString(), "python3 not found");
+        }
+    } else {
+        QMessageBox::warning(this, QString(), "Could not detect if python3 is installed.");
+    }
+}
+
+void SettingForm::on_btnBrowsePython_clicked()
+{
+    QString fn = QFileDialog::getOpenFileName(this, QString(), QString());
+    if (!fn.isEmpty()) {
+        ui->linePythonExe->setText(fn);
+    }
 }

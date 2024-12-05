@@ -7,10 +7,6 @@ namespace Ui {
 class SimpleConeSearchForm;
 }
 
-namespace pybind11 {
-class dict;
-}
-
 class SimpleConeSearchForm : public QWidget
 {
     Q_OBJECT
@@ -25,10 +21,11 @@ private slots:
 
 private:
     Ui::SimpleConeSearchForm *ui;
+    QString pythonExe;
     int idxAccessURL;
 
     bool checkInputs();
-    void updateTable(const pybind11::dict &dict);
+    void updateTable(const QString &filepath);
 };
 
 #endif // SIMPLECONESEARCHFORM_H

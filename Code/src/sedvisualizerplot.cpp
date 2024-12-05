@@ -9,11 +9,13 @@
 #include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
 #include "vtkCleanPolyData.h"
+
 #include <limits>
 #include <QCheckBox>
 #include <QDebug>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QSettings>
 #include <QSignalMapper>
 #include <QtConcurrent>
 #include <QtMath>
@@ -28,6 +30,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
 
     QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
+    this->pythonExe = settings.value("python.exe").toString();
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
                                     | QCP::iSelectPlottables | QCP::iMultiSelect
@@ -1469,7 +1472,7 @@ void SEDVisualizerPlot::doThinLocalFit()
          << sedFitInputErrF << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start("python3", args);
+    process->start(this->pythonExe, args);
 }
 
 void SEDVisualizerPlot::doThinRemoteFit()
@@ -1705,7 +1708,7 @@ void SEDVisualizerPlot::doThickLocalFit()
          << sedFitInputUlimitString << outputFile;
 
     process->setWorkingDirectory(dir.absolutePath());
-    process->start("python3", args);
+    process->start(this->pythonExe, args);
 }
 
 void SEDVisualizerPlot::finishedThinRemoteFit()

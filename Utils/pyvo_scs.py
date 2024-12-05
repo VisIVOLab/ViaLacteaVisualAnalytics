@@ -1,9 +1,15 @@
+#!/usr/bin/env python3
+
 import pyvo as vo
-from pyvo_utils import *
 
+import pathlib
+import sys
+import uuid
 
-def search(cone_url, ra, dec, radius, verbosity=2):
-    """Submit a Simple Cone Search query
+def search(output_dir, cone_url, ra, dec, radius, verbosity):
+    """
+    Submit a Simple Cone Search query and save
+    the results (csv and votable)
 
     Parameters
     ----------
@@ -15,25 +21,34 @@ def search(cone_url, ra, dec, radius, verbosity=2):
         Declination (degrees)
     radius : float
         Search radius (degrees)
-    verbosity : int, optional
-        The volume of columns to return, by default 2
+    verbosity : int
+        The volume of columns to return
 
     Returns
     -------
-    dict
-        A dictionary with the following keys:
-            - nels: number of rows
-            - columns: a list of tuples (name, description)
-            - table: a list of lists with table contents
+    0 on success, csv absolute path in stdout
+    1 on exceptions, error message in stdout
     """
     cone_search = vo.dal.SCSService(cone_url)
     try:
         rs = cone_search.search(
             pos=(ra, dec), radius=radius, verbosity=verbosity)
-        cols = [(field.name, field.description or str())
-                for field in rs.fielddescs]
-        table = [[str(el) for el in row] for row in rs.to_table()]
-        payload = dict(nels=len(rs), columns=cols, table=table)
-        return make_response(exit_code=0, payload=payload)
+        name = uuid.uuid4()
+        votable_file = pathlib.Path(output_dir).absolute() / f'{name}.xml'
+        csv_file = pathlib.Path(output_dir).absolute() / f'{name}.csv'
+        rs.votable.to_xml(votable_file.as_posix())
+        rs.to_table().write(csv_file.as_posix())
+        print(csv_file.as_posix(), end='')
+        return 0
     except Exception as ex:
-        return make_response(exit_code=1, payload=str(ex))
+        print(str(ex), end='')
+        return 1
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 6 or len(sys.argv) > 7:
+        print(f'Usage: {sys.argv[0]} <output_dir> <url> <ra> <dec> <radius> [verbosity]')
+        sys.exit(1)
+    output_dir, cone_url, ra, dec, radius = sys.argv[1:6]
+    verbosity = sys.argv[6] if len(sys.argv) == 7 else 2
+    sys.exit(search(output_dir, cone_url, float(ra), float(dec), float(radius), int(verbosity)))

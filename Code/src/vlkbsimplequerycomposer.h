@@ -40,6 +40,7 @@ private:
     QString m_sSettingsFile;
     QString vlkbtype;
     QString table_prefix;
+    QString pythonExe;
 
     LoadingWidget *loading;
     vtkwindow_new *vtkwin;

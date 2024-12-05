@@ -33,6 +33,10 @@ private slots:
     void caesar_loggedout();
     void on_btnRegister_clicked();
 
+    void on_btnLocatePython_clicked();
+
+    void on_btnBrowsePython_clicked();
+
 private:
     Ui::SettingForm *ui;
     QString m_settingsFile;

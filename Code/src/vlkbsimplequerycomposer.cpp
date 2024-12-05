@@ -1,5 +1,3 @@
-#include <pybind11/embed.h>
-
 #include "vlkbsimplequerycomposer.h"
 #include "ui_vlkbsimplequerycomposer.h"
 
@@ -18,8 +16,6 @@
 #include <QUrl>
 #include <QUuid>
 
-namespace py = pybind11;
-
 VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::VLKBSimpleQueryComposer)
 {
@@ -32,16 +28,17 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
     isBubble = false;
 
     m_sSettingsFile = QDir::homePath()
-            .append(QDir::separator())
-            .append("VisIVODesktopTemp")
-            .append(QDir::separator())
-            .append("setting.ini");
+                              .append(QDir::separator())
+                              .append("VisIVODesktopTemp")
+                              .append(QDir::separator())
+                              .append("setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     url = settings.value("vlkbtableurl", "").toString();
     ui->vlkbUrlLineEdit->setText(url);
     url.replace("http://", QString("http://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));
     vlkbtype = settings.value("vlkbtype", "ia2").toString();
     table_prefix = "vlkb_";
+    this->pythonExe = settings.value("python.exe").toString();
     on_connectPushButton_clicked();
 }
 
@@ -98,30 +95,26 @@ void VLKBSimpleQueryComposer::setLatitude(float lat1, float lat2)
 
 void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
 {
-    try {
-        if (!isConnected) {
-            // Check TAP availability
-            py::module_ tap = py::module_::import("pyvo_tap");
-            py::dict res = tap.attr("availability")(url.toStdString());
+    QProcess avail;
+    avail.setProgram(this->pythonExe);
+    avail.setProcessChannelMode(QProcess::MergedChannels);
 
-            if (res["exit_code"].cast<int>() != 0) {
-                throw std::runtime_error(res["error"].cast<std::string>());
-            }
+    QStringList args;
+    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_tap.py") << "avail"
+         << this->url;
+    avail.setArguments(args);
+    avail.start();
+    avail.waitForFinished();
 
-            if (!res["result"].cast<bool>()) {
-                throw std::runtime_error("TAP is not available.");
-            }
-
-            isConnected = true;
-            if (!isFilament) {
-                fetchBandTables();
-            }
-        } else {
-            isConnected = false;
+    if (avail.exitCode() != QProcess::NormalExit) {
+        this->isConnected = false;
+        QMessageBox::critical(this, QString(), avail.readAllStandardOutput());
+        return;
+    } else {
+        this->isConnected = true;
+        if (!this->isFilament) {
+            fetchBandTables();
         }
-    } catch (const std::exception &e) {
-        isConnected = false;
-        QMessageBox::critical(this, QString(), e.what());
     }
 
     updateUI(isConnected);
@@ -144,42 +137,44 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
                                    QUuid::createUuid().toString(QUuid::WithoutBraces));
     }
 
-    try {
-        py::module_ tap = py::module_::import("pyvo_tap");
-        std::string query = generateQuery().toStdString();
-        std::string out_format = "ascii.tab";
+    QProcess proc;
+    proc.setProgram(this->pythonExe);
 
-        py::dict res =
-                tap.attr("search")(url.toStdString(), query, output_file.toStdString(), out_format);
-        if (res["exit_code"].cast<int>() != 0) {
-            throw std::runtime_error(res["error"].cast<std::string>());
-        }
+    QStringList args;
+    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_tap.py") << "query"
+         << this->url << generateQuery() << output_file << "ascii.tab";
+    proc.setArguments(args);
+    proc.start();
+    proc.waitForFinished();
 
-        if (res["result"]["nels"].cast<int>() == 0) {
-            throw std::runtime_error("Empty table. Table contained no rows.");
-        }
+    if (proc.exitCode() != QProcess::NormalExit) {
+        QMessageBox::critical(this, QString(), proc.readAllStandardError());
+        return;
+    }
 
-        auto fileload = new Vialactea_FileLoad(output_file, true);
-        fileload->setVtkWin(vtkwin);
-        if (isFilament) {
-            fileload->importFilaments();
-        } else if (isBubble) {
-            fileload->importBubbles();
-        } else if (is3dSelections) {
-            fileload->import3dSelection();
+    int nels = proc.readLine().simplified().toInt();
+    if (nels == 0) {
+        QMessageBox::critical(this, QString(), "Empty table. Table contained no rows.");
+        return;
+    }
+
+    auto fileload = new Vialactea_FileLoad(output_file, true);
+    fileload->setVtkWin(vtkwin);
+    if (isFilament) {
+        fileload->importFilaments();
+    } else if (isBubble) {
+        fileload->importBubbles();
+    } else if (is3dSelections) {
+        fileload->import3dSelection();
+    } else {
+        fileload->setCatalogueActive();
+        if (!isBandmerged) {
+            QString w = ui->tableComboBox->currentText().replace("band", "").replace("um", "");
+            fileload->setWavelength(w);
         } else {
-            fileload->setCatalogueActive();
-            if (!isBandmerged) {
-                QString w = ui->tableComboBox->currentText().replace("band", "").replace("um", "");
-                fileload->setWavelength(w);
-            } else {
-                fileload->setWavelength("all");
-            }
-            fileload->on_okPushButton_clicked();
+            fileload->setWavelength("all");
         }
-
-    } catch (const std::exception &e) {
-        QMessageBox::critical(this, QString(), e.what());
+        fileload->on_okPushButton_clicked();
     }
 }
 
@@ -201,15 +196,25 @@ void VLKBSimpleQueryComposer::fetchBandTables()
 {
     ui->tableComboBox->clear();
 
-    py::module_ tap = py::module_::import("pyvo_tap");
-    py::dict res = tap.attr("band_tables")(url.toStdString());
-    if (res["exit_code"].cast<int>() != 0) {
-        throw std::runtime_error(res["error"].cast<std::string>());
+    QProcess proc;
+    proc.setProgram(this->pythonExe);
+
+    QStringList args;
+    args << QDir(QApplication::applicationDirPath()).absoluteFilePath("pyvo_tap.py") << "tables"
+         << this->url;
+    proc.setArguments(args);
+    proc.start();
+    proc.waitForFinished();
+
+    if (proc.exitCode() != QProcess::NormalExit) {
+        QMessageBox::critical(this, QString(), proc.readAllStandardOutput());
+        return;
     }
 
-    py::list tables = res["result"];
+    auto tables = proc.readAllStandardOutput().simplified().split(',');
+    qDebug() << Q_FUNC_INFO << tables;
     for (const auto &table : tables) {
-        ui->tableComboBox->addItem(QString::fromStdString(table.cast<std::string>()));
+        ui->tableComboBox->addItem(table);
     }
     ui->tableComboBox->addItem("bandmerged");
     ui->tableComboBox->setCurrentIndex(ui->tableComboBox->count() - 1);
