@@ -87,8 +87,7 @@ jobs:
       
       - name: Fix AppDir
         run: |
-          rm AppDir/usr/lib/libnss*
-          rm AppDir/usr/lib/libpython*
+          rm -f AppDir/usr/lib/libnss*
           cp -r ${{github.workspace}}/Utils/* AppDir/usr/bin
           sed -i "/exec/s/\$$/ --no-sandbox/" AppDir/AppRun
 
