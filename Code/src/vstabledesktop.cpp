@@ -23,19 +23,19 @@
 #include "mainwindow.h"
 #include "singleton.h"
 #include "visivoutilsdesktop.h"
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
-#include <iostream>
+
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
-#include <sstream>
 
-#include <boost/algorithm/string.hpp>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 const unsigned long long int VSTableDesktop::MAX_NUMBER_TO_SKIP = 1000000000;
 const unsigned long long int VSTableDesktop::MAX_NUMBER_ROW_REQUEST = 250000000;
@@ -314,7 +314,8 @@ int VSTableDesktop::getColId(std::string name)
     unsigned int size = m_colVector.size();
 
     for (unsigned int i = 0; i < size; ++i) {
-        if (boost::iequals(m_colVector[i], name))
+        if (std::equal(name.begin(), name.end(), m_colVector[i].begin(),
+                       [](char a, char b) { return std::tolower(a) == std::tolower(b); }))
             return i;
     }
     return -1;

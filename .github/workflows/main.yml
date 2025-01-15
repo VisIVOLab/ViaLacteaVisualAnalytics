@@ -35,7 +35,6 @@ jobs:
           -DCMAKE_CXX_FLAGS_INIT:STRING="-fuse-ld=gold"
           -DVTK_DIR:PATH=${{vars.VTK_DIR}}
           -DCFITSIO_ROOT_DIR:PATH=${{vars.CFITSIO_DIR}}
-          -DBOOST_ROOT:PATH=${{vars.BOOST_DIR}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --parallel

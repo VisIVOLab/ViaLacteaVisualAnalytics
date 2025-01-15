@@ -29,12 +29,6 @@ Prerequisites:
 
 `-DCMAKE_OSX_ARCHITECTURES=x86_64`
 
-## Boost 1.78.0 (Headers only)
-1. `$ wget https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz`
-1. `$ tar xzf boost_1_78_0.tar.gz`
-1. `$ cd boost_1_78_0`
-1. `$ sudo cp -r boost /usr/local/include`
-
 ## Python
 Python3 is required for certain functionalities using specific Python packages. Install the following packages:
 - `jmespath`
@@ -42,17 +36,20 @@ Python3 is required for certain functionalities using specific Python packages. 
 - `numpy`
 - `scipy`
 - `pvextractor`
+- `spectral-cube`
 
 # Building ViaLacteaVisualAnalytics
-Build the project using CMake with your preferred generator. You may need to specify the following CMake variables:
-- `BOOST_ROOT`: Boost installation prefix.
+Build the project using CMake with your preferred generator. You may need to specify the following CMake variables
 - `CFITSIO_ROOT_DIR`: CFITSIO non-standard installation path.
 - `VTK_DIR`: The directory containing a CMake configuration file for VTK.
-- `PYTHON_EXECUTABLE`: Path to python3 executable.
 
 After a successful build, copy the contents of [Utils](Utils) next to the ViaLacteaVisualAnalytics executable.
 
 # Building on Windows
+
+> [!WARNING]
+> Experimental.
+
 When building on Windows, there are additional dependencies and some changes to the libraries are necessary to compile a successful build.
 ## Additional prerequisites
 The following must be installed on your system before you can build and install the dependencies:

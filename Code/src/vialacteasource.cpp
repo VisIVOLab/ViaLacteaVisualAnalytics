@@ -28,7 +28,6 @@
 #include <iostream>
 #include <sstream>
 
-#include <boost/array.hpp>
 #include <QDebug>
 
 VialacteaSource::VialacteaSource(std::string name)

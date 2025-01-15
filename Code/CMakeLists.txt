@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(ViaLacteaVisualAnalytics VERSION 1.6.2 LANGUAGES CXX C)
+project(
+  ViaLacteaVisualAnalytics
+  VERSION 1.6.2
+  LANGUAGES CXX C)
 
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
 
 # Set a default build type if none was specified
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
-        STRING "Choose the type of build." FORCE
-    )
-    # Set the possible values of build type for cmake-gui
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-        "Debug" "Release" "MinSizeRel" "RelWithDebInfo"
-    )
+  message(
+    STATUS
+      "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE
+      "${default_build_type}"
+      CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+                                               "MinSizeRel" "RelWithDebInfo")
 endif()
 
 set(CMAKE_CXX_STANDARD 11)
@@ -27,34 +31,38 @@ set(CMAKE_AUTOUIC ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-set(qt_components Widgets Concurrent Xml Network NetworkAuth WebEngineWidgets PrintSupport)
+set(qt_components
+    Widgets
+    Concurrent
+    Xml
+    Network
+    NetworkAuth
+    WebEngineWidgets
+    PrintSupport)
 
 find_package(Qt5 5.15 REQUIRED QUIET COMPONENTS ${qt_components})
 message(STATUS "Qt ${Qt5_VERSION} - ${qt_components}")
 
-find_package(VTK 9.1.0 REQUIRED QUIET COMPONENTS
-    CommonColor
-    FiltersExtraction
-    FiltersGeometry
-    FiltersModeling
-    GUISupportQt
-    InteractionImage
-    InteractionStyle
-    IOImage
-    IOXML
-    RenderingAnnotation
-    RenderingImage
-    RenderingLabel
-    RenderingLOD
-    RenderingVolumeOpenGL2
-)
+find_package(
+  VTK 9.1.0 REQUIRED QUIET
+  COMPONENTS CommonColor
+             FiltersExtraction
+             FiltersGeometry
+             FiltersModeling
+             GUISupportQt
+             InteractionImage
+             InteractionStyle
+             IOImage
+             IOXML
+             RenderingAnnotation
+             RenderingImage
+             RenderingLabel
+             RenderingLOD
+             RenderingVolumeOpenGL2)
 message(STATUS "VTK ${VTK_VERSION} - ${VTK_LIBRARIES}")
 
 find_package(CFITSIO 4.1.0 QUIET REQUIRED)
 message(STATUS "CFITSIO ${CFITSIO_VERSION}")
-
-find_package(Boost 1.78.0 QUIET REQUIRED)
-message(STATUS "BOOST ${Boost_VERSION}")
 
 configure_file(src/version.h.in version.h)
 
@@ -227,8 +235,7 @@ set(PROJECT_SOURCES
     src/vtkwindowpv.cpp
     src/vtkwindowpv.h
     src/xmlparser.cpp
-    src/xmlparser.h
-)
+    src/xmlparser.h)
 
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 set(PROJECT_UI
@@ -268,54 +275,44 @@ set(PROJECT_UI
     ui/vtktoolswidget.ui
     ui/vtkwindow_new.ui
     ui/vtkwindowcube.ui
-    ui/vtkwindowpv.ui
-)
+    ui/vtkwindowpv.ui)
 
 qt_add_resources(PROJECT_RESOURCES visivo.qrc)
 
 if(WIN32)
-    set(ICON_RESOURCE visivo.rc)
+  set(ICON_RESOURCE visivo.rc)
 elseif(APPLE)
-    set(ICON_RESOURCE logo.icns)
-    set(MACOSX_BUNDLE_ICON_FILE logo.icns)
-    set(app_icon_macos "${CMAKE_SOURCE_DIR}/logo.icns")
-    set_source_files_properties(${app_icon_macos} PROPERTIES
-        MACOSX_PACKAGE_LOCATION "Resources"
-    )
+  set(ICON_RESOURCE logo.icns)
+  set(MACOSX_BUNDLE_ICON_FILE logo.icns)
+  set(app_icon_macos "${CMAKE_SOURCE_DIR}/logo.icns")
+  set_source_files_properties(${app_icon_macos}
+                              PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 
-add_executable(ViaLacteaVisualAnalytics
-    ${PROJECT_SOURCES}
-    ${PROJECT_UI}
-    ${PROJECT_RESOURCES}
-    ${ICON_RESOURCE}
-)
+add_executable(ViaLacteaVisualAnalytics ${PROJECT_SOURCES} ${PROJECT_UI}
+                                        ${PROJECT_RESOURCES} ${ICON_RESOURCE})
 
 add_subdirectory(src/libwcs)
 
-target_compile_definitions(ViaLacteaVisualAnalytics PRIVATE $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>)
+target_compile_definitions(ViaLacteaVisualAnalytics
+                           PRIVATE $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>)
 
 foreach(_qt_comp IN LISTS qt_components)
-    list(APPEND qt_modules "Qt5::${_qt_comp}")
+  list(APPEND qt_modules "Qt5::${_qt_comp}")
 endforeach()
 
-target_link_libraries(ViaLacteaVisualAnalytics PRIVATE
-    ${qt_modules}
-    ${VTK_LIBRARIES}
-    CFITSIO::CFITSIO
-    Boost::headers
-    wcs
-)
+target_link_libraries(
+  ViaLacteaVisualAnalytics PRIVATE ${qt_modules} ${VTK_LIBRARIES}
+                                   CFITSIO::CFITSIO wcs)
 
-set_target_properties(ViaLacteaVisualAnalytics PROPERTIES
+set_target_properties(
+  ViaLacteaVisualAnalytics
+  PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER it.inaf.oact.visivo
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING
+    ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}
     MACOSX_BUNDLE ON
-    WIN32_EXECUTABLE ON
-)
+    WIN32_EXECUTABLE ON)
 
-vtk_module_autoinit(
-    TARGETS ViaLacteaVisualAnalytics
-    MODULES ${VTK_LIBRARIES}
-)
+vtk_module_autoinit(TARGETS ViaLacteaVisualAnalytics MODULES ${VTK_LIBRARIES})

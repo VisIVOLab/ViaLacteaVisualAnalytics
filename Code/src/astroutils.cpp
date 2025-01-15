@@ -10,13 +10,8 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <unistd.h>
 #include <vector>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-
-using namespace boost::algorithm;
 
 AstroUtils::AstroUtils() = default;
 
@@ -308,15 +303,7 @@ void AstroUtils::xy2sky(std::string map, float x, float y, double *coord, int wc
         wcs->eqout = 1950.0;
     }
 
-    if (pix2wcst(wcs, x, y, wcstring, lstr)) {
-        std::string str(wcstring);
-        std::vector<std::string> tokens;
-        trim(str);
-        split(tokens, str, is_any_of(" "), boost::token_compress_on);
-        coord[0] = atof(tokens[0].c_str());
-        coord[1] = atof(tokens[1].c_str());
-    }
-
+    pix2wcs(wcs, x, y, coord, &coord[1]);
     delete[] fn;
     wcsfree(wcs);
 }

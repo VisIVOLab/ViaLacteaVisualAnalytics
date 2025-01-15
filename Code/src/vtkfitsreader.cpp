@@ -10,8 +10,6 @@
 #include <cmath>
 #include <qmath.h>
 
-#include <boost/algorithm/string.hpp>
-
 // vtkCxxRevisionMacro(vtkFitsReader, "$Revision: 1.1 $");
 vtkStandardNewMacro(vtkFitsReader);
 
@@ -534,14 +532,8 @@ void vtkFitsReader::ReadHeader()
     cdelt[2] = delt3.toDouble();
 
     initSlice = crval[2] - (cdelt[2] * (cpix[2] - 1));
-    std::string ctype1 { xStr };
-    boost::trim(ctype1);
-    boost::to_lower_copy(ctype1);
-
-    std::string ctype2 { yStr };
-    boost::trim(ctype2);
-    boost::to_lower_copy(ctype2);
-
+    QString ctype1 = QString(xStr).trimmed().toLower();
+    QString ctype2 = QString(yStr).trimmed().toLower();
     if (ctype1 == "x" && ctype2 == "y") {
         this->ctypeXY = true;
     }
