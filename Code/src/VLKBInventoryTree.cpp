@@ -69,7 +69,7 @@ void VLKBInventoryTree::click(const QModelIndex &idx)
 
 void VLKBInventoryTree::doubleClick(const QModelIndex &idx)
 {
-    if (!idx.isValid() || !this->imgWindow) {
+    if (!idx.isValid()) {
         return;
     }
 
@@ -81,7 +81,7 @@ void VLKBInventoryTree::doubleClick(const QModelIndex &idx)
         qDebug() << "Double clicked" << c.ivoID << c.region_gal;
         auto vq = new VialacteaInitialQuery;
         vq->cutoutRequest(c.ivoID, QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download"),
-                          c.region_gal);
+                          c.region_gal, c);
         if (c.type == "image") {
             connect(vq, &VialacteaInitialQuery::cutoutDone, this,
                     [this, vq](const QString &path, const Cutout &src) {
@@ -90,8 +90,13 @@ void VLKBInventoryTree::doubleClick(const QModelIndex &idx)
                         fits->setSurvey(src.survey);
                         fits->setSpecies(src.species);
                         fits->setTransition(src.transition);
-                        this->imgWindow->addLayerImage(fits, src.survey, src.species,
-                                                       src.transition);
+
+                        if (!this->imgWindow) {
+                            this->imgWindow = new vtkwindow_new(nullptr, fits);
+                        } else {
+                            this->imgWindow->addLayerImage(fits, src.survey, src.species,
+                                                           src.transition);
+                        }
                         vq->deleteLater();
                     });
         } else {

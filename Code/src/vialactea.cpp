@@ -403,6 +403,25 @@ void ViaLactea::openLocalDC(const QString &fn)
     win->show();
     win->activateWindow();
     win->raise();
+
+    bool doSearch = settings.value("vlkb.search", false).toBool();
+
+    if (doSearch) {
+        double coords[2], rectSize[2];
+        AstroUtils::GetCenterCoords(fn.toStdString(), coords);
+        AstroUtils::GetRectSize(fn.toStdString(), rectSize);
+
+        VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        connect(vq, &VialacteaInitialQuery::searchDoneVO, this,
+                [vq, this](const QByteArray &votable) {
+                    auto tree = new VLKBInventoryTree(votable);
+                    tree->show();
+
+                    vq->deleteLater();
+                });
+
+        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+    }
 }
 
 void ViaLactea::on_actionExit_triggered()
