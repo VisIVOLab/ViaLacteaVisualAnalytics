@@ -231,11 +231,14 @@ void SessionLoader::on_btnLoad_clicked()
         AstroUtils::GetRectSize(fits.toStdString(), rectSize);
         auto vq = new VialacteaInitialQuery;
         vq->setParent(this);
-        connect(vq, &VialacteaInitialQuery::searchDone, this,
-                [this, vl, fitsReader](QList<QMap<QString, QString>> results) {
+        connect(vq, &VialacteaInitialQuery::searchDoneVO, this,
+                [this, vl, fitsReader](const QByteArray &votable) {
+                    auto tree = new VLKBInventoryTree(votable);
+                    tree->show();
+
                     auto win = new vtkwindow_new(vl, fitsReader);
-                    win->setDbElements(results);
                     win->loadSession(sessionFilepath, sessionRootFolder);
+                    tree->setLinkedWindow(win);
                     this->close();
                 });
         vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);

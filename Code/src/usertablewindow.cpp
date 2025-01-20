@@ -5,6 +5,7 @@
 #include "authwrapper.h"
 #include "mcutoutsummary.h"
 #include "vialacteainitialquery.h"
+#include "VLKBInventoryTree.h"
 
 #include <QCheckBox>
 #include <QDebug>
@@ -66,10 +67,10 @@ void UserTableWindow::getSurveysData()
 
     connect(nam, &QNetworkAccessManager::authenticationRequired, this,
             [](QNetworkReply *reply, QAuthenticator *authenticator) {
-        Q_UNUSED(reply);
-        authenticator->setUser(IA2_TAP_USER);
-        authenticator->setPassword(IA2_TAP_PASS);
-    });
+                Q_UNUSED(reply);
+                authenticator->setUser(IA2_TAP_USER);
+                authenticator->setPassword(IA2_TAP_PASS);
+            });
 
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
         if (reply->error() == QNetworkReply::NoError) {
@@ -260,20 +261,24 @@ void UserTableWindow::query(int index)
     SourceCutouts *source = selectedSources.at(index);
 
     auto vlkb = new VialacteaInitialQuery();
-    connect(vlkb, &VialacteaInitialQuery::searchDone, this,
-            [this, vlkb, source, index](QList<QMap<QString, QString>> results) {
-        source->parseSearchResults(results);
+    connect(vlkb, &VialacteaInitialQuery::searchDoneVO, this,
+            [this, vlkb, source, index](const QByteArray &votable) {
+                auto tree = new VLKBInventoryTree(votable);
+                auto cutouts = tree->getList();
+                tree->deleteLater();
 
-        if ((index + 1) < selectedSources.count()) {
-            query(index + 1);
-        } else {
-            updateTables();
-            ui->tabWidget->setTabEnabled(1, true);
-            ui->tabWidget->setTabEnabled(2, true);
-            ui->tabWidget->setCurrentIndex(1);
-        }
-        vlkb->deleteLater();
-    });
+                source->parseSearchResults(cutouts);
+
+                if ((index + 1) < selectedSources.count()) {
+                    query(index + 1);
+                } else {
+                    updateTables();
+                    ui->tabWidget->setTabEnabled(1, true);
+                    ui->tabWidget->setTabEnabled(2, true);
+                    ui->tabWidget->setCurrentIndex(1);
+                }
+                vlkb->deleteLater();
+            });
 
     if (ui->selectionComboBox->currentText() == "Point") {
         vlkb->searchRequest(source->getGlon(), source->getGlat(),
@@ -290,7 +295,7 @@ void UserTableWindow::updateTables()
     ui->cubesTable->setRowCount(0);
 
     const auto NewSurveyCell = [this](const QString &surveyName, const SourceCutouts *source,
-            bool is3D) {
+                                      bool is3D) {
         Survey *survey = (is3D ? surveys3d.value(surveyName) : surveys2d.value(surveyName));
 
         QString tooltip;
@@ -349,13 +354,13 @@ void UserTableWindow::updateTables()
     }
 }
 
-QStringList UserTableWindow::getCutoutsList(int t)
+QList<Cutout> UserTableWindow::getCutoutsList(int t)
 {
     // t = 0 -> images; t = 1 -> cubes
     const QTableWidget *table = (t == 0) ? ui->imagesTable : ui->cubesTable;
     const auto &surveys = (t == 0) ? selectedSurveys2d : selectedSurveys3d;
 
-    QStringList cutouts;
+    QList<Cutout> cutouts;
 
     for (int row = 0; row < table->rowCount(); ++row) {
         if (table->item(row, 0)->checkState() == Qt::Checked) {
@@ -366,9 +371,9 @@ QStringList UserTableWindow::getCutoutsList(int t)
                 auto species = it.value().first;
                 auto transition = it.value().second;
 
-                QString url;
-                if (source->getBestCutout(survey, species, transition, url)) {
-                    cutouts << url;
+                Cutout c;
+                if (source->getBestCutout(survey, species, transition, c)) {
+                    cutouts << c;
                 }
             }
         }
@@ -379,7 +384,7 @@ QStringList UserTableWindow::getCutoutsList(int t)
 
 void UserTableWindow::initMCutoutRequest()
 {
-    QStringList cutouts;
+    QList<Cutout> cutouts;
     cutouts << getCutoutsList(0) << getCutoutsList(1);
 
     if (cutouts.isEmpty()) {
@@ -430,48 +435,47 @@ double SourceCutouts::getGlat() const
 }
 
 bool SourceCutouts::getBestCutout(const QString &survey, const QString &species,
-                                  const QString &transition, QString &url) const
+                                  const QString &transition, Cutout &cutout) const
 {
-    QString current;
+    Cutout current;
     const auto &container = species.contains("Continuum") ? images : cubes;
 
     foreach (const auto &cutout, container) {
-        auto _survey = cutout.value("Survey");
-        auto _species = cutout.value("Species");
-        auto _transition = cutout.value("Transition");
+        auto _survey = cutout.survey;
+        auto _species = cutout.species;
+        auto _transition = cutout.transition;
 
         if (survey != _survey || species != _species || transition != _transition) {
             continue;
         }
 
-        if (current.isEmpty() || cutout.value("code").toInt() == 3) {
-            current = cutout.value("URL");
+        if (current.ivoID.isEmpty() || cutout.overlap == 3) {
+            current = cutout;
         }
     }
 
-    if (current.isEmpty()) {
+    if (current.ivoID.isEmpty()) {
         return false;
     }
 
-    url = current;
+    cutout = current;
     return true;
 }
 
-void SourceCutouts::parseSearchResults(const QList<QMap<QString, QString>> &results)
+void SourceCutouts::parseSearchResults(const QList<Cutout> &results)
 {
-    foreach (const auto &item, results) {
-        auto survey = item.value("Survey");
-        auto species = item.value("Species");
-        auto transition = item.value("Transition");
+    foreach (const auto &cutout, results) {
+        auto survey = cutout.survey;
+        auto species = cutout.species;
+        auto transition = cutout.transition;
 
-        auto code = item.value("code").toInt();
-        if (code == 0) {
+        if (cutout.overlap == 0) {
             // Skip merge entries
             continue;
         }
 
-        if (species.contains("Continuum")) {
-            images.append(item);
+        if (cutout.type == "image") {
+            images.append(cutout);
 
             if (!transitions.contains(survey)) {
                 transitions.insert(survey, new QSet<QString>({ transition }));
@@ -480,7 +484,7 @@ void SourceCutouts::parseSearchResults(const QList<QMap<QString, QString>> &resu
             }
 
         } else {
-            cubes.append(item);
+            cubes.append(cutout);
 
             if (!this->species.contains(survey)) {
                 this->species.insert(survey, new QSet<QString>({ species }));
@@ -491,7 +495,7 @@ void SourceCutouts::parseSearchResults(const QList<QMap<QString, QString>> &resu
     }
 }
 
-const QList<QMap<QString, QString>> &SourceCutouts::getImages() const
+const QList<Cutout> &SourceCutouts::getImages() const
 {
     return images;
 }
@@ -501,7 +505,7 @@ int SourceCutouts::getImagesCount() const
     return images.count();
 }
 
-const QList<QMap<QString, QString>> &SourceCutouts::getCubes() const
+const QList<Cutout> &SourceCutouts::getCubes() const
 {
     return cubes;
 }

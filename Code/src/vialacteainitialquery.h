@@ -2,6 +2,7 @@
 #define VIALACTEAINITIALQUERY_H
 
 #include "loadingwidget.h"
+#include "VLKBInventoryTree.h"
 #include "vtkwindow_new.h"
 #include "xmlparser.h"
 
@@ -31,12 +32,26 @@ public:
     void setCallingVtkWindow(vtkwindow_new *v) { myCallingVtkWindow = v; }
     void setSelectedSurveyMap(QList<QPair<QString, QString>> s) { selectedSurvey = s; }
 
+    // POS=RANGE
     void searchRequest(double l, double b, double dl, double db);
+    void cutoutRequest(const QString &id, const QDir &dir, double l, double b, double dl, double db,
+                       const Cutout &src = Cutout());
+
+    // POS=CIRCLE
     void searchRequest(double l, double b, double r);
-    void cutoutRequest(const QString &url, const QDir &dir);
+    void cutoutRequest(const QString &id, const QDir &dir, double l, double b, double r,
+                       const Cutout &src = Cutout());
+
+    // POS=POLYGON
+    void cutoutRequest(const QString &id, const QDir &dir, const QString &polygon,
+                       const Cutout &src = Cutout());
+
+    void cutoutRequest(const QString &url, const QDir &dir, const Cutout &src = Cutout());
 
 signals:
     void searchDone(QList<QMap<QString, QString>>);
+    void searchDoneVO(const QByteArray &votable);
+    void cutoutDone(const QString &filepath, const Cutout &src = Cutout());
 
 private slots:
     void on_pushButton_clicked();

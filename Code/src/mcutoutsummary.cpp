@@ -36,7 +36,8 @@ MCutoutSummary::MCutoutSummary(QWidget *parent)
     qDebug() << "MCutout endpoint" << mcutoutEndpoint;
 }
 
-MCutoutSummary::MCutoutSummary(QWidget *parent, const QStringList &cutouts) : MCutoutSummary(parent)
+MCutoutSummary::MCutoutSummary(QWidget *parent, const QList<Cutout> &cutouts)
+    : MCutoutSummary(parent)
 {
     ui->textWait->hide();
     ui->progressBar->hide();
@@ -62,10 +63,11 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QString &pendingFile) : MC
         return;
     }
 
+    // FIXME restore cutout list (>> jobId >> cutouts)
     QDataStream stream(&file);
     stream.setVersion(QDataStream::Qt_5_15);
     QString jobId;
-    stream >> jobId >> cutouts;
+    stream >> jobId;
     file.close();
 
     createRequestBody(cutouts);
@@ -167,38 +169,26 @@ void MCutoutSummary::getJobReport(const QString &jobId)
     });
 }
 
-void MCutoutSummary::createRequestBody(const QStringList &cutouts)
+void MCutoutSummary::createRequestBody(const QList<Cutout> &cutouts)
 {
-    auto listToMap = [](const QList<QPair<QString, QString>> &list) -> QMap<QString, QString> {
-        QMap<QString, QString> map;
-        foreach (auto &&el, list) {
-            map.insert(el.first, el.second);
+    foreach (const auto &c, cutouts) {
+        auto tokens = c.region_gal.simplified().split(' ');
+        tokens.removeAt(1);
+        tokens.pop_back();
+        tokens.pop_back();
+        tokens.pop_front();
+        tokens.prepend("POLYGON");
+        for (int i = 1; i < tokens.length(); i += 2) {
+            double l = tokens[i].toDouble();
+            if (l < 0) {
+                tokens[i] = QString::number(l + 180.);
+            }
         }
-        return map;
-    };
-
-    foreach (auto &&cutout, cutouts) {
-        QUrl url(cutout);
-        auto queryItems = QUrlQuery(url).queryItems();
-        auto params = listToMap(queryItems);
 
         QJsonObject obj;
-        obj["pubdid"] = params["pubdid"];
-
-        QJsonObject coord;
-        coord["l"] = params["l"].toDouble();
-        coord["b"] = params["b"].toDouble();
-        if (params.contains("vl"))
-            coord["vl"] = params["vl"].toDouble();
-        if (params.contains("vu"))
-            coord["vu"] = params["vu"].toDouble();
-        if (params.contains("r")) {
-            coord["r"] = params["r"].toDouble();
-        } else {
-            coord["dl"] = params["dl"].toDouble();
-            coord["db"] = params["db"].toDouble();
-        }
-        obj["coord"] = coord;
+        obj["ID"] = c.ivoID;
+        obj["POSSYS"] = "GALACTIC";
+        obj["POS"] = tokens.join(' ');
 
         requestBody.append(obj);
     }
@@ -215,7 +205,7 @@ void MCutoutSummary::initSummaryTable()
         auto obj = el.toObject();
         int row = ui->tableSummary->rowCount();
         ui->tableSummary->insertRow(row);
-        ui->tableSummary->setItem(row, 0, new QTableWidgetItem(obj["pubdid"].toString()));
+        ui->tableSummary->setItem(row, 0, new QTableWidgetItem(obj["ID"].toString()));
         ui->tableSummary->setItem(row, 1, new QTableWidgetItem(" - "));
     }
     ui->tableSummary->resizeColumnsToContents();
@@ -370,12 +360,12 @@ void MCutoutSummary::on_tableSummary_itemClicked(QTableWidgetItem *item)
     auto obj = requestBody.at(row).toObject();
     auto coord = obj["coord"].toObject();
 
-    ui->textPubDID->setText(obj["pubdid"].toString());
-    ui->textLon->setText(QString::number(coord["l"].toDouble(), 'f', 4));
-    ui->textLat->setText(QString::number(coord["b"].toDouble(), 'f', 4));
-    ui->textRadius->setText(QString::number(coord["r"].toDouble(), 'f', 4));
-    ui->textDLon->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
-    ui->textDLat->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
+    ui->textID->setText(obj["ID"].toString());
+    // ui->textLon->setText(QString::number(coord["l"].toDouble(), 'f', 4));
+    // ui->textLat->setText(QString::number(coord["b"].toDouble(), 'f', 4));
+    // ui->textRadius->setText(QString::number(coord["r"].toDouble(), 'f', 4));
+    // ui->textDLon->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
+    // ui->textDLat->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
     ui->textStatus->setText(ui->tableSummary->item(row, 1)->text());
 }
 
@@ -412,9 +402,10 @@ void MCutoutSummary::saveStatus(const QString &jobId)
         return;
     }
 
+    // FIXME restore cutout list (<< jobId << cutouts)
     QDataStream stream(&file);
     stream.setVersion(QDataStream::Qt_5_15);
-    stream << jobId << cutouts;
+    stream << jobId;
 
     file.close();
 }

@@ -1,6 +1,8 @@
 #ifndef MCUTOUTSUMMARY_H
 #define MCUTOUTSUMMARY_H
 
+#include "VLKBInventoryTree.h"
+
 #include <QJsonArray>
 #include <QNetworkAccessManager>
 #include <QSettings>
@@ -16,7 +18,7 @@ class MCutoutSummary : public QWidget
     Q_OBJECT
 
 public:
-    explicit MCutoutSummary(QWidget *parent, const QStringList &cutouts);
+    explicit MCutoutSummary(QWidget *parent, const QList<Cutout> &cutouts);
     explicit MCutoutSummary(QWidget *parent, const QString &pendingFile);
     ~MCutoutSummary();
 
@@ -38,7 +40,7 @@ private:
     explicit MCutoutSummary(QWidget *parent);
 
     Ui::MCutoutSummary *ui;
-    QStringList cutouts;
+    QList<Cutout> cutouts;
 
     QNetworkAccessManager *nam;
 
@@ -50,7 +52,7 @@ private:
     QUrl downloadUrl;
     QString pendingFile;
 
-    void createRequestBody(const QStringList &cutouts);
+    void createRequestBody(const QList<Cutout> &cutouts);
     void initSummaryTable();
     void submitJob();
     void downloadArchive(const QString &absolutePath);

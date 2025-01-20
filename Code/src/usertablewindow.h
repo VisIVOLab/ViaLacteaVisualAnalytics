@@ -1,6 +1,8 @@
 #ifndef USERTABLEWINDOW_H
 #define USERTABLEWINDOW_H
 
+#include "VLKBInventoryTree.h"
+
 #include <QDir>
 #include <QList>
 #include <QMainWindow>
@@ -45,19 +47,19 @@ class SourceCutouts : public QObject
 public:
     explicit SourceCutouts(const QString &designation, double glon, double glat,
                            QObject *parent = nullptr);
-    void parseSearchResults(const QList<QMap<QString, QString>> &results);
+    void parseSearchResults(const QList<Cutout> &results);
 
     const QString &getDesignation() const;
     double getGlon() const;
     double getGlat() const;
 
     bool getBestCutout(const QString &survey, const QString &species, const QString &transition,
-                       QString &url) const;
+                       Cutout &cutout) const;
 
-    const QList<QMap<QString, QString>> &getImages() const;
+    const QList<Cutout> &getImages() const;
     int getImagesCount() const;
 
-    const QList<QMap<QString, QString>> &getCubes() const;
+    const QList<Cutout> &getCubes() const;
     int getCubesCount() const;
 
     Qt::CheckState surveyInfo(QString &tooltipText, const Survey *survey, bool is3D = false) const;
@@ -66,8 +68,8 @@ private:
     QString designation;
     double glon;
     double glat;
-    QList<QMap<QString, QString>> images;
-    QList<QMap<QString, QString>> cubes;
+    QList<Cutout> images;
+    QList<Cutout> cubes;
 
     QMap<QString, QSet<QString> *> transitions;
     QMap<QString, QSet<QString> *> species;
@@ -112,7 +114,7 @@ private:
     void changeSelectionMode(const QString &selectionMode);
     void query(int index = 0);
     void updateTables();
-    QStringList getCutoutsList(int t);
+    QList<Cutout> getCutoutsList(int t);
     void initMCutoutRequest();
 };
 

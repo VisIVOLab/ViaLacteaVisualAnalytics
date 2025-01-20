@@ -94,6 +94,8 @@ public:
     /// anymore
     bool confirmSaveAndExit();
 
+    void drawRectangleFootprint(double skyPoints[8]);
+
     vtkRenderer *m_Ren1;
     vtkRenderWindow *renwin;
 
@@ -271,7 +273,6 @@ private:
     vtkSmartPointer<vtkActor> currentContourActorForMainWindow;
     QString vlkbUrl;
     QString selectedCubeVelocityUnit;
-    void drawRectangleFootprint(double points[8]);
     VialacteaStringDictWidget *stringDictWidget;
     void addCombinedLayer(QString name, vtkSmartPointer<vtkLODActor> actor, int objtype,
                           bool active);

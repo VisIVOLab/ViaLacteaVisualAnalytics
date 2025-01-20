@@ -1,8 +1,7 @@
 #ifndef VIALACTEA_H
 #define VIALACTEA_H
 
-#include "vtkwindow_new.h"
-
+#include <QDir>
 #include <QMainWindow>
 #include <QMap>
 #include <QPair>

@@ -4147,8 +4147,17 @@ void vtkwindow_new::on_ElementListWidget_clicked(const QModelIndex &index)
     drawRectangleFootprint(xypoints);
 }
 
-void vtkwindow_new::drawRectangleFootprint(double points[8])
+void vtkwindow_new::drawRectangleFootprint(double skyPoints[8])
 {
+    double coord[3];
+    double points[8];
+
+    for (int i = 0; i < 8; i = i + 2) {
+        AstroUtils().sky2xy(myfits->GetFileName(), skyPoints[i], skyPoints[i + 1], coord);
+        points[i] = coord[0];
+        points[i + 1] = coord[1];
+    }
+
     vtkSmartPointer<vtkPoints> pts = vtkSmartPointer<vtkPoints>::New();
     pts->InsertNextPoint(points[0], points[1], 0);
     pts->InsertNextPoint(points[2], points[3], 0);

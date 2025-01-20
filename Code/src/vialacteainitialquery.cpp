@@ -1,6 +1,8 @@
 #include "vialacteainitialquery.h"
 #include "ui_vialacteainitialquery.h"
 
+#include "ui_vtkwindow_new.h"
+
 #include <QAuthenticator>
 #include <QDebug>
 #include <QDir>
@@ -8,6 +10,7 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QNetworkAccessManager>
+#include <QPointer>
 #include <QSettings>
 #include <QUrl>
 #include <QUrlQuery>
@@ -20,6 +23,7 @@
 #include "mainwindow.h"
 #include "singleton.h"
 #include "vialactea.h"
+#include "VLKBInventoryTree.h"
 #include "vtkwindowcube.h"
 
 VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
@@ -127,110 +131,135 @@ void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenti
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
 {
-    QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&dl=%3&db=%4&vl=-500000&vu=500000")
-                          .arg(l)
-                          .arg(b)
-                          .arg(dl)
-                          .arg(db);
-    searchRequest(url);
+    if (l < 0)
+        l += 180.;
+
+    QString range = QString("RANGE %1 %2 %3 %4")
+                            .arg(QString::number(l - dl), QString::number(l + dl),
+                                 QString::number(b - db), QString::number(b + db));
+
+    QUrlQuery q;
+    q.addQueryItem("POS", range);
+    q.addQueryItem("POSSYS", "GALACTIC");
+
+    QUrl url("https://vlkb-devel.ia2.inaf.it/siav2/query");
+    url.setQuery(q);
+
+    qDebug() << Q_FUNC_INFO << url.toString();
+    this->searchRequest(url.toString());
+}
+
+void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, double l, double b,
+                                          double dl, double db, const Cutout &src)
+{
+    if (l < 0)
+        l += 180.;
+
+    QString range = QString("RANGE %1 %2 %3 %4")
+                            .arg(QString::number(l - dl), QString::number(l + dl),
+                                 QString::number(b - db), QString::number(b + db));
+
+    QUrlQuery q;
+    q.addQueryItem("ID", id);
+    q.addQueryItem("POS", range);
+    q.addQueryItem("POSSYS", "GALACTIC");
+
+    QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");
+    url.setQuery(q);
+
+    qDebug() << Q_FUNC_INFO << url.toString();
+    this->cutoutRequest(url.toString(), dir, src);
 }
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double r)
 {
-    QString url = QString(vlkbUrl + "/vlkb_search?l=%1&b=%2&r=%3&vl=-500000&vu=500000")
-                          .arg(l)
-                          .arg(b)
-                          .arg(r);
-    searchRequest(url);
+    if (l < 0)
+        l += 180.;
+
+    QString circle = QString("CIRCLE %1 %2 %3")
+                             .arg(QString::number(l), QString::number(b), QString::number(r));
+
+    QUrlQuery q;
+    q.addQueryItem("POS", circle);
+    q.addQueryItem("POSSYS", "GALACTIC");
+
+    QUrl url("https://vlkb-devel.ia2.inaf.it/siav2/query");
+    url.setQuery(q);
+
+    qDebug() << Q_FUNC_INFO << url.toString();
+    this->searchRequest(url.toString());
 }
 
-void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir)
+void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, double l, double b,
+                                          double r, const Cutout &src)
 {
-    QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append(QDir::separator())
-                               .append("setting.ini"),
-                       QSettings::IniFormat);
+    if (l < 0)
+        l += 180.;
 
-    loading->setText("Querying cutout service");
-    loading->show();
-    loading->activateWindow();
+    QString circle = QString("CIRCLE %1 %2 %3")
+                             .arg(QString::number(l), QString::number(b), QString::number(r));
 
-    QUrl url_enc(url);
-    QUrlQuery urlQuery(url_enc);
-    auto queryItems = urlQuery.queryItems();
-    for (auto i = queryItems.begin(); i != queryItems.end(); ++i) {
-        i->second = QUrl::toPercentEncoding(i->second);
-    }
-    urlQuery.setQueryItems(queryItems);
-    url_enc.setQuery(urlQuery);
+    QUrlQuery q;
+    q.addQueryItem("ID", id);
+    q.addQueryItem("POS", circle);
+    q.addQueryItem("POSSYS", "GALACTIC");
 
-    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
-    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            &VialacteaInitialQuery::onAuthenticationRequired);
+    QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");
+    url.setQuery(q);
 
-    QNetworkRequest req(url_enc);
-    IA2VlkbAuth::Instance().putAccessToken(req);
-    QNetworkReply *reply = nam->get(req);
-    connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            QXmlStreamReader xml(reply);
-            QString downloadStr;
-            xmlparser parser;
-            parser.parseXML(xml, downloadStr);
+    qDebug() << Q_FUNC_INFO << url.toString();
+    this->cutoutRequest(url.toString(), dir, src);
+}
 
-            if (!downloadStr.contains("NULL")) {
-                QStringList list = downloadStr.trimmed().split("/");
-                QString fn = list.takeLast();
-                QString filePath = dir.absoluteFilePath(fn);
-                list.push_back(fn.replace("+", "%2B"));
-                QUrl downloadUrl = QUrl(list.join("/"));
+void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir,
+                                          const QString &polygon, const Cutout &src)
+{
+    auto tokens = polygon.simplified().split(' ');
 
-                DownloadManager *manager = new DownloadManager();
-                manager->doDownload(downloadUrl, filePath);
-                connect(manager, &DownloadManager::downloadCompleted, manager,
-                        &DownloadManager::deleteLater);
-            } else {
-                QStringList result_splitted = downloadStr.split(" ");
-                QString msg = (result_splitted.length() > 1)
-                        ? "Null values percentage is " + result_splitted[1] + " (greater than 95%)"
-                        : "Inconsistent data (PubDID vs Region only partially overlap)";
-
-                QMessageBox::critical(nullptr, "Error", msg);
-            }
-        } else {
-            QMessageBox::critical(nullptr, "Error", reply->errorString());
+    double l1, l2, b1, b2;
+    for (int i = 2; i < tokens.length(); i += 2) {
+        double l = tokens[i].toDouble();
+        double b = tokens[i + 1].toDouble();
+        if (l < 0) {
+            l += 180.;
         }
 
-        loading->loadingEnded();
-        loading->hide();
-        reply->deleteLater();
-        nam->deleteLater();
-    });
-    loading->setLoadingProcess(reply);
+        l1 = std::min(l1, l);
+        l2 = std::max(l2, l);
+        b1 = std::min(b1, b);
+        b2 = std::max(b2, b);
+    }
+    QString range = QString("RANGE %1 %2 %3 %4")
+                            .arg(QString::number(l1), QString::number(l2), QString::number(b1),
+                                 QString::number(b2));
+
+    QUrlQuery q;
+    q.addQueryItem("ID", id);
+    q.addQueryItem("POS", range);
+    q.addQueryItem("POSSYS", "GALACTIC");
+
+    QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");
+    url.setQuery(q);
+
+    qDebug() << Q_FUNC_INFO << url.toString();
+    this->cutoutRequest(url.toString(), dir, src);
 }
 
 void VialacteaInitialQuery::searchRequest(const QString &url)
 {
-    QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append(QDir::separator())
-                               .append("setting.ini"),
-                       QSettings::IniFormat);
     loading->setText("Querying search service");
     loading->show();
     loading->activateWindow();
 
-    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    auto nam = new QNetworkAccessManager(this);
     connect(nam, &QNetworkAccessManager::authenticationRequired, this,
             &VialacteaInitialQuery::onAuthenticationRequired);
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
+        reply->deleteLater();
+        nam->deleteLater();
+
         if (reply->error() == QNetworkReply::NoError) {
-            QXmlStreamReader xml(reply);
-            auto results = parser->parseXmlAndGetList(xml);
-            emit searchDone(results);
+            emit this->searchDoneVO(reply->readAll());
         } else {
             QMessageBox::critical(nullptr, QObject::tr("Error"),
                                   QObject::tr(qPrintable(reply->errorString())));
@@ -238,14 +267,51 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
 
         loading->loadingEnded();
         loading->hide();
-        reply->deleteLater();
-        nam->deleteLater();
     });
 
     QNetworkRequest req(url);
     IA2VlkbAuth::Instance().putAccessToken(req);
 
     QNetworkReply *reply = nam->get(req);
+    loading->setLoadingProcess(reply);
+}
+
+void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir, const Cutout &src)
+{
+    loading->setText("Querying cutout service");
+    loading->show();
+    loading->activateWindow();
+
+    auto nam = new QNetworkAccessManager(this);
+    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
+            &VialacteaInitialQuery::onAuthenticationRequired);
+
+    QString reqUrl = QUrl::toPercentEncoding(url, { ":/&?=" }, { " " });
+    QNetworkRequest req(reqUrl);
+    IA2VlkbAuth::Instance().putAccessToken(req);
+
+    auto reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, nam, reply, dir, src]() {
+        reply->deleteLater();
+        nam->deleteLater();
+
+        if (reply->error() == QNetworkReply::NoError) {
+            QString filepath =
+                    dir.absoluteFilePath(QUuid::createUuid().toString(QUuid::WithoutBraces))
+                            .append(".fits");
+
+            QFile f(filepath);
+            f.open(QIODevice::WriteOnly);
+            f.write(reply->readAll());
+            f.close();
+            emit this->cutoutDone(filepath, src);
+        } else {
+            QMessageBox::critical(nullptr, "Error", reply->readAll());
+        }
+
+        loading->loadingEnded();
+        loading->hide();
+    });
     loading->setLoadingProcess(reply);
 }
 

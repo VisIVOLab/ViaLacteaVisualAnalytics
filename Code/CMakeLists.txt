@@ -202,6 +202,8 @@ set(PROJECT_SOURCES
     src/vispoint.h
     src/vlkbquery.cpp
     src/vlkbquery.h
+    src/VLKBInventoryTree.cpp
+    src/VLKBInventoryTree.h
     src/vlkbsimplequerycomposer.cpp
     src/vlkbsimplequerycomposer.h
     src/vlvaurlschemehandler.cpp
@@ -270,6 +272,7 @@ set(PROJECT_UI
     ui/vialacteastringdictwidget.ui
     ui/viewselectedsourcedataset.ui
     ui/vlkbquery.ui
+    ui/VLKBInventoryTree.ui
     ui/vlkbsimplequerycomposer.ui
     ui/vtkfitstoolswidget.ui
     ui/vtktoolswidget.ui
@@ -304,7 +307,6 @@ endforeach()
 target_link_libraries(
   ViaLacteaVisualAnalytics PRIVATE ${qt_modules} ${VTK_LIBRARIES}
                                    CFITSIO::CFITSIO wcs)
-
 set_target_properties(
   ViaLacteaVisualAnalytics
   PROPERTIES
