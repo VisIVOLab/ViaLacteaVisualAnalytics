@@ -259,6 +259,7 @@ QString VLKBSimpleQueryComposer::generateQuery()
     }
 
     isBandmerged = false;
+    band.replace("band", "higal").replace("um", "");
     return QString("SELECT * FROM vlkb_compactsources.%5 WHERE (glon >= %1 AND "
                    "glon <= %2) AND (glat >= %3 AND glat <= %4)")
             .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
