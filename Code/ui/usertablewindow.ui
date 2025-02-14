@@ -317,7 +317,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QWidget" name="ctnDownload" native="true">
+     <widget class="QWidget" name="btnDownload" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <widget class="QLabel" name="label_4">

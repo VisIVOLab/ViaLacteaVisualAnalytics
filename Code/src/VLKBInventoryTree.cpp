@@ -5,16 +5,21 @@
 #include "vtkwindowcube.h"
 
 #include <QDebug>
+#include <QMessageBox>
 #include <QModelIndex>
 #include <QStandardItem>
 #include <QStandardItemModel>
 #include <QUuid>
 #include <QXmlStreamReader>
 
-VLKBInventoryTree::VLKBInventoryTree(const QByteArray &votable, QWidget *parent)
-    : QWidget(parent), ui(new Ui::VLKBInventoryTree)
+#include <limits>
+
+VLKBInventoryTree::VLKBInventoryTree(const QByteArray &votable, const QString &pos_cutout,
+                                     QWidget *parent)
+    : QWidget(parent), ui(new Ui::VLKBInventoryTree), pos_cutout(pos_cutout)
 {
     ui->setupUi(this);
+    ui->labelPos->setText(pos_cutout);
     QObject::connect(ui->treeView, &QAbstractItemView::clicked, this, &VLKBInventoryTree::click);
     QObject::connect(ui->treeView, &QAbstractItemView::doubleClicked, this,
                      &VLKBInventoryTree::doubleClick);
@@ -76,36 +81,37 @@ void VLKBInventoryTree::doubleClick(const QModelIndex &idx)
     auto model = qobject_cast<QStandardItemModel *>(ui->treeView->model());
     QUuid id = model->itemFromIndex(idx)->data(Qt::UserRole).toUuid();
 
-    if (this->cutouts.contains(id)) {
-        const Cutout c = this->cutouts.value(id);
-        qDebug() << "Double clicked" << c.ivoID << c.region_gal;
-        auto vq = new VialacteaInitialQuery;
-        vq->cutoutRequest(c.ivoID, QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download"),
-                          c.region_gal, c);
-        if (c.type == "image") {
-            connect(vq, &VialacteaInitialQuery::cutoutDone, this,
-                    [this, vq](const QString &path, const Cutout &src) {
-                        auto fits = vtkSmartPointer<vtkFitsReader>::New();
-                        fits->SetFileName(path.toStdString());
-                        fits->setSurvey(src.survey);
-                        fits->setSpecies(src.species);
-                        fits->setTransition(src.transition);
+    if (!this->cutouts.contains(id)) {
+        return;
+    }
 
-                        if (!this->imgWindow) {
-                            this->imgWindow = new vtkwindow_new(nullptr, fits);
-                        } else {
-                            this->imgWindow->addLayerImage(fits, src.survey, src.species,
-                                                           src.transition);
-                        }
-                        vq->deleteLater();
-                    });
-        } else {
-            connect(vq, &VialacteaInitialQuery::cutoutDone, this, [this, vq](const QString &path) {
-                auto win = new vtkWindowCube(this->imgWindow, path);
-                win->show();
-                vq->deleteLater();
-            });
-        }
+    const Cutout c = this->cutouts.value(id);
+    auto vq = new VialacteaInitialQuery;
+    vq->cutoutRequest(c.ivoID, QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download"),
+                      this->pos_cutout, c);
+    if (c.type == "image") {
+        connect(vq, &VialacteaInitialQuery::cutoutDone, this,
+                [this, vq](const QString &path, const Cutout &src) {
+                    auto fits = vtkSmartPointer<vtkFitsReader>::New();
+                    fits->SetFileName(path.toStdString());
+                    fits->setSurvey(src.survey);
+                    fits->setSpecies(src.species);
+                    fits->setTransition(src.transition);
+
+                    if (!this->imgWindow || !this->imgWindow->isVisible()) {
+                        this->imgWindow = new vtkwindow_new(nullptr, fits);
+                    } else {
+                        this->imgWindow->addLayerImage(fits, src.survey, src.species,
+                                                       src.transition);
+                    }
+                    vq->deleteLater();
+                });
+    } else {
+        connect(vq, &VialacteaInitialQuery::cutoutDone, this, [this, vq](const QString &path) {
+            auto win = new vtkWindowCube(this->imgWindow, path);
+            win->show();
+            vq->deleteLater();
+        });
     }
 }
 
@@ -119,12 +125,11 @@ void VLKBInventoryTree::setupWavelengthGroups()
      * Radio (l > 3 mm)
      */
 
-    this->groups.clear();
     this->groups << WavelengthGroup { "Visible", 0., 1.e-6 };
     this->groups << WavelengthGroup { "Near-IR / Mid-IR", 1.e-6, 2.5e-5 };
     this->groups << WavelengthGroup { "Far-IR", 2.5e-5, 5.e-4 };
     this->groups << WavelengthGroup { "Submm", 5.e-4, 3.e-3 };
-    this->groups << WavelengthGroup { "Radio", 3.e-3, 1.e6 };
+    this->groups << WavelengthGroup { "Radio", 3.e-3, std::numeric_limits<double>::max() };
 }
 
 void VLKBInventoryTree::setupTopLevels()
@@ -224,6 +229,7 @@ void VLKBInventoryTree::parseVOTable(const QByteArray &votable)
 
         if (xml.isStartElement() && xml.name() == "TR") {
             Cutout c;
+            c.pos_cutout = this->pos_cutout;
             int idxField = 0;
             while (!(xml.isEndElement() && xml.name() == "TR")) {
                 xml.readNext();
@@ -276,51 +282,43 @@ void VLKBInventoryTree::parseVOTable(const QByteArray &votable)
             this->cutouts.insert(id, c);
 
             // Put in tree
+            int idx = this->groupIndexOf(c.spectrum_min);
             QString label = c.survey + ' ' + c.transition;
+            auto row = new QStandardItem(label);
+            row->setToolTip(c.pubDID);
+            row->setData(id, Qt::UserRole);
+            if (c.overlap == 3) {
+                row->setBackground(Qt::green);
+            }
 
             auto model = qobject_cast<QStandardItemModel *>(ui->treeView->model());
             if (c.type == "image") {
-                int idx = this->groupIndexOf(c.spectrum_min);
-
                 auto item = model->item(0)->child(idx);
-                auto row = new QStandardItem(label);
-                row->setToolTip(c.pubDID);
-                row->setData(id, Qt::UserRole);
-                if (c.overlap == 3) {
-                    row->setBackground(Qt::green);
-                }
                 item->appendRow(row);
             }
 
             if (c.type == "cube") {
-                int idx = this->groupIndexOf(c.spectrum_min);
                 auto item = model->item(1)->child(idx);
                 QStandardItem *subItem = nullptr;
-                for (int r = 0; r < item->rowCount(); ++r) {
+                for (int r = 0; r < item->rowCount() && !subItem; ++r) {
                     if (item->child(r)->text() == c.species) {
                         subItem = item->child(r);
-                        break;
                     }
                 }
+
                 if (!subItem) {
                     subItem = new QStandardItem(c.species);
                     item->appendRow(subItem);
                 }
 
-                auto row = new QStandardItem(label);
-                row->setToolTip(c.pubDID);
-                row->setData(id, Qt::UserRole);
-                if (c.overlap == 3) {
-                    row->setBackground(Qt::green);
-                }
                 subItem->appendRow(row);
             }
         }
     }
 
     if (xml.hasError()) {
-        qCritical() << xml.errorString();
-        return;
+        qCritical() << Q_FUNC_INFO << xml.errorString();
+        QMessageBox::critical(this, "Error", xml.errorString());
     }
 }
 
@@ -353,4 +351,20 @@ void VLKBInventoryTree::setTreeStylePreferences(const QModelIndex &parent)
             model->itemFromIndex(idx)->setForeground(QColor(Qt::gray));
         }
     }
+}
+
+QDataStream &operator<<(QDataStream &stream, const Cutout &cutout)
+{
+    stream << cutout.type << cutout.survey << cutout.species << cutout.transition << cutout.pubDID
+           << cutout.ivoID << cutout.spectrum_min << cutout.spectrum_max << cutout.overlap
+           << cutout.region_gal << cutout.pos_cutout;
+    return stream;
+}
+
+QDataStream &operator>>(QDataStream &stream, Cutout &cutout)
+{
+    stream >> cutout.type >> cutout.survey >> cutout.species >> cutout.transition >> cutout.pubDID
+            >> cutout.ivoID >> cutout.spectrum_min >> cutout.spectrum_max >> cutout.overlap
+            >> cutout.region_gal >> cutout.pos_cutout;
+    return stream;
 }

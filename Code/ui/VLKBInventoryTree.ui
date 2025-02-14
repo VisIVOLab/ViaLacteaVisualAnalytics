@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>300</width>
+    <width>310</width>
     <height>600</height>
    </rect>
   </property>
@@ -14,6 +14,20 @@
    <string>VLKB Inventory</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Positional region to be extracted from the data:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelPos">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
    <item>
     <widget class="QTreeView" name="treeView">
      <property name="editTriggers">

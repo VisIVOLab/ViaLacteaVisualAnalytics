@@ -31,9 +31,10 @@ MCutoutSummary::MCutoutSummary(QWidget *parent)
     connect(this, &MCutoutSummary::jobSubmitted, this, &MCutoutSummary::pollJob);
     connect(this, &MCutoutSummary::jobCompleted, this, &MCutoutSummary::getJobReport);
 
-    nam = new QNetworkAccessManager(this);
-    mcutoutEndpoint = settings.value("vlkburl", "").toString().append("/uws_mcutout/mcutout");
-    qDebug() << "MCutout endpoint" << mcutoutEndpoint;
+    this->nam = new QNetworkAccessManager(this);
+    // this->mcutoutEndpoint = settings.value("vlkburl",
+    // "").toString().append("/uws_mcutout/mcutout");
+    this->mcutoutEndpoint = "https://vlkb-devel.ia2.inaf.it/soda/uws/mcutout/mcutout";
 }
 
 MCutoutSummary::MCutoutSummary(QWidget *parent, const QList<Cutout> &cutouts)
@@ -63,11 +64,10 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QString &pendingFile) : MC
         return;
     }
 
-    // FIXME restore cutout list (>> jobId >> cutouts)
     QDataStream stream(&file);
     stream.setVersion(QDataStream::Qt_5_15);
     QString jobId;
-    stream >> jobId;
+    stream >> jobId >> cutouts;
     file.close();
 
     createRequestBody(cutouts);
@@ -129,10 +129,11 @@ void MCutoutSummary::pollJob(const QString &jobId)
                     startJob(jobId);
                 } else if (phase == "ABORTED") {
                     timer->deleteLater();
-                    /// \todo
+                    QMessageBox::critical(this, "Aborted", "Job has been aborted!");
                 } else if (phase == "ERROR") {
                     timer->deleteLater();
-                    /// \todo
+                    QMessageBox::critical(this, "Error",
+                                          "The could could not be completed, please try again.");
                 }
             } else {
                 timer->stop();
@@ -152,12 +153,13 @@ void MCutoutSummary::pollJob(const QString &jobId)
 void MCutoutSummary::getJobReport(const QString &jobId)
 {
     QString url = QString("%1/%2/results/Report").arg(mcutoutEndpoint, jobId);
+    this->downloadUrl = QString("%1/%2/results/mcutout.tar.gz").arg(mcutoutEndpoint, jobId);
     QNetworkRequest req(url);
     IA2VlkbAuth::Instance().putAccessToken(req);
     auto reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            parseXmlResponse(reply);
+            parseJobReport(reply);
         } else {
             QMessageBox::critical(this, tr("Error"), reply->errorString());
             ui->btnSendRequest->setEnabled(true);
@@ -172,23 +174,27 @@ void MCutoutSummary::getJobReport(const QString &jobId)
 void MCutoutSummary::createRequestBody(const QList<Cutout> &cutouts)
 {
     foreach (const auto &c, cutouts) {
-        auto tokens = c.region_gal.simplified().split(' ');
-        tokens.removeAt(1);
-        tokens.pop_back();
-        tokens.pop_back();
-        tokens.pop_front();
-        tokens.prepend("POLYGON");
-        for (int i = 1; i < tokens.length(); i += 2) {
-            double l = tokens[i].toDouble();
-            if (l < 0) {
-                tokens[i] = QString::number(l + 180.);
-            }
+        QJsonObject pos;
+        auto tokens = c.pos_cutout.simplified().split(' ');
+        if (tokens[0].startsWith("CIRCLE")) {
+            QJsonObject circle;
+            circle["lon"] = tokens[1].toDouble();
+            circle["lat"] = tokens[2].toDouble();
+            circle["radius"] = tokens[3].toDouble();
+            pos["circle"] = circle;
+        } else {
+            QJsonObject range;
+            range["lon1"] = tokens[1].toDouble();
+            range["lon2"] = tokens[2].toDouble();
+            range["lat1"] = tokens[3].toDouble();
+            range["lat2"] = tokens[4].toDouble();
+            pos["range"] = range;
         }
 
         QJsonObject obj;
-        obj["ID"] = c.ivoID;
-        obj["POSSYS"] = "GALACTIC";
-        obj["POS"] = tokens.join(' ');
+        obj["id"] = c.ivoID;
+        obj["possys"] = "GALACTIC";
+        obj["pos"] = pos;
 
         requestBody.append(obj);
     }
@@ -205,7 +211,7 @@ void MCutoutSummary::initSummaryTable()
         auto obj = el.toObject();
         int row = ui->tableSummary->rowCount();
         ui->tableSummary->insertRow(row);
-        ui->tableSummary->setItem(row, 0, new QTableWidgetItem(obj["ID"].toString()));
+        ui->tableSummary->setItem(row, 0, new QTableWidgetItem(obj["id"].toString()));
         ui->tableSummary->setItem(row, 1, new QTableWidgetItem(" - "));
     }
     ui->tableSummary->resizeColumnsToContents();
@@ -282,70 +288,16 @@ void MCutoutSummary::downloadArchive(const QString &absolutePath)
     loading->setLoadingProcess(reply);
 }
 
-void MCutoutSummary::parseXmlResponse(QNetworkReply *body)
+void MCutoutSummary::parseJobReport(QNetworkReply *body)
 {
-    // Start sub-parsers
-    auto parseURL = [this](QXmlStreamReader &xml) {
-        xml.readNext();
-        downloadUrl = QUrl(xml.text().trimmed().toString());
-    };
-
-    auto parseItem = [this](QXmlStreamReader &xml) {
-        while (!xml.isEndElement() || xml.name() != "ITEM") {
-            xml.readNext();
-
-            if (!xml.isStartElement()) {
-                continue;
-            }
-
-            if (xml.name() == "CONTENT") {
-                xml.readNext();
-                responseContents << xml.text().trimmed().toString();
-            }
+    QJsonArray ar = QJsonDocument::fromJson(body->readAll()).array();
+    for (int i = 0; i < ar.count(); ++i) {
+        auto obj = ar[i].toObject();
+        if (obj["type"].toString().toLower() == "filename") {
+            ui->tableSummary->item(i, 1)->setText("Success");
+        } else {
+            ui->tableSummary->item(i, 1)->setText("Error");
         }
-    };
-
-    auto parseURLContent = [parseItem](QXmlStreamReader &xml) {
-        while (!xml.isEndElement() || xml.name() != "URL_CONTENT") {
-            xml.readNext();
-
-            if (!xml.isStartElement()) {
-                continue;
-            }
-
-            if (xml.name() == "ITEM") {
-                parseItem(xml);
-            }
-        }
-    };
-    // End sub-parsers
-    responseContents.clear();
-    QXmlStreamReader xml(body);
-    while (!xml.atEnd()) {
-        xml.readNext();
-
-        if (!xml.isStartElement()) {
-            continue;
-        }
-
-        if (xml.name() == "URL") {
-            parseURL(xml);
-        }
-
-        if (xml.name() == "URL_CONTENT") {
-            parseURLContent(xml);
-        }
-    }
-
-    if (xml.hasError()) {
-        qDebug() << Q_FUNC_INFO << xml.errorString();
-        QMessageBox::critical(this, tr("Error"), xml.errorString());
-    }
-
-    for (int i = 0; i < responseContents.size(); ++i) {
-        QString text =
-                responseContents.at(i).contains("vlkb_cutout") ? "Success" : responseContents.at(i);
-        ui->tableSummary->item(i, 1)->setText(text);
     }
 
     ui->progressBar->hide();
@@ -402,10 +354,9 @@ void MCutoutSummary::saveStatus(const QString &jobId)
         return;
     }
 
-    // FIXME restore cutout list (<< jobId << cutouts)
     QDataStream stream(&file);
     stream.setVersion(QDataStream::Qt_5_15);
-    stream << jobId;
+    stream << jobId << cutouts;
 
     file.close();
 }

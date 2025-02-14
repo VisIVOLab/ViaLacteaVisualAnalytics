@@ -56,7 +56,7 @@ private:
     void initSummaryTable();
     void submitJob();
     void downloadArchive(const QString &absolutePath);
-    void parseXmlResponse(QNetworkReply *body);
+    void parseJobReport(QNetworkReply *body);
 };
 
 #endif // MCUTOUTSUMMARY_H

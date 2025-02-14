@@ -229,11 +229,12 @@ void SessionLoader::on_btnLoad_clicked()
         double coords[2], rectSize[2];
         AstroUtils::GetCenterCoords(fits.toStdString(), coords);
         AstroUtils::GetRectSize(fits.toStdString(), rectSize);
+        QString pos = VialacteaInitialQuery::posCutoutString(coords[0], coords[1], rectSize[0]);
         auto vq = new VialacteaInitialQuery;
         vq->setParent(this);
         connect(vq, &VialacteaInitialQuery::searchDoneVO, this,
-                [this, vl, fitsReader](const QByteArray &votable) {
-                    auto tree = new VLKBInventoryTree(votable);
+                [this, vl, fitsReader, pos](const QByteArray &votable) {
+                    auto tree = new VLKBInventoryTree(votable, pos);
                     tree->show();
 
                     auto win = new vtkwindow_new(vl, fitsReader);
@@ -241,7 +242,7 @@ void SessionLoader::on_btnLoad_clicked()
                     tree->setLinkedWindow(win);
                     this->close();
                 });
-        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+        vq->searchRequest(coords[0], coords[1], rectSize[0]);
     } else {
         auto win = new vtkwindow_new(vl, fitsReader);
         win->loadSession(sessionFilepath, sessionRootFolder);

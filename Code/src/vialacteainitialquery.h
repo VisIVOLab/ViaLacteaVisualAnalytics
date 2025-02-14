@@ -32,18 +32,19 @@ public:
     void setCallingVtkWindow(vtkwindow_new *v) { myCallingVtkWindow = v; }
     void setSelectedSurveyMap(QList<QPair<QString, QString>> s) { selectedSurvey = s; }
 
+    static QString posCutoutString(double l, double b, double r);
+    static QString posCutoutString(double l1, double l2, double b1, double b2);
+    void cutoutRequest(const QString &id, const QDir &dir, const QString &pos,
+                       const Cutout &src = Cutout());
+
     // POS=RANGE
     void searchRequest(double l, double b, double dl, double db);
-    void cutoutRequest(const QString &id, const QDir &dir, double l, double b, double dl, double db,
-                       const Cutout &src = Cutout());
+    void cutoutRequest(const QString &id, const QDir &dir, double l1, double l2, double b1,
+                       double b2, const Cutout &src = Cutout());
 
     // POS=CIRCLE
     void searchRequest(double l, double b, double r);
     void cutoutRequest(const QString &id, const QDir &dir, double l, double b, double r,
-                       const Cutout &src = Cutout());
-
-    // POS=POLYGON
-    void cutoutRequest(const QString &id, const QDir &dir, const QString &polygon,
                        const Cutout &src = Cutout());
 
     void cutoutRequest(const QString &url, const QDir &dir, const Cutout &src = Cutout());

@@ -25,7 +25,7 @@ UserTableWindow::UserTableWindow(const QString &filepath, const QString &setting
       settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
-    ui->ctnDownload->hide();
+    ui->btnDownload->hide();
     setAttribute(Qt::WA_DeleteOnClose);
 
     ui->tabWidget->setTabEnabled(1, false);
@@ -261,16 +261,34 @@ void UserTableWindow::query(int index)
     SourceCutouts *source = selectedSources.at(index);
 
     auto vlkb = new VialacteaInitialQuery();
+
+    QString pos;
+    if (ui->selectionComboBox->currentText() == "Point") {
+        vlkb->searchRequest(source->getGlon(), source->getGlat(),
+                            ui->radiusLineEdit->text().toDouble());
+        pos = VialacteaInitialQuery::posCutoutString(source->getGlon(), source->getGlat(),
+                                                     ui->radiusLineEdit->text().toDouble());
+    } else {
+        double lon1 = source->getGlon() - ui->dlLineEdit->text().toDouble();
+        double lon2 = source->getGlon() + ui->dlLineEdit->text().toDouble();
+        double lat1 = source->getGlat() - ui->dbLineEdit->text().toDouble();
+        double lat2 = source->getGlat() + ui->dbLineEdit->text().toDouble();
+        pos = VialacteaInitialQuery::posCutoutString(lon1, lon2, lat1, lat2);
+
+        vlkb->searchRequest(source->getGlon(), source->getGlat(), ui->dlLineEdit->text().toDouble(),
+                            ui->dbLineEdit->text().toDouble());
+    }
     connect(vlkb, &VialacteaInitialQuery::searchDoneVO, this,
-            [this, vlkb, source, index](const QByteArray &votable) {
-                auto tree = new VLKBInventoryTree(votable);
+            [this, vlkb, source, index, pos](const QByteArray &votable) {
+                auto tree = new VLKBInventoryTree(votable, pos);
                 auto cutouts = tree->getList();
                 tree->deleteLater();
 
                 source->parseSearchResults(cutouts);
 
-                if ((index + 1) < selectedSources.count()) {
-                    query(index + 1);
+                int next = index + 1;
+                if (next < selectedSources.count()) {
+                    query(next);
                 } else {
                     updateTables();
                     ui->tabWidget->setTabEnabled(1, true);
@@ -279,14 +297,6 @@ void UserTableWindow::query(int index)
                 }
                 vlkb->deleteLater();
             });
-
-    if (ui->selectionComboBox->currentText() == "Point") {
-        vlkb->searchRequest(source->getGlon(), source->getGlat(),
-                            ui->radiusLineEdit->text().toDouble());
-    } else {
-        vlkb->searchRequest(source->getGlon(), source->getGlat(), ui->dlLineEdit->text().toDouble(),
-                            ui->dbLineEdit->text().toDouble());
-    }
 }
 
 void UserTableWindow::updateTables()
@@ -405,7 +415,7 @@ void UserTableWindow::on_selectionComboBox_activated(const QString &arg1)
 
 void UserTableWindow::on_tabWidget_currentChanged(int index)
 {
-    ui->ctnDownload->setVisible(index != 0);
+    ui->btnDownload->setVisible(index != 0);
 }
 
 void UserTableWindow::on_btnSendRequest_clicked()

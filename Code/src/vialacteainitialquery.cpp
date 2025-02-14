@@ -114,6 +114,27 @@ void VialacteaInitialQuery::setTransition(QString s)
     transition = s;
 }
 
+QString VialacteaInitialQuery::posCutoutString(double l, double b, double r)
+{
+    if (l < 0)
+        l += 180.;
+
+    return QString("CIRCLE %1 %2 %3")
+            .arg(QString::number(l), QString::number(b), QString::number(r));
+}
+
+QString VialacteaInitialQuery::posCutoutString(double l1, double l2, double b1, double b2)
+{
+    if (l1 < 0)
+        l1 += 180.;
+    if (l2 < 0)
+        l2 += 180.;
+
+    return QString("RANGE %1 %2 %3 %4")
+            .arg(QString::number(l1), QString::number(l2), QString::number(b1),
+                 QString::number(b2));
+}
+
 void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenticator *a)
 {
     Q_UNUSED(r);
@@ -131,12 +152,17 @@ void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenti
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
 {
-    if (l < 0)
-        l += 180.;
+    double l1 = l - dl;
+    if (l1 < 0)
+        l1 += 180.;
+
+    double l2 = l + dl;
+    if (l2 < 0)
+        l2 += 180.;
 
     QString range = QString("RANGE %1 %2 %3 %4")
-                            .arg(QString::number(l - dl), QString::number(l + dl),
-                                 QString::number(b - db), QString::number(b + db));
+                            .arg(QString::number(l1), QString::number(l2), QString::number(b - db),
+                                 QString::number(b + db));
 
     QUrlQuery q;
     q.addQueryItem("POS", range);
@@ -149,15 +175,18 @@ void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double 
     this->searchRequest(url.toString());
 }
 
-void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, double l, double b,
-                                          double dl, double db, const Cutout &src)
+void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, double l1, double l2,
+                                          double b1, double b2, const Cutout &src)
 {
-    if (l < 0)
-        l += 180.;
+    if (l1 < 0)
+        l1 += 180.;
+
+    if (l2 < 0)
+        l2 += 180.;
 
     QString range = QString("RANGE %1 %2 %3 %4")
-                            .arg(QString::number(l - dl), QString::number(l + dl),
-                                 QString::number(b - db), QString::number(b + db));
+                            .arg(QString::number(l1), QString::number(l2), QString::number(b1),
+                                 QString::number(b2));
 
     QUrlQuery q;
     q.addQueryItem("ID", id);
@@ -211,31 +240,12 @@ void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, do
     this->cutoutRequest(url.toString(), dir, src);
 }
 
-void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir,
-                                          const QString &polygon, const Cutout &src)
+void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, const QString &pos,
+                                          const Cutout &src)
 {
-    auto tokens = polygon.simplified().split(' ');
-
-    double l1, l2, b1, b2;
-    for (int i = 2; i < tokens.length(); i += 2) {
-        double l = tokens[i].toDouble();
-        double b = tokens[i + 1].toDouble();
-        if (l < 0) {
-            l += 180.;
-        }
-
-        l1 = std::min(l1, l);
-        l2 = std::max(l2, l);
-        b1 = std::min(b1, b);
-        b2 = std::max(b2, b);
-    }
-    QString range = QString("RANGE %1 %2 %3 %4")
-                            .arg(QString::number(l1), QString::number(l2), QString::number(b1),
-                                 QString::number(b2));
-
     QUrlQuery q;
     q.addQueryItem("ID", id);
-    q.addQueryItem("POS", range);
+    q.addQueryItem("POS", pos);
     q.addQueryItem("POSSYS", "GALACTIC");
 
     QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");

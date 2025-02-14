@@ -125,6 +125,12 @@ void ViaLactea::updateVLKBSetting()
 
 void ViaLactea::on_queryPushButton_clicked()
 {
+    double lon = ui->glonLineEdit->text().toDouble();
+    double lat = ui->glatLineEdit->text().toDouble();
+    double rad = ui->radiumLineEdit->text().toDouble();
+    double dlon = ui->dlLineEdit->text().toDouble() * .5;
+    double dlat = ui->dbLineEdit->text().toDouble() * .5;
+
     QList<QPair<QString, QString>> selectedSurvey;
     QList<QCheckBox *> allButtons = ui->surveySelectorGroupBox->findChildren<QCheckBox *>();
     for (int i = 0; i < allButtons.size(); ++i) {
@@ -133,38 +139,36 @@ void ViaLactea::on_queryPushButton_clicked()
         }
     }
 
-    VialacteaInitialQuery *vq;
-    if (ui->saveToDiskCheckBox->isChecked()) {
-        if (ui->fileNameLineEdit->text() != "")
-            vq = new VialacteaInitialQuery(ui->fileNameLineEdit->text());
-        else {
-            QMessageBox::critical(this, "Error", "Insert filename");
-            return;
-        }
-    } else
-        vq = new VialacteaInitialQuery();
-
+    auto vq = new VialacteaInitialQuery();
     vq->setL(ui->glonLineEdit->text());
     vq->setB(ui->glatLineEdit->text());
-
     vq->setSpecies("Continuum");
     vq->setSurveyname(selectedSurvey.at(0).first);
     vq->setTransition(selectedSurvey.at(0).second);
     vq->setSelectedSurveyMap(selectedSurvey);
-    // vq->on_queryPushButton_clicked();
+
+    QString pos;
     if (ui->radiumLineEdit->text() != "") {
+        // circle
+        pos = VialacteaInitialQuery::posCutoutString(lon, lat, rad);
+
         vq->setR(ui->radiumLineEdit->text());
-        vq->searchRequest(ui->glonLineEdit->text().toDouble(), ui->glatLineEdit->text().toDouble(),
-                          ui->radiumLineEdit->text().toDouble());
+        vq->searchRequest(lon, lat, rad);
     } else {
+        // range
+        double lon1 = lon - dlon;
+        double lon2 = lon + dlon;
+        double lat1 = lat - dlat;
+        double lat2 = lat + dlat;
+        pos = VialacteaInitialQuery::posCutoutString(lon1, lon2, lat1, lat2);
+
         vq->setDeltaRect(ui->dlLineEdit->text(), ui->dbLineEdit->text());
-        vq->searchRequest(ui->glonLineEdit->text().toDouble(), ui->glatLineEdit->text().toDouble(),
-                          ui->dlLineEdit->text().toDouble(), ui->dbLineEdit->text().toDouble());
+        vq->searchRequest(lon, lat, dlon, dlat);
     }
 
     connect(vq, &VialacteaInitialQuery::searchDoneVO, this,
-            [this, selectedSurvey, vq](const QByteArray &votable) {
-                auto tree = new VLKBInventoryTree(votable);
+            [this, selectedSurvey, vq, pos](const QByteArray &votable) {
+                auto tree = new VLKBInventoryTree(votable, pos);
                 tree->show();
                 auto cutouts = tree->getList();
 
@@ -186,28 +190,21 @@ void ViaLactea::on_queryPushButton_clicked()
                 for (const auto surveyList : selectedSurvey) {
                     QString reqSurvey = surveyList.first;
                     QString reqTransition = surveyList.second;
+                    int bestOverlap = 4;
+                    Cutout bestCutout;
 
-                    for (const Cutout cutout : cutouts) {
-                        if (cutout.survey == reqSurvey && cutout.transition == reqTransition) {
-                            if (ui->radiumLineEdit->text() != "") {
-                                vq->cutoutRequest(cutout.ivoID,
-                                                  QDir::home().absoluteFilePath(
-                                                          "VisIVODesktopTemp/tmp_download"),
-                                                  ui->glonLineEdit->text().toDouble(),
-                                                  ui->glatLineEdit->text().toDouble(),
-                                                  ui->radiumLineEdit->text().toDouble(), cutout);
-                                break;
-                            } else {
-                                vq->cutoutRequest(cutout.ivoID,
-                                                  QDir::home().absoluteFilePath(
-                                                          "VisIVODesktopTemp/tmp_download"),
-                                                  ui->glonLineEdit->text().toDouble(),
-                                                  ui->glatLineEdit->text().toDouble(),
-                                                  ui->dlLineEdit->text().toDouble(),
-                                                  ui->dbLineEdit->text().toDouble(), cutout);
-                                break;
-                            }
+                    for (const Cutout &cutout : cutouts) {
+                        if (cutout.survey == reqSurvey && cutout.transition == reqTransition
+                            && cutout.overlap < bestOverlap) {
+                            bestCutout = cutout;
                         }
+                    }
+
+                    if (!bestCutout.ivoID.isEmpty()) {
+                        vq->cutoutRequest(
+                                bestCutout.ivoID,
+                                QDir::home().absoluteFilePath("VisIVODesktopTemp/tmp_download"),
+                                bestCutout.pos_cutout, bestCutout);
                     }
                 }
             });
@@ -307,9 +304,10 @@ void ViaLactea::openLocalImage(const QString &fn)
         AstroUtils::GetRectSize(fn.toStdString(), rectSize);
 
         VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        QString pos = VialacteaInitialQuery::posCutoutString(coords[0], coords[1], rectSize[0]);
         connect(vq, &VialacteaInitialQuery::searchDoneVO, this,
-                [vq, fn, fits, this](const QByteArray &votable) {
-                    auto tree = new VLKBInventoryTree(votable);
+                [vq, fn, fits, pos, this](const QByteArray &votable) {
+                    auto tree = new VLKBInventoryTree(votable, pos);
                     tree->show();
 
                     auto win = new vtkwindow_new(this, fits);
@@ -317,7 +315,7 @@ void ViaLactea::openLocalImage(const QString &fn)
                     vq->deleteLater();
                 });
 
-        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+        vq->searchRequest(coords[0], coords[1], rectSize[0]);
     } else {
         new vtkwindow_new(this, fits);
     }
@@ -412,15 +410,16 @@ void ViaLactea::openLocalDC(const QString &fn)
         AstroUtils::GetRectSize(fn.toStdString(), rectSize);
 
         VialacteaInitialQuery *vq = new VialacteaInitialQuery;
+        QString pos = VialacteaInitialQuery::posCutoutString(coords[0], coords[1], rectSize[0]);
         connect(vq, &VialacteaInitialQuery::searchDoneVO, this,
-                [vq, this](const QByteArray &votable) {
-                    auto tree = new VLKBInventoryTree(votable);
+                [vq, pos, this](const QByteArray &votable) {
+                    auto tree = new VLKBInventoryTree(votable, pos);
                     tree->show();
 
                     vq->deleteLater();
                 });
 
-        vq->searchRequest(coords[0], coords[1], rectSize[0], rectSize[1]);
+        vq->searchRequest(coords[0], coords[1], rectSize[0]);
     }
 }
 

@@ -30,14 +30,20 @@ struct Cutout
     double spectrum_max;
     int overlap;
     QString region_gal;
+    QString pos_cutout;
 };
+
+QDataStream &operator<<(QDataStream &stream, const Cutout &cutout);
+
+QDataStream &operator>>(QDataStream &stream, Cutout &cutout);
 
 class VLKBInventoryTree : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit VLKBInventoryTree(const QByteArray &votable, QWidget *parent = nullptr);
+    explicit VLKBInventoryTree(const QByteArray &votable, const QString &pos_cutout,
+                               QWidget *parent = nullptr);
     ~VLKBInventoryTree();
 
     QPointer<vtkwindow_new> getLinkedWindow() const;
@@ -51,6 +57,7 @@ private slots:
 
 private:
     Ui::VLKBInventoryTree *ui;
+    QString pos_cutout;
     QList<WavelengthGroup> groups;
     QHash<QUuid, Cutout> cutouts;
     QPointer<vtkwindow_new> imgWindow;
