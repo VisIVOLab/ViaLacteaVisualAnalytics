@@ -110,6 +110,9 @@
         <property name="decimals">
          <number>9</number>
         </property>
+        <property name="maximum">
+         <double>999.999999000000003</double>
+        </property>
        </widget>
       </item>
      </layout>
