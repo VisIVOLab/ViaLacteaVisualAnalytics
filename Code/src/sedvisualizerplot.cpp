@@ -1935,10 +1935,12 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
                            .arg(sedFitInputW)
                            .arg(ui->delta_chi2_lineEdit->text());
 
-    QString urlEncoded = "http://vlkb.ia2.inaf.it/sedmods/searchd?" + QUrl::toPercentEncoding(args);
+    QString urlEncoded = "http://vlkb-devel.ia2.inaf.it/searchd/?" + QUrl::toPercentEncoding(args);
+    QNetworkRequest req(urlEncoded);
+    req.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
 
     auto nam = new QNetworkAccessManager;
-    auto reply = nam->get(QNetworkRequest(urlEncoded));
+    auto reply = nam->get(req);
 
     loading->setLoadingProcess(reply);
 
