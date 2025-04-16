@@ -13,10 +13,7 @@
 #include <QProcess>
 #include <QSettings>
 
-SettingForm::SettingForm(QWidget *parent)
-    : QWidget(parent, Qt::Window),
-      ui(new Ui::SettingForm),
-      urlSignUp("http://vlkb.ia2.inaf.it/authz/ui")
+SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(this);
@@ -50,7 +47,9 @@ void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_settingsFile, QSettings::IniFormat);
 
-    QString tilePath = settings.value("tilepath", "").toString();
+    QString tilePath =
+            settings.value("tilepath", ViaLactea::VLKB_BASE_URL + "/panoramicview/openlayers.html")
+                    .toString();
     ui->TileLineEdit->setText(tilePath);
 
     ui->linePythonExe->setText(settings.value("python.exe", "").toString());
@@ -61,11 +60,8 @@ void SettingForm::readSettingsFromFile()
     int maxSize = settings.value("downscaleSize", 1024).toInt();
     ui->textDownscaleSize->setText(QString::number(maxSize));
 
-    QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
-    QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_URL_IA2).toString();
-    QString vlkbtableurl = settings.value("vlkbtableurl", ViaLactea::TAP_URL_IA2).toString();
+    QString vlkburl = settings.value("vlkburl", ViaLactea::VLKB_BASE_URL).toString();
     ui->vlkbUrl_lineEdit->setText(vlkburl);
-    ui->tapUrl_lineEdit->setText(vlkbtableurl);
 
     bool searchOnImport = settings.value("vlkb.search", false).toBool();
     ui->checkSearchOnImport->setChecked(searchOnImport);
@@ -75,13 +71,6 @@ void SettingForm::readSettingsFromFile()
     } else {
         vlkb_loggedout();
     }
-
-    if (settings.value("online", false) == true) {
-        ui->checkBox->setChecked(true);
-    }
-
-    ui->urlLineEdit->setText(
-            settings.value("onlinetilepath", ViaLactea::ONLINE_TILE_PATH).toString());
 
     if (m_caesarAuth->isAuthenticated()) {
         caesar_loggedin();
@@ -137,13 +126,9 @@ void SettingForm::on_OkPushButton_clicked()
     settings.setValue("tilepath", ui->TileLineEdit->text());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
-    settings.setValue("vlkbtype", "ia2");
     settings.setValue("vlkb.search", ui->checkSearchOnImport->isChecked());
     settings.setValue("vlkburl", ui->vlkbUrl_lineEdit->text());
-    settings.setValue("vlkbtableurl", ui->tapUrl_lineEdit->text());
-    settings.setValue("online", ui->checkBox->isChecked());
-    settings.setValue("onlinetilepath", ui->urlLineEdit->text());
-
+    settings.setValue("vlkbtableurl", ui->vlkbUrl_lineEdit->text().append("/tap"));
     settings.sync();
 
     this->close();
@@ -195,7 +180,7 @@ void SettingForm::on_caesarLogoutButton_clicked()
 
 void SettingForm::on_btnRegister_clicked()
 {
-    QDesktopServices::openUrl(urlSignUp);
+    QDesktopServices::openUrl(ui->vlkbUrl_lineEdit->text().append("/authz/ui"));
 }
 
 void SettingForm::on_btnLocatePython_clicked()

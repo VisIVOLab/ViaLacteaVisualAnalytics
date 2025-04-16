@@ -22,10 +22,10 @@ VLKBQuery::VLKBQuery(QString q, vtkwindow_new *v, QString w, QWidget *parent, Qt
     }
 
     m_sSettingsFile = QDir::homePath()
-            .append(QDir::separator())
-            .append("VisIVODesktopTemp")
-            .append(QDir::separator())
-            .append("setting.ini");
+                              .append(QDir::separator())
+                              .append("VisIVODesktopTemp")
+                              .append(QDir::separator())
+                              .append("setting.ini");
 
     query = q; // QUrl::toPercentEncoding(q);
 
@@ -63,7 +63,6 @@ void VLKBQuery::availReplyFinished(QNetworkReply *reply)
         available = false;
     } else {
         QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-        QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
         QString tag = "vosi:available";
 
         QDomDocument doc;
@@ -134,11 +133,8 @@ void VLKBQuery::executoSyncQuery()
 void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
 {
     Q_UNUSED(aReply);
-    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-    if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
-        aAuthenticator->setUser(IA2_TAP_USER);
-        aAuthenticator->setPassword(IA2_TAP_PASS);
-    }
+    aAuthenticator->setUser(IA2_TAP_USER);
+    aAuthenticator->setPassword(IA2_TAP_PASS);
 }
 
 void VLKBQuery::queryReplyFinishedModel(QNetworkReply *reply)

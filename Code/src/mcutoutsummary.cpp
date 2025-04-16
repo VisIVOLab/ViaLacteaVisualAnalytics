@@ -32,9 +32,7 @@ MCutoutSummary::MCutoutSummary(QWidget *parent)
     connect(this, &MCutoutSummary::jobCompleted, this, &MCutoutSummary::getJobReport);
 
     this->nam = new QNetworkAccessManager(this);
-    // this->mcutoutEndpoint = settings.value("vlkburl",
-    // "").toString().append("/uws_mcutout/mcutout");
-    this->mcutoutEndpoint = "https://vlkb-devel.ia2.inaf.it/soda/async/uws";
+    this->mcutoutEndpoint = settings.value("vlkburl").toString().append("/soda/async/uws");
 }
 
 MCutoutSummary::MCutoutSummary(QWidget *parent, const QList<Cutout> &cutouts)

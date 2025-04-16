@@ -31,10 +31,7 @@ void WebProcess::jsCall(const QString &point, const QString &radius)
     emit processJavascript(point, radius);
 }
 
-const QString ViaLactea::ONLINE_TILE_PATH = "http://vlkb.ia2.inaf.it/panoramicview/openlayers.html";
-
-const QString ViaLactea::VLKB_URL_IA2 = "https://vlkb.ia2.inaf.it:8443/vlkb/datasets";
-const QString ViaLactea::TAP_URL_IA2 = "http://ia2-vialactea.oats.inaf.it:8080/vlkb";
+const QString ViaLactea::VLKB_BASE_URL = "https://vlkb.ia2.inaf.it";
 
 ViaLactea::ViaLactea(QWidget *parent)
     : QMainWindow(parent),
@@ -58,14 +55,10 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     updateVLKBSetting();
 
-    if (settings.value("online", true) == true) {
-        tilePath = settings.value("onlinetilepath", ONLINE_TILE_PATH).toString();
-        ui->webView->load(QUrl(tilePath));
-
-    } else {
-        tilePath = settings.value("tilepath", "").toString();
-        ui->webView->load(QUrl::fromLocalFile(tilePath));
-    }
+    tilePath =
+            settings.value("tilepath", ViaLactea::VLKB_BASE_URL + "/panoramicview/openlayers.html")
+                    .toString();
+    ui->webView->load(QUrl::fromUserInput(tilePath));
     ui->webView->setContextMenuPolicy(Qt::CustomContextMenu);
 
     // create an object for javascript communication
@@ -110,12 +103,11 @@ void ViaLactea::quitApp()
 
 void ViaLactea::updateVLKBSetting()
 {
-    QString vlkbtype = settings.value("vlkbtype", "").toString();
+    QString vlkburl = settings.value("vlkburl", "").toString();
 
-    if (vlkbtype.isEmpty()) {
-        settings.setValue("vlkbtype", "ia2");
-        settings.setValue("vlkburl", VLKB_URL_IA2);
-        settings.setValue("vlkbtableurl", TAP_URL_IA2);
+    if (vlkburl.isEmpty()) {
+        settings.setValue("vlkburl", VLKB_BASE_URL);
+        settings.setValue("vlkbtableurl", VLKB_BASE_URL + "/tap");
     }
 
     settings.sync();
@@ -333,16 +325,8 @@ void ViaLactea::on_actionSettings_triggered()
 
 void ViaLactea::reload()
 {
-    // tilePath = settings.value("tilepath", "").toString();
-
-    if (settings.value("online", false) == true) {
-        tilePath = settings.value("onlinetilepath", "").toString();
-        ui->webView->load(QUrl(tilePath));
-
-    } else {
-        tilePath = settings.value("tilepath", "").toString();
-        ui->webView->load(QUrl::fromLocalFile(tilePath));
-    }
+    tilePath = settings.value("tilepath", "").toString();
+    ui->webView->load(QUrl::fromUserInput(tilePath));
     updateVLKBSetting();
 }
 
