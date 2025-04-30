@@ -48,27 +48,6 @@
         </item>
        </layout>
       </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
-        <item>
-         <widget class="QCheckBox" name="checkBox">
-          <property name="text">
-           <string>Online</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="urlLineEdit">
-          <property name="text">
-           <string>http://visivo.oact.inaf.it/vialacteatiles/openlayers.html</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
      </layout>
     </widget>
    </item>
@@ -157,27 +136,23 @@
      <property name="title">
       <string>3D Visualization</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_5">
+     <layout class="QHBoxLayout" name="horizontalLayout_6">
       <item>
-       <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>Max size (MB):</string>
-          </property>
-          <property name="buddy">
-           <cstring>textDownscaleSize</cstring>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QLineEdit" name="textDownscaleSize">
-          <property name="toolTip">
-           <string>Set 0 to not downscale the cube</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Max size (MB):</string>
+        </property>
+        <property name="buddy">
+         <cstring>textDownscaleSize</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="textDownscaleSize">
+        <property name="toolTip">
+         <string>Set 0 to not downscale the cube</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -189,21 +164,18 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
-       <layout class="QFormLayout" name="formLayout">
-        <property name="fieldGrowthPolicy">
-         <enum>QFormLayout::ExpandingFieldsGrow</enum>
-        </property>
-        <item row="0" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_10">
+        <item>
          <widget class="QLabel" name="label_5">
           <property name="text">
-           <string>VLKB URL</string>
+           <string>VLKB Base URL</string>
           </property>
           <property name="buddy">
            <cstring>vlkbUrl_lineEdit</cstring>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
+        <item>
          <widget class="QLineEdit" name="vlkbUrl_lineEdit">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -211,23 +183,6 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
-          <property name="readOnly">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_6">
-          <property name="text">
-           <string>TAP URL</string>
-          </property>
-          <property name="buddy">
-           <cstring>tapUrl_lineEdit</cstring>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="tapUrl_lineEdit">
           <property name="readOnly">
            <bool>false</bool>
           </property>
@@ -492,12 +447,9 @@
  <tabstops>
   <tabstop>TileLineEdit</tabstop>
   <tabstop>TilePushButton</tabstop>
-  <tabstop>checkBox</tabstop>
-  <tabstop>urlLineEdit</tabstop>
   <tabstop>glyphLineEdit</tabstop>
   <tabstop>textDownscaleSize</tabstop>
   <tabstop>vlkbUrl_lineEdit</tabstop>
-  <tabstop>tapUrl_lineEdit</tabstop>
   <tabstop>vlkbLoginButton</tabstop>
   <tabstop>vlkbLogoutButton</tabstop>
   <tabstop>checkSearchOnImport</tabstop>

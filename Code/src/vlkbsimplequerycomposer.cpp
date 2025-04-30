@@ -35,8 +35,7 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     url = settings.value("vlkbtableurl", "").toString();
     ui->vlkbUrlLineEdit->setText(url);
-    url.replace("http://", QString("http://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));
-    vlkbtype = settings.value("vlkbtype", "ia2").toString();
+    url.replace("https://", QString("https://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));
     table_prefix = "vlkb_";
     this->pythonExe = settings.value("python.exe").toString();
     on_connectPushButton_clicked();

@@ -83,7 +83,6 @@ private:
     QWidget *p;
     QString pubdid;
     QString vlkbUrl;
-    QString vlkbtype;
     QString velocityUnit;
     vtkwindow_new *myCallingVtkWindow;
     bool isRadius;

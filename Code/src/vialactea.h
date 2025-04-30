@@ -40,10 +40,8 @@ public:
     ~ViaLactea();
     void reload();
 
-    // VLKB URLs
-    static const QString ONLINE_TILE_PATH;
-    static const QString VLKB_URL_IA2;
-    static const QString TAP_URL_IA2;
+    // VLKB URL
+    static const QString VLKB_BASE_URL;
 
 private slots:
     void quitApp(); // Added page delete befor main app quits

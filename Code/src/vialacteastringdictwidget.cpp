@@ -55,7 +55,6 @@ void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
         QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-        QString vlkbtype = settings.value("vlkbtype", "ia2").toString();
         QString tag = "vosi:available";
 
         QDomDocument doc;
@@ -260,11 +259,8 @@ void VialacteaStringDictWidget::onAuthenticationRequestSlot(QNetworkReply *aRepl
                                                             QAuthenticator *aAuthenticator)
 {
     Q_UNUSED(aReply);
-    QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-    if (settings.value("vlkbtype", "ia2").toString() == "ia2") {
-        aAuthenticator->setUser(IA2_TAP_USER);
-        aAuthenticator->setPassword(IA2_TAP_PASS);
-    }
+    aAuthenticator->setUser(IA2_TAP_USER);
+    aAuthenticator->setPassword(IA2_TAP_PASS);
 }
 
 VialacteaStringDictWidget::~VialacteaStringDictWidget()

@@ -47,7 +47,6 @@ UserTableWindow::~UserTableWindow()
 
 void UserTableWindow::getSurveysData()
 {
-    QString vlkbType = settings.value("vlkbtype", "ia2").toString();
     QString table = "vlkb_radiocubes.surveys";
 
     QUrlQuery postData;

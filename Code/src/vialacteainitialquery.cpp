@@ -1,8 +1,6 @@
 #include "vialacteainitialquery.h"
 #include "ui_vialacteainitialquery.h"
 
-#include "ui_vtkwindow_new.h"
-
 #include <QAuthenticator>
 #include <QDebug>
 #include <QDir>
@@ -21,8 +19,6 @@
 #include "authwrapper.h"
 #include "downloadmanager.h"
 #include "mainwindow.h"
-#include "singleton.h"
-#include "vialactea.h"
 #include "VLKBInventoryTree.h"
 #include "vtkwindowcube.h"
 
@@ -39,7 +35,7 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
                                .append(QDir::separator())
                                .append("setting.ini"),
                        QSettings::IniFormat);
-    vlkbUrl = settings.value("vlkburl", "").toString();
+    vlkbUrl = settings.value("vlkburl").toString();
 
     nam = new QNetworkAccessManager(this);
     QObject::connect(nam, SIGNAL(finished(QNetworkReply *)), this,
@@ -47,7 +43,6 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this,
                      &VialacteaInitialQuery::onAuthenticationRequired);
 
-    vlkbtype = settings.value("vlkbtype", "ia2").toString();
     parser = new xmlparser();
     loading = new LoadingWidget();
     outputFile = fn;
@@ -138,16 +133,8 @@ QString VialacteaInitialQuery::posCutoutString(double l1, double l2, double b1, 
 void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenticator *a)
 {
     Q_UNUSED(r);
-    QSettings settings(QDir::homePath()
-                               .append(QDir::separator())
-                               .append("VisIVODesktopTemp")
-                               .append(QDir::separator())
-                               .append("setting.ini"),
-                       QSettings::IniFormat);
-    if (settings.value("vlkbtype", "ia2") == "ia2") {
-        a->setUser(IA2_TAP_USER);
-        a->setPassword(IA2_TAP_PASS);
-    }
+    a->setUser(IA2_TAP_USER);
+    a->setPassword(IA2_TAP_PASS);
 }
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
@@ -168,7 +155,7 @@ void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double 
     q.addQueryItem("POS", range);
     q.addQueryItem("POSSYS", "GALACTIC");
 
-    QUrl url("https://vlkb-devel.ia2.inaf.it/siav2/query");
+    QUrl url(this->vlkbUrl + "/siav2/query");
     url.setQuery(q);
 
     qDebug() << Q_FUNC_INFO << url.toString();
@@ -193,7 +180,7 @@ void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, do
     q.addQueryItem("POS", range);
     q.addQueryItem("POSSYS", "GALACTIC");
 
-    QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");
+    QUrl url(this->vlkbUrl + "/soda/sync");
     url.setQuery(q);
 
     qDebug() << Q_FUNC_INFO << url.toString();
@@ -212,7 +199,7 @@ void VialacteaInitialQuery::searchRequest(double l, double b, double r)
     q.addQueryItem("POS", circle);
     q.addQueryItem("POSSYS", "GALACTIC");
 
-    QUrl url("https://vlkb-devel.ia2.inaf.it/siav2/query");
+    QUrl url(this->vlkbUrl + "/siav2/query");
     url.setQuery(q);
 
     qDebug() << Q_FUNC_INFO << url.toString();
@@ -233,7 +220,7 @@ void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, do
     q.addQueryItem("POS", circle);
     q.addQueryItem("POSSYS", "GALACTIC");
 
-    QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");
+    QUrl url(this->vlkbUrl + "/soda/sync");
     url.setQuery(q);
 
     qDebug() << Q_FUNC_INFO << url.toString();
@@ -248,7 +235,7 @@ void VialacteaInitialQuery::cutoutRequest(const QString &id, const QDir &dir, co
     q.addQueryItem("POS", pos);
     q.addQueryItem("POSSYS", "GALACTIC");
 
-    QUrl url("https://vlkb-devel.ia2.inaf.it/soda/sync");
+    QUrl url(this->vlkbUrl + "/soda/sync");
     url.setQuery(q);
 
     qDebug() << Q_FUNC_INFO << url.toString();
