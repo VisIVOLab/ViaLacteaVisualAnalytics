@@ -695,7 +695,7 @@ vtkFloatArray *vtkFitsReader::CalculateMoment(int order)
         }
 
         for (int i = 0; i < buffsize; ++i) {
-            scalars[i] = std::sqrt(scalars[i] / buffsize);
+            scalars[i] = std::sqrt(scalars[i] / naxes[2]);
         }
 
         break;
