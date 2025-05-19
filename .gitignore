@@ -4,3 +4,4 @@ Code/includes.pri
 build-*
 **/.DS_Store
 Code/build/*
+Code/.idea
