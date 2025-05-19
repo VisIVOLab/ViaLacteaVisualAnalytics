@@ -30,7 +30,7 @@
        </size>
       </property>
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
       <widget class="QWebEngineView" name="webView" native="true">
        <property name="sizePolicy">
@@ -530,7 +530,7 @@
         <item>
          <spacer name="verticalSpacer">
           <property name="orientation">
-           <enum>Qt::Vertical</enum>
+           <enum>Qt::Orientation::Vertical</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -577,6 +577,7 @@
      <string>File</string>
     </property>
     <addaction name="actionLoad_session"/>
+    <addaction name="actionLoadArepo"/>
     <addaction name="actionSettings"/>
     <addaction name="actionExit"/>
     <addaction name="actionLoad_SED_2"/>
@@ -637,6 +638,11 @@
   <action name="actionHiPS2FITS">
    <property name="text">
     <string>HiPS2FITS</string>
+   </property>
+  </action>
+  <action name="actionLoadArepo">
+   <property name="text">
+    <string>Load AREPO Simulation...</string>
    </property>
   </action>
  </widget>

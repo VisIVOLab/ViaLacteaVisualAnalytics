@@ -36,6 +36,10 @@ void LoadingWidget::setLoadingProcess(QNetworkReply *reply)
 {
     this->reply = reply;
 }
+void LoadingWidget::setLoadingProcess(QProcess *process)
+{
+    this->process = process;
+}
 
 void LoadingWidget::setButtonStatus(bool enabled)
 {
@@ -53,6 +57,11 @@ void LoadingWidget::on_dismissPushButton_clicked()
 {
     if (reply) {
         reply->abort();
-        reply = 0;
+        reply = nullptr;
+        return;
+    }
+    if (process) {
+        process->terminate();
+        process = nullptr;
     }
 }

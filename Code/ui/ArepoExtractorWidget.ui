@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ArepoExtractorWidget</class>
+ <widget class="QWidget" name="ArepoExtractorWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>577</width>
+    <height>538</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QTreeWidget" name="treeArepo">
+     <column>
+      <property name="text">
+       <string notr="true">1</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="2" column="0">
+      <widget class="QLabel" name="labelBoxSize">
+       <property name="toolTip">
+        <string>The size of the simulation box</string>
+       </property>
+       <property name="text">
+        <string>&lt;box_size&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="lineSizeX">
+       <property name="toolTip">
+        <string>The size of the region to be extracted</string>
+       </property>
+       <property name="text">
+        <string>20.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>z</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineSizeZ</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>y</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="3">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>z</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Window size (kpc):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>y</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineSizeY</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Physical resolution (pc):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLineEdit" name="lineSizeZ">
+       <property name="toolTip">
+        <string>The size of the region to be extracted</string>
+       </property>
+       <property name="text">
+        <string>20.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>x</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Box size (kpc):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>x</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineSizeX</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QLineEdit" name="lineSizeY">
+       <property name="toolTip">
+        <string>The size of the region to be extracted</string>
+       </property>
+       <property name="text">
+        <string>20.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="labelResX">
+       <property name="toolTip">
+        <string>Physical resolution per cell set by the Window Size and Level</string>
+       </property>
+       <property name="text">
+        <string>&lt;res_x&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="2">
+      <widget class="QLabel" name="labelResY">
+       <property name="toolTip">
+        <string>Physical resolution per cell set by the Window Size and Level</string>
+       </property>
+       <property name="text">
+        <string>&lt;res_y&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="3">
+      <widget class="QLabel" name="labelResZ">
+       <property name="toolTip">
+        <string>Physical resolution per cell set by the Window Size and Level</string>
+       </property>
+       <property name="text">
+        <string>&lt;res_z&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Level:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineLevel</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLineEdit" name="lineLevel">
+       <property name="toolTip">
+        <string>The resolution of the extracted cube: cells = (2^level)^3</string>
+       </property>
+       <property name="text">
+        <string>7</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Particle type:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineParticleType</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>Fields:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineFields</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLineEdit" name="lineParticleType">
+       <property name="toolTip">
+        <string>Which particle type will be extracted</string>
+       </property>
+       <property name="text">
+        <string>gas</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="lineFields">
+       <property name="toolTip">
+        <string>What fields will be extracted</string>
+       </property>
+       <property name="placeholderText">
+        <string>density temperature ...</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_14">
+       <property name="text">
+        <string>x</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineOffsetX</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="label_15">
+       <property name="text">
+        <string>y</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineOffsetY</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>Offset (kpc):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="label_16">
+       <property name="text">
+        <string>z</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineOffsetZ</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="lineOffsetX">
+       <property name="toolTip">
+        <string>Offset of the center of the Window Size from the center of the simulation</string>
+       </property>
+       <property name="text">
+        <string>0.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLineEdit" name="lineOffsetY">
+       <property name="toolTip">
+        <string>Offset of the center of the Window Size from the center of the simulation</string>
+       </property>
+       <property name="text">
+        <string>0.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLineEdit" name="lineOffsetZ">
+       <property name="toolTip">
+        <string>Offset of the center of the Window Size from the center of the simulation</string>
+       </property>
+       <property name="text">
+        <string>0.0</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnExtract">
+       <property name="text">
+        <string>Extract...</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>treeArepo</tabstop>
+  <tabstop>lineSizeX</tabstop>
+  <tabstop>lineSizeY</tabstop>
+  <tabstop>lineSizeZ</tabstop>
+  <tabstop>lineLevel</tabstop>
+  <tabstop>lineParticleType</tabstop>
+  <tabstop>lineFields</tabstop>
+  <tabstop>lineOffsetX</tabstop>
+  <tabstop>lineOffsetY</tabstop>
+  <tabstop>lineOffsetZ</tabstop>
+  <tabstop>btnExtract</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

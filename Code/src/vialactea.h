@@ -71,6 +71,7 @@ private slots:
     void on_actionConeSearch_triggered();
     void on_actionHiPS2FITS_triggered();
     void on_openLoadDataPushButton_clicked();
+    void on_actionLoadArepo_triggered();
 
 private:
     Ui::ViaLactea *ui;

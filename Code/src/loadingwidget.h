@@ -3,6 +3,7 @@
 
 #include <QNetworkReply>
 #include <QPointer>
+#include <QProcess>
 #include <QWidget>
 
 namespace Ui {
@@ -20,6 +21,7 @@ public:
     void init();
     void setText(QString name);
     void setLoadingProcess(QNetworkReply *);
+    void setLoadingProcess(QProcess *);
     void setButtonStatus(bool enabled);
 
 public slots:
@@ -31,6 +33,7 @@ private slots:
 private:
     Ui::LoadingWidget *ui;
     QPointer<QNetworkReply> reply;
+    QPointer<QProcess> process;
 };
 
 #endif // LOADINGWIDGET_H

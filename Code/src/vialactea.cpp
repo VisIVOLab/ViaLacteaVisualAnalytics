@@ -2,6 +2,7 @@
 #include "ui_vialactea.h"
 
 #include "aboutform.h"
+#include "ArepoExtractorWidget.h"
 #include "astroutils.h"
 #include "fitsheadermodifierdialog.h"
 #include "HiPS2FITSForm.h"
@@ -647,5 +648,16 @@ void ViaLactea::on_openLoadDataPushButton_clicked()
         openLocalImage(fn);
     } else {
         openLocalDC(fn);
+    }
+}
+
+void ViaLactea::on_actionLoadArepo_triggered()
+{
+    QString filename = QFileDialog::getOpenFileName(nullptr, "Open Arepo HDF5", "",
+                                                    "HDF5 Files (*.hdf5 *.h5)");
+
+    if (!filename.isEmpty()) {
+        auto win = new ArepoExtractorWidget(filename, this);
+        win->show();
     }
 }

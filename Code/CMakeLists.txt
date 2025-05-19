@@ -64,11 +64,16 @@ message(STATUS "VTK ${VTK_VERSION} - ${VTK_LIBRARIES}")
 find_package(CFITSIO 4.1.0 QUIET REQUIRED)
 message(STATUS "CFITSIO ${CFITSIO_VERSION}")
 
+find_package(HDF5 1.14.0 REQUIRED COMPONENTS CXX HL)
+message(STATUS "HDF5 ${HDF5_VERSION}")
+
 configure_file(src/version.h.in version.h)
 
 set(PROJECT_SOURCES
     src/aboutform.cpp
     src/aboutform.h
+    src/ArepoExtractorWidget.cpp
+    src/ArepoExtractorWidget.h
     src/astroutils.cpp
     src/astroutils.h
     src/authkeys.h
@@ -242,6 +247,7 @@ set(PROJECT_SOURCES
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 set(PROJECT_UI
     ui/aboutform.ui
+    ui/ArepoExtractorWidget.ui
     ui/caesarwindow.ui
     ui/dbquery.ui
     ui/fitsheadermodifierdialog.ui
@@ -305,7 +311,7 @@ foreach(_qt_comp IN LISTS qt_components)
 endforeach()
 
 target_link_libraries(
-  ViaLacteaVisualAnalytics PRIVATE ${qt_modules} ${VTK_LIBRARIES}
+  ViaLacteaVisualAnalytics PRIVATE ${qt_modules} ${VTK_LIBRARIES} HDF5::HDF5
                                    CFITSIO::CFITSIO wcs)
 set_target_properties(
   ViaLacteaVisualAnalytics
