@@ -47,14 +47,13 @@ UserTableWindow::~UserTableWindow()
 
 void UserTableWindow::getSurveysData()
 {
-    QString table = "vlkb_radiocubes.surveys";
-
     QUrlQuery postData;
     postData.addQueryItem("REQUEST", "doQuery");
     postData.addQueryItem("VERSION", "1.0");
     postData.addQueryItem("LANG", "ADQL");
     postData.addQueryItem("FORMAT", "tsv");
-    postData.addQueryItem("QUERY", "SELECT name, description, species, transition FROM " + table);
+    postData.addQueryItem("QUERY",
+                          "SELECT name, description, species, transition FROM datasets.surveys");
     QByteArray postDataEncoded = postData.toString(QUrl::FullyEncoded).toUtf8();
 
     QString tapUrl = settings.value("vlkbtableurl").toString();
