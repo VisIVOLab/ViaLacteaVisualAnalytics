@@ -41,7 +41,7 @@ def band_tables(url):
     tap = vo.dal.TAPService(url)
     try:
         tables = [t.name[t.name.rfind('.')+1:] for t in tap.tables if t.name.find(
-            'compactsources.band') > -1 and t.name.endswith('um')]
+            'compactsources.higal') > -1]
         print(",".join(tables))
         return 0
     except Exception as ex:

@@ -1,7 +1,6 @@
 #include "usertablewindow.h"
 #include "ui_usertablewindow.h"
 
-#include "authkeys.h"
 #include "authwrapper.h"
 #include "mcutoutsummary.h"
 #include "vialacteainitialquery.h"
@@ -62,14 +61,6 @@ void UserTableWindow::getSurveysData()
     IA2VlkbAuth::Instance().putAccessToken(req);
 
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
-
-    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            [](QNetworkReply *reply, QAuthenticator *authenticator) {
-                Q_UNUSED(reply);
-                authenticator->setUser(IA2_TAP_USER);
-                authenticator->setPassword(IA2_TAP_PASS);
-            });
-
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
         if (reply->error() == QNetworkReply::NoError) {
             QString response = reply->readAll();

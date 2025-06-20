@@ -59,7 +59,6 @@ private slots:
     void on_pointRadioButton_toggled(bool checked);
     void finishedSlot(QNetworkReply *reply);
     void onDownloadCompleted();
-    void onAuthenticationRequired(QNetworkReply *reply, QAuthenticator *auth);
 
 public slots:
     void on_queryPushButton_clicked();

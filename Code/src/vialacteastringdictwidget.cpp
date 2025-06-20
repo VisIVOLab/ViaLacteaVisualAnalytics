@@ -9,10 +9,6 @@
 #include <QNetworkRequest>
 #include <QSettings>
 
-#include "authkeys.h"
-#include "authwrapper.h"
-#include "singleton.h"
-
 VialacteaStringDictWidget::VialacteaStringDictWidget(QWidget *parent)
     : QWidget(parent), ui(new Ui::VialacteaStringDictWidget)
 {
@@ -45,7 +41,6 @@ void VialacteaStringDictWidget::buildDict()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("text/html; charset=utf-8"));
 
-    IA2VlkbAuth::Instance().putAccessToken(request);
     manager->get(request);
 }
 
@@ -86,11 +81,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
     postData.append("VERSION=1.0&");
     postData.append("LANG=ADQL&");
     postData.append("FORMAT=tsv&");
-
     postData.append("QUERY=" + QUrl::toPercentEncoding(query));
-
-    connect(manager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
-            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
 
     connect(manager, SIGNAL(finished(QNetworkReply *)), this,
             SLOT(queryReplyFinishedTapSchemaTables(QNetworkReply *)));
@@ -99,8 +90,6 @@ void VialacteaStringDictWidget::executeQueryTapSchemaTables()
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
-
-    IA2VlkbAuth::Instance().putAccessToken(request);
 
     manager->post(request, postData);
 }
@@ -116,11 +105,7 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     postData.append("VERSION=1.0&");
     postData.append("LANG=ADQL&");
     postData.append("FORMAT=tsv&");
-
     postData.append("QUERY=" + QUrl::toPercentEncoding(query));
-
-    connect(manager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
-            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
 
     connect(manager, SIGNAL(finished(QNetworkReply *)), this,
             SLOT(queryReplyFinishedTapSchemaColumns(QNetworkReply *)));
@@ -130,7 +115,6 @@ void VialacteaStringDictWidget::executeQueryTapSchemaColumns()
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/x-www-form-urlencoded"));
 
-    IA2VlkbAuth::Instance().putAccessToken(request);
     manager->post(request, postData);
 }
 
@@ -150,7 +134,6 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            IA2VlkbAuth::Instance().putAccessToken(req);
             manager->get(req);
         } else {
             QByteArray bytes = reply->readLine();
@@ -203,7 +186,6 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
         if (!urlRedirectedTo.isEmpty()) {
             /* We'll do another request to the redirection url. */
             QNetworkRequest req(urlRedirectedTo);
-            IA2VlkbAuth::Instance().putAccessToken(req);
             manager->get(req);
         } else {
 
@@ -255,13 +237,6 @@ QUrl VialacteaStringDictWidget::redirectUrl(const QUrl &possibleRedirectUrl,
     return redirectUrl;
 }
 
-void VialacteaStringDictWidget::onAuthenticationRequestSlot(QNetworkReply *aReply,
-                                                            QAuthenticator *aAuthenticator)
-{
-    Q_UNUSED(aReply);
-    aAuthenticator->setUser(IA2_TAP_USER);
-    aAuthenticator->setPassword(IA2_TAP_PASS);
-}
 
 VialacteaStringDictWidget::~VialacteaStringDictWidget()
 {

@@ -46,7 +46,6 @@ private slots:
     //   void queryReplyFinished (QNetworkReply *reply);
     void queryReplyFinishedBM(QNetworkReply *reply);
     void queryReplyFinishedModel(QNetworkReply *reply);
-    void onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator);
 };
 
 #endif // VLKBQUERY_H

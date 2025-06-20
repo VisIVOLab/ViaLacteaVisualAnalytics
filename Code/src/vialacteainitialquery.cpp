@@ -15,7 +15,6 @@
 #include <QXmlStreamReader>
 
 #include "astroutils.h"
-#include "authkeys.h"
 #include "authwrapper.h"
 #include "downloadmanager.h"
 #include "mainwindow.h"
@@ -40,8 +39,6 @@ VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     nam = new QNetworkAccessManager(this);
     QObject::connect(nam, SIGNAL(finished(QNetworkReply *)), this,
                      SLOT(finishedSlot(QNetworkReply *)));
-    QObject::connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-                     &VialacteaInitialQuery::onAuthenticationRequired);
 
     parser = new xmlparser();
     loading = new LoadingWidget();
@@ -128,13 +125,6 @@ QString VialacteaInitialQuery::posCutoutString(double l1, double l2, double b1, 
     return QString("RANGE %1 %2 %3 %4")
             .arg(QString::number(l1), QString::number(l2), QString::number(b1),
                  QString::number(b2));
-}
-
-void VialacteaInitialQuery::onAuthenticationRequired(QNetworkReply *r, QAuthenticator *a)
-{
-    Q_UNUSED(r);
-    a->setUser(IA2_TAP_USER);
-    a->setPassword(IA2_TAP_PASS);
 }
 
 void VialacteaInitialQuery::searchRequest(double l, double b, double dl, double db)
@@ -249,8 +239,6 @@ void VialacteaInitialQuery::searchRequest(const QString &url)
     loading->activateWindow();
 
     auto nam = new QNetworkAccessManager(this);
-    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            &VialacteaInitialQuery::onAuthenticationRequired);
     connect(nam, &QNetworkAccessManager::finished, this, [this, nam](QNetworkReply *reply) {
         reply->deleteLater();
         nam->deleteLater();
@@ -280,8 +268,6 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir, c
     loading->activateWindow();
 
     auto nam = new QNetworkAccessManager(this);
-    connect(nam, &QNetworkAccessManager::authenticationRequired, this,
-            &VialacteaInitialQuery::onAuthenticationRequired);
 
     QString reqUrl = QUrl::toPercentEncoding(url, { ":/&?=" }, { " " });
     QNetworkRequest req(reqUrl);

@@ -38,7 +38,6 @@ private slots:
     void availReplyFinished(QNetworkReply *reply);
     void executeQueryTapSchemaTables();
     void executeQueryTapSchemaColumns();
-    void onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator);
     void queryReplyFinishedTapSchemaTables(QNetworkReply *reply);
     void queryReplyFinishedTapSchemaColumns(QNetworkReply *reply);
     QUrl redirectUrl(const QUrl &possibleRedirectUrl, const QUrl &oldRedirectUrl) const;

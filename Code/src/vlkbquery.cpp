@@ -89,8 +89,6 @@ void VLKBQuery::executeQuery()
     postData.append("FORMAT=tsv&");
     postData.append("QUERY=" + QUrl::toPercentEncoding(query));
 
-    connect(manager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator *)), this,
-            SLOT(onAuthenticationRequestSlot(QNetworkReply *, QAuthenticator *)));
     if (what.compare("bm") == 0)
         connect(manager, SIGNAL(finished(QNetworkReply *)), this,
                 SLOT(queryReplyFinishedBM(QNetworkReply *)));
@@ -128,13 +126,6 @@ void VLKBQuery::executoSyncQuery()
     // Execute the event loop here, now we will wait here until readyRead() signal is emitted
     // which in turn will trigger event loop quit.
     loop.exec();
-}
-
-void VLKBQuery::onAuthenticationRequestSlot(QNetworkReply *aReply, QAuthenticator *aAuthenticator)
-{
-    Q_UNUSED(aReply);
-    aAuthenticator->setUser(IA2_TAP_USER);
-    aAuthenticator->setPassword(IA2_TAP_PASS);
 }
 
 void VLKBQuery::queryReplyFinishedModel(QNetworkReply *reply)

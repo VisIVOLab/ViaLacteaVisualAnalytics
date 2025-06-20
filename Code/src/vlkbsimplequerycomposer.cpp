@@ -1,7 +1,6 @@
 #include "vlkbsimplequerycomposer.h"
 #include "ui_vlkbsimplequerycomposer.h"
 
-#include "authkeys.h"
 #include "vialactea_fileload.h"
 
 #include <QAuthenticator>
@@ -35,8 +34,6 @@ VLKBSimpleQueryComposer::VLKBSimpleQueryComposer(vtkwindow_new *v, QWidget *pare
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     url = settings.value("vlkbtableurl", "").toString();
     ui->vlkbUrlLineEdit->setText(url);
-    url.replace("https://", QString("https://%1:%2@").arg(IA2_TAP_USER, IA2_TAP_PASS));
-    table_prefix = "vlkb_";
     this->pythonExe = settings.value("python.exe").toString();
     on_connectPushButton_clicked();
 }
@@ -110,11 +107,11 @@ void VLKBSimpleQueryComposer::on_connectPushButton_clicked()
         this->isConnected = false;
         QMessageBox::critical(this, QString(), avail.readAllStandardOutput());
         return;
-    } else {
-        this->isConnected = true;
-        if (!this->isFilament) {
-            fetchBandTables();
-        }
+    }
+
+    this->isConnected = true;
+    if (!this->isFilament) {
+        fetchBandTables();
     }
 
     updateUI(isConnected);
@@ -171,7 +168,7 @@ void VLKBSimpleQueryComposer::doQuery(QString band)
     } else {
         fileload->setCatalogueActive();
         if (!isBandmerged) {
-            QString w = ui->tableComboBox->currentText().replace("band", "").replace("um", "");
+            QString w = ui->tableComboBox->currentText().replace("higal", "");
             fileload->setWavelength(w);
         } else {
             fileload->setWavelength("all");
@@ -231,7 +228,7 @@ QString VLKBSimpleQueryComposer::generateQuery()
                        "AS glat, b.contour AS branches_contour, b.contour1d AS branches_contour1d, "
                        "b.contour_new AS branches_contour_new, b.flagspine AS flagspine_branches "
                        "FROM "
-                       "vlkb_filaments.filaments AS f JOIN vlkb_filaments.branches AS b on "
+                       "filaments.filaments AS f JOIN filaments.branches AS b on "
                        "f.idfil_mos = b.idfil_mos WHERE (glon >= %1 AND glon <= %2) AND "
                        "(glat >= %3 AND glat <= %4)")
                 .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
@@ -241,7 +238,7 @@ QString VLKBSimpleQueryComposer::generateQuery()
     if (is3dSelections) {
         return QString("SELECT dist * cos(radians(glon)+ 3.14159265359 / 2) AS x, dist * "
                        "sin(radians(glon)+ 3.14159265359 / 2) AS y, dist * tan(radians(glat)) AS "
-                       "z, * FROM vlkb_compactsources.props_dist WHERE ((glon >= %1 AND "
+                       "z, * FROM compactsources.distances WHERE ((glon >= %1 AND "
                        "glon <= %2) AND (glat >= %3 AND glat <= %4))")
                 .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
                      ui->latMinLineEdit->text(), ui->latMaxLineEdit->text());
@@ -250,7 +247,7 @@ QString VLKBSimpleQueryComposer::generateQuery()
     QString band = ui->tableComboBox->currentText();
     if (band == "bandmerged") {
         isBandmerged = true;
-        return QString("SELECT DISTINCT * FROM vlkb_compactsources.sed_view_final WHERE ((glonft "
+        return QString("SELECT DISTINCT * FROM compactsources.sed_view_final WHERE ((glonft "
                        ">= "
                        "%1 AND glonft <= %2) AND (glatft >= %3 AND glatft <= %4))")
                 .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
@@ -258,8 +255,8 @@ QString VLKBSimpleQueryComposer::generateQuery()
     }
 
     isBandmerged = false;
-    band.replace("band", "higal").replace("um", "");
-    return QString("SELECT * FROM vlkb_compactsources.%5 WHERE (glon >= %1 AND "
+    // band.replace("band", "higal").replace("um", "");
+    return QString("SELECT * FROM compactsources.%5 WHERE (glon >= %1 AND "
                    "glon <= %2) AND (glat >= %3 AND glat <= %4)")
             .arg(ui->longMinLineEdit->text(), ui->longMaxLineEdit->text(),
                  ui->latMinLineEdit->text(), ui->latMaxLineEdit->text(), band);

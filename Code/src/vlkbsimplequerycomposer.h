@@ -38,7 +38,6 @@ private:
     Ui::VLKBSimpleQueryComposer *ui;
     QString url;
     QString m_sSettingsFile;
-    QString table_prefix;
     QString pythonExe;
 
     LoadingWidget *loading;
