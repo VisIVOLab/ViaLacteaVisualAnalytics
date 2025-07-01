@@ -2,10 +2,10 @@
 #include "qdebug.h"
 #include "ui_higalselectedsources.h"
 #include <QListWidget>
-//#include "ViaLactea.h"
+// #include "ViaLactea.h"
 #include "plotwindow.h"
 #include "singleton.h"
-//#include "viewselectedsourcedataset.h"
+// #include "viewselectedsourcedataset.h"
 #include "astroutils.h"
 #include "selectedsourcefieldsselect.h"
 #include "vlkbquery.h"
@@ -148,9 +148,9 @@ void HigalSelectedSources::plotNewWindow()
             qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->selectedItems();
     if (selectedItems.isEmpty()) {
         QMessageBox::critical(
-                    NULL, QObject::tr("Error"),
-                    QObject::tr("Cannot create plot if no compact objects are selected.\n\rPlease "
-                                "select at least one compact object from the list and try again."));
+                NULL, QObject::tr("Error"),
+                QObject::tr("Cannot create plot if no compact objects are selected.\n\rPlease "
+                            "select at least one compact object from the list and try again."));
         return;
     }
     PlotWindow *plotwin = new PlotWindow(vtkwin, selectedItems, plotWindowList.size());
@@ -167,9 +167,9 @@ void HigalSelectedSources::on_datasetButton_clicked()
             qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->selectedItems();
     if (selectedItems.isEmpty()) {
         QMessageBox::critical(
-                    NULL, QObject::tr("Error"),
-                    QObject::tr("Cannot show dataset if no compact objects are selected.\n\rPlease "
-                                "select at least one compact object from the list and try again."));
+                NULL, QObject::tr("Error"),
+                QObject::tr("Cannot show dataset if no compact objects are selected.\n\rPlease "
+                            "select at least one compact object from the list and try again."));
         return;
     }
 
@@ -211,20 +211,20 @@ void HigalSelectedSources::on_deselectAllButton_clicked()
 void HigalSelectedSources::on_sedButton_clicked()
 {
     QString wave = QString::number(
-                vtkwin->file_wavelength.value(ui->tabWidget->tabText(ui->tabWidget->currentIndex())));
+            vtkwin->file_wavelength.value(ui->tabWidget->tabText(ui->tabWidget->currentIndex())));
     if (wave.compare("0") == 0)
         wave = ui->tabWidget->tabText(ui->tabWidget->currentIndex());
     QList<QListWidgetItem *> selectedItems =
             qobject_cast<QListWidget *>(ui->tabWidget->currentWidget())->selectedItems();
     if (selectedItems.isEmpty()) {
         QMessageBox::critical(
-                    NULL, QObject::tr("Error"),
-                    QObject::tr("Cannot retrieve SED data if no compact object is selected.\n\rPlease "
-                                "select at least one compact object from the list and try again."));
+                NULL, QObject::tr("Error"),
+                QObject::tr("Cannot retrieve SED data if no compact object is selected.\n\rPlease "
+                            "select at least one compact object from the list and try again."));
         return;
     }
     for (int i = 0; i < selectedItems.size(); i++) {
-        QString query = "SELECT  * FROM vlkb_compactsources.sed_view_final where designationft=";
+        QString query = "SELECT  * FROM compactsources.sed_view_final where designationft=";
         query += "'"
                 + vtkwin->getFtEllipseList().value(selectedItems.at(i)->text())->getSourceName()
                 + "'";

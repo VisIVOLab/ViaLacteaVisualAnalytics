@@ -63,7 +63,7 @@ void VLKBQuery::availReplyFinished(QNetworkReply *reply)
         available = false;
     } else {
         QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-        QString tag = "vosi:available";
+        QString tag = "available";
 
         QDomDocument doc;
         doc.setContent(reply->readAll());

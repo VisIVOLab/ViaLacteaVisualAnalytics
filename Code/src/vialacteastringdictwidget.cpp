@@ -50,7 +50,7 @@ void VialacteaStringDictWidget::availReplyFinished(QNetworkReply *reply)
         QMessageBox::critical(this, "Error", "Error: \n" + reply->errorString());
     } else {
         QSettings settings(m_sSettingsFile, QSettings::IniFormat);
-        QString tag = "vosi:available";
+        QString tag = "available";
 
         QDomDocument doc;
         doc.setContent(reply->readAll());
@@ -156,7 +156,8 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
                 }
                 QString line_data;
                 while (!reply->atEnd()) {
-                    line_data = QString::fromLatin1(reply->readLine().data());
+                    line_data =
+                            QString::fromLatin1(reply->readLine().data()).remove(QRegExp("[\"]"));
                     QStringList list2 = line_data.split('\t');
                     tableUtypeStringDict.insert(list2[table_name],
                                                 list2[utype].remove(QRegExp("[\n\t\r]")));
@@ -212,7 +213,8 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
 
                 QString line_data;
                 while (!reply->atEnd()) {
-                    line_data = QString::fromLatin1(reply->readLine().data());
+                    line_data =
+                            QString::fromLatin1(reply->readLine().data()).remove(QRegExp("[\"]"));
                     QStringList list2 = line_data.split('\t');
                     colUtypeStringDict.insert(list2[table_name] + "." + list2[column_name],
                                               list2[utype].remove(QRegExp("[\n\t\r]")));
@@ -236,7 +238,6 @@ QUrl VialacteaStringDictWidget::redirectUrl(const QUrl &possibleRedirectUrl,
 
     return redirectUrl;
 }
-
 
 VialacteaStringDictWidget::~VialacteaStringDictWidget()
 {

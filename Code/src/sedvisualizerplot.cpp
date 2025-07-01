@@ -478,7 +478,7 @@ void SEDVisualizerPlot::handleMouseMove(QMouseEvent *event)
             QString wav = QString::number(closestSED->getNode()->getWavelength());
             toolTipText =
                     QString(stringDictWidget->getColUtypeStringDict().value(
-                                    "vlkb_compactsources.sed_view_final.designation" + wav)
+                                    "compactsources.sed_view_final.designation" + wav)
                             + ":\n%1\nwavelength: %2\nfint: %3\nerr_fint: %4\nglon: %5\nglat: "
                               "%6\nx: %7\ny: %8")
                             .arg(closestSED->getNode()->getDesignation())
@@ -2242,8 +2242,7 @@ void SEDVisualizerPlot::addNewTheoreticalFit()
         // Do nothing on the first row which is already drawn by default
     } else {
 
-        QString query =
-                "SELECT * FROM vlkb_compactsources.sed_models where id=" + QString::number(id);
+        QString query = "SELECT * FROM compactsources.sed_models where id=" + QString::number(id);
         new VLKBQuery(query, vtkwin, "model", this, Qt::cyan);
         if (temporaryRow != 0) {
             ui->customPlot->removeGraph(temporaryGraph);

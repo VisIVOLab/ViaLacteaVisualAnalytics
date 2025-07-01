@@ -1837,8 +1837,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkLODActor> actor = vtkSmartPointer<vtkLODActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetColor(0, 1, 0);
-    QString name =
-            stringDictWidget->getColDescStringDict().value("vlkb_filaments.filaments.contour");
+    QString name = stringDictWidget->getColDescStringDict().value("filaments.filaments.contour");
     if (name.isEmpty()) {
         name = "filaments.contour";
     }
@@ -1856,7 +1855,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkLODActor> branches_contour1d_actor = vtkSmartPointer<vtkLODActor>::New();
     branches_contour1d_actor->SetMapper(branches_contour1d_mapper);
     branches_contour1d_actor->GetProperty()->SetColor(1, 0, 0);
-    name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour1d");
+    name = stringDictWidget->getColDescStringDict().value("filaments.branches.contour1d");
     if (name.isEmpty()) {
         name = "branches.contour1d";
     }
@@ -1875,7 +1874,7 @@ void vtkwindow_new::addFilaments(VSTableDesktop *m_VisIVOTable)
     vtkSmartPointer<vtkLODActor> branches_contour_actor = vtkSmartPointer<vtkLODActor>::New();
     branches_contour_actor->SetMapper(branches_contour_mapper);
     branches_contour_actor->GetProperty()->SetColor(0, 1, 1);
-    name = stringDictWidget->getColDescStringDict().value("vlkb_filaments.branches.contour");
+    name = stringDictWidget->getColDescStringDict().value("filaments.branches.contour");
     if (name.isEmpty()) {
         name = "branches.contour";
     }
@@ -2793,13 +2792,10 @@ void vtkwindow_new::addSourcesFromBM(VSTableDesktop *m_VisIVOTable)
             }
         }
         QString key1 = "compactsources.sed_view_final.designation" + wavelen[i];
-        QString key2 = "vlkb_" + key1;
         auto dict = stringDictWidget->getColUtypeStringDict();
         QString utype = wavelen[i];
         if (dict.contains(key1)) {
             utype = dict.value(key1);
-        } else if (dict.contains(key2)) {
-            utype = dict.value(key2);
         }
         auto ellipse_list = wavelen[i].compare("ft") == 0 ? ft_ellipse_list : ellipse_list_local;
         auto sourcePath = QString::fromStdString(m_VisIVOTable->getName());
