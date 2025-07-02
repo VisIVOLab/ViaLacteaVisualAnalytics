@@ -64,12 +64,9 @@ extern "C" {
 
 VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBandMergedCatalogue,
                                              vtkwindow_new *v, QString wavelen)
+    : m_VisIVOTable(new VSTableDesktop)
 {
-
-    VialacteaSource *vialactea_source = new VialacteaSource(f.toStdString());
-
-    m_VisIVOTable = new VSTableDesktop();
-
+    auto vialactea_source = new VialacteaSource(f.toStdString());
     m_VisIVOTable->setNumberOfColumns(vialactea_source->getNumberOfColumns());
     m_VisIVOTable->setNumberOfRows(vialactea_source->getNumberOfRows());
     m_VisIVOTable->setColsNames(vialactea_source->getColumnsNames());
@@ -81,7 +78,6 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
     m_VisIVOTable->setName(infoFile.absoluteFilePath().toStdString());
     m_VisIVOTable->setTableData(vialactea_source->getData());
     vtkwin = v;
-    float flux22Multiplier = 1;
 
     if (!isBandMergedCatalogue) {
         if (wavelen.compare("all") == 0)
@@ -92,872 +88,286 @@ VisIVOImporterDesktop::VisIVOImporterDesktop(QString f, TreeModel *m, bool isBan
         firstSEDNode = true;
         double distances;
 
-        for (int i = 0; i < m_VisIVOTable->getNumberOfRows() / 2; i++) {
-
+        QStringList bands { "1100", "870", "500", "250", "160", "70", "24", "22" };
+        for (int i = 0; i < m_VisIVOTable->getNumberOfRows() / 2; ++i) {
             firstSEDNode = true;
 
-            SED *sed = new SED();
+            auto sed = new SED();
 
-            SEDNode *node;
-            SEDNode *tmp_node;
+            SEDNode *node = nullptr;
+            SEDNode *tmp_node = nullptr;
 
-            QString tmp;
-            double flux, e_flux;
+            double flux, e_flux, minAxes, maxAxes, angle, arcpix, glon, glat;
+            double coord[3];
 
-            double minAxes, maxAxes, angle, arcpix;
+            for (const auto &b : bands) {
+                const std::string band = b.toStdString();
+                QString designation = QString::fromStdString(
+                        m_VisIVOTable
+                                ->getTableData()[m_VisIVOTable->getColId("designation" + band)][i]);
+                if (designation != "missing") {
+                    firstSEDNode = false;
 
-            double glon, glat;
-            double *coord = new double[3];
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation1100")][i]);
-            if (tmp != "missing") {
-                firstSEDNode = false;
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux1100")][i]
+                    flux = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux" + band)][i]
                                     .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux1100")][i]
-                                .c_str());
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setWavelength(1100);
-                    sed->updateMaxFlux(node->getFlux());
-                    sed->setRootNode(node);
-
-                    glon = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon1100")][i]
-                                    .c_str());
-                    glat = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat1100")][i]
-                                    .c_str());
-                    node->setSky(glon, glat);
-                    AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma1100")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb1100")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa1100")][i]
-                                         .c_str());
-
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation870")][i]);
-            if (tmp.compare("missing") != 0) {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux870")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux870")][i]
-                                .c_str());
-                tmp_node = node;
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setWavelength(870);
-                    sed->updateMaxFlux(node->getFlux());
-
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else {
-                        firstSEDNode = false;
+                    if (flux <= 0) {
+                        continue;
                     }
 
-                    glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon870")][i]
-                                        .c_str());
-                    glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat870")][i]
-                                        .c_str());
-                    node->setSky(glon, glat);
-                    AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma870")][i]
+                    e_flux = std::atof(
+                            m_VisIVOTable
+                                    ->getTableData()[m_VisIVOTable->getColId("err_flux" + band)][i]
                                     .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb870")][i]
+                    minAxes = std::atof(
+                            m_VisIVOTable
+                                    ->getTableData()[m_VisIVOTable->getColId("fwhma" + band)][i]
                                     .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa870")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
+                    maxAxes = std::atof(
+                            m_VisIVOTable
+                                    ->getTableData()[m_VisIVOTable->getColId("fwhmb" + band)][i]
+                                    .c_str());
+                    angle = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa" + band)][i]
+                                    .c_str());
+                    glon = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon" + band)][i]
+                                    .c_str());
+                    glat = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat" + band)][i]
+                                    .c_str());
 
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation500")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux500")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux500")][i]
-                                .c_str());
-                tmp_node = node;
-                if (flux > 0) {
+                    AstroUtils::sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
+
+                    tmp_node = node;
                     node = new SEDNode();
-                    node->setDesignation(tmp);
+                    node->setDesignation(designation);
                     node->setFlux(flux);
                     node->setErrFlux(e_flux);
-                    node->setWavelength(500);
-                    sed->updateMaxFlux(node->getFlux());
-                    if (!firstSEDNode) {
+                    node->setWavelength(b.toDouble());
+                    node->setSky(glon, glat);
+                    node->setXY(coord[0], coord[1]);
+                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
+
+                    sed->updateMaxFlux(flux);
+                    if (!sed->hasRoot()) {
+                        sed->setRootNode(node);
+                    }
+
+                    if (tmp_node) {
                         node->setParent(tmp_node);
                         tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon500")][i]
-                                        .c_str());
-                    glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat500")][i]
-                                        .c_str());
-                    node->setSky(glon, glat);
-                    AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma500")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb500")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa500")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
+                    }
                 }
             }
 
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation350")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux350")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux350")][i]
-                                .c_str());
-                tmp_node = node;
-
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setWavelength(350);
-                    sed->updateMaxFlux(node->getFlux());
-
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-
-                    } else
-                        firstSEDNode = false;
-
-                    glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon350")][i]
-                                        .c_str());
-                    glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat350")][i]
-                                        .c_str());
-                    node->setSky(glon, glat);
-
-                    AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                    node->setXY(coord[0], coord[1]);
-
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma350")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb350")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa350")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation250")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux250")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux250")][i]
-                                .c_str());
-                tmp_node = node;
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setWavelength(250);
-                    sed->updateMaxFlux(node->getFlux());
-                    sed->set250node();
-
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon250")][i]
-                                        .c_str());
-                    glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat250")][i]
-                                        .c_str());
-                    node->setSky(glon, glat);
-                    AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                    node->setXY(coord[0], coord[1]);
-
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma250")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb250")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa250")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation160")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux160")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux160")][i]
-                                .c_str());
-
-                tmp_node = node;
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setWavelength(160);
-
-                    sed->updateMaxFlux(node->getFlux());
-
-                    glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon160")][i]
-                                        .c_str());
-                    glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat160")][i]
-                                        .c_str());
-                    node->setSky(glon, glat);
-                    AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                    node->setXY(coord[0], coord[1]);
-
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma160")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb160")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa160")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation70")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux70")][i]
-                                    .c_str());
-                e_flux =
-                        atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux70")][i]
-                                     .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon70")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat70")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma70")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb70")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa70")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(70);
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation24")][i]);
-            if (tmp != "missing") {
-
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux24")][i]
-                                    .c_str());
-                e_flux =
-                        atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux24")][i]
-                                     .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon24")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat24")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma24")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb24")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa24")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(24);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-            if (tmp != "missing") {
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux22")][i]
-                                       .c_str());
-                e_flux =
-                        atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux22")][i]
-                                     .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp);
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(22);
-
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_e")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_e")][i]
-                                .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_e");
-
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
+            // 21, 14.7, 12.1 are based on 21 um
+            QList<QPair<double, QString>> suffices { { 21, "_e" }, { 14.7, "_d" }, { 12.1, "_c" } };
+            for (const auto &b : suffices) {
+                QString designation = QString::fromStdString(
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
+                if (designation != "missing") {
+                    firstSEDNode = false;
+                    flux = std::atof(m_VisIVOTable
+                                             ->getTableData()[m_VisIVOTable->getColId(
+                                                     "flux21" + b.second.toStdString())][i]
+                                             .c_str());
+                    if (flux <= 0) {
+                        continue;
+                    }
+                    e_flux = std::atof(m_VisIVOTable
+                                               ->getTableData()[m_VisIVOTable->getColId(
+                                                       "err_flux21" + b.second.toStdString())][i]
+                                               .c_str());
+                    minAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma21")][i]
                                     .c_str());
-                    maxAxes = atof(
+                    maxAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb21")][i]
                                     .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa21")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(21);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_d")][i]
+                    angle = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa21")][i]
                                     .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_d")][i]
-                                .c_str());
-                tmp_node = node;
-                if (flux > 0) {
-
+                    glon = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
+                                    .c_str());
+                    glat = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
+                                    .c_str());
+                    AstroUtils::sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
+                    tmp_node = node;
                     node = new SEDNode();
-                    node->setDesignation(tmp + "_d");
-
+                    node->setDesignation(designation + b.second);
                     node->setFlux(flux);
                     node->setErrFlux(e_flux);
+                    node->setWavelength(b.first);
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(14.7);
+                    sed->updateMaxFlux(flux);
+                    if (!sed->hasRoot()) {
+                        sed->setRootNode(node);
+                    }
 
-                    if (!firstSEDNode) {
+                    if (tmp_node) {
                         node->setParent(tmp_node);
                         tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
+                    }
                 }
             }
 
-            // 12.1um
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
-            if (tmp != "missing") {
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_c")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_c")][i]
-                                .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                tmp_node = node;
-                if (flux > 0) {
-
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_c");
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(12.1);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            // 12um
-            tmp = QString::fromStdString(
+            // 12um based on 22um
+            QString designation = QString::fromStdString(
                     m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-
-            if (tmp != "missing") {
-
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux12")][i]
-                                       .c_str());
-                e_flux =
-                        atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux12")][i]
-                                     .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
+            if (designation != "missing") {
+                firstSEDNode = false;
+                flux = std::atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux12")][i]
+                                         .c_str());
                 if (flux > 0) {
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_12um");
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
+                    e_flux = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux12")][i]
+                                    .c_str());
+                    minAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
                                     .c_str());
-                    maxAxes = atof(
+                    maxAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
                                     .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
+                    angle = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
+                                    .c_str());
+                    glon = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
+                                    .c_str());
+                    glat = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
+                                    .c_str());
+                    AstroUtils::sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
+                    tmp_node = node;
+                    node = new SEDNode();
+                    node->setDesignation(designation + "_12um");
+                    node->setFlux(flux);
+                    node->setErrFlux(e_flux);
                     node->setWavelength(12);
+                    node->setSky(glon, glat);
+                    node->setXY(coord[0], coord[1]);
+                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
+                    sed->updateMaxFlux(flux);
+                    if (!sed->hasRoot()) {
+                        sed->setRootNode(node);
+                    }
 
-                    if (!firstSEDNode) {
+                    if (tmp_node) {
                         node->setParent(tmp_node);
                         tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
+                    }
                 }
             }
 
-            // 8.3um
-            tmp = QString::fromStdString(
+            // 8.3um based on 21um
+            designation = QString::fromStdString(
                     m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation21")][i]);
-            if (tmp != "missing") {
-
-                flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_a")][i]
-                                    .c_str());
-                e_flux = atof(
-                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux21_a")][i]
+            if (designation != "missing") {
+                firstSEDNode = false;
+                flux = std::atof(
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux21_a")][i]
                                 .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-                tmp_node = node;
                 if (flux > 0) {
-
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_a");
-
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
+                    e_flux = std::atof(
+                            m_VisIVOTable
+                                    ->getTableData()[m_VisIVOTable->getColId("err_flux21_a")][i]
+                                    .c_str());
+                    minAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma21")][i]
                                     .c_str());
-                    maxAxes = atof(
+                    maxAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb21")][i]
                                     .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa21")][i]
-                                         .c_str());
-
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
+                    angle = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa21")][i]
+                                    .c_str());
+                    glon = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon21")][i]
+                                    .c_str());
+                    glat = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat21")][i]
+                                    .c_str());
+                    AstroUtils::sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
+                    tmp_node = node;
+                    node = new SEDNode();
+                    node->setDesignation(designation + "_a");
+                    node->setFlux(flux);
+                    node->setErrFlux(e_flux);
                     node->setWavelength(8.3);
-
-                    if (!sed->hasRoot())
+                    node->setSky(glon, glat);
+                    node->setXY(coord[0], coord[1]);
+                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
+                    sed->updateMaxFlux(flux);
+                    if (!sed->hasRoot()) {
                         sed->setRootNode(node);
+                    }
+
+                    if (tmp_node) {
+                        node->setParent(tmp_node);
+                        tmp_node->setChild(node);
+                    }
                 }
             }
 
-            // 4.6um
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-            if (tmp != "missing") {
-
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux46")][i]
-                                       .c_str());
-                e_flux =
-                        atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux46")][i]
-                                     .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_4.6um");
-
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
+            // 4.6, 3.4, 2.2, 1.65, 1.25 based on 22um
+            QList<QPair<double, QString>> suffices2 {
+                { 4.6, "46" }, { 3.4, "34" }, { 2.2, "2M_K" }, { 1.65, "2M_H" }, { 1.25, "2M_J" }
+            };
+            for (const auto &b : suffices2) {
+                QString designation = QString::fromStdString(
+                        m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
+                if (designation != "missing") {
+                    firstSEDNode = false;
+                    flux = std::atof(m_VisIVOTable
+                                             ->getTableData()[m_VisIVOTable->getColId(
+                                                     "flux" + b.second.toStdString())][i]
+                                             .c_str());
+                    if (flux <= 0) {
+                        continue;
+                    }
+                    e_flux = std::atof(m_VisIVOTable
+                                               ->getTableData()[m_VisIVOTable->getColId(
+                                                       "err_flux" + b.second.toStdString())][i]
+                                               .c_str());
+                    minAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
                                     .c_str());
-                    maxAxes = atof(
+                    maxAxes = std::atof(
                             m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
                                     .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(4.6);
-
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            // 3.4um
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-            if (tmp != "missing") {
-
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux34")][i]
-                                       .c_str());
-                e_flux =
-                        atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("err_flux34")][i]
-                                     .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
+                    angle = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
                                     .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
+                    glon = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
                                     .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-
+                    glat = std::atof(
+                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
+                                    .c_str());
+                    AstroUtils::sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
+                    tmp_node = node;
                     node = new SEDNode();
-                    node->setDesignation(tmp + "_3.4um");
+                    node->setDesignation(designation + "_" + QString::number(b.first) + "um");
                     node->setFlux(flux);
                     node->setErrFlux(e_flux);
+                    node->setWavelength(b.first);
                     node->setSky(glon, glat);
                     node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-
                     node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(3.4);
+                    sed->updateMaxFlux(flux);
+                    if (!sed->hasRoot()) {
+                        sed->setRootNode(node);
+                    }
 
-                    if (!firstSEDNode) {
+                    if (tmp_node) {
                         node->setParent(tmp_node);
                         tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            // 2.2um
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-            if (tmp != "missing") {
-
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_K")][i]
-                                       .c_str());
-                e_flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_K")][i]
-                                      .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_2.2um");
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(2.2);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            // 1.65um
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-            if (tmp != "missing") {
-
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_H")][i]
-                                       .c_str());
-                e_flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_H")][i]
-                                      .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_1.65um");
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(1.65);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
-                }
-            }
-
-            // 1.25um
-            tmp = QString::fromStdString(
-                    m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("designation22")][i]);
-            if (tmp != "missing") {
-
-                flux = flux22Multiplier
-                        * atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_J")][i]
-                                       .c_str());
-                e_flux = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("flux2M_J")][i]
-                                      .c_str());
-                glon = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glon22")][i]
-                                    .c_str());
-                glat = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("glat22")][i]
-                                    .c_str());
-                AstroUtils().sky2xy(vtkwin->filenameWithPath, glon, glat, coord);
-
-                tmp_node = node;
-                if (flux > 0) {
-
-                    node = new SEDNode();
-                    node->setDesignation(tmp + "_1.25um");
-                    node->setFlux(flux);
-                    node->setErrFlux(e_flux);
-                    node->setSky(glon, glat);
-                    node->setXY(coord[0], coord[1]);
-                    minAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhma22")][i]
-                                    .c_str());
-                    maxAxes = atof(
-                            m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("fwhmb22")][i]
-                                    .c_str());
-                    angle = atof(m_VisIVOTable->getTableData()[m_VisIVOTable->getColId("pa22")][i]
-                                         .c_str());
-
-                    node->setEllipse(minAxes, maxAxes, angle, coord[2]);
-                    node->setWavelength(1.25);
-                    if (!firstSEDNode) {
-                        node->setParent(tmp_node);
-                        tmp_node->setChild(node);
-                    } else
-                        firstSEDNode = false;
-
-                    if (!sed->hasRoot())
-                        sed->setRootNode(node);
+                    }
                 }
             }
 
