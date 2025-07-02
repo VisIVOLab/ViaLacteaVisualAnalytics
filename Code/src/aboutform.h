@@ -20,12 +20,14 @@ private slots:
     void on_btnNeanias_clicked();
     void on_btnCirasa_clicked();
     void on_btnEcogal_clicked();
+    void on_btnCN_clicked();
 
 private:
     Ui::AboutForm *ui;
     QUrl neaniasUrl;
     QUrl cirasaUrl;
     QUrl ecogalUrl;
+    QUrl cnUrl;
 };
 
 #endif // ABOUTFORM_H

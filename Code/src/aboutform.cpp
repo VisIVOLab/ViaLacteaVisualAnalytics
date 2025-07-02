@@ -8,7 +8,8 @@ AboutForm::AboutForm(QWidget *parent)
       ui(new Ui::AboutForm),
       neaniasUrl("https://www.neanias.eu"),
       cirasaUrl("https://www.oact.inaf.it/project/cirasa"),
-      ecogalUrl("http://www.ecogal.eu")
+      ecogalUrl("http://www.ecogal.eu"),
+      cnUrl("https://www.supercomputing-icsc.it")
 {
     ui->setupUi(this);
     ui->labelVersion->setText("v " + qApp->applicationVersion());
@@ -33,4 +34,9 @@ void AboutForm::on_btnCirasa_clicked()
 void AboutForm::on_btnEcogal_clicked()
 {
     QDesktopServices::openUrl(ecogalUrl);
+}
+
+void AboutForm::on_btnCN_clicked()
+{
+    QDesktopServices::openUrl(cnUrl);
 }

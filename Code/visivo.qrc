@@ -70,5 +70,6 @@
         <file>icons/visivo48.png</file>
         <file>icons/visivo128.png</file>
         <file>icons/visivo256.png</file>
+        <file>icons/icsc.svg</file>
     </qresource>
 </RCC>
