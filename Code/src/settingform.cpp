@@ -17,6 +17,7 @@ SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new 
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(this);
+    ui->caesarGroupBox->hide();
     ui->groupBox_4->hide();
     ui->vlkbLogoutButton->hide();
     ui->caesarLogoutButton->hide();
