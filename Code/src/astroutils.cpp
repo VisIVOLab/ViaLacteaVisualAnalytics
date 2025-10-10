@@ -217,8 +217,11 @@ void AstroUtils::setMomentFITSHeader(const std::string &src, const std::string &
         bunit = cunit3;
     }
     // for orders 6, 8 and 10 bunit is unchanged
+
+    // update bunit
     if (!bunit.empty()) {
-        hputs(header, "BUNIT", bunit.c_str());
+        hdel(header, "BUNIT");
+        hputc(header, "BUNIT", bunit.c_str());
     }
 
     // Remove NAXIS{3,4} keywords
