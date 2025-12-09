@@ -1506,84 +1506,10 @@ p, li { white-space: pre-wrap; }
  </resources>
  <connections>
   <connection>
-   <sender>buttonCreateDO</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>viewSetting()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>140</x>
-     <y>60</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>268</x>
-     <y>446</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>treeView</sender>
    <signal>doubleClicked(QModelIndex)</signal>
    <receiver>treeView</receiver>
    <slot>expand(QModelIndex)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>174</x>
-     <y>247</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>268</x>
-     <y>307</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>ViewSettingspushButton</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>viewSettingOk()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>123</x>
-     <y>721</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>268</x>
-     <y>446</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>tabWidget</sender>
-   <signal>currentChanged(int)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>switchTab(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>268</x>
-     <y>479</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>268</x>
-     <y>446</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>treeView</sender>
-   <signal>clicked(QModelIndex)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>itemSelected()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>174</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>174</x>
-     <y>345</y>
-    </hint>
-   </hints>
   </connection>
  </connections>
 </ui>

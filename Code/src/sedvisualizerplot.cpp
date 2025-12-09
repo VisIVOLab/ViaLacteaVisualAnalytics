@@ -377,26 +377,13 @@ void SEDVisualizerPlot::updateSEDPlotPoint(SEDNode *node)
 {
     if (!visualnode_hash.contains(node->getDesignation())) {
         SEDPlotPointCustom *cp = new SEDPlotPointCustom(ui->customPlot, 3.5, vtkwin);
-        if (vtkwin != 0) {
+        if (vtkwin != 0 && vtkwin->getDesignation2fileMap().contains(node->getDesignation())) {
             // set cp rgb color
-            if (vtkwin->getDesignation2fileMap().values(node->getDesignation()).length() > 0) {
-                double r = vtkwin->getEllipseActorList()
-                                   .value(vtkwin->getDesignation2fileMap().value(
-                                           node->getDesignation()))
-                                   ->GetProperty()
-                                   ->GetColor()[0];
-                double g = vtkwin->getEllipseActorList()
-                                   .value(vtkwin->getDesignation2fileMap().value(
-                                           node->getDesignation()))
-                                   ->GetProperty()
-                                   ->GetColor()[1];
-                double b = vtkwin->getEllipseActorList()
-                                   .value(vtkwin->getDesignation2fileMap().value(
-                                           node->getDesignation()))
-                                   ->GetProperty()
-                                   ->GetColor()[2];
-
-                cp->setColor(QColor(r * 255, g * 255, b * 255));
+            auto fileKey = vtkwin->getDesignation2fileMap().value(node->getDesignation());
+            auto actor = vtkwin->getEllipseActorList().value(fileKey);
+            if (actor) {
+                double *color = actor->GetProperty()->GetColor();
+                cp->setColor(QColor(color[0] * 255, color[1] * 255, color[2] * 255));
             }
         }
         // set cp component
@@ -1178,8 +1165,7 @@ void SEDVisualizerPlot::setModelFitValue(QVector<QStringList> headerAndValueList
 
 void SEDVisualizerPlot::on_actionScreenshot_triggered()
 {
-    QPixmap qPixMap = QPixmap::grabWidget(
-            this); // *this* is window pointer, the snippet     is in the mainwindow.cpp file
+    QPixmap qPixMap = this->grab(); // QWidget::grab in Qt6
 
     QImage qImage = qPixMap.toImage();
 
@@ -1812,14 +1798,14 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
     if (file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
         QTextStream stream(&file);
         stream.reset();
-        stream << "#!/bin/bash" << endl;
-        stream << "unzip scripts.zip" << endl;
+        stream << "#!/bin/bash" << Qt::endl;
+        stream << "unzip scripts.zip" << Qt::endl;
         stream << "/usr/local/bin/idl -e \"sedpar=vialactea_tap_sedfit_v3(" + sedFitInputW + ","
                         + sedFitInputF + "," + sedFitInputErrF + "," + sedFitInputFflag
                         + ",2000.,0.8,sed_weights=[1.,1.,1.],use_wave=" + sedFitInputW
                         + ")\" &> log.dat"
-               << endl;
-        stream << "zip output.zip *dat" << endl;
+               << Qt::endl;
+        stream << "zip output.zip *dat" << Qt::endl;
     }
 
     QProcess process_zip;
@@ -1836,7 +1822,7 @@ void SEDVisualizerPlot::executeRemoteCall(QString sedFitInputW, QString sedFitIn
     QString output(process.readAll());
 
     QString id = output.simplified();
-    QFuture<bool> future = QtConcurrent::run(checkIDRemoteCall, id);
+    QFuture<bool> future = QtConcurrent::run(&SEDVisualizerPlot::checkIDRemoteCall, id);
     bool finished = future.result();
     if (finished) {
 
@@ -1937,7 +1923,8 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
 
     QString urlEncoded = "http://vlkb.ia2.inaf.it/searchd/?" + QUrl::toPercentEncoding(args);
     QNetworkRequest req(urlEncoded);
-    req.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
 
     auto nam = new QNetworkAccessManager;
     auto reply = nam->get(req);

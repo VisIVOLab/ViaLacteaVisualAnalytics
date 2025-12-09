@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSettings>
+#include <QRegularExpression>
 
 VialacteaStringDictWidget::VialacteaStringDictWidget(QWidget *parent)
     : QWidget(parent), ui(new Ui::VialacteaStringDictWidget)
@@ -146,7 +147,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
                 QStringList columns = s_data.split('\t');
 
                 for (int i = 0; i < columns.length(); ++i) {
-                    QString col = columns[i].remove(QRegExp("[\n\t\r]"));
+                    QString col = columns[i].remove(QRegularExpression("[\n\t\r]"));
                     if (col == "table_name")
                         table_name = i;
                     if (col == "description")
@@ -156,13 +157,15 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaTables(QNetworkReply 
                 }
                 QString line_data;
                 while (!reply->atEnd()) {
-                    line_data =
-                            QString::fromLatin1(reply->readLine().data()).remove(QRegExp("[\"]"));
+                    line_data = QString::fromLatin1(reply->readLine().data())
+                                        .remove(QRegularExpression("[\"]"));
                     QStringList list2 = line_data.split('\t');
                     tableUtypeStringDict.insert(list2[table_name],
-                                                list2[utype].remove(QRegExp("[\n\t\r]")));
+                                                list2[utype].remove(
+                                                        QRegularExpression("[\n\t\r]")));
                     tableDescStringDict.insert(list2[table_name],
-                                               list2[description].remove(QRegExp("[\n\t\r]")));
+                                               list2[description].remove(
+                                                       QRegularExpression("[\n\t\r]")));
                 }
             }
         }
@@ -200,7 +203,7 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
                 QStringList columns = s_data.split('\t');
 
                 for (int i = 0; i < columns.length(); ++i) {
-                    QString col = columns[i].remove(QRegExp("[\n\t\r]"));
+                    QString col = columns[i].remove(QRegularExpression("[\n\t\r]"));
                     if (col == "table_name")
                         table_name = i;
                     if (col == "column_name")
@@ -213,13 +216,15 @@ void VialacteaStringDictWidget::queryReplyFinishedTapSchemaColumns(QNetworkReply
 
                 QString line_data;
                 while (!reply->atEnd()) {
-                    line_data =
-                            QString::fromLatin1(reply->readLine().data()).remove(QRegExp("[\"]"));
+                    line_data = QString::fromLatin1(reply->readLine().data())
+                                        .remove(QRegularExpression("[\"]"));
                     QStringList list2 = line_data.split('\t');
                     colUtypeStringDict.insert(list2[table_name] + "." + list2[column_name],
-                                              list2[utype].remove(QRegExp("[\n\t\r]")));
+                                              list2[utype].remove(
+                                                      QRegularExpression("[\n\t\r]")));
                     colDescStringDict.insert(list2[table_name] + "." + list2[column_name],
-                                             list2[description].remove(QRegExp("[\n\t\r]")));
+                                             list2[description].remove(
+                                                     QRegularExpression("[\n\t\r]")));
                 }
             }
         }

@@ -94,7 +94,8 @@ void CaesarWindow::on_jobRefreshButton_clicked()
 
 QString CaesarWindow::formatDate(const QString &date)
 {
-    return QDateTime::fromString(date, Qt::ISODateWithMs).toString(Qt::DefaultLocaleShortDate);
+    return QDateTime::fromString(date, Qt::ISODateWithMs)
+            .toString(QLocale().dateFormat(QLocale::ShortFormat));
 }
 
 QString CaesarWindow::formatElapsedTime(const int &elapsedTime)

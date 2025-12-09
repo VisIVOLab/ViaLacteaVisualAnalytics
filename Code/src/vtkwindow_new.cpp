@@ -4635,15 +4635,16 @@ void vtkwindow_new::setSources(const QJsonArray &sources, const QDir &sessionRoo
             if (compactSource["bandmerged"].toBool()) {
                 fileLoad->setWavelength("all");
                 fileLoad->on_okPushButton_clicked();
-                foreach (const auto &item, compactSource["tableItems"].toArray()) {
-                    auto text = item["text"].toString();
-                    auto enabled = item["enabled"].toBool(false);
-                    auto color = item["color"].toArray();
-                    double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
-                                      color.at(2).toDouble() };
-                    setTableItemInfo(text, enabled, rgb);
-                }
-            } else {
+        foreach (const auto &item, compactSource["tableItems"].toArray()) {
+            auto itemObj = item.toObject();
+            auto text = itemObj["text"].toString();
+            auto enabled = itemObj["enabled"].toBool(false);
+            auto color = itemObj["color"].toArray();
+            double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
+                              color.at(2).toDouble() };
+            setTableItemInfo(text, enabled, rgb);
+        }
+    } else {
                 fileLoad->setWavelength(QString::number(compactSource["wavelength"].toInt()));
                 fileLoad->on_okPushButton_clicked();
                 auto text = compactSource["text"].toString(filename);
@@ -4677,9 +4678,10 @@ void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &sessio
         fileLoad->importFilaments();
 
         foreach (const auto &item, filament["tableItems"].toArray()) {
-            auto text = item["text"].toString(filename);
-            auto enabled = item["enabled"].toBool(false);
-            auto color = item["color"].toArray();
+            auto itemObj = item.toObject();
+            auto text = itemObj["text"].toString(filename);
+            auto enabled = itemObj["enabled"].toBool(false);
+            auto color = itemObj["color"].toArray();
             double rgb[3] = { color.at(0).toDouble(), color.at(1).toDouble(),
                               color.at(2).toDouble() };
             setTableItemInfo(text, enabled, rgb);
@@ -4693,13 +4695,14 @@ void vtkwindow_new::setFilaments(const QJsonArray &filaments, const QDir &sessio
 void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &sessionRootFolder)
 {
     foreach (const auto &dc, datacubes) {
-        auto enabled = dc["enabled"].toBool();
+        auto dcObj = dc.toObject();
+        auto enabled = dcObj["enabled"].toBool();
         if (!enabled) {
             continue;
         }
 
-        auto fitsPath = sessionRootFolder.absoluteFilePath(dc["fits"].toString());
-        auto slice = dc["slice"].toInt(1);
+        auto fitsPath = sessionRootFolder.absoluteFilePath(dcObj["fits"].toString());
+        auto slice = dcObj["slice"].toInt(1);
 
         auto fitsReader = vtkSmartPointer<vtkFitsReader>::New();
         fitsReader->SetFileName(fitsPath.toStdString());
@@ -4708,11 +4711,11 @@ void vtkwindow_new::loadDatacubes(const QJsonArray &datacubes, const QDir &sessi
         auto win = new vtkwindow_new(this, fitsReader, 1, this);
         win->setCuttingPlaneValue(slice);
 
-        if (dc.toObject().contains("threshold")) {
-            win->setThresholdValue(dc["threshold"].toInt());
+        if (dcObj.contains("threshold")) {
+            win->setThresholdValue(dcObj["threshold"].toInt());
         }
 
-        auto contours = dc["contours"].toObject();
+        auto contours = dcObj["contours"].toObject();
         if (!contours.isEmpty()) {
             auto level = contours["level"].toInt(15);
             auto lowerB = contours["lowerBound"].toDouble(3 * fitsReader->GetRMS());

@@ -537,7 +537,7 @@ void VialacteaInitialQuery::onDownloadCompleted()
 {
     int test_flag_nanten = -1;
     if (pubdid.compare("") != 0)
-        test_flag_nanten = pubdid.split("_", QString::SkipEmptyParts).last().toInt();
+        test_flag_nanten = pubdid.split("_", Qt::SkipEmptyParts).last().toInt();
 
     QString currentPath = downloadedFile;
 

@@ -21,7 +21,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
             "MinSizeRel" "RelWithDebInfo")
 endif ()
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -32,7 +32,10 @@ set(CMAKE_AUTOUIC ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(qt_components
+        Core
+        Gui
         Widgets
+        OpenGLWidgets
         Concurrent
         Xml
         Network
@@ -40,8 +43,9 @@ set(qt_components
         WebEngineWidgets
         PrintSupport)
 
-find_package(Qt5 5.15 REQUIRED QUIET COMPONENTS ${qt_components})
-message(STATUS "Qt ${Qt5_VERSION} - ${qt_components}")
+# Qt6 (tested 6.4+). Ensure you have a Qt6 build of VTK/WebEngine.
+find_package(Qt6 6.4 REQUIRED QUIET COMPONENTS ${qt_components})
+message(STATUS "Qt ${Qt6_VERSION} - ${qt_components}")
 
 find_package(
         VTK 9.1.0 REQUIRED QUIET
@@ -307,7 +311,7 @@ target_compile_definitions(ViaLacteaVisualAnalytics
         PRIVATE $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>)
 
 foreach (_qt_comp IN LISTS qt_components)
-    list(APPEND qt_modules "Qt5::${_qt_comp}")
+    list(APPEND qt_modules "Qt6::${_qt_comp}")
 endforeach ()
 
 target_link_libraries(

@@ -61,7 +61,7 @@ void xmlparser::parseXML_fitsDownload(QXmlStreamReader &xml_reader, QString &str
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                            .split("_", QString::SkipEmptyParts)
+                            .split("_", Qt::SkipEmptyParts)
                             .last()
                             .toInt();
                 if (datacube_map["code"].compare("1") == 0
@@ -152,7 +152,7 @@ QList<QMap<QString, QString>> xmlparser::parseXmlAndGetList(QXmlStreamReader &xm
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                            .split("_", QString::SkipEmptyParts)
+                            .split("_", Qt::SkipEmptyParts)
                             .last()
                             .toInt();
                 if (datacube_map["code"].compare("1") == 0
@@ -230,7 +230,7 @@ void xmlparser::parseXML(QXmlStreamReader &xml_reader, QString &stringa, bool dc
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                            .split("_", QString::SkipEmptyParts)
+                            .split("_", Qt::SkipEmptyParts)
                             .last()
                             .toInt();
                 if (datacube_map["code"].compare("1") == 0
@@ -609,7 +609,7 @@ void xmlparser::datacubeExtraction(QXmlStreamReader &xml_reader,
                 int test_flag_nanten = -1;
                 if (datacube_map["PublisherDID"].compare("") != 0)
                     test_flag_nanten = datacube_map["PublisherDID"]
-                            .split("_", QString::SkipEmptyParts)
+                            .split("_", Qt::SkipEmptyParts)
                             .last()
                             .toInt();
                 if (datacube_map["code"].compare("1") == 0

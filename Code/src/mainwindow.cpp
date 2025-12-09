@@ -81,6 +81,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     ui->volumeGroupBox->hide();
     on_actionVialactea_triggered();
+
+    // Connections moved from .ui (Qt6 generates strict function-pointer connects).
+    connect(ui->buttonCreateDO, &QToolButton::clicked, this, &MainWindow::viewSetting);
+    connect(ui->ViewSettingspushButton, &QPushButton::clicked, this, &MainWindow::viewSettingOk);
+    connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::switchTab);
+    connect(ui->treeView, &QTreeView::clicked, this,
+            static_cast<void (MainWindow::*)(const QModelIndex &)>(&MainWindow::itemSelected));
 }
 
 MainWindow::~MainWindow()
@@ -704,6 +711,12 @@ void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool l
             return;
         }
     }
+}
+
+void MainWindow::itemSelected(const QModelIndex &index)
+{
+    Q_UNUSED(index);
+    itemSelected(QList<QMap<QString, QString>>(), false);
 }
 
 void MainWindow::on_actionOperation_queue_triggered()

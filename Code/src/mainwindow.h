@@ -80,6 +80,7 @@ public slots:
     void viewSetting();
     void switchTab(int index);
     void viewSettingOk();
+    void itemSelected(const QModelIndex &index);
     void itemSelected(QList<QMap<QString, QString>> elementsOnDb = QList<QMap<QString, QString>>(),
                       bool layer = false);
     void
