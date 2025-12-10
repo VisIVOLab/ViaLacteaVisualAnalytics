@@ -31,6 +31,7 @@
 #include <vtkImageActor.h>
 #include <vtkImageMapToWindowLevelColors.h>
 #include <vtkImageSliceMapper.h>
+#include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkLODActor.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
@@ -47,9 +48,27 @@
 #include <vtkTransform.h>
 
 #include <QDebug>
+#include <QGuiApplication>
 
 #include <cmath>
 #include <string>
+
+class vtkInteractorStyleTrackballCameraGuard : public vtkInteractorStyleTrackballCamera
+{
+public:
+    static vtkInteractorStyleTrackballCameraGuard *New();
+    vtkTypeMacro(vtkInteractorStyleTrackballCameraGuard, vtkInteractorStyleTrackballCamera);
+
+    void OnMouseMove() override
+    {
+        // Evita rotazioni/pan senza pulsanti premuti
+        if (QGuiApplication::mouseButtons() == Qt::NoButton) {
+            return;
+        }
+        Superclass::OnMouseMove();
+    }
+};
+vtkStandardNewMacro(vtkInteractorStyleTrackballCameraGuard);
 
 vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int ScaleFactor,
                              QString velocityUnit)
@@ -113,6 +132,9 @@ vtkWindowCube::vtkWindowCube(QWidget *parent, const QString &filepath, int Scale
     rendererCube->SetBackground(0.21, 0.23, 0.25);
     rendererCube->GlobalWarningDisplayOff();
     renWinCube->AddRenderer(rendererCube);
+    // Evita rotazioni accidentali: ruota/pan solo con pulsante premuto
+    auto style3d = vtkSmartPointer<vtkInteractorStyleTrackballCameraGuard>::New();
+    renWinCube->GetInteractor()->SetInteractorStyle(style3d);
 
     ui->thresholdText->setText(QString::number(lowerBound, 'f', 4));
     ui->lowerBoundText->setText(QString::number(lowerBound, 'f', 4));

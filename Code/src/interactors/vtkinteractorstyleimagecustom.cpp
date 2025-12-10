@@ -2,6 +2,8 @@
 
 #include "../astroutils.h"
 
+#include <QGuiApplication>
+
 #include <vtkImageProperty.h>
 #include <vtkObjectFactory.h>
 #include <vtkRenderer.h>
@@ -29,7 +31,9 @@ void vtkInteractorStyleImageCustom::PrintSelf(std::ostream &os, vtkIndent indent
 //----------------------------------------------------------------------------
 void vtkInteractorStyleImageCustom::OnMouseMove()
 {
-    if (this->CurrentImageProperty) {
+    const bool buttonPressed = QGuiApplication::mouseButtons() != Qt::NoButton;
+
+    if (buttonPressed && this->CurrentImageProperty) {
         vtkImageProperty *property = this->CurrentImageProperty;
 
         if (ColorWindow.find(property) == ColorWindow.end()) {
@@ -78,7 +82,10 @@ void vtkInteractorStyleImageCustom::OnMouseMove()
 
     CoordsCallback(oss.str());
 
-    Superclass::OnMouseMove();
+    // Attiva window/level/pan/zoom solo quando un pulsante e' premuto
+    if (buttonPressed) {
+        Superclass::OnMouseMove();
+    }
 }
 
 //----------------------------------------------------------------------------

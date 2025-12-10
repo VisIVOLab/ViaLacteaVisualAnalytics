@@ -1079,7 +1079,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     switch (b) {
     case 0: {
         // ui->setupUi(this);
-        qDebug("<<<<<<<<<<<<<<<2d");
         this->setWindowTitle(myfits->GetFileName().c_str());
         this->isDatacube = false;
         ui->menuCamera->menuAction()->setVisible(false);
@@ -3050,7 +3049,6 @@ void vtkwindow_new::setVtkInteractorStyleImageContour()
 
 void vtkwindow_new::setVtkInteractorStyleImage()
 {
-    qDebug("<<<<<sono attivo");
     /*
     Left Mouse button triggers window level events
     CTRL Left Mouse spins the camera around its view plane normal
