@@ -109,6 +109,7 @@
 #include <QDir>
 #include <QSettings>
 #include <QSignalMapper>
+#include <QGuiApplication>
 #include <QtConcurrent>
 
 #include "qcustomplot.h"
@@ -454,6 +455,7 @@ class myVtkInteractorStyleImage : public vtkInteractorStyleImage
 private:
     vtkwindow_new *vtkwin;
     bool isSlice = false;
+    bool mouseButtonDown = false;
 
     double p0_x[3];
     double p1_x[3];
@@ -469,21 +471,22 @@ public:
 
     virtual void OnMouseMove()
     {
-        vtkRenderWindowInteractor *rwi = this->Interactor;
-        if (this->CurrentImageProperty) {
-            vtkImageProperty *property = this->CurrentImageProperty;
+        const bool buttonPressed = QGuiApplication::mouseButtons() != Qt::NoButton;
+        mouseButtonDown = buttonPressed;
 
-            if (!vtkwin->image_init_window_level.contains(property)) {
-                vtkwin->image_init_window_level.insert(property, property->GetColorWindow());
+        // Applica window/level/pan/zoom solo quando un tasto del mouse e' premuto.
+        if (buttonPressed) {
+            if (this->CurrentImageProperty) {
+                vtkImageProperty *property = this->CurrentImageProperty;
+                if (!vtkwin->image_init_window_level.contains(property)) {
+                    vtkwin->image_init_window_level.insert(property, property->GetColorWindow());
+                }
+                if (!vtkwin->image_init_color_level.contains(property)) {
+                    vtkwin->image_init_color_level.insert(property, property->GetColorLevel());
+                }
             }
-
-            if (!vtkwin->image_init_color_level.contains(property)) {
-
-                vtkwin->image_init_color_level.insert(property, property->GetColorLevel());
-            }
+            vtkInteractorStyleImage::OnMouseMove();
         }
-        // Forward events
-        vtkInteractorStyleImage::OnMouseMove();
         vtkSmartPointer<vtkCoordinate> coordinate = vtkSmartPointer<vtkCoordinate>::New();
         coordinate->SetCoordinateSystemToDisplay();
         coordinate->SetValue(this->GetInteractor()->GetEventPosition()[0],
@@ -617,22 +620,28 @@ public:
 
     virtual void OnLeftButtonDown()
     {
+        mouseButtonDown = true;
         if (vtkwin->liveUpdateProfile) {
             vtkwin->liveUpdateProfile = false;
             vtkwin->profileWin->setLiveProfileFlag(false);
         }
-
         if (vtkwin->profileMode) {
             vtkwin->profileMode = false;
             vtkwin->createProfile(p0_y[0], p0_x[1]);
             return;
         }
-
         vtkInteractorStyleImage::OnLeftButtonDown();
+    }
+
+    virtual void OnLeftButtonUp()
+    {
+        mouseButtonDown = false;
+        vtkInteractorStyleImage::OnLeftButtonUp();
     }
 
     virtual void OnRightButtonDown()
     {
+        mouseButtonDown = true;
         if (vtkwin->profileMode) {
             vtkwin->profileMode = false;
             auto renderer = vtkwin->ui->qVTK1->renderWindow()->GetRenderers()->GetFirstRenderer();
@@ -641,8 +650,25 @@ public:
             vtkwin->ui->qVTK1->renderWindow()->GetInteractor()->Render();
             return;
         }
-
         vtkInteractorStyleImage::OnRightButtonDown();
+    }
+
+    virtual void OnRightButtonUp()
+    {
+        mouseButtonDown = false;
+        vtkInteractorStyleImage::OnRightButtonUp();
+    }
+
+    virtual void OnMiddleButtonDown()
+    {
+        mouseButtonDown = true;
+        vtkInteractorStyleImage::OnMiddleButtonDown();
+    }
+
+    virtual void OnMiddleButtonUp()
+    {
+        mouseButtonDown = false;
+        vtkInteractorStyleImage::OnMiddleButtonUp();
     }
 
     virtual void OnChar()
@@ -1053,7 +1079,7 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
     switch (b) {
     case 0: {
         // ui->setupUi(this);
-
+        qDebug("<<<<<<<<<<<<<<<2d");
         this->setWindowTitle(myfits->GetFileName().c_str());
         this->isDatacube = false;
         ui->menuCamera->menuAction()->setVisible(false);
@@ -1104,8 +1130,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         m_Ren1->GlobalWarningDisplayOff();
         m_Ren1->SetBackground(0.21, 0.23, 0.25);
         QAction *select = new QAction("Select", this);
+        
         select->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
+
         connect(select, SIGNAL(triggered()), this, SLOT(setSelectionFitsViewerInteractorStyle()));
+        
         ui->menuWindow->addAction(select);
         QAction *extract = new QAction("Extract", this);
         extract->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_E));
@@ -1140,9 +1169,11 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         remote->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
         connect(remote, SIGNAL(triggered()), this, SLOT(setSkyRegionSelectorInteractorStyle()));
         compact->addAction(remote);
+       
         QAction *normal_selector = new QAction("Normal", this);
         normal_selector->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_N));
         connect(normal_selector, SIGNAL(triggered()), this, SLOT(setVtkInteractorStyleImage()));
+       
         compact->addAction(normal_selector);
         QAction *selector_3D = new QAction("3D", this);
         selector_3D->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_3));
@@ -3019,6 +3050,7 @@ void vtkwindow_new::setVtkInteractorStyleImageContour()
 
 void vtkwindow_new::setVtkInteractorStyleImage()
 {
+    qDebug("<<<<<sono attivo");
     /*
     Left Mouse button triggers window level events
     CTRL Left Mouse spins the camera around its view plane normal
@@ -3029,6 +3061,7 @@ void vtkwindow_new::setVtkInteractorStyleImage()
     SHIFT Right Mouse triggers pick events
     */
 
+    
     vtkSmartPointer<myVtkInteractorStyleImage> style =
             vtkSmartPointer<myVtkInteractorStyleImage>::New();
 
