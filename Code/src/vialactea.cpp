@@ -20,10 +20,17 @@
 #include "vlkbsimplequerycomposer.h"
 #include "vtkwindowcube.h"
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QSettings>
+#include <QWebEngineSettings>
 #include <QWebChannel>
+#include <QWebEnginePage>
+#include <QDebug>
+#include <cmath>
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -31,6 +38,31 @@ void WebProcess::jsCall(const QString &point, const QString &radius)
 {
     emit processJavascript(point, radius);
 }
+
+// Pagina custom per riportare in log console JS ed eventuali crash del processo di render.
+class LoggingWebPage : public QWebEnginePage
+{
+public:
+    using QWebEnginePage::QWebEnginePage;
+
+protected:
+    void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level,
+                                  const QString &message,
+                                  int lineNumber,
+                                  const QString &sourceID) override
+    {
+        Q_UNUSED(level);
+        qWarning().noquote() << "[JS]" << sourceID << ":" << lineNumber << message;
+    }
+
+    void renderProcessTerminated(RenderProcessTerminationStatus terminationStatus,
+                                 int exitCode) 
+    {
+        qWarning() << "WebEngine render process terminated status" << terminationStatus
+                   << "code" << exitCode;
+        QWebEnginePage::renderProcessTerminated(terminationStatus, exitCode);
+    }
+};
 
 const QString ViaLactea::VLKB_BASE_URL = "https://vlkb.ia2.inaf.it";
 
@@ -56,10 +88,18 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     updateVLKBSetting();
 
-    tilePath =
-            settings.value("tilepath", ViaLactea::VLKB_BASE_URL + "/panoramicview/openlayers.html")
-                    .toString();
-    ui->webView->load(QUrl::fromUserInput(tilePath));
+    // Pagina custom per loggare errori JS/terminate del render process.
+    auto *page = new LoggingWebPage(ui->webView);
+    ui->webView->setPage(page);
+
+    // Configurazioni WebView prima del primo load (necessario per permettere JS e risorse remote).
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, true);
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
+    page->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
+    // Riabilita WebGL: Aladin Lite richiede WebGL per renderizzare. In caso di crash,
+    // si potrà forzare un fallback software impostando QTWEBENGINE_CHROMIUM_FLAGS esternamente.
+    page->settings()->setAttribute(QWebEngineSettings::WebGLEnabled, true);
+    page->settings()->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
     ui->webView->setContextMenuPolicy(Qt::CustomContextMenu);
 
     // create an object for javascript communication
@@ -68,7 +108,21 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     QWebChannel *channel = new QWebChannel(this);
     channel->registerObject("webobj", webobj);
-    ui->webView->page()->setWebChannel(channel);
+    page->setWebChannel(channel);
+
+    // Log di diagnostica sul ciclo di load della pagina.
+    connect(page, &QWebEnginePage::loadStarted, this, []() {
+        qWarning() << "[WebView] load started";
+    });
+    connect(page, &QWebEnginePage::loadProgress, this, [](int p) {
+        qWarning() << "[WebView] load progress" << p;
+    });
+    connect(page, &QWebEnginePage::loadFinished, this, [](bool ok) {
+        qWarning() << "[WebView] load finished" << ok;
+    });
+
+    // Carica la mappa dopo aver impostato settaggi e canale.
+    loadSkyMap();
 
     mapSurvey.insert(0, QPair<QString, QString>("MIPSGAL", "24 um"));
     mapSurvey.insert(1, QPair<QString, QString>("GLIMPSE I", "8.0 um"));
@@ -94,6 +148,56 @@ ViaLactea::~ViaLactea()
     delete ui;
 }
 
+static QString resolveViewerPath(const QString &relativePath)
+{
+    QStringList candidates;
+    QDir appDir(QCoreApplication::applicationDirPath());
+    candidates << appDir.filePath(relativePath);
+
+    QDir parent(appDir);
+    for (int i = 0; i < 5; ++i) {
+        parent.cdUp();
+        candidates << parent.filePath(relativePath);
+    }
+
+    candidates << QDir::current().filePath(relativePath);
+
+    for (const auto &candidate : candidates) {
+        QFileInfo info(candidate);
+        if (info.exists() && info.isFile()) {
+            return info.canonicalFilePath();
+        }
+    }
+    return QString();
+}
+
+QString ViaLactea::defaultAladinLitePath()
+{
+    return resolveViewerPath("PanoramicView/aladinlite.html");
+}
+
+void ViaLactea::loadSkyMap()
+{
+    QString configuredPath = settings.value("tilepath", defaultAladinLitePath()).toString();
+
+    if (!configuredPath.isEmpty()) {
+        tilePath = configuredPath;
+        ui->webView->load(QUrl::fromUserInput(tilePath));
+        return;
+    }
+
+    QString localAladin = ViaLactea::defaultAladinLitePath();
+    if (!localAladin.isEmpty()) {
+        tilePath = localAladin;
+        ui->webView->load(QUrl::fromLocalFile(tilePath));
+        return;
+    }
+
+    QString remoteAladin = VLKB_BASE_URL + "/panoramicview/aladinlite.html";
+    tilePath = remoteAladin;
+    ui->webView->load(QUrl(tilePath));
+}
+
 void ViaLactea::quitApp()
 {
     // Problem not only in this
@@ -104,13 +208,10 @@ void ViaLactea::quitApp()
 
 void ViaLactea::updateVLKBSetting()
 {
-    QString vlkburl = settings.value("vlkburl", "").toString();
-
-    if (vlkburl.isEmpty()) {
-        settings.setValue("vlkburl", VLKB_BASE_URL);
-        settings.setValue("vlkbtableurl", VLKB_BASE_URL + "/tap");
-    }
-
+    QString vlkburl = settings.value("vlkburl", VLKB_BASE_URL).toString();
+    settings.setValue("vlkburl", vlkburl);
+    settings.setValue("vlkbtableurl", VLKB_BASE_URL + "/tap");
+    settings.setValue("tilepath", defaultAladinLitePath());
     settings.sync();
     VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     stringDictWidget->buildDict();
@@ -244,15 +345,33 @@ void ViaLactea::on_webViewRegionSelected(const QString &point, const QString &ar
 
     if (!area.isEmpty()) {
         QStringList pieces = area.split(",");
-        QString dl = QString::number(pieces[0].toDouble(), 'f', 4);
-        if (dl.toDouble() > 4.0)
-            dl = QString::number(4.0, 'f', 4);
-        QString db = QString::number(pieces[1].toDouble(), 'f', 4);
-        if (db.toDouble() > 4.0)
-            db = QString::number(4.0, 'f', 4);
-        ui->dlLineEdit->setText(dl);
-        ui->dbLineEdit->setText(db);
-        ui->radiumLineEdit->setText("");
+        if (pieces.size() == 1) {
+            // Punto/circonferenza: il secondo parametro è il raggio
+            double r = pieces[0].toDouble();
+            ui->radiumLineEdit->setText(QString::number(r, 'f', 4));
+            ui->dlLineEdit->clear();
+            ui->dbLineEdit->clear();
+        } else if (pieces.size() >= 2) {
+            // Rettangolo: dl, db (ma se sono uguali assume raggio)
+            double dlVal = pieces[0].toDouble();
+            double dbVal = pieces[1].toDouble();
+            bool looksLikeRadius = std::fabs(dlVal - dbVal) < 1e-6;
+            if (looksLikeRadius) {
+                ui->radiumLineEdit->setText(QString::number(dlVal, 'f', 4));
+                ui->dlLineEdit->clear();
+                ui->dbLineEdit->clear();
+            } else {
+                QString dl = QString::number(dlVal, 'f', 4);
+                if (dlVal > 4.0)
+                    dl = QString::number(4.0, 'f', 4);
+                QString db = QString::number(dbVal, 'f', 4);
+                if (dbVal > 4.0)
+                    db = QString::number(4.0, 'f', 4);
+                ui->dlLineEdit->setText(dl);
+                ui->dbLineEdit->setText(db);
+                ui->radiumLineEdit->clear();
+            }
+        }
     }
 }
 
@@ -326,8 +445,7 @@ void ViaLactea::on_actionSettings_triggered()
 
 void ViaLactea::reload()
 {
-    tilePath = settings.value("tilepath", "").toString();
-    ui->webView->load(QUrl::fromUserInput(tilePath));
+    loadSkyMap();
     updateVLKBSetting();
 }
 

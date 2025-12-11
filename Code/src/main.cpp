@@ -7,6 +7,8 @@
 #include <QSurfaceFormat>
 #include <QVTKOpenGLNativeWidget.h>
 #include <QWebEngineUrlScheme>
+#include <QByteArray>
+#include <QCoreApplication>
 
 #include <clocale>
 
@@ -19,6 +21,9 @@ int main(int argc, char *argv[])
     QWebEngineUrlScheme::registerScheme(vlvaUrlScheme);
 
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+
+    // Condividi i contesti GL tra VTK e WebEngine per evitare crash del render process.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
     QApplication a(argc, argv);
     a.setApplicationName("Vialactea - Visual Analytics client");

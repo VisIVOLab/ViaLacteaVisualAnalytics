@@ -16,6 +16,9 @@ informations without requiring technical skills to query the data source base (n
 ## Documentation
 The documentation is available [here](https://vlva.readthedocs.io/en/latest/).
 
+## HiPS surveys viewer
+ViaLactea includes two HiPS viewing options: the legacy panoramic view and an Aladin Lite integration (`PanoramicView/aladinlite.html`). You can toggle Aladin Lite from Settings; the legacy panoramic view remains available. Both viewers support point/rectangle selections (fed back to the desktop client) and can load common Galactic Plane surveys or arbitrary HiPS IDs/`hips_url` endpoints. Internet access is required unless local HiPS tiles are provided.
+
 ## Installation
 
 Pre-compiled DMG and Debian packages are available in the [Releases page](https://github.com/NEANIAS-Space/ViaLacteaVisualAnalytics/releases).

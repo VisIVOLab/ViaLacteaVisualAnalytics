@@ -13,7 +13,9 @@
 #include <QProcess>
 #include <QSettings>
 
-SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
+SettingForm::SettingForm(QWidget *parent)
+    : QWidget(parent, Qt::Window),
+      ui(new Ui::SettingForm)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(this);
@@ -48,9 +50,7 @@ void SettingForm::readSettingsFromFile()
 {
     QSettings settings(m_settingsFile, QSettings::IniFormat);
 
-    QString tilePath =
-            settings.value("tilepath", ViaLactea::VLKB_BASE_URL + "/panoramicview/openlayers.html")
-                    .toString();
+    QString tilePath = settings.value("tilepath", ViaLactea::defaultAladinLitePath()).toString();
     ui->TileLineEdit->setText(tilePath);
 
     ui->linePythonExe->setText(settings.value("python.exe", "").toString());
@@ -114,10 +114,8 @@ void SettingForm::caesar_loggedout()
 
 void SettingForm::on_TilePushButton_clicked()
 {
-    QString fn = QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
-    if (!fn.isEmpty()) {
-        ui->TileLineEdit->setText(fn);
-    }
+    // Legacy picker disabilitato: forziamo l'uso di AladinLite
+    ui->TileLineEdit->setText(ViaLactea::defaultAladinLitePath());
 }
 
 void SettingForm::on_OkPushButton_clicked()
