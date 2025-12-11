@@ -9,6 +9,7 @@
 #include <vtkPNGWriter.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkCamera.h>
+#include <vtkSmartPointer.h>
 
 #include "../src/vtkfitsreader2.h"
 

@@ -1,15 +1,15 @@
 #include "render_service.h"
-#include "scene_manager.h"
+#include "distributed_service.h"
 
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QStringLiteral>
 
-RenderService::RenderService()
-    : m_scene(new SceneManager) {}
+RenderService::RenderService(int rank, int size)
+    : m_service(new DistributedService(rank, size)) {}
 
 RenderService::~RenderService() {
-    delete m_scene;
+    delete m_service;
 }
 
 QJsonObject RenderService::handleRequest(const QJsonObject &request) {
@@ -37,17 +37,17 @@ QJsonObject RenderService::handleRequest(const QJsonObject &request) {
 
     if (method == QStringLiteral("loadDataset")) {
         const QString source = params.value(QStringLiteral("source")).toString();
-        return m_scene->loadFits(source);
+        return m_service->loadDataset(source);
     }
 
     if (method == QStringLiteral("setCamera")) {
-        return m_scene->setCamera(params);
+        return m_service->setCamera(params);
     }
 
     if (method == QStringLiteral("renderFrame")) {
         const int w = params.value(QStringLiteral("width")).toInt(800);
         const int h = params.value(QStringLiteral("height")).toInt(600);
-        return m_scene->renderPng(w, h);
+        return m_service->renderFrame(w, h);
     }
 
     return {{"_error", QStringLiteral("Unknown method")}};

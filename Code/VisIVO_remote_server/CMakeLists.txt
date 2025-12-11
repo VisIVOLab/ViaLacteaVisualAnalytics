@@ -23,6 +23,7 @@ find_package(
         InteractionStyle
         IOImage)
 find_package(CFITSIO 4.1.0 QUIET REQUIRED)
+find_package(MPI REQUIRED)
 
 add_executable(VisIVO_remote_server
         main.cpp
@@ -30,6 +31,10 @@ add_executable(VisIVO_remote_server
         rpc_server.h
         render_service.cpp
         render_service.h
+        distributed_service.cpp
+        distributed_service.h
+        worker_loop.cpp
+        worker_loop.h
         scene_manager.cpp
         scene_manager.h
         ../src/vtkfitsreader2.cpp)
@@ -39,7 +44,8 @@ target_include_directories(VisIVO_remote_server PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(VisIVO_remote_server PRIVATE
         Qt6::Core Qt6::Network Qt6::WebSockets
         ${VTK_LIBRARIES}
-        CFITSIO::CFITSIO)
+        CFITSIO::CFITSIO
+        MPI::MPI_CXX)
 
 set_target_properties(VisIVO_remote_server PROPERTIES
         OUTPUT_NAME VisIVO_remote_server)

@@ -5,12 +5,12 @@
 #include <QHostAddress>
 #include <QByteArray>
 
-RpcServer::RpcServer(quint16 port, QObject *parent)
+RpcServer::RpcServer(quint16 port, int rank, int size, QObject *parent)
     : QObject(parent),
       m_server(QStringLiteral("VisIVO Remote Server"), QWebSocketServer::NonSecureMode),
       m_clients(),
       m_port(port),
-      m_service(new RenderService) {
+      m_service(new RenderService(rank, size)) {
 }
 
 bool RpcServer::start() {

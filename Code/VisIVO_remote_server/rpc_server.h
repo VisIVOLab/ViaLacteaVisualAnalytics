@@ -13,7 +13,7 @@ class RenderService;
 class RpcServer : public QObject {
     Q_OBJECT
 public:
-    explicit RpcServer(quint16 port, QObject *parent = nullptr);
+    explicit RpcServer(quint16 port, int rank, int size, QObject *parent = nullptr);
     bool start();
 
 signals:

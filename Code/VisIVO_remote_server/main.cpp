@@ -1,11 +1,27 @@
 #include "rpc_server.h"
+#include "worker_loop.h"
 
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QTextStream>
+#include <mpi.h>
 
 int main(int argc, char *argv[]) {
+    MPI_Init(&argc, &argv);
+
+    int rank = 0, size = 1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Worker ranks run a headless loop
+    if (rank > 0) {
+        WorkerLoop loop(rank, size);
+        loop.run();
+        MPI_Finalize();
+        return 0;
+    }
+
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("VisIVO_remote_server");
     QCoreApplication::setApplicationVersion("0.1");
@@ -22,16 +38,19 @@ int main(int argc, char *argv[]) {
 
     const quint16 port = parser.value(portOpt).toUShort();
 
-    RpcServer server(port);
+    RpcServer server(port, rank, size);
     QObject::connect(&server, &RpcServer::fatalError, [&](const QString &msg) {
         QTextStream(stderr) << msg << Qt::endl;
         QCoreApplication::exit(1);
     });
 
     if (!server.start()) {
+        MPI_Finalize();
         return 1;
     }
 
     QTextStream(stdout) << "VisIVO remote server listening on port " << port << Qt::endl;
-    return app.exec();
+    const int rc = app.exec();
+    MPI_Finalize();
+    return rc;
 }

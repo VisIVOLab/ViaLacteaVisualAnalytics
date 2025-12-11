@@ -3,15 +3,15 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-class SceneManager;
+class DistributedService;
 
 class RenderService {
 public:
-    RenderService();
+    RenderService(int rank, int size);
     ~RenderService();
 
     QJsonObject handleRequest(const QJsonObject &request);
 
 private:
-    SceneManager *m_scene;
+    DistributedService *m_service;
 };

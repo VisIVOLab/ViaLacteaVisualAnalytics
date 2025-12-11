@@ -1,0 +1,23 @@
+#pragma once
+
+#include <QJsonObject>
+#include <QString>
+#include <vector>
+
+class SceneManager;
+
+// Orchestrates MPI workers; falls back to local SceneManager when size==1.
+class DistributedService {
+public:
+    DistributedService(int rank, int size);
+    ~DistributedService();
+
+    QJsonObject loadDataset(const QString &path);
+    QJsonObject setCamera(const QJsonObject &params);
+    QJsonObject renderFrame(int width, int height);
+
+private:
+    int m_rank;
+    int m_size;
+    SceneManager *m_localScene;
+};
