@@ -38,6 +38,8 @@ class ViaLactea : public QMainWindow
 public:
     explicit ViaLactea(QWidget *parent = 0);
     ~ViaLactea();
+    static QString defaultAladinLitePath();
+    static QString defaultLegacyTilePath();
     void reload();
 
     // VLKB URL
@@ -88,6 +90,7 @@ private:
     QSettings settings;
     QString tilePath;
     QMap<int, QPair<QString, QString>> mapSurvey;
+    void loadSkyMap();
 
     void sessionScan(const QString &currentDir, const QDir &rootDir, QStringList &results);
 

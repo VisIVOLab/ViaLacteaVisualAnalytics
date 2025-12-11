@@ -20,10 +20,16 @@
 #include "vlkbsimplequerycomposer.h"
 #include "vtkwindowcube.h"
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QSettings>
+#include <QWebEngineSettings>
 #include <QWebChannel>
+#include <QWebEnginePage>
+#include <QDebug>
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -31,6 +37,31 @@ void WebProcess::jsCall(const QString &point, const QString &radius)
 {
     emit processJavascript(point, radius);
 }
+
+// Pagina custom per riportare in log console JS ed eventuali crash del processo di render.
+class LoggingWebPage : public QWebEnginePage
+{
+public:
+    using QWebEnginePage::QWebEnginePage;
+
+protected:
+    void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level,
+                                  const QString &message,
+                                  int lineNumber,
+                                  const QString &sourceID) override
+    {
+        Q_UNUSED(level);
+        qWarning().noquote() << "[JS]" << sourceID << ":" << lineNumber << message;
+    }
+
+    void renderProcessTerminated(RenderProcessTerminationStatus terminationStatus,
+                                 int exitCode) 
+    {
+        qWarning() << "WebEngine render process terminated status" << terminationStatus
+                   << "code" << exitCode;
+        QWebEnginePage::renderProcessTerminated(terminationStatus, exitCode);
+    }
+};
 
 const QString ViaLactea::VLKB_BASE_URL = "https://vlkb.ia2.inaf.it";
 
@@ -56,10 +87,18 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     updateVLKBSetting();
 
-    tilePath =
-            settings.value("tilepath", ViaLactea::VLKB_BASE_URL + "/panoramicview/openlayers.html")
-                    .toString();
-    ui->webView->load(QUrl::fromUserInput(tilePath));
+    // Pagina custom per loggare errori JS/terminate del render process.
+    auto *page = new LoggingWebPage(ui->webView);
+    ui->webView->setPage(page);
+
+    // Configurazioni WebView prima del primo load (necessario per permettere JS e risorse remote).
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, true);
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
+    page->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
+    // Riabilita WebGL: Aladin Lite richiede WebGL per renderizzare. In caso di crash,
+    // si potrà forzare un fallback software impostando QTWEBENGINE_CHROMIUM_FLAGS esternamente.
+    page->settings()->setAttribute(QWebEngineSettings::WebGLEnabled, true);
+    page->settings()->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
     ui->webView->setContextMenuPolicy(Qt::CustomContextMenu);
 
     // create an object for javascript communication
@@ -68,7 +107,21 @@ ViaLactea::ViaLactea(QWidget *parent)
 
     QWebChannel *channel = new QWebChannel(this);
     channel->registerObject("webobj", webobj);
-    ui->webView->page()->setWebChannel(channel);
+    page->setWebChannel(channel);
+
+    // Log di diagnostica sul ciclo di load della pagina.
+    connect(page, &QWebEnginePage::loadStarted, this, []() {
+        qWarning() << "[WebView] load started";
+    });
+    connect(page, &QWebEnginePage::loadProgress, this, [](int p) {
+        qWarning() << "[WebView] load progress" << p;
+    });
+    connect(page, &QWebEnginePage::loadFinished, this, [](bool ok) {
+        qWarning() << "[WebView] load finished" << ok;
+    });
+
+    // Carica la mappa dopo aver impostato settaggi e canale.
+    loadSkyMap();
 
     mapSurvey.insert(0, QPair<QString, QString>("MIPSGAL", "24 um"));
     mapSurvey.insert(1, QPair<QString, QString>("GLIMPSE I", "8.0 um"));
@@ -92,6 +145,74 @@ ViaLactea::ViaLactea(QWidget *parent)
 ViaLactea::~ViaLactea()
 {
     delete ui;
+}
+
+static QString resolveViewerPath(const QString &relativePath)
+{
+    QStringList candidates;
+    QDir appDir(QCoreApplication::applicationDirPath());
+    candidates << appDir.filePath(relativePath);
+
+    QDir parent(appDir);
+    for (int i = 0; i < 5; ++i) {
+        parent.cdUp();
+        candidates << parent.filePath(relativePath);
+    }
+
+    candidates << QDir::current().filePath(relativePath);
+
+    for (const auto &candidate : candidates) {
+        QFileInfo info(candidate);
+        if (info.exists() && info.isFile()) {
+            return info.canonicalFilePath();
+        }
+    }
+    return QString();
+}
+
+QString ViaLactea::defaultAladinLitePath()
+{
+    return resolveViewerPath("PanoramicView/aladinlite.html");
+}
+
+QString ViaLactea::defaultLegacyTilePath()
+{
+    return resolveViewerPath("PanoramicView/openlayers.html");
+}
+
+void ViaLactea::loadSkyMap()
+{
+    bool useAladin = settings.value("use_aladin_lite", true).toBool();
+    QString configuredPath =
+            settings.value("tilepath", VLKB_BASE_URL + "/panoramicview/openlayers.html").toString();
+
+    // Se si usa Aladin, prova prima un path configurato (anche remoto, es. https://.../aladinlite.html),
+    // altrimenti ricade sul file locale bundled.
+    if (useAladin) {
+        if (!configuredPath.isEmpty()) {
+            tilePath = configuredPath;
+            ui->webView->load(QUrl::fromUserInput(tilePath));
+            return;
+        }
+        QString localAladin = ViaLactea::defaultAladinLitePath();
+        if (!localAladin.isEmpty()) {
+            tilePath = localAladin;
+            ui->webView->load(QUrl::fromLocalFile(tilePath));
+            return;
+        }
+    }
+
+    if (configuredPath.isEmpty() && !useAladin) {
+        QString legacyLocal = ViaLactea::defaultLegacyTilePath();
+        if (!legacyLocal.isEmpty()) {
+            configuredPath = legacyLocal;
+            settings.setValue("tilepath", configuredPath);
+            settings.sync();
+        }
+    }
+
+    tilePath = configuredPath;
+    ui->webView->load(QUrl::fromUserInput(tilePath));
 }
 
 void ViaLactea::quitApp()
@@ -326,8 +447,7 @@ void ViaLactea::on_actionSettings_triggered()
 
 void ViaLactea::reload()
 {
-    tilePath = settings.value("tilepath", "").toString();
-    ui->webView->load(QUrl::fromUserInput(tilePath));
+    loadSkyMap();
     updateVLKBSetting();
 }
 

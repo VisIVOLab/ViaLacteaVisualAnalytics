@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>ViaLactea Aladin Lite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="qwebchannel.js"></script>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #04060a;
+            color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 0.75rem 1rem;
+            background: #0b0f17;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        header .info {
+            font-size: 0.9rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        #selectionLabel {
+            color: #8dd8ff;
+            font-weight: 600;
+        }
+
+        .controls {
+            background: #0a0d14;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.75rem 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1.5rem;
+            align-items: center;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            font-size: 0.85rem;
+        }
+
+        select,
+        input {
+            min-width: 12rem;
+            background: #111423;
+            color: inherit;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 4px;
+            padding: 0.35rem 0.5rem;
+        }
+
+        button {
+            border: none;
+            border-radius: 4px;
+            padding: 0.45rem 0.85rem;
+            background: #3a86ff;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        #statusMessage {
+            min-height: 1.2rem;
+        }
+
+        #statusMessage.error {
+            color: #ff9090;
+        }
+
+        #aladin-lite-div {
+            flex: 1;
+            min-height: 600px;
+            position: relative;
+        }
+
+        #rectOverlay {
+            position: absolute;
+            border: 1px dashed rgba(80, 180, 255, 0.9);
+            background: rgba(80, 180, 255, 0.12);
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>ViaLactea HiPS (Aladin Lite)</h1>
+    <div class="info">
+        <div>Coord: <span id="pointerCoords">--</span></div>
+        <div>FOV: <span id="fovLabel">--</span></div>
+        <div>Modalità: <span id="selectionLabel">Navigazione</span></div>
+    </div>
+</header>
+<section class="controls">
+    <label>
+        Survey
+        <select id="surveySelect"></select>
+    </label>
+    <label>
+        ID/URL
+        <input id="customSurvey" type="text" placeholder="es. CDS/P/DSS2/color o hips_url" />
+    </label>
+    <button id="loadCustom">Carica</button>
+    <div id="statusMessage"></div>
+</section>
+<div id="aladin-lite-div">
+    <div id="rectOverlay"></div>
+</div>
+<script>
+(() => {
+    // Usa sempre la v3 (wasm/WebGL2). Se fallisce il load, riprova sul mirror.
+    const ALADIN_SOURCES = [
+        "https://aladin.cds.unistra.fr/AladinLite/api/v3/3.6.5/aladin.js",
+        "https://alasky.cds.unistra.fr/AladinLite/api/v3/3.6.5/aladin.js"
+    ];
+
+    const debug = msg => {
+        console.log(msg);
+        const statusMessage = document.getElementById("statusMessage");
+        if (statusMessage) statusMessage.textContent = msg;
+    };
+
+    debug("bootstrap: DOM parsing");
+
+    // Collettore errori per capire cosa succede in WebView (Qt).
+    function reportError(msg, err) {
+        console.error(msg, err || "");
+        const statusMessage = document.getElementById("statusMessage");
+        if (statusMessage) {
+            const text = [msg, err && err.message ? err.message : (err ? String(err) : "")]
+                .filter(Boolean)
+                .join(" - ");
+            statusMessage.textContent = text;
+            statusMessage.classList.add("error");
+        }
+        const container = document.getElementById("aladin-lite-div");
+        if (container) {
+            const pre = document.createElement("pre");
+            pre.style.position = "absolute";
+            pre.style.right = "8px";
+            pre.style.bottom = "8px";
+            pre.style.maxWidth = "50%";
+            pre.style.maxHeight = "35%";
+            pre.style.overflow = "auto";
+            pre.style.background = "rgba(0,0,0,0.65)";
+            pre.style.color = "#ffb0b0";
+            pre.style.padding = "6px";
+            pre.style.margin = "0";
+            pre.style.fontSize = "11px";
+            pre.style.border = "1px solid rgba(255,255,255,0.15)";
+            pre.textContent = text;
+            container.appendChild(pre);
+        }
+    }
+
+    function showFatalError(msg) {
+        const container = document.getElementById("aladin-lite-div");
+        const div = document.createElement("div");
+        div.style.position = "absolute";
+        div.style.inset = "0";
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.justifyContent = "center";
+        div.style.background = "rgba(0,0,0,0.7)";
+        div.style.color = "#ff8c8c";
+        div.style.fontWeight = "600";
+        div.style.padding = "1rem";
+        div.textContent = msg;
+        container.appendChild(div);
+    }
+
+    const HIPS_MIRROR = "https://alasky.cds.unistra.fr/";
+    const HIPS_MAP = {
+        "P/DSS2/color": "https://alasky.cds.unistra.fr/DSS/DSSColor/",
+        "P/2MASS/color": "https://alasky.cds.unistra.fr/2MASS/Color/",
+        "P/GALEXGR6_7/NUV": "https://alasky.cds.unistra.fr/GALEX/GALEXGR6/NUV/",
+        "P/GALEXGR6_7/FUV": "https://alasky.cds.unistra.fr/GALEX/GALEXGR6/FUV/",
+        "P/Planck/R3/HFI/color": "https://alasky.cds.unistra.fr/Planck/R3/HFI/color/",
+        "P/unWISE/color-W2-W1W2-W1": "https://alasky.cds.unistra.fr/unWISE/W2W1W2/",
+        "P/PanSTARRS/DR1/color-i-r-g": "https://alasky.cds.unistra.fr/PanSTARRS/DR1/color-i-r-g/",
+        "P/Fermi/4": "https://alasky.cds.unistra.fr/Fermi/4/",
+        "C/HI4PI/HI": "https://alasky.cds.unistra.fr/HI4PI/HI/",
+        "HiGAL70": "http://cade.irap.omp.eu/documents/Ancillary/4Aladin/Higal_70/",
+        "HiGAL160": "http://cade.irap.omp.eu/documents/Ancillary/4Aladin/Higal_160/",
+        "HiGAL250": "http://cade.irap.omp.eu/documents/Ancillary/4Aladin/Higal_250/",
+        "HiGAL350": "http://cade.irap.omp.eu/documents/Ancillary/4Aladin/Higal_350/",
+        "HiGAL500": "http://cade.irap.omp.eu/documents/Ancillary/4Aladin/Higal_500/"
+    };
+
+    const PRESET_SURVEYS = [
+        { id: "HiGAL70", label: "Hi-GAL 70" },
+        { id: "HiGAL160", label: "Hi-GAL 160" },
+        { id: "HiGAL250", label: "Hi-GAL 250" },
+        { id: "HiGAL350", label: "Hi-GAL 350" },
+        { id: "HiGAL500", label: "Hi-GAL 500" }
+    ];
+
+    const surveySelect = document.getElementById("surveySelect");
+    const customInput = document.getElementById("customSurvey");
+    const loadCustomBtn = document.getElementById("loadCustom");
+    const statusMessage = document.getElementById("statusMessage");
+    const pointerCoords = document.getElementById("pointerCoords");
+    const selectionLabel = document.getElementById("selectionLabel");
+    const fovLabel = document.getElementById("fovLabel");
+    const rectOverlay = document.getElementById("rectOverlay");
+    const container = document.getElementById("aladin-lite-div");
+
+    PRESET_SURVEYS.forEach((s, idx) => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.label;
+        if (idx === 0) opt.selected = true;
+        surveySelect.appendChild(opt);
+    });
+
+    let qtBridge = null;
+    if (window.qt && window.qt.webChannelTransport) {
+        new QWebChannel(window.qt.webChannelTransport, channel => {
+            qtBridge = channel.objects.webobj;
+        });
+    }
+
+    function setStatus(msg, isError = false) {
+        statusMessage.textContent = msg || "";
+        statusMessage.classList.toggle("error", !!isError);
+    }
+
+    function updateSelectionLabel(mode) {
+        const map = {
+            none: "Navigazione",
+            point: "Selezione a punto",
+            rect: "Selezione rettangolare"
+        };
+        selectionLabel.textContent = map[mode] || map.none;
+    }
+
+    // Galactic conversion
+    const toRad = deg => (deg * Math.PI) / 180.0;
+    const toDeg = rad => (rad * 180.0) / Math.PI;
+    function eqToGal(raDeg, decDeg) {
+        const ra = toRad(raDeg);
+        const dec = toRad(decDeg);
+        const alphaG = toRad(192.85948);
+        const deltaG = toRad(27.12825);
+        const lOmega = toRad(32.93192);
+        const sinB = Math.sin(dec) * Math.sin(deltaG)
+            + Math.cos(dec) * Math.cos(deltaG) * Math.cos(ra - alphaG);
+        const b = Math.asin(Math.max(-1, Math.min(1, sinB)));
+        let l = Math.atan2(
+            Math.sin(ra - alphaG) * Math.cos(dec),
+            Math.cos(dec) * Math.sin(deltaG) * Math.cos(ra - alphaG) - Math.sin(dec) * Math.cos(deltaG)
+        ) + lOmega;
+        l = (l + 2 * Math.PI) % (2 * Math.PI);
+        return { lon: toDeg(l), lat: toDeg(b) };
+    }
+
+    function emitSelection(point, radius) {
+        if (qtBridge && typeof qtBridge.jsCall === "function") {
+            qtBridge.jsCall(point, radius);
+        }
+    }
+
+    function resolveSurvey(idOrUrl) {
+        const trimmed = (idOrUrl || "").trim();
+        if (!trimmed) return "";
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (HIPS_MAP[trimmed]) return HIPS_MAP[trimmed];
+        let normalized = trimmed.replace(/^CDS\//, "").replace(/^\/+/, "");
+        normalized = normalized.replace(/^(P|C)\//, "");
+        return HIPS_MIRROR + normalized + (normalized.endsWith("/") ? "" : "/");
+    }
+
+    function fovToNumber(fov) {
+        if (typeof fov === "number") return fov;
+        if (Array.isArray(fov) && fov.length > 0 && typeof fov[0] === "number") return fov[0];
+        if (fov && typeof fov.x === "number") return fov.x;
+        return null;
+    }
+
+    let aladin = null;
+    let selectionMode = "none";
+
+    function instantiateAladin(survey) {
+        if (!window.A || typeof A.aladin !== "function") {
+            reportError("A.aladin non disponibile, caricamente script fallito?");
+            return;
+        }
+        debug("instantiateAladin start");
+        aladin = A.aladin(container, {
+            survey: resolveSurvey(survey || PRESET_SURVEYS[0].id),
+            fov: 60,
+            target: "0 +0",
+            showReticle: true,
+            showCooGrid: true,
+            showProjectionControl: false,
+            showContextMenu: false,
+            showLayersControl: false,
+            showProjectionControl: false,
+            cooFrame: "galactic"
+        });
+        debug("instantiateAladin done");
+
+        if (aladin && aladin.getFov) {
+            const f = fovToNumber(aladin.getFov());
+            if (f !== null) {
+                fovLabel.textContent = `${f.toFixed(2)}°`;
+            }
+        }
+
+        aladin.on("zoomChanged", fov => {
+            const f = fovToNumber(fov);
+            if (f !== null) {
+                fovLabel.textContent = `${f.toFixed(2)}°`;
+            }
+        });
+
+        const toNum = v => {
+            if (v === undefined || v === null) return NaN;
+            if (typeof v === "object") {
+                return toNum(v.value ?? v.ra ?? v.dec ?? v.lon ?? v.lat ?? v.x ?? v.y);
+            }
+            const n = Number(v);
+            return Number.isFinite(n) ? n : NaN;
+        };
+
+        const updatePointerCoords = ev => {
+            // Usa le coord world calcolate da Aladin (come il box nativo):
+            // 1) se abbiamo x,y di schermo -> pix2world
+            // 2) fallback su getRaDec (centro)
+            let lon, lat;
+
+            if (ev && typeof ev === "object" && Number.isFinite(ev.x) && Number.isFinite(ev.y)
+                    && aladin && typeof aladin.pix2world === "function") {
+                const world = aladin.pix2world(ev.x, ev.y);
+                if (Array.isArray(world) && world.length >= 2) {
+                    lon = toNum(world[0]);
+                    lat = toNum(world[1]);
+                }
+            }
+
+            if ((!Number.isFinite(lon) || !Number.isFinite(lat)) && aladin && typeof aladin.getRaDec === "function") {
+                const pos = aladin.getRaDec();
+                if (Array.isArray(pos) && pos.length >= 2) {
+                    lon = toNum(pos[0]);
+                    lat = toNum(pos[1]);
+                } else if (pos && typeof pos === "object") {
+                    lon = toNum(pos.lon ?? pos.ra ?? pos.x);
+                    lat = toNum(pos.lat ?? pos.dec ?? pos.y);
+                }
+            }
+
+            if (Number.isFinite(lon) && Number.isFinite(lat)) {
+                pointerCoords.textContent = `${lon.toFixed(7)},${lat.toFixed(7)}`;
+            } else {
+                pointerCoords.textContent = "NaN,NaN";
+            }
+        };
+
+        aladin.on("positionChanged", updatePointerCoords);
+        aladin.on("mouseMove", updatePointerCoords);
+        aladin.on("mousemove", updatePointerCoords);
+        container.addEventListener("mousemove", ev => updatePointerCoords({ x: ev.offsetX, y: ev.offsetY }));
+
+        aladin.on("click", (ra, dec) => {
+            if (selectionMode !== "point") return;
+            if (!Number.isFinite(ra) || !Number.isFinite(dec)) {
+                setStatus("Coordinate non valide", true);
+                return;
+            }
+            emitSelection(`${ra.toFixed(4)},${dec.toFixed(4)}`, "");
+            setStatus(`Punto: ${ra.toFixed(4)}, ${dec.toFixed(4)}`);
+        });
+
+        // inizializza subito il label coord
+        updatePointerCoords();
+    }
+
+    function ensureAladin() {
+        if (!aladin) {
+            instantiateAladin(surveySelect.value);
+        }
+    }
+
+    function loadSurvey(id) {
+        ensureAladin();
+        const trimmed = (id || "").trim();
+        if (!trimmed) return;
+        customInput.value = trimmed;
+        try {
+            aladin.setImageSurvey(resolveSurvey(trimmed));
+            setStatus(`Survey: ${trimmed}`);
+        } catch (err) {
+            setStatus(`Errore: ${err && err.message ? err.message : "impossibile caricare"}`, true);
+        }
+    }
+
+    surveySelect.addEventListener("change", () => loadSurvey(surveySelect.value));
+    loadCustomBtn.addEventListener("click", () => loadSurvey(customInput.value));
+
+    // Rectangle selection overlay using screen coords + pix2world
+    let rectStart = null;
+    const rectMouseDown = evt => {
+        if (selectionMode !== "rect" || evt.button !== 0) return;
+        rectStart = { x: evt.offsetX, y: evt.offsetY };
+        updateRectOverlay(rectStart, rectStart);
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        evt.stopPropagation();
+        // blocca pan/scroll durante il drag del rettangolo
+        if (aladin && typeof aladin.setNavigationMode === "function") {
+            aladin.setNavigationMode("none");
+        } else if (aladin && aladin.view && aladin.view.dragHandler) {
+            aladin.view.dragHandler.enabled = false;
+            aladin.view.wheelHandler && (aladin.view.wheelHandler.enabled = false);
+        }
+    };
+
+    const rectMouseMove = evt => {
+        if (selectionMode !== "rect" || !rectStart) return;
+        updateRectOverlay(rectStart, { x: evt.offsetX, y: evt.offsetY });
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        evt.stopPropagation();
+    };
+
+    const rectMouseUp = evt => {
+        if (selectionMode !== "rect" || !rectStart || evt.button !== 0) return;
+        const rect = container.getBoundingClientRect();
+        const endX = Number.isFinite(evt.offsetX) ? evt.offsetX : (evt.clientX - rect.left);
+        const endY = Number.isFinite(evt.offsetY) ? evt.offsetY : (evt.clientY - rect.top);
+        const rectEnd = { x: endX, y: endY };
+        const startWorld = pix2world(rectStart.x, rectStart.y);
+        const endWorld = pix2world(rectEnd.x, rectEnd.y);
+        clearRectOverlay();
+        rectStart = null;
+        if (!startWorld || !endWorld) return;
+
+        const galStart = eqToGal(startWorld[0], startWorld[1]);
+        const galEnd = eqToGal(endWorld[0], endWorld[1]);
+        const dl = Math.abs(galStart.lon - galEnd.lon);
+        const db = Math.abs(galStart.lat - galEnd.lat);
+        const centerLon = (galStart.lon + galEnd.lon) / 2;
+        const centerLat = (galStart.lat + galEnd.lat) / 2;
+
+        emitSelection(`${centerLon.toFixed(4)},${centerLat.toFixed(4)}`,
+                      `${dl.toFixed(4)},${db.toFixed(4)}`);
+        setStatus(`Rettangolo: centro ${centerLon.toFixed(4)},${centerLat.toFixed(4)} dim ${dl.toFixed(4)}×${db.toFixed(4)}`);
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        evt.stopPropagation();
+        // riabilita pan/scroll
+        if (aladin && typeof aladin.setNavigationMode === "function") {
+            aladin.setNavigationMode("drag");
+        } else if (aladin && aladin.view && aladin.view.dragHandler) {
+            aladin.view.dragHandler.enabled = true;
+            aladin.view.wheelHandler && (aladin.view.wheelHandler.enabled = true);
+        }
+    };
+
+    container.addEventListener("mousedown", rectMouseDown, true);
+    container.addEventListener("mousemove", rectMouseMove, true);
+    container.addEventListener("mouseup", rectMouseUp, true);
+    // ulteriore blocco su document per evitare che altri handler pan/scroll di Aladin ricevano eventi
+    document.addEventListener("mousemove", evt => {
+        if (selectionMode === "rect" && rectStart) {
+            rectMouseMove(evt);
+        }
+    }, true);
+    document.addEventListener("mouseup", evt => {
+        if (selectionMode === "rect" && rectStart) {
+            rectMouseUp(evt);
+        }
+    }, true);
+
+    function updateRectOverlay(start, end) {
+        const left = Math.min(start.x, end.x);
+        const top = Math.min(start.y, end.y);
+        const width = Math.abs(end.x - start.x);
+        const height = Math.abs(end.y - start.y);
+        rectOverlay.style.display = "block";
+        rectOverlay.style.left = `${left}px`;
+        rectOverlay.style.top = `${top}px`;
+        rectOverlay.style.width = `${width}px`;
+        rectOverlay.style.height = `${height}px`;
+    }
+
+    function clearRectOverlay() {
+        rectOverlay.style.display = "none";
+    }
+
+    function pix2world(x, y) {
+        if (!aladin) return null;
+        const fn = aladin.pix2world || (aladin.view && aladin.view.pix2world);
+        if (!fn) return null;
+        try {
+            return fn.call(aladin.view || aladin, x, y);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    window.activatePointSelection = enabled => {
+        selectionMode = enabled ? "point" : "none";
+        updateSelectionLabel(selectionMode);
+    };
+
+    window.activateRectangularSelection = enabled => {
+        selectionMode = enabled ? "rect" : "none";
+        if (!enabled) {
+            clearRectOverlay();
+        }
+        updateSelectionLabel(selectionMode);
+    };
+
+    // intercetta errori JS per la webview Qt (che spesso non espone la console)
+    window.addEventListener("error", evt => {
+        reportError("window.onerror", evt.error || evt.message);
+    });
+    window.addEventListener("unhandledrejection", evt => {
+        reportError("unhandledrejection", evt.reason);
+    });
+
+    function bootstrapAladin() {
+        debug("bootstrapAladin: start");
+        const tryLoad = (idx = 0) => {
+            if (idx >= ALADIN_SOURCES.length) {
+                showFatalError("Aladin Lite non disponibile (tutti i sorgenti falliti).");
+                return;
+            }
+            const src = ALADIN_SOURCES[idx];
+            const s = document.createElement("script");
+            s.src = src;
+            s.onload = () => {
+                debug("script loaded " + src);
+                if (!window.A) {
+                    reportError("Aladin caricato ma A undefined da " + src);
+                    tryLoad(idx + 1);
+                    return;
+                }
+                if (typeof A.aladin !== "function") {
+                    reportError("A.aladin non è una funzione, provo fallback", src);
+                    tryLoad(idx + 1);
+                    return;
+                }
+                // v3: usa A.init; v2: non ha init, si va direttamente.
+                const initPromise = A.init
+                        ? A.init
+                        : (A.start ? A.start() : null);
+                if (initPromise && typeof initPromise.then === "function") {
+                    debug("A.init promise start");
+                    const initTimeout = setTimeout(() => {
+                        const msg = "A.init timeout: WebGL/wasm non disponibile nel WebView Qt";
+                        reportError(msg, src);
+                        showFatalError(msg + " (" + src + ")");
+                    }, 7000);
+                    initPromise
+                        .then(() => {
+                            clearTimeout(initTimeout);
+                            debug("A.init ok");
+                            ensureAladin();
+                            customInput.value = surveySelect.value;
+                            setStatus(`Survey: ${surveySelect.value}`);
+                        })
+                        .catch(err2 => {
+                            clearTimeout(initTimeout);
+                            reportError("A.init failed", err2);
+                            const msg = err2 && err2.message ? err2.message : String(err2);
+                            showFatalError("Impossibile inizializzare Aladin Lite (A.init): " + msg);
+                        });
+                } else {
+                    // Nessun init (tipico della v2), procedi subito.
+                    debug("A.init non presente, provo instanziazione diretta (fallback v2)");
+                    ensureAladin();
+                    customInput.value = surveySelect.value;
+                    setStatus(`Survey: ${surveySelect.value}`);
+                }
+            };
+            s.onerror = () => {
+                reportError("Aladin load failed from " + src);
+                tryLoad(idx + 1);
+            };
+            document.head.appendChild(s);
+        };
+        tryLoad();
+    }
+
+    bootstrapAladin();
+})();
+</script>
+</body>
+</html>

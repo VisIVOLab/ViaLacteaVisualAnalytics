@@ -6,6 +6,7 @@
 #include "vialactea.h"
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QFileDialog>
@@ -13,10 +14,16 @@
 #include <QProcess>
 #include <QSettings>
 
-SettingForm::SettingForm(QWidget *parent) : QWidget(parent, Qt::Window), ui(new Ui::SettingForm)
+SettingForm::SettingForm(QWidget *parent)
+    : QWidget(parent, Qt::Window),
+      ui(new Ui::SettingForm),
+      m_useAladinLite(new QCheckBox("Use Aladin Lite (HiPS)", this))
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(this);
+    if (ui->groupBox && ui->groupBox->layout()) {
+        ui->groupBox->layout()->addWidget(m_useAladinLite);
+    }
     ui->caesarGroupBox->hide();
     ui->groupBox_4->hide();
     ui->vlkbLogoutButton->hide();
@@ -52,6 +59,9 @@ void SettingForm::readSettingsFromFile()
             settings.value("tilepath", ViaLactea::VLKB_BASE_URL + "/panoramicview/openlayers.html")
                     .toString();
     ui->TileLineEdit->setText(tilePath);
+
+    bool useAladin = settings.value("use_aladin_lite", true).toBool();
+    m_useAladinLite->setChecked(useAladin);
 
     ui->linePythonExe->setText(settings.value("python.exe", "").toString());
 
@@ -114,7 +124,8 @@ void SettingForm::caesar_loggedout()
 
 void SettingForm::on_TilePushButton_clicked()
 {
-    QString fn = QFileDialog::getOpenFileName(this, "Html file", QString(), "openlayers.html");
+    QString fn =
+            QFileDialog::getOpenFileName(this, "Html file", QString(), "Html files (*.html *.htm)");
     if (!fn.isEmpty()) {
         ui->TileLineEdit->setText(fn);
     }
@@ -125,6 +136,7 @@ void SettingForm::on_OkPushButton_clicked()
     QSettings settings(m_settingsFile, QSettings::IniFormat);
     settings.setValue("python.exe", ui->linePythonExe->text());
     settings.setValue("tilepath", ui->TileLineEdit->text());
+    settings.setValue("use_aladin_lite", m_useAladinLite->isChecked());
     settings.setValue("glyphmax", ui->glyphLineEdit->text());
     settings.setValue("downscaleSize", ui->textDownscaleSize->text().toInt());
     settings.setValue("vlkb.search", ui->checkSearchOnImport->isChecked());

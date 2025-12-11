@@ -4,6 +4,7 @@
 #include "authwrapper.h"
 
 #include <QWidget>
+#include <QCheckBox>
 
 namespace Ui {
 class SettingForm;
@@ -40,6 +41,7 @@ private:
     QString m_settingsFile;
     AuthWrapper *m_ia2VlkbAuth;
     AuthWrapper *m_caesarAuth;
+    QCheckBox *m_useAladinLite;
 };
 
 #endif // SETTINGFORM_H
