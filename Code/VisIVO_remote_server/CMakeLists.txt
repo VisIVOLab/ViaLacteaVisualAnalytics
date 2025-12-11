@@ -8,17 +8,19 @@ set(CMAKE_AUTOMOC ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Network WebSockets)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Network WebSockets Gui)
 find_package(
         VTK 9.1.0 REQUIRED QUIET
         COMPONENTS
         CommonCore
         CommonDataModel
         FiltersCore
+        FiltersGeneral
         ImagingCore
         ImagingMath
         RenderingCore
         RenderingOpenGL2
+        RenderingVolumeOpenGL2
         RenderingImage
         InteractionStyle
         IOImage)
@@ -42,7 +44,7 @@ add_executable(VisIVO_remote_server
 target_include_directories(VisIVO_remote_server PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(VisIVO_remote_server PRIVATE
-        Qt6::Core Qt6::Network Qt6::WebSockets
+        Qt6::Core Qt6::Network Qt6::WebSockets Qt6::Gui
         ${VTK_LIBRARIES}
         CFITSIO::CFITSIO
         MPI::MPI_CXX)

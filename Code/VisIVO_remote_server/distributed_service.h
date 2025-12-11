@@ -14,7 +14,7 @@ public:
 
     QJsonObject loadDataset(const QString &path);
     QJsonObject setCamera(const QJsonObject &params);
-    QJsonObject renderFrame(int width, int height);
+    QJsonObject renderFrame(int width, int height, const QString &mode = QString(), const QJsonObject &volumeParams = QJsonObject());
 
 private:
     int m_rank;

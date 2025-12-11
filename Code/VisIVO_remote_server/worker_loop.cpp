@@ -38,14 +38,17 @@ void WorkerLoop::run() {
         } else if (cmd == CMD_RENDER) {
             int dims[2] = {800, 600};
             MPI_Bcast(dims, 2, MPI_INT, 0, MPI_COMM_WORLD);
-            auto res = m_scene->renderPng(dims[0], dims[1]);
-            QByteArray img = res.value(QStringLiteral("image")).toString().toLatin1();
-            // Note: img is base64; send raw bytes of decoded base64 to reduce size
-            QByteArray raw = QByteArray::fromBase64(img);
-            int sz = raw.size();
-            MPI_Send(&sz, 1, MPI_INT, 0, FRAME_TAG, MPI_COMM_WORLD);
-            if (sz > 0) {
-                MPI_Send(raw.data(), sz, MPI_CHAR, 0, FRAME_TAG + 1, MPI_COMM_WORLD);
+            QByteArray rgba, depth;
+            auto res = m_scene->renderRaw(dims[0], dims[1], rgba, depth);
+            int rgbaSize = rgba.size();
+            int depthSize = depth.size();
+            MPI_Send(&rgbaSize, 1, MPI_INT, 0, FRAME_TAG, MPI_COMM_WORLD);
+            MPI_Send(&depthSize, 1, MPI_INT, 0, FRAME_TAG + 1, MPI_COMM_WORLD);
+            if (rgbaSize > 0) {
+                MPI_Send(rgba.data(), rgbaSize, MPI_CHAR, 0, FRAME_TAG + 2, MPI_COMM_WORLD);
+            }
+            if (depthSize > 0) {
+                MPI_Send(depth.data(), depthSize, MPI_CHAR, 0, FRAME_TAG + 3, MPI_COMM_WORLD);
             }
         }
     }

@@ -47,7 +47,9 @@ QJsonObject RenderService::handleRequest(const QJsonObject &request) {
     if (method == QStringLiteral("renderFrame")) {
         const int w = params.value(QStringLiteral("width")).toInt(800);
         const int h = params.value(QStringLiteral("height")).toInt(600);
-        return m_service->renderFrame(w, h);
+        const QString mode = params.value(QStringLiteral("mode")).toString();
+        const QJsonObject vol = params.value(QStringLiteral("volume")).toObject();
+        return m_service->renderFrame(w, h, mode, vol);
     }
 
     return {{"_error", QStringLiteral("Unknown method")}};
