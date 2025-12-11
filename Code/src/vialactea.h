@@ -39,7 +39,6 @@ public:
     explicit ViaLactea(QWidget *parent = 0);
     ~ViaLactea();
     static QString defaultAladinLitePath();
-    static QString defaultLegacyTilePath();
     void reload();
 
     // VLKB URL

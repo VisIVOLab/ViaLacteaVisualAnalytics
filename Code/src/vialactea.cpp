@@ -176,44 +176,26 @@ QString ViaLactea::defaultAladinLitePath()
     return resolveViewerPath("PanoramicView/aladinlite.html");
 }
 
-QString ViaLactea::defaultLegacyTilePath()
-{
-    return resolveViewerPath("PanoramicView/openlayers.html");
-}
-
 void ViaLactea::loadSkyMap()
 {
-    bool useAladin = settings.value("use_aladin_lite", true).toBool();
-    QString configuredPath =
-            settings.value("tilepath", VLKB_BASE_URL + "/panoramicview/openlayers.html").toString();
+    QString configuredPath = settings.value("tilepath", defaultAladinLitePath()).toString();
 
-    // Se si usa Aladin, prova prima un path configurato (anche remoto, es. https://.../aladinlite.html),
-    // altrimenti ricade sul file locale bundled.
-    if (useAladin) {
-        if (!configuredPath.isEmpty()) {
-            tilePath = configuredPath;
-            ui->webView->load(QUrl::fromUserInput(tilePath));
-            return;
-        }
-        QString localAladin = ViaLactea::defaultAladinLitePath();
-        if (!localAladin.isEmpty()) {
-            tilePath = localAladin;
-            ui->webView->load(QUrl::fromLocalFile(tilePath));
-            return;
-        }
+    if (!configuredPath.isEmpty()) {
+        tilePath = configuredPath;
+        ui->webView->load(QUrl::fromUserInput(tilePath));
+        return;
     }
 
-    if (configuredPath.isEmpty() && !useAladin) {
-        QString legacyLocal = ViaLactea::defaultLegacyTilePath();
-        if (!legacyLocal.isEmpty()) {
-            configuredPath = legacyLocal;
-            settings.setValue("tilepath", configuredPath);
-            settings.sync();
-        }
+    QString localAladin = ViaLactea::defaultAladinLitePath();
+    if (!localAladin.isEmpty()) {
+        tilePath = localAladin;
+        ui->webView->load(QUrl::fromLocalFile(tilePath));
+        return;
     }
 
-    tilePath = configuredPath;
-    ui->webView->load(QUrl::fromUserInput(tilePath));
+    QString remoteAladin = VLKB_BASE_URL + "/panoramicview/aladinlite.html";
+    tilePath = remoteAladin;
+    ui->webView->load(QUrl(tilePath));
 }
 
 void ViaLactea::quitApp()
@@ -226,13 +208,10 @@ void ViaLactea::quitApp()
 
 void ViaLactea::updateVLKBSetting()
 {
-    QString vlkburl = settings.value("vlkburl", "").toString();
-
-    if (vlkburl.isEmpty()) {
-        settings.setValue("vlkburl", VLKB_BASE_URL);
-        settings.setValue("vlkbtableurl", VLKB_BASE_URL + "/tap");
-    }
-
+    QString vlkburl = settings.value("vlkburl", VLKB_BASE_URL).toString();
+    settings.setValue("vlkburl", vlkburl);
+    settings.setValue("vlkbtableurl", VLKB_BASE_URL + "/tap");
+    settings.setValue("tilepath", defaultAladinLitePath());
     settings.sync();
     VialacteaStringDictWidget *stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     stringDictWidget->buildDict();

@@ -410,7 +410,7 @@
                 return;
             }
             emitSelection(`${ra.toFixed(4)},${dec.toFixed(4)}`, "");
-            setStatus(`Punto: ${ra.toFixed(4)}, ${dec.toFixed(4)}`);
+            // non mostrare messaggi in pagina
         });
 
         // inizializza subito il label coord
@@ -430,7 +430,7 @@
         customInput.value = trimmed;
         try {
             aladin.setImageSurvey(resolveSurvey(trimmed));
-            setStatus(`Survey: ${trimmed}`);
+            // no status in pagina
         } catch (err) {
             setStatus(`Errore: ${err && err.message ? err.message : "impossibile caricare"}`, true);
         }
@@ -468,7 +468,6 @@
 
         const rectMouseUp = evt => {
             if (selectionMode !== "rect" || !rectStart) return;
-            console.log("[VL] rectMouseUp evt", { btn: evt.button, x: evt.clientX, y: evt.clientY, ox: evt.offsetX, oy: evt.offsetY });
             const rect = container.getBoundingClientRect();
             const endX = Number.isFinite(evt.offsetX) ? evt.offsetX : (evt.clientX - rect.left);
             const endY = Number.isFinite(evt.offsetY) ? evt.offsetY : (evt.clientY - rect.top);
@@ -521,7 +520,6 @@
                 const eq = galToEq(lg, bg);
                 return [eq.ra, eq.dec];
             });
-            console.log("[VL] draw overlay rect gal", polyPtsGal, "eq", polyPtsEq);
             overlayRect.add(A.polygon(polyPtsEq, { color: '#ee2345', lineWidth: 2 }));
             aladin.view.requestRedraw && aladin.view.requestRedraw();
         } catch (e) {
@@ -531,7 +529,6 @@
         // Invia a ViaLactea: point = glon,glat  ; area = dl,db
         emitSelection(`${centerLon.toFixed(4)},${centerLat.toFixed(4)}`,
                       `${dl.toFixed(4)},${db.toFixed(4)}`);
-        setStatus(`Rettangolo: centro ${centerLon.toFixed(4)},${centerLat.toFixed(4)} dim ${dl.toFixed(4)}×${db.toFixed(4)}`);
         evt.preventDefault();
         evt.stopImmediatePropagation();
         evt.stopPropagation();
@@ -624,7 +621,6 @@
 
             emitSelection(`${centerLon.toFixed(4)},${centerLat.toFixed(4)}`,
                           `${radius.toFixed(4)},${radius.toFixed(4)}`);
-            setStatus(`Cerchio: centro ${centerLon.toFixed(4)},${centerLat.toFixed(4)} r ${radius.toFixed(4)}°`);
         }
         evt.preventDefault();
         evt.stopImmediatePropagation();
