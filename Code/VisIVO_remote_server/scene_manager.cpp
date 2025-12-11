@@ -95,9 +95,11 @@ QJsonObject SceneManager::loadFits(const QString &path) {
 
     int dims[3];
     volume->GetDimensions(dims);
-    if (dims[0] < 1 || dims[1] < 1 || dims[2] < 1) {
+    // Support anche immagini 2D (NAXIS=2): in quel caso dims[2] può essere 1
+    if (dims[0] < 1 || dims[1] < 1) {
         return {{"_error", QStringLiteral("FITS dimensions invalid")}};
     }
+    if (dims[2] < 1) dims[2] = 1;
     m_numSlices = dims[2];
 
     volume->GetScalarRange(m_range);
