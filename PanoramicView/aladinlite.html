@@ -128,14 +128,6 @@
     </style>
 </head>
 <body>
-<header>
-    <h1>ViaLactea HiPS (Aladin Lite)</h1>
-    <div class="info">
-        <div>Coord: <span id="pointerCoords">--</span></div>
-        <div>FOV: <span id="fovLabel">--</span></div>
-        <div>Modalità: <span id="selectionLabel">Navigazione</span></div>
-    </div>
-</header>
 <section class="controls">
     <label>
         Survey
@@ -160,17 +152,10 @@
         "https://alasky.cds.unistra.fr/AladinLite/api/v3/3.6.5/aladin.js"
     ];
 
-    const debug = msg => {
-        console.log(msg);
-        const statusMessage = document.getElementById("statusMessage");
-        if (statusMessage) statusMessage.textContent = msg;
-    };
-
-    debug("bootstrap: DOM parsing");
+    const debug = _ => {};
 
     // Collettore errori per capire cosa succede in WebView (Qt).
     function reportError(msg, err) {
-        console.error(msg, err || "");
         const statusMessage = document.getElementById("statusMessage");
         if (statusMessage) {
             const text = [msg, err && err.message ? err.message : (err ? String(err) : "")]
@@ -178,24 +163,6 @@
                 .join(" - ");
             statusMessage.textContent = text;
             statusMessage.classList.add("error");
-        }
-        const container = document.getElementById("aladin-lite-div");
-        if (container) {
-            const pre = document.createElement("pre");
-            pre.style.position = "absolute";
-            pre.style.right = "8px";
-            pre.style.bottom = "8px";
-            pre.style.maxWidth = "50%";
-            pre.style.maxHeight = "35%";
-            pre.style.overflow = "auto";
-            pre.style.background = "rgba(0,0,0,0.65)";
-            pre.style.color = "#ffb0b0";
-            pre.style.padding = "6px";
-            pre.style.margin = "0";
-            pre.style.fontSize = "11px";
-            pre.style.border = "1px solid rgba(255,255,255,0.15)";
-            pre.textContent = text;
-            container.appendChild(pre);
         }
     }
 
@@ -266,10 +233,9 @@
     if (window.qt && window.qt.webChannelTransport) {
         new QWebChannel(window.qt.webChannelTransport, channel => {
             qtBridge = channel.objects.webobj;
-            console.log("[VL] QWebChannel ready, webobj:", !!qtBridge);
         });
     } else {
-        console.warn("[VL] QWebChannel transport missing");
+        // no-op in produzione
     }
 
     function setStatus(msg, isError = false) {
@@ -284,7 +250,7 @@
             rect: "Selezione rettangolare",
             circle: "Selezione circolare"
         };
-        selectionLabel.textContent = map[mode] || map.none;
+        if (selectionLabel) selectionLabel.textContent = map[mode] || map.none;
     }
 
     // Galactic conversion
@@ -331,11 +297,10 @@
     }
 
     function emitSelection(point, radius) {
-        console.log("[VL] emitSelection", point, radius, "bridge", !!qtBridge);
         if (qtBridge && typeof qtBridge.jsCall === "function") {
             qtBridge.jsCall(point, radius);
         } else {
-            console.warn("[VL] qtBridge missing or jsCall not a function");
+            // nessun bridge disponibile, ignora in produzione
         }
     }
 
@@ -381,14 +346,14 @@
 
         if (aladin && aladin.getFov) {
             const f = fovToNumber(aladin.getFov());
-            if (f !== null) {
+            if (f !== null && fovLabel) {
                 fovLabel.textContent = `${f.toFixed(2)}°`;
             }
         }
 
         aladin.on("zoomChanged", fov => {
             const f = fovToNumber(fov);
-            if (f !== null) {
+            if (f !== null && fovLabel) {
                 fovLabel.textContent = `${f.toFixed(2)}°`;
             }
         });
@@ -428,6 +393,7 @@
                 }
             }
 
+            if (!pointerCoords) return;
             if (Number.isFinite(lon) && Number.isFinite(lat)) {
                 pointerCoords.textContent = `${lon.toFixed(7)},${lat.toFixed(7)}`;
             } else {
@@ -436,9 +402,6 @@
         };
 
         aladin.on("positionChanged", updatePointerCoords);
-        aladin.on("mouseMove", updatePointerCoords);
-        aladin.on("mousemove", updatePointerCoords);
-        container.addEventListener("mousemove", ev => updatePointerCoords({ x: ev.offsetX, y: ev.offsetY }));
 
         aladin.on("click", (ra, dec) => {
             if (selectionMode !== "point") return;
@@ -584,7 +547,6 @@
     container.addEventListener("mousedown", rectMouseDown, true);
     container.addEventListener("mousemove", rectMouseMove, true);
     container.addEventListener("mouseup", rectMouseUp, true);
-    // ulteriore blocco su document per evitare che altri handler pan/scroll di Aladin ricevano eventi
     document.addEventListener("mousemove", evt => {
         if (selectionMode === "rect" && rectStart) {
             rectMouseMove(evt);
@@ -759,13 +721,13 @@
         updateSelectionLabel(selectionMode);
     };
 
-    // intercetta errori JS per la webview Qt (che spesso non espone la console)
-    window.addEventListener("error", evt => {
-        reportError("window.onerror", evt.error || evt.message);
-    });
-    window.addEventListener("unhandledrejection", evt => {
-        reportError("unhandledrejection", evt.reason);
-    });
+        // intercetta errori JS per la webview Qt (che spesso non espone la console)
+        window.addEventListener("error", evt => {
+            reportError("window.onerror", evt.error || evt.message);
+        });
+        window.addEventListener("unhandledrejection", evt => {
+            reportError("unhandledrejection", evt.reason);
+        });
 
     function bootstrapAladin() {
         debug("bootstrapAladin: start");
