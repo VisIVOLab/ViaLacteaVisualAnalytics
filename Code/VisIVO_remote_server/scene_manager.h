@@ -24,6 +24,8 @@ public:
     QJsonObject renderVolumePng(int width, int height, const QJsonObject &volumeParams);
     QJsonObject renderContourPng(int width, int height, const QJsonObject &params);
     QJsonObject renderRaw(int width, int height, QByteArray &rgba, QByteArray &depth);
+    QJsonObject renderRawVolume(int width, int height, const QJsonObject &volumeParams, QByteArray &rgba, QByteArray &depth);
+    QJsonObject renderRawContour(int width, int height, const QJsonObject &params, QByteArray &rgba, QByteArray &depth);
 
 private:
     bool ensureScene();

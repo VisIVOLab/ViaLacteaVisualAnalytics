@@ -73,20 +73,29 @@ QJsonObject DistributedService::setWindowLevel(double window, double level) {
 }
 
 QJsonObject DistributedService::renderFrame(int width, int height, const QString &mode, const QJsonObject &volumeParams) {
-    // Volume mode: for ora solo locale
+    // Modalità speciali: solo locale (no compositing per ora)
     if (mode == QStringLiteral("volume")) {
         return m_localScene->renderVolumePng(width, height, volumeParams);
     }
-
-    if (m_size <= 1) {
-        return m_localScene->renderPng(width, height);
+    if (mode == QStringLiteral("contour")) {
+        return m_localScene->renderContourPng(width, height, volumeParams);
     }
 
-    // Ask all workers to render; composite color by depth (nearest depth wins)
+    // Otherwise MPI compositing
     int cmd = CMD_RENDER;
     MPI_Bcast(&cmd, 1, MPI_INT, 0, MPI_COMM_WORLD);
     int dims[2] = {width, height};
     MPI_Bcast(dims, 2, MPI_INT, 0, MPI_COMM_WORLD);
+    int modeInt = 0;
+    if (mode == QStringLiteral("volume")) modeInt = 1;
+    else if (mode == QStringLiteral("contour")) modeInt = 2;
+    MPI_Bcast(&modeInt, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    QByteArray paramJson = QJsonDocument(volumeParams).toJson(QJsonDocument::Compact);
+    int paramLen = paramJson.size();
+    MPI_Bcast(&paramLen, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (paramLen > 0) {
+        MPI_Bcast(paramJson.data(), paramLen, MPI_CHAR, 0, MPI_COMM_WORLD);
+    }
 
     const int pixelCount = width * height;
     std::vector<float> bestDepth(pixelCount, 1e9f);
@@ -127,6 +136,9 @@ QJsonObject DistributedService::renderFrame(int width, int height, const QString
     }
 
     if (!gotAny) {
+        // fallback locale
+        if (modeInt == 1) return m_localScene->renderVolumePng(width, height, volumeParams);
+        if (modeInt == 2) return m_localScene->renderContourPng(width, height, volumeParams);
         return m_localScene->renderPng(width, height);
     }
 

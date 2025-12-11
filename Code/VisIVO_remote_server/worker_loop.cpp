@@ -3,6 +3,7 @@
 
 #include <mpi.h>
 #include <vector>
+#include <QJsonDocument>
 #include <QByteArray>
 
 namespace {
@@ -39,8 +40,25 @@ void WorkerLoop::run() {
         } else if (cmd == CMD_RENDER) {
             int dims[2] = {800, 600};
             MPI_Bcast(dims, 2, MPI_INT, 0, MPI_COMM_WORLD);
+            int modeInt = 0; // 0 slice, 1 volume, 2 contour
+            MPI_Bcast(&modeInt, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            int paramLen = 0;
+            MPI_Bcast(&paramLen, 1, MPI_INT, 0, MPI_COMM_WORLD);
             QByteArray rgba, depth;
-            auto res = m_scene->renderRaw(dims[0], dims[1], rgba, depth);
+            QJsonObject params;
+            if (paramLen > 0) {
+                std::vector<char> pbuf(static_cast<size_t>(paramLen));
+                MPI_Bcast(pbuf.data(), paramLen, MPI_CHAR, 0, MPI_COMM_WORLD);
+                params = QJsonDocument::fromJson(QByteArray(pbuf.data(), paramLen)).object();
+            }
+            QJsonObject res;
+            if (modeInt == 1) {
+                res = m_scene->renderRawVolume(dims[0], dims[1], params, rgba, depth);
+            } else if (modeInt == 2) {
+                res = m_scene->renderRawContour(dims[0], dims[1], params, rgba, depth);
+            } else {
+                res = m_scene->renderRaw(dims[0], dims[1], rgba, depth);
+            }
             int rgbaSize = rgba.size();
             int depthSize = depth.size();
             MPI_Send(&rgbaSize, 1, MPI_INT, 0, FRAME_TAG, MPI_COMM_WORLD);

@@ -24,6 +24,7 @@
 #include <vtkPolyDataNormals.h>
 #include <vtkProperty.h>
 #include <vtkActor.h>
+#include <vtkContourFilter.h>
 #include <vtkCamera.h>
 #include <vtkSmartPointer.h>
 
@@ -251,6 +252,34 @@ QJsonObject SceneManager::renderPng(int width, int height) {
 }
 
 QJsonObject SceneManager::renderVolumePng(int width, int height, const QJsonObject &volumeParams) {
+    QByteArray rgba, depth;
+    QJsonObject res = renderRawVolume(width, height, volumeParams, rgba, depth);
+    if (res.contains(QStringLiteral("_error"))) return res;
+    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
+               width, height, QImage::Format_RGBA8888);
+    QByteArray png;
+    QBuffer buf(&png);
+    buf.open(QIODevice::WriteOnly);
+    img.save(&buf, "PNG");
+    const QString b64 = QString::fromLatin1(png.toBase64());
+    return {{"status", QStringLiteral("ok")}, {"image", b64}};
+}
+
+QJsonObject SceneManager::renderContourPng(int width, int height, const QJsonObject &params) {
+    QByteArray rgba, depth;
+    QJsonObject res = renderRawContour(width, height, params, rgba, depth);
+    if (res.contains(QStringLiteral("_error"))) return res;
+    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
+               width, height, QImage::Format_RGBA8888);
+    QByteArray png;
+    QBuffer buf(&png);
+    buf.open(QIODevice::WriteOnly);
+    img.save(&buf, "PNG");
+    const QString b64 = QString::fromLatin1(png.toBase64());
+    return {{"status", QStringLiteral("ok")}, {"image", b64}};
+}
+
+QJsonObject SceneManager::renderRawVolume(int width, int height, const QJsonObject &volumeParams, QByteArray &rgba, QByteArray &depth) {
     ensureScene();
     if (!m_volumeImage) {
         return {{"_error", QStringLiteral("No volume loaded")}};
@@ -315,17 +344,105 @@ QJsonObject SceneManager::renderVolumePng(int width, int height, const QJsonObje
     if (!rgbaData) {
         return {{"_error", QStringLiteral("Render failed")}};
     }
-    QByteArray rgba(reinterpret_cast<const char *>(rgbaData->GetPointer(0)),
-                   static_cast<int>(rgbaData->GetSize()));
+    rgba = QByteArray(reinterpret_cast<const char *>(rgbaData->GetPointer(0)),
+                      static_cast<int>(rgbaData->GetSize()));
 
-    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
-               width, height, QImage::Format_RGBA8888);
-    QByteArray png;
-    QBuffer buf(&png);
-    buf.open(QIODevice::WriteOnly);
-    img.save(&buf, "PNG");
-    const QString b64 = QString::fromLatin1(png.toBase64());
-    return {{"status", QStringLiteral("ok")}, {"image", b64}};
+    auto w2iDepth = vtkSmartPointer<vtkWindowToImageFilter>::New();
+    w2iDepth->SetInput(m_window);
+    w2iDepth->SetInputBufferTypeToZBuffer();
+    w2iDepth->ReadFrontBufferOff();
+    w2iDepth->Update();
+    auto depthArray = vtkFloatArray::SafeDownCast(w2iDepth->GetOutput()->GetPointData()->GetScalars());
+    if (depthArray) {
+        depth = QByteArray(reinterpret_cast<const char *>(depthArray->GetPointer(0)),
+                           static_cast<int>(depthArray->GetSize()) * static_cast<int>(sizeof(float)));
+    } else {
+        depth.clear();
+    }
+    return {{"status", QStringLiteral("ok")}};
+}
+
+QJsonObject SceneManager::renderRawContour(int width, int height, const QJsonObject &params, QByteArray &rgba, QByteArray &depth) {
+    ensureScene();
+    if (!m_sliceImage) return {{"_error", QStringLiteral("No slice loaded")}};
+    if (m_renderer) {
+        m_renderer->RemoveAllViewProps();
+        if (m_imageActor) m_renderer->AddActor(m_imageActor);
+    }
+    if (width > 0 && height > 0) {
+        m_window->SetSize(width, height);
+    }
+
+    std::vector<double> levels;
+    const QJsonArray lv = params.value(QStringLiteral("levels")).toArray();
+    if (!lv.isEmpty()) {
+        for (const auto &v : lv) levels.push_back(v.toDouble());
+    } else {
+        const int n = 5;
+        const double step = (m_range[1] - m_range[0]) / (n + 1);
+        for (int i = 1; i <= n; ++i) levels.push_back(m_range[0] + i * step);
+    }
+
+    auto contour = vtkSmartPointer<vtkContourFilter>::New();
+    contour->SetInputData(m_sliceImage);
+    contour->GenerateValues(static_cast<int>(levels.size()),
+                            levels.front(), levels.back());
+    for (size_t i = 0; i < levels.size(); ++i) {
+        contour->SetValue(static_cast<int>(i), levels[i]);
+    }
+
+    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(contour->GetOutputPort());
+    mapper->ScalarVisibilityOff();
+
+    auto actor = vtkSmartPointer<vtkActor>::New();
+    actor->SetMapper(mapper);
+
+    double color[3] = {0.9, 0.2, 0.2};
+    const QJsonArray c = params.value(QStringLiteral("color")).toArray();
+    if (c.size() >= 3) {
+        color[0] = c[0].toDouble(color[0]);
+        color[1] = c[1].toDouble(color[1]);
+        color[2] = c[2].toDouble(color[2]);
+    }
+    actor->GetProperty()->SetColor(color);
+    actor->GetProperty()->SetLineWidth(1.5);
+    actor->GetProperty()->SetOpacity(1.0);
+
+    m_renderer->AddActor(actor);
+    m_renderer->ResetCameraClippingRange();
+    m_window->Render();
+
+    auto w2i = vtkSmartPointer<vtkWindowToImageFilter>::New();
+    w2i->SetInput(m_window);
+    w2i->SetInputBufferTypeToRGBA();
+    w2i->ReadFrontBufferOff();
+    w2i->Update();
+
+    vtkUnsignedCharArray *rgbaData = vtkUnsignedCharArray::SafeDownCast(w2i->GetOutput()->GetPointData()->GetScalars());
+    if (!rgbaData) {
+        m_renderer->RemoveActor(actor);
+        return {{"_error", QStringLiteral("Render failed")}};
+    }
+    rgba = QByteArray(reinterpret_cast<const char *>(rgbaData->GetPointer(0)),
+                      static_cast<int>(rgbaData->GetSize()));
+
+    auto w2iDepth = vtkSmartPointer<vtkWindowToImageFilter>::New();
+    w2iDepth->SetInput(m_window);
+    w2iDepth->SetInputBufferTypeToZBuffer();
+    w2iDepth->ReadFrontBufferOff();
+    w2iDepth->Update();
+    auto depthArray = vtkFloatArray::SafeDownCast(w2iDepth->GetOutput()->GetPointData()->GetScalars());
+    if (depthArray) {
+        depth = QByteArray(reinterpret_cast<const char *>(depthArray->GetPointer(0)),
+                           static_cast<int>(depthArray->GetSize()) * static_cast<int>(sizeof(float)));
+    } else {
+        depth.clear();
+    }
+
+    // rimuovi actor per non accumulare
+    m_renderer->RemoveActor(actor);
+    return {{"status", QStringLiteral("ok")}};
 }
 
 QJsonObject SceneManager::renderRaw(int width, int height, QByteArray &rgba, QByteArray &depth) {

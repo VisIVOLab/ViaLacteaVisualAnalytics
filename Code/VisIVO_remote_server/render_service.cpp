@@ -62,6 +62,10 @@ QJsonObject RenderService::handleRequest(const QJsonObject &request) {
         const int h = params.value(QStringLiteral("height")).toInt(600);
         const QString mode = params.value(QStringLiteral("mode")).toString();
         const QJsonObject vol = params.value(QStringLiteral("volume")).toObject();
+        const QJsonObject contour = params.value(QStringLiteral("contour")).toObject();
+        if (mode == QStringLiteral("contour")) {
+            return m_service->renderFrame(w, h, mode, contour);
+        }
         return m_service->renderFrame(w, h, mode, vol);
     }
 
