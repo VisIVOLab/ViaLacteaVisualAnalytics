@@ -220,6 +220,30 @@
     const container = document.getElementById("aladin-lite-div");
     let overlayRect = null;
     let overlayCircle = null;
+    function clearOverlays() {
+        try {
+            if (overlayRect && aladin && typeof aladin.removeOverlay === "function") {
+                aladin.removeOverlay(overlayRect);
+            }
+            if (overlayCircle && aladin && typeof aladin.removeOverlay === "function") {
+                aladin.removeOverlay(overlayCircle);
+            }
+        } catch (_) {}
+        overlayRect = null;
+        overlayCircle = null;
+    }
+    function clearOverlays() {
+        try {
+            if (overlayRect && aladin && typeof aladin.removeOverlay === "function") {
+                aladin.removeOverlay(overlayRect);
+            }
+            if (overlayCircle && aladin && typeof aladin.removeOverlay === "function") {
+                aladin.removeOverlay(overlayCircle);
+            }
+        } catch (_) {}
+        overlayRect = null;
+        overlayCircle = null;
+    }
 
     PRESET_SURVEYS.forEach((s, idx) => {
         const opt = document.createElement("option");
@@ -500,14 +524,12 @@
 
         // Disegna overlay poligono in Aladin per feedback visivo (in coordinate world native di Aladin)
         try {
-            if (!overlayRect) {
+            clearOverlays();
             overlayRect = A.graphicOverlay({
                 color: '#ee2345',
                 lineWidth: 2
             });
             aladin.addOverlay(overlayRect);
-            }
-            if (typeof overlayRect.removeAll === "function") overlayRect.removeAll();
             const polyPtsGal = [
                 [l1, b1],
                 [l2, b1],
@@ -523,7 +545,7 @@
             overlayRect.add(A.polygon(polyPtsEq, { color: '#ee2345', lineWidth: 2 }));
             aladin.view.requestRedraw && aladin.view.requestRedraw();
         } catch (e) {
-            console.warn("Impossibile disegnare overlay rettangolo", e);
+            console.warn("Unable to draw rectangular overlay", e);
         }
 
         // Invia a ViaLactea: point = glon,glat  ; area = dl,db
@@ -606,21 +628,19 @@
 
             // Disegna overlay cerchio convertendo in RA/Dec
             try {
-                if (!overlayCircle) {
-                    overlayCircle = A.graphicOverlay({ color: '#33ff66', lineWidth: 2 });
-                    aladin.addOverlay(overlayCircle);
-                }
-                if (typeof overlayCircle.removeAll === "function") overlayCircle.removeAll();
+                clearOverlays();
+                overlayCircle = A.graphicOverlay({ color: '#33ff66', lineWidth: 2 });
+                aladin.addOverlay(overlayCircle);
                 // centro in eq per Aladin
                 const eqCenter = galToEq(centerLon, centerLat);
                 overlayCircle.add(A.circle(eqCenter.ra, eqCenter.dec, radius, { color: '#33ff66', lineWidth: 2 }));
                 aladin.view.requestRedraw && aladin.view.requestRedraw();
             } catch (e) {
-                console.warn("Impossibile disegnare overlay cerchio", e);
+                console.warn("Unable to draw circular overlay", e);
             }
 
             emitSelection(`${centerLon.toFixed(4)},${centerLat.toFixed(4)}`,
-                          `${radius.toFixed(4)},${radius.toFixed(4)}`);
+                          `${radius.toFixed(4)}`);
         }
         evt.preventDefault();
         evt.stopImmediatePropagation();
