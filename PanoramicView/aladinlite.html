@@ -116,6 +116,15 @@
             display: none;
             z-index: 20;
         }
+        #circleOverlay {
+            position: absolute;
+            border: 1px dashed rgba(255, 180, 80, 0.9);
+            background: rgba(255, 180, 80, 0.12);
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            z-index: 21;
+        }
     </style>
 </head>
 <body>
@@ -141,6 +150,7 @@
 </section>
 <div id="aladin-lite-div">
     <div id="rectOverlay"></div>
+    <div id="circleOverlay"></div>
 </div>
 <script>
 (() => {
@@ -239,7 +249,10 @@
     const selectionLabel = document.getElementById("selectionLabel");
     const fovLabel = document.getElementById("fovLabel");
     const rectOverlay = document.getElementById("rectOverlay");
+    const circleOverlay = document.getElementById("circleOverlay");
     const container = document.getElementById("aladin-lite-div");
+    let overlayRect = null;
+    let overlayCircle = null;
 
     PRESET_SURVEYS.forEach((s, idx) => {
         const opt = document.createElement("option");
@@ -253,7 +266,10 @@
     if (window.qt && window.qt.webChannelTransport) {
         new QWebChannel(window.qt.webChannelTransport, channel => {
             qtBridge = channel.objects.webobj;
+            console.log("[VL] QWebChannel ready, webobj:", !!qtBridge);
         });
+    } else {
+        console.warn("[VL] QWebChannel transport missing");
     }
 
     function setStatus(msg, isError = false) {
@@ -265,7 +281,8 @@
         const map = {
             none: "Navigazione",
             point: "Selezione a punto",
-            rect: "Selezione rettangolare"
+            rect: "Selezione rettangolare",
+            circle: "Selezione circolare"
         };
         selectionLabel.textContent = map[mode] || map.none;
     }
@@ -290,9 +307,35 @@
         return { lon: toDeg(l), lat: toDeg(b) };
     }
 
+    // Conversione galattico -> equatoriale
+    function galToEq(lDeg, bDeg) {
+        const l = toRad(lDeg);
+        const b = toRad(bDeg);
+        const xg = Math.cos(b) * Math.cos(l);
+        const yg = Math.cos(b) * Math.sin(l);
+        const zg = Math.sin(b);
+        // matrice di rotazione (eq <- gal) = trasposta di eq->gal (IAU 1958)
+        const m = [
+            [-0.0548755604, 0.4941094279, -0.8676661490],
+            [-0.8734370902, -0.4448296300, -0.1980763734],
+            [-0.4838350155, 0.7469822445, 0.4559837762]
+        ];
+        const xe = m[0][0] * xg + m[0][1] * yg + m[0][2] * zg;
+        const ye = m[1][0] * xg + m[1][1] * yg + m[1][2] * zg;
+        const ze = m[2][0] * xg + m[2][1] * yg + m[2][2] * zg;
+        const r = Math.hypot(xe, ye);
+        let ra = Math.atan2(ye, xe);
+        if (ra < 0) ra += 2 * Math.PI;
+        const dec = Math.atan2(ze, r);
+        return { ra: toDeg(ra), dec: toDeg(dec) };
+    }
+
     function emitSelection(point, radius) {
+        console.log("[VL] emitSelection", point, radius, "bridge", !!qtBridge);
         if (qtBridge && typeof qtBridge.jsCall === "function") {
             qtBridge.jsCall(point, radius);
+        } else {
+            console.warn("[VL] qtBridge missing or jsCall not a function");
         }
     }
 
@@ -432,6 +475,7 @@
 
     surveySelect.addEventListener("change", () => loadSurvey(surveySelect.value));
     loadCustomBtn.addEventListener("click", () => loadSurvey(customInput.value));
+    updateSelectionLabel(selectionMode);
 
     // Rectangle selection overlay using screen coords + pix2world
     let rectStart = null;
@@ -459,25 +503,69 @@
         evt.stopPropagation();
     };
 
-    const rectMouseUp = evt => {
-        if (selectionMode !== "rect" || !rectStart || evt.button !== 0) return;
-        const rect = container.getBoundingClientRect();
-        const endX = Number.isFinite(evt.offsetX) ? evt.offsetX : (evt.clientX - rect.left);
-        const endY = Number.isFinite(evt.offsetY) ? evt.offsetY : (evt.clientY - rect.top);
-        const rectEnd = { x: endX, y: endY };
-        const startWorld = pix2world(rectStart.x, rectStart.y);
-        const endWorld = pix2world(rectEnd.x, rectEnd.y);
-        clearRectOverlay();
-        rectStart = null;
-        if (!startWorld || !endWorld) return;
+        const rectMouseUp = evt => {
+            if (selectionMode !== "rect" || !rectStart) return;
+            console.log("[VL] rectMouseUp evt", { btn: evt.button, x: evt.clientX, y: evt.clientY, ox: evt.offsetX, oy: evt.offsetY });
+            const rect = container.getBoundingClientRect();
+            const endX = Number.isFinite(evt.offsetX) ? evt.offsetX : (evt.clientX - rect.left);
+            const endY = Number.isFinite(evt.offsetY) ? evt.offsetY : (evt.clientY - rect.top);
+            const rectEnd = { x: endX, y: endY };
+            let startWorld = pix2world(rectStart.x, rectStart.y);
+            let endWorld = pix2world(rectEnd.x, rectEnd.y);
+            // fallback ulteriore
+            if (!startWorld && aladin && typeof aladin.pix2world === "function") {
+                startWorld = aladin.pix2world(rectStart.x, rectStart.y);
+            }
+            if (!endWorld && aladin && typeof aladin.pix2world === "function") {
+                endWorld = aladin.pix2world(rectEnd.x, rectEnd.y);
+            }
+            clearRectOverlay();
+            rectStart = null;
+            if (!startWorld || !endWorld) {
+                console.warn("[VL] rect selection: pix2world failed", { startWorld, endWorld });
+                return;
+            }
 
-        const galStart = eqToGal(startWorld[0], startWorld[1]);
-        const galEnd = eqToGal(endWorld[0], endWorld[1]);
-        const dl = Math.abs(galStart.lon - galEnd.lon);
-        const db = Math.abs(galStart.lat - galEnd.lat);
-        const centerLon = (galStart.lon + galEnd.lon) / 2;
-        const centerLat = (galStart.lat + galEnd.lat) / 2;
+        // startWorld/endWorld sono già nel frame corrente (galattico); usali direttamente
+        const l1 = startWorld[0];
+        const b1 = startWorld[1];
+        const l2 = endWorld[0];
+        const b2 = endWorld[1];
+        const dl = Math.abs(l1 - l2); // delta glon
+        const db = Math.abs(b1 - b2); // delta glat
+        const centerLon = (l1 + l2) / 2;
+        const centerLat = (b1 + b2) / 2;
 
+        // Disegna overlay poligono in Aladin per feedback visivo (in coordinate world native di Aladin)
+        try {
+            if (!overlayRect) {
+            overlayRect = A.graphicOverlay({
+                color: '#ee2345',
+                lineWidth: 2
+            });
+            aladin.addOverlay(overlayRect);
+            }
+            if (typeof overlayRect.removeAll === "function") overlayRect.removeAll();
+            const polyPtsGal = [
+                [l1, b1],
+                [l2, b1],
+                [l2, b2],
+                [l1, b2],
+                [l1, b1]
+            ];
+            // Aladin si aspetta RA/Dec: convertiamo da galattico a equatoriale
+            const polyPtsEq = polyPtsGal.map(([lg, bg]) => {
+                const eq = galToEq(lg, bg);
+                return [eq.ra, eq.dec];
+            });
+            console.log("[VL] draw overlay rect gal", polyPtsGal, "eq", polyPtsEq);
+            overlayRect.add(A.polygon(polyPtsEq, { color: '#ee2345', lineWidth: 2 }));
+            aladin.view.requestRedraw && aladin.view.requestRedraw();
+        } catch (e) {
+            console.warn("Impossibile disegnare overlay rettangolo", e);
+        }
+
+        // Invia a ViaLactea: point = glon,glat  ; area = dl,db
         emitSelection(`${centerLon.toFixed(4)},${centerLat.toFixed(4)}`,
                       `${dl.toFixed(4)},${db.toFixed(4)}`);
         setStatus(`Rettangolo: centro ${centerLon.toFixed(4)},${centerLat.toFixed(4)} dim ${dl.toFixed(4)}×${db.toFixed(4)}`);
@@ -508,6 +596,99 @@
         }
     }, true);
 
+    // Circle selection handlers
+    const circleMouseDown = evt => {
+        if (selectionMode !== "circle" || evt.button !== 0) return;
+        circleStart = { x: evt.offsetX, y: evt.offsetY };
+        updateCircleOverlay(circleStart, circleStart);
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        evt.stopPropagation();
+        if (aladin && typeof aladin.setNavigationMode === "function") {
+            aladin.setNavigationMode("none");
+        } else if (aladin && aladin.view && aladin.view.dragHandler) {
+            aladin.view.dragHandler.enabled = false;
+            aladin.view.wheelHandler && (aladin.view.wheelHandler.enabled = false);
+        }
+    };
+
+    const circleMouseMove = evt => {
+        if (selectionMode !== "circle" || !circleStart) return;
+        updateCircleOverlay(circleStart, { x: evt.offsetX, y: evt.offsetY });
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        evt.stopPropagation();
+    };
+
+    const circleMouseUp = evt => {
+        if (selectionMode !== "circle" || !circleStart) return;
+        const rect = container.getBoundingClientRect();
+        const endX = Number.isFinite(evt.offsetX) ? evt.offsetX : (evt.clientX - rect.left);
+        const endY = Number.isFinite(evt.offsetY) ? evt.offsetY : (evt.clientY - rect.top);
+        const circleEnd = { x: endX, y: endY };
+        let centerWorld = pix2world(circleStart.x, circleStart.y);
+        let edgeWorld = pix2world(circleEnd.x, circleEnd.y);
+        if (!centerWorld && aladin && typeof aladin.pix2world === "function") {
+            centerWorld = aladin.pix2world(circleStart.x, circleStart.y);
+        }
+        if (!edgeWorld && aladin && typeof aladin.pix2world === "function") {
+            edgeWorld = aladin.pix2world(circleEnd.x, circleEnd.y);
+        }
+        clearCircleOverlay();
+        circleStart = null;
+        if (!centerWorld || !edgeWorld) {
+            console.warn("[VL] circle selection: pix2world failed", { centerWorld, edgeWorld });
+        } else {
+            const dl = edgeWorld[0] - centerWorld[0];
+            const db = edgeWorld[1] - centerWorld[1];
+            const radius = Math.sqrt(dl * dl + db * db);
+            const centerLon = centerWorld[0];
+            const centerLat = centerWorld[1];
+
+            // Disegna overlay cerchio convertendo in RA/Dec
+            try {
+                if (!overlayCircle) {
+                    overlayCircle = A.graphicOverlay({ color: '#33ff66', lineWidth: 2 });
+                    aladin.addOverlay(overlayCircle);
+                }
+                if (typeof overlayCircle.removeAll === "function") overlayCircle.removeAll();
+                // centro in eq per Aladin
+                const eqCenter = galToEq(centerLon, centerLat);
+                overlayCircle.add(A.circle(eqCenter.ra, eqCenter.dec, radius, { color: '#33ff66', lineWidth: 2 }));
+                aladin.view.requestRedraw && aladin.view.requestRedraw();
+            } catch (e) {
+                console.warn("Impossibile disegnare overlay cerchio", e);
+            }
+
+            emitSelection(`${centerLon.toFixed(4)},${centerLat.toFixed(4)}`,
+                          `${radius.toFixed(4)},${radius.toFixed(4)}`);
+            setStatus(`Cerchio: centro ${centerLon.toFixed(4)},${centerLat.toFixed(4)} r ${radius.toFixed(4)}°`);
+        }
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        evt.stopPropagation();
+        if (aladin && typeof aladin.setNavigationMode === "function") {
+            aladin.setNavigationMode("drag");
+        } else if (aladin && aladin.view && aladin.view.dragHandler) {
+            aladin.view.dragHandler.enabled = true;
+            aladin.view.wheelHandler && (aladin.view.wheelHandler.enabled = true);
+        }
+    };
+
+    container.addEventListener("mousedown", circleMouseDown, true);
+    container.addEventListener("mousemove", circleMouseMove, true);
+    container.addEventListener("mouseup", circleMouseUp, true);
+    document.addEventListener("mousemove", evt => {
+        if (selectionMode === "circle" && circleStart) {
+            circleMouseMove(evt);
+        }
+    }, true);
+    document.addEventListener("mouseup", evt => {
+        if (selectionMode === "circle" && circleStart) {
+            circleMouseUp(evt);
+        }
+    }, true);
+
     function updateRectOverlay(start, end) {
         const left = Math.min(start.x, end.x);
         const top = Math.min(start.y, end.y);
@@ -524,6 +705,23 @@
         rectOverlay.style.display = "none";
     }
 
+    // Circle overlay helpers
+    let circleStart = null;
+    function updateCircleOverlay(start, end) {
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const r = Math.sqrt(dx * dx + dy * dy);
+        circleOverlay.style.display = "block";
+        circleOverlay.style.left = `${start.x - r}px`;
+        circleOverlay.style.top = `${start.y - r}px`;
+        circleOverlay.style.width = `${2 * r}px`;
+        circleOverlay.style.height = `${2 * r}px`;
+    }
+
+    function clearCircleOverlay() {
+        circleOverlay.style.display = "none";
+    }
+
     function pix2world(x, y) {
         if (!aladin) return null;
         const fn = aladin.pix2world || (aladin.view && aladin.view.pix2world);
@@ -535,8 +733,13 @@
         }
     }
 
+    // In ViaLactea il tool "point" corrisponde ad una selezione circolare:
+    // disegna un cerchio, invia centro (glon, glat) e raggio.
     window.activatePointSelection = enabled => {
-        selectionMode = enabled ? "point" : "none";
+        selectionMode = enabled ? "circle" : "none";
+        if (!enabled) {
+            clearCircleOverlay();
+        }
         updateSelectionLabel(selectionMode);
     };
 
@@ -544,6 +747,14 @@
         selectionMode = enabled ? "rect" : "none";
         if (!enabled) {
             clearRectOverlay();
+        }
+        updateSelectionLabel(selectionMode);
+    };
+
+    window.activateCircularSelection = enabled => {
+        selectionMode = enabled ? "circle" : "none";
+        if (!enabled) {
+            clearCircleOverlay();
         }
         updateSelectionLabel(selectionMode);
     };
@@ -596,6 +807,7 @@
                             ensureAladin();
                             customInput.value = surveySelect.value;
                             setStatus(`Survey: ${surveySelect.value}`);
+                            // niente overlay di debug
                         })
                         .catch(err2 => {
                             clearTimeout(initTimeout);
@@ -609,6 +821,7 @@
                     ensureAladin();
                     customInput.value = surveySelect.value;
                     setStatus(`Survey: ${surveySelect.value}`);
+                    // nessun overlay di debug
                 }
             };
             s.onerror = () => {
