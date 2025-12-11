@@ -30,6 +30,7 @@
 #include <QWebChannel>
 #include <QWebEnginePage>
 #include <QDebug>
+#include <cmath>
 
 WebProcess::WebProcess(QObject *parent) : QObject(parent) { }
 
@@ -365,15 +366,33 @@ void ViaLactea::on_webViewRegionSelected(const QString &point, const QString &ar
 
     if (!area.isEmpty()) {
         QStringList pieces = area.split(",");
-        QString dl = QString::number(pieces[0].toDouble(), 'f', 4);
-        if (dl.toDouble() > 4.0)
-            dl = QString::number(4.0, 'f', 4);
-        QString db = QString::number(pieces[1].toDouble(), 'f', 4);
-        if (db.toDouble() > 4.0)
-            db = QString::number(4.0, 'f', 4);
-        ui->dlLineEdit->setText(dl);
-        ui->dbLineEdit->setText(db);
-        ui->radiumLineEdit->setText("");
+        if (pieces.size() == 1) {
+            // Punto/circonferenza: il secondo parametro è il raggio
+            double r = pieces[0].toDouble();
+            ui->radiumLineEdit->setText(QString::number(r, 'f', 4));
+            ui->dlLineEdit->clear();
+            ui->dbLineEdit->clear();
+        } else if (pieces.size() >= 2) {
+            // Rettangolo: dl, db (ma se sono uguali assume raggio)
+            double dlVal = pieces[0].toDouble();
+            double dbVal = pieces[1].toDouble();
+            bool looksLikeRadius = std::fabs(dlVal - dbVal) < 1e-6;
+            if (looksLikeRadius) {
+                ui->radiumLineEdit->setText(QString::number(dlVal, 'f', 4));
+                ui->dlLineEdit->clear();
+                ui->dbLineEdit->clear();
+            } else {
+                QString dl = QString::number(dlVal, 'f', 4);
+                if (dlVal > 4.0)
+                    dl = QString::number(4.0, 'f', 4);
+                QString db = QString::number(dbVal, 'f', 4);
+                if (dbVal > 4.0)
+                    db = QString::number(4.0, 'f', 4);
+                ui->dlLineEdit->setText(dl);
+                ui->dbLineEdit->setText(db);
+                ui->radiumLineEdit->clear();
+            }
+        }
     }
 }
 
