@@ -9,6 +9,8 @@
 #include "visivoimporterdesktop.h"
 #include "vlkbquery.h"
 #include "vtkCleanPolyData.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkProperty.h"
 
 #include <limits>
 #include <QCheckBox>

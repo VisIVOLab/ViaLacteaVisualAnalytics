@@ -5,6 +5,7 @@
 #include "vtkwindow_new.h"
 
 #include <QDir>
+#include <QProcess>
 #include <QSettings>
 #include <QStringListModel>
 

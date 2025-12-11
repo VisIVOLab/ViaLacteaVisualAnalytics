@@ -30,6 +30,7 @@
 #include "vtkFixedPointVolumeRayCastMapper.h"
 #include "vtkImageViewer2.h"
 #include "vtkPiecewiseFunction.h"
+#include "vtkPolyDataMapper.h"
 #include "vtkSmartPointer.h"
 #include "vtkVolume.h"
 #include "vtkVolumeProperty.h"

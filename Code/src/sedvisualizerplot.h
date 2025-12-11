@@ -8,6 +8,7 @@
 #include "sednode.h"
 #include "sedplotpointcustom.h"
 #include "vtkwindow_new.h"
+#include <vtkLODActor.h>
 
 #include <QMainWindow>
 

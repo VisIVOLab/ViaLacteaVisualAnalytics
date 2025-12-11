@@ -239,6 +239,8 @@ set(PROJECT_SOURCES
         src/vtklegendscaleactorwcs.h
         src/vtktoolswidget.cpp
         src/vtktoolswidget.h
+        src/vtkwindow_interactors.cpp
+        src/vtkwindow_interactors.h
         src/vtkwindow_new.cpp
         src/vtkwindow_new.h
         src/vtkwindowcube.cpp

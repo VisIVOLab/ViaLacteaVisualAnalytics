@@ -3,6 +3,8 @@
 
 #include "qdebug.h"
 #include "vtkDataSet.h"
+#include "vstabledesktop.h"
+#include "pointspipe.h"
 #include "vtkProperty2D.h"
 #include "vtkSmartPointer.h"
 #include "vtkXYPlotActor.h"

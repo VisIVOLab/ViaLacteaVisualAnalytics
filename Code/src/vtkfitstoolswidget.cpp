@@ -1,4 +1,7 @@
 #include "vtkfitstoolswidget.h"
+
+#include <vtkLODActor.h>
+#include <vtkProperty.h>
 #include "ui_vtkfitstoolswidget.h"
 
 #include "singleton.h"

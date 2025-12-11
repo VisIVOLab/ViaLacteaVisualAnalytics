@@ -11,6 +11,8 @@
 #include "vlkbquery.h"
 #include "vtkCleanPolyData.h"
 #include "vtkPolyData.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkProperty.h"
 #include <QWidgetAction>
 HigalSelectedSources::HigalSelectedSources(vtkwindow_new *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::HigalSelectedSources)

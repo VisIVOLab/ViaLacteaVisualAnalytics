@@ -2,6 +2,7 @@
 #define VTKFITSTOOLSWIDGET_H
 
 #include "vtkwindow_new.h"
+#include <vtkLODActor.h>
 
 #include <QTableWidgetItem>
 #include <QWidget>

@@ -1,4 +1,5 @@
 #include "viewselectedsourcedataset.h"
+#include "vtkellipse.h"
 #include "ui_viewselectedsourcedataset.h"
 
 #include <QDebug>

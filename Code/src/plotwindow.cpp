@@ -1,5 +1,6 @@
 #include "plotwindow.h"
 #include "ui_plotwindow.h"
+#include "vtkellipse.h"
 
 PlotWindow::PlotWindow(vtkwindow_new *v, QList<QListWidgetItem *> selItems, int id, QWidget *parent)
     : QWidget(parent), ui(new Ui::PlotWindow)

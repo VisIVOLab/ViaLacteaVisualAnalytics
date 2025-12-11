@@ -9,6 +9,14 @@
 #include "vtkextracthistogram.h"
 #include "vtkTable.h"
 #include "vtkwindowcube.h"
+#include "pointspipe.h"
+#include "vtkfitstoolwidgetobject.h"
+
+#include <vtkPointData.h>
+#include <vtkDataSetAttributes.h>
+#include <vtkMapper.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkRenderWindow.h>
 
 LutCustomize::LutCustomize(vtkWindowCube *v, QWidget *parent)
     : QWidget(parent), ui(new Ui::LutCustomize)

@@ -5,6 +5,8 @@
 #include <QObject>
 
 #include <vtkSmartPointer.h>
+#include <vtkLODActor.h>
+#include <vtkPoints.h>
 
 class Source;
 class vtkLODActor;

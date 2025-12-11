@@ -1,6 +1,8 @@
 #include "dbquery.h"
 #include "ui_dbquery.h"
 
+#include "vtkMarchingCubes.h"
+
 #include "authkeys.h"
 #include "authwrapper.h"
 #include "downloadmanager.h"

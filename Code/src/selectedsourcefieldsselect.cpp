@@ -1,4 +1,5 @@
 #include "selectedsourcefieldsselect.h"
+#include "vtkellipse.h"
 #include "qsignalmapper.h"
 #include "ui_selectedsourcefieldsselect.h"
 #include <QCheckBox>
