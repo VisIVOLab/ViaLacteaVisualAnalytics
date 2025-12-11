@@ -41,6 +41,7 @@ set(qt_components
         Network
         NetworkAuth
         WebEngineWidgets
+        WebSockets
         PrintSupport)
 
 # Qt6 (tested 6.4+). Ensure you have a Qt6 build of VTK/WebEngine.
@@ -330,3 +331,6 @@ set_target_properties(
         WIN32_EXECUTABLE ON)
 
 vtk_module_autoinit(TARGETS ViaLacteaVisualAnalytics MODULES ${VTK_LIBRARIES})
+
+# Lightweight remote rendering server (headless control skeleton)
+add_subdirectory(VisIVO_remote_server)

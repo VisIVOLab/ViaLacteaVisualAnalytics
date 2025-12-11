@@ -7,3 +7,5 @@ Code/build/*
 Code/.idea
 /build/*
 /.vscode
+/build_server
+/Code/build_server
