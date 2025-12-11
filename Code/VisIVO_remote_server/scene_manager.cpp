@@ -36,7 +36,11 @@ SceneManager::SceneManager()
       m_sliceImage(nullptr),
       m_volumeImage(nullptr),
       m_shift(nullptr),
-      m_sliceExtract(nullptr) {
+      m_sliceExtract(nullptr),
+      m_currentSlice(0),
+      m_hasWindowLevel(false),
+      m_windowWL(0.0),
+      m_level(0.0) {
 }
 
 SceneManager::~SceneManager() {
@@ -70,6 +74,8 @@ void SceneManager::resetScene() {
     m_loadedSource.clear();
     m_numSlices = 0;
     m_range[0] = 0.0; m_range[1] = 1.0;
+    m_currentSlice = 0;
+    m_hasWindowLevel = false;
 }
 
 QJsonObject SceneManager::loadFits(const QString &path) {
@@ -108,26 +114,36 @@ QJsonObject SceneManager::loadFits(const QString &path) {
     extract->Register(nullptr);
     m_sliceImage = slice;
     m_sliceExtract = extract;
+    m_currentSlice = k;
 
-    // For 2D display we reuse the slice
-    vtkImageShiftScale *shift2d = vtkImageShiftScale::New();
-    shift2d->SetInputData(slice);
-    shift2d->SetShift(0.0);
-    shift2d->SetScale(1.0);
-    shift2d->SetOutputScalarTypeToUnsignedChar();
-    shift2d->Update();
+    // Build shift/scale for slice with current window/level or full range
+    double window = m_range[1] - m_range[0];
+    double level = m_range[0] + 0.5 * window;
+    if (m_hasWindowLevel && m_windowWL > 0.0) {
+        window = m_windowWL;
+        level = m_level;
+    }
+    if (m_shift) { m_shift->Delete(); m_shift = nullptr; }
+    m_shift = vtkImageShiftScale::New();
+    m_shift->SetInputData(slice);
+    m_shift->SetShift(-(level - window * 0.5));
+    m_shift->SetScale(window > 0 ? 255.0 / window : 1.0);
+    m_shift->SetOutputScalarTypeToUnsignedChar();
+    m_shift->ClampOverflowOn();
+    m_shift->Update();
 
-    vtkImageData *scaled = shift2d->GetOutput();
+    vtkImageData *scaled = m_shift->GetOutput();
     scaled->Register(nullptr);
-    shift2d->Register(nullptr);
-    m_shift = shift2d;
+    m_shift->Register(nullptr);
 
+    if (m_imageActor) { m_imageActor->Delete(); m_imageActor = nullptr; }
     m_imageActor = vtkImageActor::New();
     m_imageActor->SetInputData(scaled);
     int sliceExt[6];
     scaled->GetExtent(sliceExt);
     m_imageActor->SetDisplayExtent(sliceExt);
 
+    m_renderer->RemoveAllViewProps();
     m_renderer->AddActor(m_imageActor);
     m_renderer->ResetCamera();
     m_loadedSource = path;
@@ -150,6 +166,71 @@ QJsonObject SceneManager::setCamera(const QJsonObject &params) {
     if (up.size() == 3)  cam->SetViewUp(up[0].toDouble(), up[1].toDouble(), up[2].toDouble());
     m_window->Render();
     return {{"status", QStringLiteral("ok")}};
+}
+
+QJsonObject SceneManager::setSlice(int slice) {
+    ensureScene();
+    if (!m_volumeImage) return {{"_error", QStringLiteral("No volume loaded")}};
+    if (slice < 0 || slice >= m_numSlices) {
+        return {{"_error", QStringLiteral("Slice out of range")}};
+    }
+    vtkExtractVOI *extract = m_sliceExtract;
+    if (!extract) {
+        extract = vtkExtractVOI::New();
+        extract->SetInputData(m_volumeImage);
+        m_sliceExtract = extract;
+    }
+    int dims[3];
+    m_volumeImage->GetDimensions(dims);
+    extract->SetVOI(0, dims[0] - 1, 0, dims[1] - 1, slice, slice);
+    extract->Update();
+    vtkImageData *s = extract->GetOutput();
+    s->Register(nullptr);
+    if (m_sliceImage) { m_sliceImage->Delete(); }
+    m_sliceImage = s;
+    m_currentSlice = slice;
+
+    double window = m_range[1] - m_range[0];
+    double level = m_range[0] + 0.5 * window;
+    if (m_hasWindowLevel && m_windowWL > 0.0) {
+        window = m_windowWL;
+        level = m_level;
+    }
+    if (m_shift) { m_shift->Delete(); m_shift = nullptr; }
+    m_shift = vtkImageShiftScale::New();
+    m_shift->SetInputData(s);
+    m_shift->SetShift(-(level - window * 0.5));
+    m_shift->SetScale(window > 0 ? 255.0 / window : 1.0);
+    m_shift->SetOutputScalarTypeToUnsignedChar();
+    m_shift->ClampOverflowOn();
+    m_shift->Update();
+
+    vtkImageData *scaled = m_shift->GetOutput();
+    scaled->Register(nullptr);
+    m_shift->Register(nullptr);
+
+    if (m_imageActor) { m_imageActor->Delete(); m_imageActor = nullptr; }
+    m_imageActor = vtkImageActor::New();
+    m_imageActor->SetInputData(scaled);
+    int sliceExt[6];
+    scaled->GetExtent(sliceExt);
+    m_imageActor->SetDisplayExtent(sliceExt);
+
+    m_renderer->RemoveAllViewProps();
+    m_renderer->AddActor(m_imageActor);
+    m_renderer->ResetCamera();
+    return {{"status", QStringLiteral("ok")}, {"slice", slice}};
+}
+
+QJsonObject SceneManager::setWindowLevel(double window, double level) {
+    ensureScene();
+    if (!m_sliceImage) return {{"_error", QStringLiteral("No slice loaded")}};
+    if (window <= 0.0) return {{"_error", QStringLiteral("Window must be >0")}};
+    m_hasWindowLevel = true;
+    m_windowWL = window;
+    m_level = level;
+    // Re-apply current slice to rebuild shift/actor
+    return setSlice(m_currentSlice);
 }
 
 QJsonObject SceneManager::renderPng(int width, int height) {

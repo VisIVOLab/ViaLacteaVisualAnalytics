@@ -14,6 +14,7 @@ enum CommandTag {
     CMD_NONE = 0,
     CMD_LOAD = 1,
     CMD_RENDER = 2,
+    CMD_SET_SLICE = 3,
     CMD_EXIT = 99
 };
 const int FRAME_TAG = 200;
@@ -54,6 +55,21 @@ QJsonObject DistributedService::loadDataset(const QString &path) {
 QJsonObject DistributedService::setCamera(const QJsonObject &params) {
     // Only local camera for now
     return m_localScene->setCamera(params);
+}
+
+QJsonObject DistributedService::setSlice(int slice) {
+    auto res = m_localScene->setSlice(slice);
+    if (m_rank == 0 && m_size > 1) {
+        int cmd = CMD_SET_SLICE;
+        MPI_Bcast(&cmd, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&slice, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    }
+    return res;
+}
+
+QJsonObject DistributedService::setWindowLevel(double window, double level) {
+    auto res = m_localScene->setWindowLevel(window, level);
+    return res;
 }
 
 QJsonObject DistributedService::renderFrame(int width, int height, const QString &mode, const QJsonObject &volumeParams) {

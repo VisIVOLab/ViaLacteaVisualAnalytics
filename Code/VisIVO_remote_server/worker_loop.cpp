@@ -10,6 +10,7 @@ enum CommandTag {
     CMD_NONE = 0,
     CMD_LOAD = 1,
     CMD_RENDER = 2,
+    CMD_SET_SLICE = 3,
     CMD_EXIT = 99
 };
 const int FRAME_TAG = 200;
@@ -50,6 +51,10 @@ void WorkerLoop::run() {
             if (depthSize > 0) {
                 MPI_Send(depth.data(), depthSize, MPI_CHAR, 0, FRAME_TAG + 3, MPI_COMM_WORLD);
             }
+        } else if (cmd == CMD_SET_SLICE) {
+            int slice = 0;
+            MPI_Bcast(&slice, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            m_scene->setSlice(slice);
         }
     }
 }

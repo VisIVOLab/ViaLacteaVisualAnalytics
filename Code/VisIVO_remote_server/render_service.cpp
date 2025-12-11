@@ -26,6 +26,8 @@ QJsonObject RenderService::handleRequest(const QJsonObject &request) {
         methods.append(QStringLiteral("getCapabilities"));
         methods.append(QStringLiteral("loadDataset"));
         methods.append(QStringLiteral("setCamera"));
+        methods.append(QStringLiteral("setSlice"));
+        methods.append(QStringLiteral("setWindowLevel"));
         methods.append(QStringLiteral("renderFrame"));
         return {
                 {"protocol", QStringLiteral("jsonrpc2")},
@@ -42,6 +44,17 @@ QJsonObject RenderService::handleRequest(const QJsonObject &request) {
 
     if (method == QStringLiteral("setCamera")) {
         return m_service->setCamera(params);
+    }
+
+    if (method == QStringLiteral("setSlice")) {
+        const int slice = params.value(QStringLiteral("slice")).toInt();
+        return m_service->setSlice(slice);
+    }
+
+    if (method == QStringLiteral("setWindowLevel")) {
+        const double window = params.value(QStringLiteral("window")).toDouble();
+        const double level = params.value(QStringLiteral("level")).toDouble();
+        return m_service->setWindowLevel(window, level);
     }
 
     if (method == QStringLiteral("renderFrame")) {

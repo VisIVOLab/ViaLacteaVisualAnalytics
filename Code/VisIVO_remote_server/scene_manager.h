@@ -18,8 +18,11 @@ public:
 
     QJsonObject loadFits(const QString &path);
     QJsonObject setCamera(const QJsonObject &params);
+    QJsonObject setSlice(int slice);
+    QJsonObject setWindowLevel(double window, double level);
     QJsonObject renderPng(int width, int height);
     QJsonObject renderVolumePng(int width, int height, const QJsonObject &volumeParams);
+    QJsonObject renderContourPng(int width, int height, const QJsonObject &params);
     QJsonObject renderRaw(int width, int height, QByteArray &rgba, QByteArray &depth);
 
 private:
@@ -36,4 +39,8 @@ private:
     vtkExtractVOI *m_sliceExtract;
     int m_numSlices{0};
     double m_range[2]{0.0, 1.0};
+    int m_currentSlice{0};
+    bool m_hasWindowLevel{false};
+    double m_windowWL{0.0};
+    double m_level{0.0};
 };
