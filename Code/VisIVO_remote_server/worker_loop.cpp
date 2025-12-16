@@ -12,6 +12,11 @@ enum CommandTag {
     CMD_LOAD = 1,
     CMD_RENDER = 2,
     CMD_SET_SLICE = 3,
+    CMD_SET_LUT = 4,
+    CMD_SET_RANGE = 5,
+    CMD_ROTATE = 6,
+    CMD_PAN = 7,
+    CMD_ZOOM = 8,
     CMD_EXIT = 99
 };
 const int FRAME_TAG = 200;
@@ -73,6 +78,32 @@ void WorkerLoop::run() {
             int slice = 0;
             MPI_Bcast(&slice, 1, MPI_INT, 0, MPI_COMM_WORLD);
             m_scene->setSlice(slice);
+        } else if (cmd == CMD_SET_LUT) {
+            int len = 0;
+            MPI_Bcast(&len, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            std::vector<char> buf(static_cast<size_t>(len));
+            if (len > 0) MPI_Bcast(buf.data(), len, MPI_CHAR, 0, MPI_COMM_WORLD);
+            QJsonObject lutParams;
+            if (len > 0) {
+                lutParams = QJsonDocument::fromJson(QByteArray(buf.data(), len)).object();
+            }
+            m_scene->setLut(lutParams);
+        } else if (cmd == CMD_SET_RANGE) {
+            double range[2] = {0.0, 1.0};
+            MPI_Bcast(range, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            m_scene->setRange(range[0], range[1]);
+        } else if (cmd == CMD_ROTATE) {
+            double vals[2] = {0.0, 0.0};
+            MPI_Bcast(vals, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            m_scene->rotateCamera(vals[0], vals[1]);
+        } else if (cmd == CMD_PAN) {
+            double vals[2] = {0.0, 0.0};
+            MPI_Bcast(vals, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            m_scene->panCamera(vals[0], vals[1]);
+        } else if (cmd == CMD_ZOOM) {
+            double val = 1.0;
+            MPI_Bcast(&val, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            m_scene->zoomCamera(val);
         }
     }
 }

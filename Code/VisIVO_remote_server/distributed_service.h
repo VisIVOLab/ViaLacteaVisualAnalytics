@@ -15,8 +15,13 @@ public:
     QJsonObject loadDataset(const QString &path);
     QJsonObject setCamera(const QJsonObject &params);
     QJsonObject setSlice(int slice);
+    QJsonObject setRange(double min, double max);
     QJsonObject setWindowLevel(double window, double level);
-    QJsonObject renderFrame(int width, int height, const QString &mode = QString(), const QJsonObject &volumeParams = QJsonObject());
+    QJsonObject setLut(const QJsonObject &params);
+    QJsonObject rotateCamera(double yawDeg, double pitchDeg);
+    QJsonObject panCamera(double dx, double dy);
+    QJsonObject zoomCamera(double factor);
+    QJsonObject renderFrame(int width, int height, const QString &mode = QString(), const QJsonObject &volumeParams = QJsonObject(), const QString &quality = QString(), const QString &format = QString());
 
 private:
     int m_rank;

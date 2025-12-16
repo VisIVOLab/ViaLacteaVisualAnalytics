@@ -72,6 +72,51 @@ message(STATUS "CFITSIO ${CFITSIO_VERSION}")
 find_package(HDF5 1.14.0 REQUIRED COMPONENTS CXX HL)
 message(STATUS "HDF5 ${HDF5_VERSION}")
 
+# FFmpeg (libavcodec/libavutil/libswscale) per decoder H.264 lato client
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED libavcodec libavutil libswscale)
+set(FFMPEG_HINT "" CACHE PATH "Optional hint to FFmpeg prefix (e.g. /opt/homebrew/Cellar/ffmpeg/8.0.1)")
+if(FFMPEG_HINT)
+    list(INSERT FFMPEG_INCLUDE_DIRS 0 "${FFMPEG_HINT}/include")
+    list(INSERT FFMPEG_LIBRARY_DIRS 0 "${FFMPEG_HINT}/lib")
+    list(APPEND FFMPEG_LIBRARIES "${FFMPEG_HINT}/lib/libavcodec.dylib"
+                                 "${FFMPEG_HINT}/lib/libavutil.dylib"
+                                 "${FFMPEG_HINT}/lib/libswscale.dylib")
+endif()
+# Filtra eventuali path inesistenti restituiti da pkg-config
+set(_ff_inc_clean "")
+foreach(_d ${FFMPEG_INCLUDE_DIRS})
+    if(EXISTS "${_d}")
+        list(APPEND _ff_inc_clean "${_d}")
+    endif()
+endforeach()
+if(_ff_inc_clean)
+    set(FFMPEG_INCLUDE_DIRS ${_ff_inc_clean})
+endif()
+# Fallback nomi di libreria se pkg-config non restituisce nulla
+if(NOT FFMPEG_LIBRARIES)
+    set(FFMPEG_LIBRARIES avcodec avutil swscale)
+endif()
+# Se abbiamo i path delle lib, costruisci percorsi assoluti ai dylib/so
+if(FFMPEG_LIBRARY_DIRS)
+    set(_ff_abs_libs "")
+    foreach(_lib avcodec avutil swscale)
+        foreach(_dir ${FFMPEG_LIBRARY_DIRS})
+            if(EXISTS "${_dir}/lib${_lib}.dylib")
+                list(APPEND _ff_abs_libs "${_dir}/lib${_lib}.dylib")
+                break()
+            elseif(EXISTS "${_dir}/lib${_lib}.so")
+                list(APPEND _ff_abs_libs "${_dir}/lib${_lib}.so")
+                break()
+            endif()
+        endforeach()
+    endforeach()
+    if(_ff_abs_libs)
+        set(FFMPEG_LIBRARIES ${_ff_abs_libs})
+    endif()
+endif()
+message(STATUS "FFmpeg include: ${FFMPEG_INCLUDE_DIRS}")
+
 configure_file(src/version.h.in version.h)
 
 set(PROJECT_SOURCES
@@ -218,6 +263,8 @@ set(PROJECT_SOURCES
         src/vlkbsimplequerycomposer.h
         src/vlvaurlschemehandler.cpp
         src/vlvaurlschemehandler.h
+        src/h264decoder.cpp
+        src/h264decoder.h
         src/vsobjectdesktop.cpp
         src/vsobjectdesktop.h
         src/vstabledesktop.cpp
@@ -242,6 +289,8 @@ set(PROJECT_SOURCES
         src/vtktoolswidget.h
         src/vtkwindow_interactors.cpp
         src/vtkwindow_interactors.h
+        src/remote2dwindow.cpp
+        src/remote2dwindow.h
         src/vtkwindow_new.cpp
         src/vtkwindow_new.h
         src/vtkwindowcube.cpp
@@ -319,7 +368,11 @@ endforeach ()
 
 target_link_libraries(
         ViaLacteaVisualAnalytics PRIVATE ${qt_modules} ${VTK_LIBRARIES} HDF5::HDF5
-        CFITSIO::CFITSIO wcs)
+        CFITSIO::CFITSIO wcs ${FFMPEG_LIBRARIES})
+target_include_directories(ViaLacteaVisualAnalytics PRIVATE ${FFMPEG_INCLUDE_DIRS})
+if(FFMPEG_LIBRARY_DIRS)
+    target_link_directories(ViaLacteaVisualAnalytics PRIVATE ${FFMPEG_LIBRARY_DIRS})
+endif()
 set_target_properties(
         ViaLacteaVisualAnalytics
         PROPERTIES

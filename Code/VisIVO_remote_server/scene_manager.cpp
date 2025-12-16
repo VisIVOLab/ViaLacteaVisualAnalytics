@@ -2,12 +2,14 @@
 
 #include <QBuffer>
 #include <QImage>
+#include <QDebug>
 
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkImageActor.h>
 #include <vtkImageData.h>
 #include <vtkImageShiftScale.h>
+#include <vtkImageMapToColors.h>
 #include <vtkWindowToImageFilter.h>
 #include <vtkPNGWriter.h>
 #include <vtkUnsignedCharArray.h>
@@ -25,8 +27,13 @@
 #include <vtkProperty.h>
 #include <vtkActor.h>
 #include <vtkContourFilter.h>
+#include <vtkImageShrink3D.h>
 #include <vtkCamera.h>
 #include <vtkSmartPointer.h>
+#include <vtkLookupTable.h>
+#include <vtkMath.h>
+#include "../src/luteditor.h"
+#include "video_encoder.h"
 
 #include "../src/vtkfitsreader2.h"
 
@@ -72,11 +79,20 @@ void SceneManager::resetScene() {
     if (m_volumeImage) { m_volumeImage->Delete(); m_volumeImage = nullptr; }
     if (m_shift) { m_shift->Delete(); m_shift = nullptr; }
     if (m_sliceExtract) { m_sliceExtract->Delete(); m_sliceExtract = nullptr; }
+    m_mc = nullptr;
+    m_mcNormals = nullptr;
+    m_volumeMapper = nullptr;
+    m_volumeActor = nullptr;
+    m_lastIso = std::numeric_limits<double>::quiet_NaN();
+    m_lastLod = 1;
+    m_cameraInitialized = false;
     m_loadedSource.clear();
     m_numSlices = 0;
     m_range[0] = 0.0; m_range[1] = 1.0;
     m_currentSlice = 0;
     m_hasWindowLevel = false;
+    m_lutScale = "Log";
+    m_lutType = "Gray";
 }
 
 QJsonObject SceneManager::loadFits(const QString &path) {
@@ -103,6 +119,10 @@ QJsonObject SceneManager::loadFits(const QString &path) {
     m_numSlices = dims[2];
 
     volume->GetScalarRange(m_range);
+    // Come in vtkwindow_new case 0: clamp min a 0 se negativo prima di impostare la LUT
+    if (m_range[0] < 0.0) {
+        m_range[0] = 0.0;
+    }
     m_volumeImage = volume;
 
     // Extract a mid-slice for 2D view
@@ -139,17 +159,22 @@ QJsonObject SceneManager::loadFits(const QString &path) {
     scaled->Register(nullptr);
     m_shift->Register(nullptr);
 
+    vtkImageData *colored = mapWithLut(scaled);
+
     if (m_imageActor) { m_imageActor->Delete(); m_imageActor = nullptr; }
     m_imageActor = vtkImageActor::New();
-    m_imageActor->SetInputData(scaled);
+    m_imageActor->SetInputData(colored);
     int sliceExt[6];
-    scaled->GetExtent(sliceExt);
+    colored->GetExtent(sliceExt);
     m_imageActor->SetDisplayExtent(sliceExt);
 
     m_renderer->RemoveAllViewProps();
     m_renderer->AddActor(m_imageActor);
     m_renderer->ResetCamera();
     m_loadedSource = path;
+
+    qInfo() << "[SceneManager] Loaded" << path << "dims" << dims[0] << dims[1] << m_numSlices
+            << "range" << m_range[0] << m_range[1];
 
     return {{"status", QStringLiteral("ok")},
             {"dimensions", QJsonArray{dims[0], dims[1], m_numSlices}},
@@ -167,6 +192,71 @@ QJsonObject SceneManager::setCamera(const QJsonObject &params) {
     if (pos.size() == 3) cam->SetPosition(pos[0].toDouble(), pos[1].toDouble(), pos[2].toDouble());
     if (foc.size() == 3) cam->SetFocalPoint(foc[0].toDouble(), foc[1].toDouble(), foc[2].toDouble());
     if (up.size() == 3)  cam->SetViewUp(up[0].toDouble(), up[1].toDouble(), up[2].toDouble());
+    m_window->Render();
+    return {{"status", QStringLiteral("ok")}};
+}
+
+QJsonObject SceneManager::setRange(double min, double max) {
+    ensureScene();
+    if (max <= min) {
+        return {{"_error", QStringLiteral("Invalid range")}};
+    }
+    m_range[0] = min;
+    m_range[1] = max;
+    if (m_lutScale.compare("Log", Qt::CaseInsensitive) == 0 && m_range[0] <= 0.0) {
+        m_range[0] = 1e-6;
+    }
+    return {{"status", QStringLiteral("ok")}};
+}
+
+QJsonObject SceneManager::rotateCamera(double yawDeg, double pitchDeg) {
+    ensureScene();
+    vtkCamera *cam = m_renderer ? m_renderer->GetActiveCamera() : nullptr;
+    if (!cam) return {{"_error", QStringLiteral("No renderer")}};
+    cam->Azimuth(yawDeg);
+    cam->Elevation(pitchDeg);
+    cam->OrthogonalizeViewUp();
+    m_renderer->ResetCameraClippingRange();
+    m_window->Render();
+    return {{"status", QStringLiteral("ok")}};
+}
+
+QJsonObject SceneManager::panCamera(double dx, double dy) {
+    ensureScene();
+    vtkCamera *cam = m_renderer ? m_renderer->GetActiveCamera() : nullptr;
+    if (!cam) return {{"_error", QStringLiteral("No renderer")}};
+
+    double fp[3], pos[3], up[3], vpn[3], right[3];
+    cam->GetFocalPoint(fp);
+    cam->GetPosition(pos);
+    cam->GetViewUp(up);
+    cam->GetViewPlaneNormal(vpn);
+    vtkMath::Cross(vpn, up, right);
+    vtkMath::Normalize(right);
+    vtkMath::Normalize(up);
+
+    const double dist = vtkMath::Distance2BetweenPoints(fp, pos);
+    const double scale = std::sqrt(dist) * 0.5; // fattore empirico
+
+    for (int i = 0; i < 3; ++i) {
+        const double shift = (-right[i] * dx + up[i] * dy) * scale;
+        fp[i] += shift;
+        pos[i] += shift;
+    }
+    cam->SetFocalPoint(fp);
+    cam->SetPosition(pos);
+    m_renderer->ResetCameraClippingRange();
+    m_window->Render();
+    return {{"status", QStringLiteral("ok")}};
+}
+
+QJsonObject SceneManager::zoomCamera(double factor) {
+    ensureScene();
+    vtkCamera *cam = m_renderer ? m_renderer->GetActiveCamera() : nullptr;
+    if (!cam) return {{"_error", QStringLiteral("No renderer")}};
+    if (factor <= 0.0) factor = 1.0;
+    cam->Dolly(factor);
+    m_renderer->ResetCameraClippingRange();
     m_window->Render();
     return {{"status", QStringLiteral("ok")}};
 }
@@ -212,11 +302,13 @@ QJsonObject SceneManager::setSlice(int slice) {
     scaled->Register(nullptr);
     m_shift->Register(nullptr);
 
+    vtkImageData *colored = mapWithLut(scaled);
+
     if (m_imageActor) { m_imageActor->Delete(); m_imageActor = nullptr; }
     m_imageActor = vtkImageActor::New();
-    m_imageActor->SetInputData(scaled);
+    m_imageActor->SetInputData(colored);
     int sliceExt[6];
-    scaled->GetExtent(sliceExt);
+    colored->GetExtent(sliceExt);
     m_imageActor->SetDisplayExtent(sliceExt);
 
     m_renderer->RemoveAllViewProps();
@@ -236,49 +328,111 @@ QJsonObject SceneManager::setWindowLevel(double window, double level) {
     return setSlice(m_currentSlice);
 }
 
-QJsonObject SceneManager::renderPng(int width, int height) {
+QJsonObject SceneManager::setLut(const QJsonObject &params) {
+    m_lutType = params.value(QStringLiteral("type")).toString(m_lutType);
+    m_lutScale = params.value(QStringLiteral("scale")).toString(m_lutScale);
+    if (m_sliceImage) {
+        return setSlice(m_currentSlice);
+    }
+    return {{"status", QStringLiteral("ok")}};
+}
+
+static QString encodeImage(const QByteArray &rgba, int width, int height, const QString &qualityTag) {
+    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
+               width, height, QImage::Format_RGBA8888);
+    QByteArray out;
+    QBuffer buf(&out);
+    buf.open(QIODevice::WriteOnly);
+    const char *fmt = "PNG";
+    int quality = -1;
+    if (qualityTag.compare(QStringLiteral("interactive"), Qt::CaseInsensitive) == 0) {
+        fmt = "JPEG";
+        quality = 40; // bitrate-friendly durante pan/zoom
+    } else if (qualityTag.compare(QStringLiteral("final"), Qt::CaseInsensitive) == 0) {
+        fmt = "JPEG";
+        quality = 95; // alta qualità a riposo
+    }
+    img.save(&buf, fmt, quality);
+    return QString::fromLatin1(out.toBase64());
+}
+
+QJsonObject SceneManager::renderPng(int width, int height, const QString &quality) {
     QByteArray rgba, depth;
     QJsonObject rawRes = renderRaw(width, height, rgba, depth);
     if (rawRes.contains(QStringLiteral("_error"))) {
         return rawRes;
     }
-    // Encode RGBA to PNG via Qt
-    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
-               width, height, QImage::Format_RGBA8888);
-    QByteArray png;
-    QBuffer buf(&png);
-    buf.open(QIODevice::WriteOnly);
-    img.save(&buf, "PNG");
-    const QString b64 = QString::fromLatin1(png.toBase64());
+    const QString b64 = encodeImage(rgba, width, height, quality);
     return {{"status", QStringLiteral("ok")}, {"image", b64}};
 }
 
-QJsonObject SceneManager::renderVolumePng(int width, int height, const QJsonObject &volumeParams) {
+QJsonObject SceneManager::renderVolumePng(int width, int height, const QJsonObject &volumeParams, const QString &quality) {
     QByteArray rgba, depth;
     QJsonObject res = renderRawVolume(width, height, volumeParams, rgba, depth);
     if (res.contains(QStringLiteral("_error"))) return res;
-    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
-               width, height, QImage::Format_RGBA8888);
-    QByteArray png;
-    QBuffer buf(&png);
-    buf.open(QIODevice::WriteOnly);
-    img.save(&buf, "PNG");
-    const QString b64 = QString::fromLatin1(png.toBase64());
+    const QString b64 = encodeImage(rgba, width, height, quality);
     return {{"status", QStringLiteral("ok")}, {"image", b64}};
 }
 
-QJsonObject SceneManager::renderContourPng(int width, int height, const QJsonObject &params) {
+QJsonObject SceneManager::renderContourPng(int width, int height, const QJsonObject &params, const QString &quality) {
     QByteArray rgba, depth;
     QJsonObject res = renderRawContour(width, height, params, rgba, depth);
     if (res.contains(QStringLiteral("_error"))) return res;
-    QImage img(reinterpret_cast<const uchar *>(rgba.constData()),
-               width, height, QImage::Format_RGBA8888);
-    QByteArray png;
-    QBuffer buf(&png);
-    buf.open(QIODevice::WriteOnly);
-    img.save(&buf, "PNG");
-    const QString b64 = QString::fromLatin1(png.toBase64());
+    const QString b64 = encodeImage(rgba, width, height, quality);
     return {{"status", QStringLiteral("ok")}, {"image", b64}};
+}
+
+QJsonObject SceneManager::renderH264(int width, int height, const QString &quality) {
+    QByteArray rgba, depth;
+    QJsonObject rawRes = renderRaw(width, height, rgba, depth);
+    if (rawRes.contains(QStringLiteral("_error"))) {
+        return rawRes;
+    }
+    QString err;
+    QByteArray nal = VideoEncoder::encodeH264(rgba, width, height, quality, err);
+    if (nal.isEmpty()) {
+        return {{"_error", err.isEmpty() ? QStringLiteral("encode failed") : err}};
+    }
+    const QString b64 = QString::fromLatin1(nal.toBase64());
+    return {{"status", QStringLiteral("ok")},
+            {"codec", QStringLiteral("h264")},
+            {"data", b64},
+            {"width", width},
+            {"height", height}};
+}
+
+QJsonObject SceneManager::renderH264Volume(int width, int height, const QJsonObject &volumeParams, const QString &quality) {
+    QByteArray rgba, depth;
+    QJsonObject rawRes = renderRawVolume(width, height, volumeParams, rgba, depth);
+    if (rawRes.contains(QStringLiteral("_error"))) return rawRes;
+    QString err;
+    QByteArray nal = VideoEncoder::encodeH264(rgba, width, height, quality, err);
+    if (nal.isEmpty()) {
+        return {{"_error", err.isEmpty() ? QStringLiteral("encode failed") : err}};
+    }
+    const QString b64 = QString::fromLatin1(nal.toBase64());
+    return {{"status", QStringLiteral("ok")},
+            {"codec", QStringLiteral("h264")},
+            {"data", b64},
+            {"width", width},
+            {"height", height}};
+}
+
+QJsonObject SceneManager::renderH264Contour(int width, int height, const QJsonObject &params, const QString &quality) {
+    QByteArray rgba, depth;
+    QJsonObject rawRes = renderRawContour(width, height, params, rgba, depth);
+    if (rawRes.contains(QStringLiteral("_error"))) return rawRes;
+    QString err;
+    QByteArray nal = VideoEncoder::encodeH264(rgba, width, height, quality, err);
+    if (nal.isEmpty()) {
+        return {{"_error", err.isEmpty() ? QStringLiteral("encode failed") : err}};
+    }
+    const QString b64 = QString::fromLatin1(nal.toBase64());
+    return {{"status", QStringLiteral("ok")},
+            {"codec", QStringLiteral("h264")},
+            {"data", b64},
+            {"width", width},
+            {"height", height}};
 }
 
 QJsonObject SceneManager::renderRawVolume(int width, int height, const QJsonObject &volumeParams, QByteArray &rgba, QByteArray &depth) {
@@ -294,26 +448,51 @@ QJsonObject SceneManager::renderRawVolume(int width, int height, const QJsonObje
     const double delta = m_range[1] - m_range[0];
     const double defaultIso = m_range[0] + 0.5 * delta;
     double iso = volumeParams.value(QStringLiteral("iso")).toDouble(defaultIso);
+    int lod = volumeParams.value(QStringLiteral("lod")).toInt(1);
+    lod = std::max(1, lod);
     // Clamp iso dentro il range valido
     if (iso <= m_range[0] || iso >= m_range[1]) {
         iso = defaultIso;
     }
 
-    auto mc = vtkSmartPointer<vtkMarchingCubes>::New();
-    mc->SetInputData(m_volumeImage);
-    mc->ComputeNormalsOn();
-    mc->SetValue(0, iso);
-
-    auto normals = vtkSmartPointer<vtkPolyDataNormals>::New();
-    normals->SetInputConnection(mc->GetOutputPort());
-    normals->SplittingOff();
-
-    auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    mapper->SetInputConnection(normals->GetOutputPort());
-    mapper->ScalarVisibilityOff();
-
-    auto actor = vtkSmartPointer<vtkActor>::New();
-    actor->SetMapper(mapper);
+    // Costruisci la pipeline solo la prima volta o se l'iso cambia
+    bool rebuildIso = !m_mc || std::isnan(m_lastIso) || std::abs(m_lastIso - iso) > 1e-6 || lod != m_lastLod;
+    if (rebuildIso) {
+        vtkSmartPointer<vtkImageData> inputVol = m_volumeImage;
+        vtkSmartPointer<vtkImageShrink3D> shrink;
+        if (lod > 1) {
+            shrink = vtkSmartPointer<vtkImageShrink3D>::New();
+            shrink->SetInputData(m_volumeImage);
+            shrink->SetShrinkFactors(lod, lod, lod);
+            shrink->AveragingOn();
+            shrink->Update();
+            inputVol = shrink->GetOutput();
+        }
+        m_mc = vtkSmartPointer<vtkMarchingCubes>::New();
+        m_mc->SetInputData(inputVol);
+        m_mc->ComputeNormalsOn();
+        m_mcNormals = vtkSmartPointer<vtkPolyDataNormals>::New();
+        m_mcNormals->SetInputConnection(m_mc->GetOutputPort());
+        m_mcNormals->SplittingOff();
+        m_volumeMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+        m_volumeMapper->SetInputConnection(m_mcNormals->GetOutputPort());
+        m_volumeMapper->ScalarVisibilityOff();
+        m_volumeActor = vtkSmartPointer<vtkActor>::New();
+        m_volumeActor->SetMapper(m_volumeMapper);
+        m_renderer->RemoveAllViewProps();
+        m_renderer->AddActor(m_volumeActor);
+        m_lastIso = iso;
+        m_lastLod = lod;
+        m_cameraInitialized = false; // reset camera on first build
+    }
+    if (m_mc) {
+        if (rebuildIso) {
+            m_mc->SetValue(0, iso);
+            m_mc->Modified();
+            m_mc->Update();
+            m_mcNormals->Update();
+        }
+    }
 
     // Colore/opacity di default, con override da params
     double color[3] = {0.8, 0.8, 1.0};
@@ -327,12 +506,15 @@ QJsonObject SceneManager::renderRawVolume(int width, int height, const QJsonObje
     if (volumeParams.contains(QStringLiteral("opacity"))) {
         opacity = volumeParams.value(QStringLiteral("opacity")).toDouble(opacity);
     }
-    actor->GetProperty()->SetColor(color);
-    actor->GetProperty()->SetOpacity(opacity);
+    if (m_volumeActor) {
+        m_volumeActor->GetProperty()->SetColor(color);
+        m_volumeActor->GetProperty()->SetOpacity(opacity);
+    }
 
-    m_renderer->RemoveAllViewProps();
-    m_renderer->AddActor(actor);
-    m_renderer->ResetCamera();
+    if (!m_cameraInitialized) {
+        m_renderer->ResetCamera();
+        m_cameraInitialized = true;
+    }
     m_renderer->ResetCameraClippingRange();
     m_window->Render();
 
@@ -487,4 +669,26 @@ QJsonObject SceneManager::renderRaw(int width, int height, QByteArray &rgba, QBy
         depth.clear();
     }
     return {{"status", QStringLiteral("ok")}};
+}
+
+vtkImageData *SceneManager::mapWithLut(vtkImageData *src) {
+    if (!src) return nullptr;
+    auto lut = vtkSmartPointer<vtkLookupTable>::New();
+    lut->SetRange(m_range);
+    if (m_lutScale.compare("Log", Qt::CaseInsensitive) == 0) {
+        lut->SetScaleToLog10();
+    } else {
+        lut->SetScaleToLinear();
+    }
+    lut->SetNumberOfTableValues(256);
+    SelectLookTable(QString::fromStdString(m_lutType.toStdString()), lut);
+    lut->Build();
+    auto mapper = vtkSmartPointer<vtkImageMapToColors>::New();
+    mapper->SetInputData(src);
+    mapper->SetLookupTable(lut);
+    mapper->SetOutputFormatToRGBA();
+    mapper->Update();
+    vtkImageData *out = mapper->GetOutput();
+    out->Register(nullptr);
+    return out;
 }

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(VisIVO_remote_server LANGUAGES CXX)
+# Need both C and CXX so that FindMPI generates MPI::MPI_C (VTK::mpi depends on it)
+project(VisIVO_remote_server LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +27,11 @@ find_package(
         IOImage)
 find_package(CFITSIO 4.1.0 QUIET REQUIRED)
 find_package(MPI REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+        libavcodec
+        libavutil
+        libswscale)
 
 add_executable(VisIVO_remote_server
         main.cpp
@@ -39,7 +45,11 @@ add_executable(VisIVO_remote_server
         worker_loop.h
         scene_manager.cpp
         scene_manager.h
-        ../src/vtkfitsreader2.cpp)
+        video_encoder.cpp
+        video_encoder.h
+        ../src/vtkfitsreader2.cpp
+        ../src/luteditor.cpp
+        ../src/color.cpp)
 
 target_include_directories(VisIVO_remote_server PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -47,7 +57,13 @@ target_link_libraries(VisIVO_remote_server PRIVATE
         Qt6::Core Qt6::Network Qt6::WebSockets Qt6::Gui
         ${VTK_LIBRARIES}
         CFITSIO::CFITSIO
-        MPI::MPI_CXX)
+        MPI::MPI_CXX
+        PkgConfig::FFMPEG)
+
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(VisIVO_remote_server PRIVATE -stdlib=libc++)
+    target_link_options(VisIVO_remote_server PRIVATE -stdlib=libc++)
+endif()
 
 set_target_properties(VisIVO_remote_server PROPERTIES
         OUTPUT_NAME VisIVO_remote_server)

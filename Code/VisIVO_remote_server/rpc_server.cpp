@@ -4,6 +4,7 @@
 #include <QJsonParseError>
 #include <QHostAddress>
 #include <QByteArray>
+#include <QtEndian>
 
 RpcServer::RpcServer(quint16 port, int rank, int size, QObject *parent)
     : QObject(parent),
@@ -81,9 +82,34 @@ void RpcServer::sendError(QWebSocket *socket, const QJsonValue &id, const QStrin
 
 void RpcServer::sendResult(QWebSocket *socket, const QJsonValue &id, const QJsonObject &result) {
     if (!socket) return;
+    // H.264: invia frame binario con header + JSON di ack senza campo data
+    if (result.value(QStringLiteral("codec")).toString() == QStringLiteral("h264")) {
+        const QString b64 = result.value(QStringLiteral("data")).toString();
+        if (!b64.isEmpty()) {
+            QByteArray nal = QByteArray::fromBase64(b64.toLatin1());
+            QByteArray payload;
+            payload.append("H264", 4);
+            quint32 w = result.value(QStringLiteral("width")).toInt();
+            quint32 h = result.value(QStringLiteral("height")).toInt();
+            quint32 bw = qToBigEndian(w);
+            quint32 bh = qToBigEndian(h);
+            payload.append(reinterpret_cast<const char *>(&bw), sizeof(bw));
+            payload.append(reinterpret_cast<const char *>(&bh), sizeof(bh));
+            payload.append(nal);
+            qInfo() << "[RpcServer] sending binary payload bytes" << payload.size();
+            socket->sendBinaryMessage(payload);
+            qInfo() << "[RpcServer] binary payload sent";
+        }
+    }
+
     QJsonObject obj;
     obj["jsonrpc"] = QStringLiteral("2.0");
     obj["id"] = id;
-    obj["result"] = result;
+    QJsonObject clean = result;
+    if (clean.contains(QStringLiteral("data")) && clean.value(QStringLiteral("codec")).toString() == QStringLiteral("h264")) {
+        clean.remove(QStringLiteral("data")); // evitiamo doppio invio grosso nel testo
+        clean.remove(QStringLiteral("image"));
+    }
+    obj["result"] = clean;
     socket->sendTextMessage(QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact)));
 }
