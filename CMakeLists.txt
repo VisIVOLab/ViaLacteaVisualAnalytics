@@ -20,6 +20,11 @@ endforeach ()
 find_package(Qt6 6.10.0 CONFIG REQUIRED COMPONENTS ${qt_components})
 message(STATUS "Using Qt v${Qt6_VERSION}")
 
+find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
+        GUISupportQt
+)
+message(STATUS "Using VTK v${VTK_VERSION}")
+
 qt_standard_project_setup()
 set(CMAKE_AUTOUIC OFF)
 
@@ -29,10 +34,13 @@ set(PROJECT_SOURCES
         src/main.cpp
         src/gui/MainWindow.cpp
         src/gui/MainWindow.h
+        src/gui/vtkWindowImage.cpp
+        src/gui/vtkWindowImage.h
 )
 
 set(PROJECT_UI
         ui/MainWindow.ui
+        ui/vtkWindowImage.ui
 )
 
 set(PROJECT_ASSETS
@@ -78,6 +86,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ${qt_modules}
+        ${VTK_LIBRARIES}
+)
+
+vtk_module_autoinit(
+        TARGETS ${PROJECT_NAME}
+        MODULES ${VTK_LIBRARIES}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

@@ -1,15 +1,26 @@
-#include "MainWindow.h"
 #include "Version.h"
+#include "vtkWindowImage.h"
+
+#include <QVTKOpenGLNativeWidget.h>
 
 #include <QApplication>
+#include <QIcon>
 #include <QLocale>
+#include <QSurfaceFormat>
 
 #include <clocale>
+#include <vtkWindow.h>
 
 using namespace Qt::StringLiterals;
 
 int main(int argc, char *argv[])
 {
+    // Enable OpenGL shared contexts
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
+    // Set OpenGL profile needed for VTK
+    QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+
     QApplication app(argc, argv);
 
     // Set locale to C.UTF-8
@@ -35,8 +46,8 @@ int main(int argc, char *argv[])
 #endif
                        "%{if-category}%{category} %{endif}%{message}");
 
-    MainWindow window;
-    window.show();
+    auto window = new vtkWindowImage();
+    window->show();
 
     return QApplication::exec();
 }
