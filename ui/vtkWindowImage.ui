@@ -2,18 +2,29 @@
 <ui version="4.0">
  <class>vtkWindowImage</class>
  <widget class="QMainWindow" name="vtkWindowImage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1280</width>
+    <height>800</height>
+   </rect>
+  </property>
   <property name="minimumSize">
    <size>
     <width>1280</width>
-    <height>800</height>
+    <height>720</height>
    </size>
   </property>
+  <property name="windowTitle">
+   <string>vtkWindowImage</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_3">
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
     <item>
-     <layout class="QVBoxLayout" name="verticalLayout">
+     <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
          <widget class="QGroupBox" name="groupSources">
           <property name="sizePolicy">
@@ -25,7 +36,7 @@
           <property name="title">
            <string>Compact sources</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_7">
+          <layout class="QVBoxLayout" name="verticalLayout">
            <item>
             <widget class="QPushButton" name="btnSources"/>
            </item>
@@ -43,7 +54,7 @@
           <property name="title">
            <string>Filaments</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_8">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
             <widget class="QPushButton" name="btnFilaments"/>
            </item>
@@ -61,7 +72,7 @@
           <property name="title">
            <string>3D</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_9">
+          <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
             <widget class="QPushButton" name="btn3D"/>
            </item>
@@ -85,9 +96,9 @@
           <property name="title">
            <string>Layer settings</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_10">
+          <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
               <widget class="QComboBox" name="comboLut"/>
              </item>
@@ -184,8 +195,71 @@
      <height>30</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuWCS">
+    <property name="title">
+     <string>WCS</string>
+    </property>
+    <addaction name="actionGalactic"/>
+    <addaction name="actionFK5"/>
+    <addaction name="actionEcliptic"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionProfile"/>
+   </widget>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionAddFITS"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuWCS"/>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionGalactic">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Galactic</string>
+   </property>
+  </action>
+  <action name="actionFK5">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>FK5</string>
+   </property>
+  </action>
+  <action name="actionEcliptic">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Ecliptic</string>
+   </property>
+  </action>
+  <action name="actionProfile">
+   <property name="text">
+    <string>Profile</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionAddFITS">
+   <property name="text">
+    <string>Add new FITS file...</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

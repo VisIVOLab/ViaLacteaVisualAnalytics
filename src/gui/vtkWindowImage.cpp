@@ -2,7 +2,11 @@
 #include "ui_vtkWindowImage.h"
 
 #include "ColorMaps.h"
+#include "LUTCustomizerDialog.h"
 #include "LayerListModel.h"
+#include "ProfileWidget.h"
+#include "vtkInteractorStyleProfile.h"
+#include "vtkLegendScaleActorWCS.h"
 #include "wcs.h"
 
 #include <vtkCoordinate.h>
@@ -14,8 +18,10 @@
 #include <vtkRenderer.h>
 #include <vtkScalarBarActor.h>
 
+#include <QActionGroup>
 #include <QButtonGroup>
 #include <QFileDialog>
+#include <QMessageBox>
 
 #include <sstream>
 
@@ -25,13 +31,34 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowImage),
       filepath(filepath),
-      astro(filepath.toStdString())
+      astro(filepath.toStdString()),
+      lutCustomizer(nullptr),
+      profileWidget(nullptr)
 {
     ui->setupUi(this);
     this->setWindowTitle(this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
 
     this->setupRenderer();
+
+    // Setup Menu File
+    QObject::connect(ui->actionAddFITS, &QAction::triggered, this, &vtkWindowImage::addLocalFile);
+
+    // Setup Menu WCS
+    auto groupWCS = new QActionGroup(this);
+    groupWCS->addAction(ui->actionGalactic);
+    groupWCS->addAction(ui->actionFK5);
+    groupWCS->addAction(ui->actionEcliptic);
+    QObject::connect(groupWCS, &QActionGroup::triggered, this, &vtkWindowImage::changeLegendWCS);
+
+    // Setup Menu Tools
+    QObject::connect(ui->actionProfile, &QAction::triggered, this,
+                     &vtkWindowImage::setInteractorStyleProfile);
+
+    // Setup Buttons
+    ui->btnSources->setIcon(QIcon(u":/icons/RECT_SELECT.png"_s));
+    ui->btnFilaments->setIcon(QIcon(u":/icons/RECT_SELECT.png"_s));
+    ui->btn3D->setIcon(QIcon(u":/icons/RECT_SELECT.png"_s));
 
     // Color Maps Combobox
     auto cmaps = ColorMaps::GetColorMapNames();
@@ -41,6 +68,10 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
     ui->comboLut->setCurrentText(QString::fromStdString(ColorMaps::DefaultColorMap));
     QObject::connect(ui->comboLut, &QComboBox::textActivated, this,
                      &vtkWindowImage::changeCurrentColorMap);
+
+    // LUT Customizer
+    QObject::connect(ui->btnLutEdit, &QPushButton::clicked, this,
+                     &vtkWindowImage::showLUTCustomizer);
 
     // Scale Radio Buttons
     auto group = new QButtonGroup(this);
@@ -60,11 +91,59 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
     QObject::connect(this->layers, &LayerListModel::dataChanged, this, &vtkWindowImage::vtkRender);
     QObject::connect(ui->listLayer->selectionModel(), &QItemSelectionModel::currentChanged, this,
                      &vtkWindowImage::showCurrentLayerSettings);
+    QObject::connect(ui->listLayer->selectionModel(), &QItemSelectionModel::currentChanged, this,
+                     &vtkWindowImage::updateLUTCustomizer);
 }
 
 vtkWindowImage::~vtkWindowImage()
 {
     delete ui;
+}
+
+void vtkWindowImage::showLUTCustomizer()
+{
+    const int index = this->currentLayerIndex();
+    if (!this->lutCustomizer) {
+        this->lutCustomizer = new LUTCustomizerDialog(this);
+        QObject::connect(this->lutCustomizer, &LUTCustomizerDialog::lutUpdated, this,
+                         &vtkWindowImage::showCurrentLayerSettings);
+    }
+    this->lutCustomizer->init(this->layers->getImageData(index),
+                              this->layers->getLookupTable(index));
+    this->lutCustomizer->show();
+    this->lutCustomizer->raise();
+    this->lutCustomizer->activateWindow();
+}
+
+void vtkWindowImage::updateLUTCustomizer()
+{
+    if (this->lutCustomizer) {
+        const int index = this->currentLayerIndex();
+        this->lutCustomizer->init(this->layers->getImageData(index),
+                                  this->layers->getLookupTable(index));
+    }
+}
+
+void vtkWindowImage::addLocalFile()
+{
+    const QString filepath = QFileDialog::getOpenFileName(this, u"Import FITS file"_s, QString(),
+                                                          u"FITS files (*.fits *.fit)"_s);
+
+    if (filepath.isEmpty()) {
+        return;
+    }
+
+    if (!this->astro.overlap(filepath.toStdString())) {
+        QMessageBox::warning(
+                this, u"Import FITS file"_s,
+                u"The regions do not overlap each other, the file cannot be imported."_s);
+        return;
+    }
+
+    AstroUtils other(filepath.toStdString());
+    if (other.isImage()) {
+        this->addLayerImage(filepath.toStdString());
+    }
 }
 
 void vtkWindowImage::setupRenderer()
@@ -96,6 +175,11 @@ void vtkWindowImage::setupRenderer()
     this->colorbar->SetPosition(0.9, 0.1);
     this->colorbar->SetLookupTable(this->layers->getLookupTable(this->layers->getMasterIndex()));
     ren->AddViewProp(this->colorbar);
+
+    // Legend
+    this->legendWCS->Init(this->filepath.toStdString());
+    this->legendWCS->SetWCS(WCS_GALACTIC);
+    ren->AddViewProp(this->legendWCS);
 
     ren->ResetCamera();
     win->Render();
@@ -135,6 +219,22 @@ void vtkWindowImage::setInteractorStyleImage()
     this->vtkRender();
 }
 
+void vtkWindowImage::setInteractorStyleProfile()
+{
+    if (!this->profileWidget) {
+        vtkNew<vtkInteractorStyleProfile> style;
+        ui->vtk->renderWindow()->GetInteractor()->SetInteractorStyle(style);
+        this->vtkRender();
+
+        this->profileWidget =
+                new ProfileWidget(style, this->layers->getImageData(this->layers->getMasterIndex()),
+                                  this->filepath.toStdString(), this);
+        this->profileWidget->setupImagePlots();
+        QObject::connect(this->profileWidget, &ProfileWidget::destroyed, this,
+                         &vtkWindowImage::setInteractorStyleImage, Qt::QueuedConnection);
+    }
+}
+
 int vtkWindowImage::currentLayerIndex() const
 {
     return ui->listLayer->currentIndex().row();
@@ -147,6 +247,15 @@ void vtkWindowImage::addLayerImage(const std::string &filepath)
 
 void vtkWindowImage::vtkRender()
 {
+    ui->vtk->renderWindow()->Render();
+}
+
+void vtkWindowImage::changeLegendWCS()
+{
+    const int wcs = (ui->actionGalactic->isChecked()
+                             ? WCS_GALACTIC
+                             : (ui->actionFK5->isChecked() ? WCS_J2000 : WCS_ECLIPTIC));
+    this->legendWCS->SetWCS(wcs);
     ui->vtk->renderWindow()->Render();
 }
 

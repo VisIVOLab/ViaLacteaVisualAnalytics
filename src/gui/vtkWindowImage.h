@@ -9,8 +9,11 @@
 #include <QPointer>
 
 class LayerListModel;
+class LUTCustomizerDialog;
+class ProfileWidget;
 class vtkCoordinate;
 class vtkImageStack;
+class vtkLegendScaleActorWCS;
 class vtkScalarBarActor;
 
 QT_BEGIN_NAMESPACE
@@ -25,10 +28,16 @@ class vtkWindowImage : public QMainWindow
 
 public:
     explicit vtkWindowImage(const QString &filepath, QWidget *parent = nullptr);
-    ~vtkWindowImage() override;
+    ~vtkWindowImage();
 
 private slots:
+    void showLUTCustomizer();
+    void updateLUTCustomizer();
+
+    void addLocalFile();
+
     void vtkRender();
+    void changeLegendWCS();
     void changeCurrentColorMap();
     void changeCurrentColorScale();
     void changeCurrentLayerOpacity();
@@ -36,13 +45,17 @@ private slots:
 
     // Interactors
     void setInteractorStyleImage();
+    void setInteractorStyleProfile();
 
 private:
     Ui::vtkWindowImage *ui;
     const QString filepath;
     AstroUtils astro;
+    QPointer<LUTCustomizerDialog> lutCustomizer;
+    QPointer<ProfileWidget> profileWidget;
 
     // Renderer
+    vtkNew<vtkLegendScaleActorWCS> legendWCS;
     vtkNew<vtkScalarBarActor> colorbar;
     vtkNew<vtkCoordinate> coordinate;
     void setupRenderer();

@@ -12,6 +12,7 @@ message(STATUS "Configuring ${PROJECT_NAME} v${PROJECT_VERSION}")
 
 set(qt_components
         Widgets
+        PrintSupport
 )
 foreach (module IN LISTS qt_components)
     list(APPEND qt_modules "Qt::${module}")
@@ -21,6 +22,8 @@ find_package(Qt6 6.10.0 CONFIG REQUIRED COMPONENTS ${qt_components})
 message(STATUS "Using Qt v${Qt6_VERSION}")
 
 find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
+        CommonColor
+        FiltersStatistics
         GUISupportQt
         InteractionStyle
         RenderingAnnotation
@@ -42,8 +45,12 @@ set(PROJECT_SOURCES
         src/AstroUtils.cpp
         src/LayerListModel.cpp
         src/LayerListModel.h
+        src/gui/LUTCustomizerDialog.cpp
+        src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
         src/gui/MainWindow.h
+        src/gui/ProfileWidget.cpp
+        src/gui/ProfileWidget.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
         src/vtk/ColorMaps.cpp
@@ -52,14 +59,22 @@ set(PROJECT_SOURCES
         src/vtk/ImageLayer.h
         src/vtk/vtkFITSReader.cpp
         src/vtk/vtkFITSReader.h
+        src/vtk/vtkInteractorStyleProfile.cpp
+        src/vtk/vtkInteractorStyleProfile.h
+        src/vtk/vtkLegendScaleActorWCS.cpp
+        src/vtk/vtkLegendScaleActorWCS.h
 )
 
 set(PROJECT_UI
+        ui/LUTCustomizerDialog.ui
         ui/MainWindow.ui
+        ui/ProfileWidget.ui
         ui/vtkWindowImage.ui
 )
 
 set(PROJECT_ASSETS
+        icons/RECT_SELECT.png
+        icons/RESET.png
         icons/VisIVO.icns
         icons/VisIVO.svg
         icons/VisIVO_32.png
@@ -92,6 +107,8 @@ qt_add_resources(${PROJECT_NAME} assets
 
 add_subdirectory(src/libwcs)
 
+add_subdirectory(src/qcustomplot)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>
 )
@@ -108,6 +125,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ${VTK_LIBRARIES}
         CFITSIO::cfitsio
         wcs
+        QCustomPlot
 )
 
 vtk_module_autoinit(
