@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 #endif
                        "%{if-category}%{category} %{endif}%{message}");
 
-    auto window = new vtkWindowImage();
+    auto window = new vtkWindowImage("/Users/giuseppe/Misc/images/image1.fits");
     window->show();
 
     return QApplication::exec();

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.23)
 
 project(VisIVOVisualAnalytics
         VERSION 0.0.1
-        LANGUAGES CXX
+        LANGUAGES CXX C
 )
 
 set(CMAKE_CXX_STANDARD 17)
@@ -23,6 +23,8 @@ message(STATUS "Using Qt v${Qt6_VERSION}")
 find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
         GUISupportQt
         InteractionStyle
+        RenderingAnnotation
+        RenderingImage
 )
 message(STATUS "Using VTK v${VTK_VERSION}")
 
@@ -36,12 +38,18 @@ configure_file(src/Version.h.in Version.h @ONLY)
 
 set(PROJECT_SOURCES
         src/main.cpp
+        src/AstroUtils.h
+        src/AstroUtils.cpp
+        src/LayerListModel.cpp
+        src/LayerListModel.h
         src/gui/MainWindow.cpp
         src/gui/MainWindow.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
         src/vtk/ColorMaps.cpp
         src/vtk/ColorMaps.h
+        src/vtk/ImageLayer.cpp
+        src/vtk/ImageLayer.h
         src/vtk/vtkFITSReader.cpp
         src/vtk/vtkFITSReader.h
 )
@@ -82,6 +90,8 @@ qt_add_resources(${PROJECT_NAME} assets
         FILES ${PROJECT_ASSETS}
 )
 
+add_subdirectory(src/libwcs)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>
 )
@@ -97,6 +107,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ${qt_modules}
         ${VTK_LIBRARIES}
         CFITSIO::cfitsio
+        wcs
 )
 
 vtk_module_autoinit(
