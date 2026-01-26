@@ -22,8 +22,12 @@ message(STATUS "Using Qt v${Qt6_VERSION}")
 
 find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
         GUISupportQt
+        InteractionStyle
 )
 message(STATUS "Using VTK v${VTK_VERSION}")
+
+find_package(cfitsio CONFIG REQUIRED)
+message(STATUS "Using cfitsio ${cfitsio_VERSION}")
 
 qt_standard_project_setup()
 set(CMAKE_AUTOUIC OFF)
@@ -36,6 +40,10 @@ set(PROJECT_SOURCES
         src/gui/MainWindow.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
+        src/vtk/ColorMaps.cpp
+        src/vtk/ColorMaps.h
+        src/vtk/vtkFITSReader.cpp
+        src/vtk/vtkFITSReader.h
 )
 
 set(PROJECT_UI
@@ -82,11 +90,13 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/gui"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/vtk"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ${qt_modules}
         ${VTK_LIBRARIES}
+        CFITSIO::cfitsio
 )
 
 vtk_module_autoinit(

@@ -21,6 +21,7 @@ private:
     Ui::vtkWindowImage *ui;
 
     void setupRenderer();
+    void showImage();
 };
 
 #endif
