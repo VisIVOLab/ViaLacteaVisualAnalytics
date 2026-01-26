@@ -1,0 +1,6 @@
+#ifndef Version_h
+#define Version_h
+
+#define VISIVO_VERSION_STR "@VisIVOVisualAnalytics_VERSION@"
+
+#endif
