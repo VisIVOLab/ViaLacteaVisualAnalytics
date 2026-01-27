@@ -104,6 +104,12 @@ set(PROJECT_UI
 
 set(PROJECT_ASSETS
         icons/FILE_OPEN.png
+        icons/PIC_BACK.png
+        icons/PIC_BOTTOM.png
+        icons/PIC_FRONT.png
+        icons/PIC_LEFT.png
+        icons/PIC_RIGHT.png
+        icons/PIC_TOP.png
         icons/RECT_SELECT.png
         icons/RESET.png
         icons/VisIVO.icns
