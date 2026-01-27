@@ -49,6 +49,10 @@ set(PROJECT_SOURCES
         src/LayerListModel.cpp
         src/LayerListModel.h
         src/main.cpp
+        src/Settings.cpp
+        src/Settings.h
+        src/WebViewProcess.cpp
+        src/WebViewProcess.h
         src/auth/AuthKeys.h
         src/auth/AuthWrapper.cpp
         src/auth/AuthWrapper.h
@@ -58,12 +62,16 @@ set(PROJECT_SOURCES
         src/auth/OIDCAuthorizationCodeFlow.h
         src/auth/VisIVOUrlSchemeHandler.cpp
         src/auth/VisIVOUrlSchemeHandler.h
+        src/gui/AboutDialog.cpp
+        src/gui/AboutDialog.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
         src/gui/MainWindow.h
         src/gui/ProfileWidget.cpp
         src/gui/ProfileWidget.h
+        src/gui/SettingsDialog.cpp
+        src/gui/SettingsDialog.h
         src/gui/vtkWindowCube.cpp
         src/gui/vtkWindowCube.h
         src/gui/vtkWindowImage.cpp
@@ -85,14 +93,17 @@ set(PROJECT_SOURCES
 )
 
 set(PROJECT_UI
+        ui/AboutDialog.ui
         ui/LUTCustomizerDialog.ui
         ui/MainWindow.ui
         ui/ProfileWidget.ui
+        ui/SettingsDialog.ui
         ui/vtkWindowCube.ui
         ui/vtkWindowImage.ui
 )
 
 set(PROJECT_ASSETS
+        icons/FILE_OPEN.png
         icons/RECT_SELECT.png
         icons/RESET.png
         icons/VisIVO.icns
@@ -136,6 +147,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/auth"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/gui"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/vtk"
 )
