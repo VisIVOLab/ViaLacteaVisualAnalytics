@@ -12,7 +12,10 @@ message(STATUS "Configuring ${PROJECT_NAME} v${PROJECT_VERSION}")
 
 set(qt_components
         Widgets
+        Network
+        NetworkAuth
         PrintSupport
+        WebEngineWidgets
 )
 foreach (module IN LISTS qt_components)
     list(APPEND qt_modules "Qt::${module}")
@@ -46,6 +49,15 @@ set(PROJECT_SOURCES
         src/LayerListModel.cpp
         src/LayerListModel.h
         src/main.cpp
+        src/auth/AuthKeys.h
+        src/auth/AuthWrapper.cpp
+        src/auth/AuthWrapper.h
+        src/auth/HttpServerReplyHandler.cpp
+        src/auth/HttpServerReplyHandler.h
+        src/auth/OIDCAuthorizationCodeFlow.cpp
+        src/auth/OIDCAuthorizationCodeFlow.h
+        src/auth/VisIVOUrlSchemeHandler.cpp
+        src/auth/VisIVOUrlSchemeHandler.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
