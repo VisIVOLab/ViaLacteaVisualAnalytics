@@ -23,6 +23,7 @@ message(STATUS "Using Qt v${Qt6_VERSION}")
 
 find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
         CommonColor
+        FiltersModeling
         FiltersStatistics
         GUISupportQt
         InteractionStyle
@@ -40,17 +41,19 @@ set(CMAKE_AUTOUIC OFF)
 configure_file(src/Version.h.in Version.h @ONLY)
 
 set(PROJECT_SOURCES
-        src/main.cpp
         src/AstroUtils.h
         src/AstroUtils.cpp
         src/LayerListModel.cpp
         src/LayerListModel.h
+        src/main.cpp
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
         src/gui/MainWindow.h
         src/gui/ProfileWidget.cpp
         src/gui/ProfileWidget.h
+        src/gui/vtkWindowCube.cpp
+        src/gui/vtkWindowCube.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
         src/vtk/ColorMaps.cpp
@@ -59,16 +62,21 @@ set(PROJECT_SOURCES
         src/vtk/ImageLayer.h
         src/vtk/vtkFITSReader.cpp
         src/vtk/vtkFITSReader.h
+        src/vtk/vtkFITSWriter.cpp
+        src/vtk/vtkFITSWriter.h
         src/vtk/vtkInteractorStyleProfile.cpp
         src/vtk/vtkInteractorStyleProfile.h
         src/vtk/vtkLegendScaleActorWCS.cpp
         src/vtk/vtkLegendScaleActorWCS.h
+        src/vtk/vtkMomentMapFilter.cpp
+        src/vtk/vtkMomentMapFilter.h
 )
 
 set(PROJECT_UI
         ui/LUTCustomizerDialog.ui
         ui/MainWindow.ui
         ui/ProfileWidget.ui
+        ui/vtkWindowCube.ui
         ui/vtkWindowImage.ui
 )
 

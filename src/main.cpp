@@ -1,4 +1,5 @@
 #include "Version.h"
+#include "vtkWindowCube.h"
 #include "vtkWindowImage.h"
 
 #include <QVTKOpenGLNativeWidget.h>
@@ -46,8 +47,11 @@ int main(int argc, char *argv[])
 #endif
                        "%{if-category}%{category} %{endif}%{message}");
 
-    auto window = new vtkWindowImage("/Users/giuseppe/Misc/images/image1.fits");
-    window->show();
+    auto win1 = new vtkWindowImage("/Users/giuseppe/Misc/images/image1.fits");
+    win1->show();
+
+    auto win2 = new vtkWindowCube("/Users/giuseppe/Misc/cubes/TAN_C14.fits");
+    win2->show();
 
     return QApplication::exec();
 }
