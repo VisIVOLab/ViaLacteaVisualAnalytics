@@ -33,7 +33,7 @@ find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
 message(STATUS "Using VTK v${VTK_VERSION}")
 
 find_package(cfitsio CONFIG REQUIRED)
-message(STATUS "Using cfitsio ${cfitsio_VERSION}")
+message(STATUS "Using cfitsio v${cfitsio_VERSION}")
 
 qt_standard_project_setup()
 set(CMAKE_AUTOUIC OFF)

@@ -159,7 +159,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     ui->lineLowerBound->setValidator(new QDoubleValidator(ui->lineLowerBound));
     ui->lineUpperBound->setText(QString::number(this->upperBound));
     ui->lineUpperBound->setValidator(new QDoubleValidator(ui->lineUpperBound));
-    QObject::connect(ui->checkContours, &QCheckBox::stateChanged, this,
+    QObject::connect(ui->checkContours, &QCheckBox::checkStateChanged, this,
                      &vtkWindowCube::updateContoursVisibility);
     QObject::connect(ui->lineLevel, &QLineEdit::editingFinished, this,
                      &vtkWindowCube::updateContours);
@@ -287,7 +287,7 @@ void vtkWindowCube::setupSliceRenderer()
     colorbar->SetLookupTable(this->lutSlice);
     colorbar->SetMaximumWidthInPixels(120);
     colorbar->SetPosition(0.9, 0.1);
-    ren->AddActor2D(colorbar);
+    ren->AddViewProp(colorbar);
 
     // Contours
     this->contours->SetInputConnection(this->slice->GetOutputPort());
@@ -346,7 +346,7 @@ void vtkWindowCube::setupMomentRenderer()
     colorbar->SetLookupTable(this->lutMoment);
     colorbar->SetMaximumWidthInPixels(120);
     colorbar->SetPosition(0.9, 0.1);
-    ren->AddActor2D(colorbar);
+    ren->AddViewProp(colorbar);
 
     // Legend
     this->legendMoment->Init(this->filepath.toStdString());
