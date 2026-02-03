@@ -52,6 +52,7 @@ private slots:
     void syncSlicesLUT();
 
     void changeCubeRender();
+    void changeCubeColor();
 
     void thresholdSliderChanged(int action);
     void thresholdLineChanged();

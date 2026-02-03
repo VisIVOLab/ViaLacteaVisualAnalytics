@@ -104,6 +104,7 @@ set(PROJECT_UI
 )
 
 set(PROJECT_ASSETS
+        icons/COLORIZE.png
         icons/FILE_OPEN.png
         icons/PIC_BACK.png
         icons/PIC_BOTTOM.png

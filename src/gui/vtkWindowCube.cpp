@@ -41,6 +41,7 @@
 #include <vtkVolumeProperty.h>
 
 #include <QActionGroup>
+#include <QColorDialog>
 #include <QDoubleValidator>
 
 #include <sstream>
@@ -140,10 +141,13 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     }
     ui->lineThreshold->setText(QString::number(this->lowerBound));
     ui->lineThreshold->setValidator(new QDoubleValidator(ui->lineThreshold));
+    ui->btnCubeColor->setIcon(QIcon(u":/icons/COLORIZE.png"_s));
     QObject::connect(ui->lineThreshold, &QLineEdit::editingFinished, this,
                      &vtkWindowCube::thresholdLineChanged);
     QObject::connect(ui->sliderThreshold, &QSlider::actionTriggered, this,
                      &vtkWindowCube::thresholdSliderChanged);
+    QObject::connect(ui->btnCubeColor, &QPushButton::clicked, this,
+                     &vtkWindowCube::changeCubeColor);
 
     // Setup Slice UI
     const int *extent = this->reader->GetDataExtent();
@@ -642,6 +646,23 @@ void vtkWindowCube::changeCubeRender()
     }
 
     ui->vtkCube->renderWindow()->Render();
+}
+
+void vtkWindowCube::changeCubeColor()
+{
+    double rgb[3];
+    this->isosurface->GetProperty()->GetColor(rgb);
+
+    QColor color;
+    color.setRgbF(rgb[0], rgb[1], rgb[2]);
+    QColorDialog dialog(color, this);
+    dialog.setOption(QColorDialog::ShowAlphaChannel, false);
+    if (dialog.exec() == QDialog::Accepted) {
+        const QColor selected = dialog.selectedColor();
+        this->isosurface->GetProperty()->SetColor(selected.redF(), selected.greenF(),
+                                                  selected.blueF());
+        ui->vtkCube->renderWindow()->Render();
+    }
 }
 
 void vtkWindowCube::resetCameraFront()
