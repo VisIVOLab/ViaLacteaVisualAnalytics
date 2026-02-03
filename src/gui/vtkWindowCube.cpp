@@ -285,7 +285,7 @@ void vtkWindowCube::setupSliceRenderer()
     // Color bar
     vtkNew<vtkScalarBarActor> colorbar;
     colorbar->SetLookupTable(this->lutSlice);
-    colorbar->SetMaximumWidthInPixels(120);
+    colorbar->SetMaximumWidthInPixels(100);
     colorbar->SetPosition(0.9, 0.1);
     ren->AddViewProp(colorbar);
 
@@ -344,7 +344,7 @@ void vtkWindowCube::setupMomentRenderer()
     // Color bar
     vtkNew<vtkScalarBarActor> colorbar;
     colorbar->SetLookupTable(this->lutMoment);
-    colorbar->SetMaximumWidthInPixels(120);
+    colorbar->SetMaximumWidthInPixels(100);
     colorbar->SetPosition(0.9, 0.1);
     ren->AddViewProp(colorbar);
 
@@ -477,12 +477,6 @@ void vtkWindowCube::setMomentOrder(int order)
     this->moment->Update();
     this->lutMoment->SetTableRange(this->moment->GetOutput()->GetScalarRange());
     ui->actionMomentMap->trigger();
-
-    // Save to file
-    vtkNew<vtkFITSWriter> writer;
-    writer->SetInputConnection(this->moment->GetOutputPort());
-    writer->SetFileName("/Users/giuseppe/Desktop/mom.fits");
-    writer->Write();
 }
 
 void vtkWindowCube::updateContours()
@@ -541,13 +535,11 @@ void vtkWindowCube::showLUTCustomizer()
         this->lutCustomizer = new LUTCustomizerDialog(this);
         QObject::connect(this->lutCustomizer, &LUTCustomizerDialog::lutUpdated, this,
                          &vtkWindowCube::renderImage);
+        QObject::connect(this->lutCustomizer, &LUTCustomizerDialog::lutUpdated, this,
+                         &vtkWindowCube::syncSlicesLUT);
     }
 
-    if (this->viewingSlice()) {
-        this->lutCustomizer->init(this->slice->GetOutput(), this->lutSlice);
-    } else {
-        this->lutCustomizer->init(this->moment->GetOutput(), this->lutMoment);
-    }
+    this->updateLUTCustomizer();
     this->lutCustomizer->show();
     this->lutCustomizer->raise();
     this->lutCustomizer->activateWindow();
@@ -641,4 +633,15 @@ void vtkWindowCube::resetCameraLeft()
 void vtkWindowCube::renderImage()
 {
     ui->vtkImage->renderWindow()->Render();
+}
+
+void vtkWindowCube::syncSlicesLUT()
+{
+    double range[2];
+    this->lutSlice->GetTableRange(range);
+
+    ColorMaps::SetColorMap(this->lutSliceOnCube, this->lutSlice->GetObjectName());
+    this->lutSliceOnCube->SetTableRange(range);
+    this->lutSliceOnCube->SetScale(this->lutSlice->GetScale());
+    ui->vtkCube->renderWindow()->Render();
 }

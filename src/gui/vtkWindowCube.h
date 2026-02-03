@@ -35,7 +35,7 @@ class vtkWindowCube : public QMainWindow
 
 public:
     vtkWindowCube(const QString &filepath, QWidget *parent = nullptr);
-    ~vtkWindowCube();
+    ~vtkWindowCube() override;
 
 private slots:
     void resetCameraFront();
@@ -47,6 +47,7 @@ private slots:
 
     void renderImage();
     void changeImageRenderer();
+    void syncSlicesLUT();
 
     void thresholdSliderChanged(int action);
     void thresholdLineChanged();

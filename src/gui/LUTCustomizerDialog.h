@@ -23,7 +23,7 @@ class LUTCustomizerDialog : public QDialog
 
 public:
     explicit LUTCustomizerDialog(QWidget *parent = nullptr);
-    ~LUTCustomizerDialog();
+    ~LUTCustomizerDialog() override;
 
     void init(vtkImageData *dataset, vtkLookupTable *lut);
 
