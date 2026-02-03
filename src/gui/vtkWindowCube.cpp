@@ -43,6 +43,7 @@
 #include <QActionGroup>
 #include <QColorDialog>
 #include <QDoubleValidator>
+#include <QInputDialog>
 
 #include <sstream>
 
@@ -218,13 +219,13 @@ void vtkWindowCube::setupCubeRenderer()
     vtkNew<vtkLookupTable> lutVolume;
     lutVolume->SetTableRange(this->reader->GetMin(), this->reader->GetMax());
     ColorMaps::SetColorMap(lutVolume);
-    vtkNew<vtkColorTransferFunction> ctf;
-    ColorMaps::SetColorTransferFunction(lutVolume, ctf);
+    ColorMaps::SetColorTransferFunction(lutVolume, this->volumeColorTransferFunction);
+    this->volumeColorTransferFunction->SetObjectName(lutVolume->GetObjectName());
     this->volumeOpacity->AddPoint(this->reader->GetMin(), 0.0);
     this->volumeOpacity->AddPoint(this->lowerBound, 0.05);
     this->volumeOpacity->AddPoint(this->reader->GetMax(), 0.3);
     vtkNew<vtkVolumeProperty> volumeProperty;
-    volumeProperty->SetColor(ctf);
+    volumeProperty->SetColor(this->volumeColorTransferFunction);
     volumeProperty->SetScalarOpacity(this->volumeOpacity);
     volumeProperty->SetInterpolationTypeToLinear();
     vtkNew<vtkGPUVolumeRayCastMapper> volumeMapper;
@@ -452,6 +453,12 @@ void vtkWindowCube::mouseCallback()
     this->statusBar()->showMessage(QString::fromStdString(ss.str()));
 }
 
+bool vtkWindowCube::viewingIsosurface() const
+{
+    return ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer()->HasViewProp(
+            this->isosurface);
+}
+
 bool vtkWindowCube::viewingSlice() const
 {
     return ui->vtkImage->renderWindow() == this->sliceWin;
@@ -650,18 +657,40 @@ void vtkWindowCube::changeCubeRender()
 
 void vtkWindowCube::changeCubeColor()
 {
-    double rgb[3];
-    this->isosurface->GetProperty()->GetColor(rgb);
+    if (this->viewingIsosurface()) {
+        double rgb[3];
+        this->isosurface->GetProperty()->GetColor(rgb);
 
-    QColor color;
-    color.setRgbF(rgb[0], rgb[1], rgb[2]);
-    QColorDialog dialog(color, this);
-    dialog.setOption(QColorDialog::ShowAlphaChannel, false);
-    if (dialog.exec() == QDialog::Accepted) {
-        const QColor selected = dialog.selectedColor();
-        this->isosurface->GetProperty()->SetColor(selected.redF(), selected.greenF(),
-                                                  selected.blueF());
-        ui->vtkCube->renderWindow()->Render();
+        QColor color;
+        color.setRgbF(rgb[0], rgb[1], rgb[2]);
+        QColorDialog dialog(color, this);
+        dialog.setOption(QColorDialog::ShowAlphaChannel, false);
+        if (dialog.exec() == QDialog::Accepted) {
+            const QColor selected = dialog.selectedColor();
+            this->isosurface->GetProperty()->SetColor(selected.redF(), selected.greenF(),
+                                                      selected.blueF());
+            ui->vtkCube->renderWindow()->Render();
+        }
+    } else {
+        const auto names = ColorMaps::GetColorMapNames();
+        QStringList items;
+        items.reserve(names.size());
+        std::transform(names.cbegin(), names.cend(), std::back_inserter(items),
+                       [](const std::string &name) { return QString::fromStdString(name); });
+
+        const int idxCurrent = items.indexOf(this->volumeColorTransferFunction->GetObjectName());
+        bool ok{ };
+        const QString palette =
+                QInputDialog::getItem(this, u"Select color palette"_s, u"Color palette:"_s, items,
+                                      idxCurrent, false, &ok);
+        if (ok && !palette.isEmpty()) {
+            vtkNew<vtkLookupTable> lut;
+            lut->SetTableRange(this->reader->GetMin(), this->reader->GetMax());
+            ColorMaps::SetColorMap(lut, palette.toStdString());
+            ColorMaps::SetColorTransferFunction(lut, this->volumeColorTransferFunction);
+            this->volumeColorTransferFunction->SetObjectName(palette.toStdString());
+            ui->vtkCube->renderWindow()->Render();
+        }
     }
 }
 

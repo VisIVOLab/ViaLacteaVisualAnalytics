@@ -11,6 +11,7 @@
 class LUTCustomizerDialog;
 class ProfileWidget;
 class vtkActor;
+class vtkColorTransferFunction;
 class vtkCoordinate;
 class vtkExtractVOI;
 class vtkFITSReader;
@@ -94,12 +95,14 @@ private:
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);
     void mouseCallback();
+    bool viewingIsosurface() const;
     bool viewingSlice() const;
 
     // Cube
     vtkNew<vtkFlyingEdges3D> isosurfaceFilter;
     vtkNew<vtkActor> isosurface;
     vtkNew<vtkVolume> volume;
+    vtkNew<vtkColorTransferFunction> volumeColorTransferFunction;
     vtkNew<vtkPiecewiseFunction> volumeOpacity;
     void updateCube();
 
