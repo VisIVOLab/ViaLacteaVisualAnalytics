@@ -5,7 +5,6 @@
 #include "LUTCustomizerDialog.h"
 #include "ProfileWidget.h"
 #include "vtkFITSReader.h"
-#include "vtkFITSWriter.h"
 #include "vtkInteractorStyleProfile.h"
 #include "vtkLegendScaleActorWCS.h"
 #include "vtkMomentMapFilter.h"
@@ -15,10 +14,12 @@
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
+#include <vtkColorTransferFunction.h>
 #include <vtkCoordinate.h>
 #include <vtkExtractVOI.h>
 #include <vtkFlyingEdges2D.h>
 #include <vtkFlyingEdges3D.h>
+#include <vtkGPUVolumeRayCastMapper.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageData.h>
 #include <vtkImageMapToColors.h>
@@ -30,15 +31,17 @@
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineFilter.h>
+#include <vtkPiecewiseFunction.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkScalarBarActor.h>
+#include <vtkVolume.h>
+#include <vtkVolumeProperty.h>
 
 #include <QActionGroup>
 #include <QDoubleValidator>
-#include <QIntValidator>
 
 #include <sstream>
 
@@ -92,13 +95,17 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                      &vtkWindowCube::showLUTCustomizer);
 
     // Setup menu View
-    auto groupView = new QActionGroup(this);
-    groupView->addAction(ui->actionSlice);
-    groupView->addAction(ui->actionMomentMap);
-    QObject::connect(groupView, &QActionGroup::triggered, this,
+    auto imageGroup = new QActionGroup(this);
+    imageGroup->addAction(ui->actionSlice);
+    imageGroup->addAction(ui->actionMomentMap);
+    QObject::connect(imageGroup, &QActionGroup::triggered, this,
                      &vtkWindowCube::changeImageRenderer);
-    QObject::connect(groupView, &QActionGroup::triggered, this,
+    QObject::connect(imageGroup, &QActionGroup::triggered, this,
                      &vtkWindowCube::updateLUTCustomizer);
+    auto cubeGroup = new QActionGroup(this);
+    cubeGroup->addAction(ui->actionIsosurface);
+    cubeGroup->addAction(ui->actionVolume);
+    QObject::connect(cubeGroup, &QActionGroup::triggered, this, &vtkWindowCube::changeCubeRender);
 
     // Setup menu Moment
     QObject::connect(ui->actionMoment0, &QAction::triggered, this,
@@ -193,16 +200,34 @@ void vtkWindowCube::setupCubeRenderer()
     ui->vtkCube->setRenderWindow(win);
     ui->vtkCube->setEnableTouchEventProcessing(false);
 
+    // Isosurface
+    this->isosurfaceFilter->SetInputConnection(this->reader->GetOutputPort());
+    this->isosurfaceFilter->SetValue(0, this->lowerBound);
+    vtkNew<vtkPolyDataMapper> isosurfaceMapper;
+    isosurfaceMapper->SetInputConnection(this->isosurfaceFilter->GetOutputPort());
+    isosurfaceMapper->ScalarVisibilityOff();
+    this->isosurface->SetMapper(isosurfaceMapper);
+    this->isosurface->GetProperty()->SetColor(1., 0.5, 1.);
+    ren->AddViewProp(this->isosurface);
+
     // Volume
-    this->volume->SetInputConnection(this->reader->GetOutputPort());
-    this->volume->SetValue(0, this->lowerBound);
-    vtkNew<vtkPolyDataMapper> volumeMapper;
-    volumeMapper->SetInputConnection(this->volume->GetOutputPort());
-    volumeMapper->ScalarVisibilityOff();
-    vtkNew<vtkActor> volumeActor;
-    volumeActor->SetMapper(volumeMapper);
-    volumeActor->GetProperty()->SetColor(1., 0.5, 1.);
-    ren->AddViewProp(volumeActor);
+    vtkNew<vtkLookupTable> lutVolume;
+    lutVolume->SetTableRange(this->reader->GetMin(), this->reader->GetMax());
+    ColorMaps::SetColorMap(lutVolume);
+    vtkNew<vtkColorTransferFunction> ctf;
+    ColorMaps::SetColorTransferFunction(lutVolume, ctf);
+    this->volumeOpacity->AddPoint(this->reader->GetMin(), 0.0);
+    this->volumeOpacity->AddPoint(this->lowerBound, 0.05);
+    this->volumeOpacity->AddPoint(this->reader->GetMax(), 0.3);
+    vtkNew<vtkVolumeProperty> volumeProperty;
+    volumeProperty->SetColor(ctf);
+    volumeProperty->SetScalarOpacity(this->volumeOpacity);
+    volumeProperty->SetInterpolationTypeToLinear();
+    vtkNew<vtkGPUVolumeRayCastMapper> volumeMapper;
+    volumeMapper->SetInputConnection(this->reader->GetOutputPort());
+    this->volume->SetMapper(volumeMapper);
+    this->volume->SetProperty(volumeProperty);
+    // By default, we show the isosurface
 
     // Outline
     vtkNew<vtkOutlineFilter> outline;
@@ -428,9 +453,14 @@ bool vtkWindowCube::viewingSlice() const
     return ui->vtkImage->renderWindow() == this->sliceWin;
 }
 
-void vtkWindowCube::updateVolume()
+void vtkWindowCube::updateCube()
 {
-    this->volume->SetValue(0, ui->lineThreshold->text().toDouble());
+    double threshold = ui->lineThreshold->text().toDouble();
+    this->isosurfaceFilter->SetValue(0, threshold);
+    this->volumeOpacity->RemoveAllPoints();
+    this->volumeOpacity->AddPoint(this->reader->GetMin(), 0.0);
+    this->volumeOpacity->AddPoint(threshold, 0.05);
+    this->volumeOpacity->AddPoint(this->reader->GetMax(), 0.3);
     ui->vtkCube->renderWindow()->Render();
 }
 
@@ -493,7 +523,7 @@ void vtkWindowCube::thresholdSliderChanged(int action)
     const int p = ui->sliderThreshold->sliderPosition();
     const float threshold = 0.01 * p * (this->upperBound - this->lowerBound) + this->lowerBound;
     ui->lineThreshold->setText(QString::number(threshold));
-    this->updateVolume();
+    this->updateCube();
 }
 
 void vtkWindowCube::thresholdLineChanged()
@@ -503,7 +533,7 @@ void vtkWindowCube::thresholdLineChanged()
     ui->lineThreshold->setText(QString::number(threshold));
     const int p = 100 * (threshold - this->lowerBound) / (this->upperBound - this->lowerBound);
     ui->sliderThreshold->setValue(p);
-    this->updateVolume();
+    this->updateCube();
 }
 
 void vtkWindowCube::sliceSliderChanged(int action)
@@ -598,6 +628,20 @@ void vtkWindowCube::changeImageRenderer()
     ui->lineImgMax->setText(QString::number(imgRange[1]));
     this->coordinate->SetViewport(ui->vtkImage->renderWindow()->GetRenderers()->GetFirstRenderer());
     ui->vtkImage->renderWindow()->Render();
+}
+
+void vtkWindowCube::changeCubeRender()
+{
+    auto ren = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    if (ui->actionIsosurface->isChecked()) {
+        ren->AddViewProp(this->isosurface);
+        ren->RemoveViewProp(this->volume);
+    } else {
+        ren->AddViewProp(this->volume);
+        ren->RemoveViewProp(this->isosurface);
+    }
+
+    ui->vtkCube->renderWindow()->Render();
 }
 
 void vtkWindowCube::resetCameraFront()

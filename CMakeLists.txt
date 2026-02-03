@@ -32,6 +32,7 @@ find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
         InteractionStyle
         RenderingAnnotation
         RenderingImage
+        RenderingVolumeOpenGL2
 )
 message(STATUS "Using VTK v${VTK_VERSION}")
 

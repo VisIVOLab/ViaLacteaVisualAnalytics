@@ -22,6 +22,8 @@ class vtkLegendScaleActorWCS;
 class vtkLookupTable;
 class vtkMomentMapFilter;
 class vtkOrientationMarkerWidget;
+class vtkPiecewiseFunction;
+class vtkVolume;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -48,6 +50,8 @@ private slots:
     void renderImage();
     void changeImageRenderer();
     void syncSlicesLUT();
+
+    void changeCubeRender();
 
     void thresholdSliderChanged(int action);
     void thresholdLineChanged();
@@ -91,9 +95,12 @@ private:
     void mouseCallback();
     bool viewingSlice() const;
 
-    // Volume
-    vtkNew<vtkFlyingEdges3D> volume;
-    void updateVolume();
+    // Cube
+    vtkNew<vtkFlyingEdges3D> isosurfaceFilter;
+    vtkNew<vtkActor> isosurface;
+    vtkNew<vtkVolume> volume;
+    vtkNew<vtkPiecewiseFunction> volumeOpacity;
+    void updateCube();
 
     // Slice
     vtkNew<vtkImageReslice> slice;
