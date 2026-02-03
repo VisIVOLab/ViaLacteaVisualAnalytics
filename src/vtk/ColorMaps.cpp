@@ -1,5 +1,6 @@
 #include "ColorMaps.h"
 
+#include <vtkColorTransferFunction.h>
 #include <vtkLookupTable.h>
 #include <vtkMath.h>
 
@@ -52,6 +53,23 @@ void ColorMaps::SetColorMap(vtkLookupTable *lut, const std::string &name)
     if (cmap != ColorMaps::LookupTables.cend()) {
         cmap->second(lut);
         lut->SetObjectName(name);
+    }
+}
+
+void ColorMaps::SetColorTransferFunction(vtkLookupTable *lut, vtkColorTransferFunction *ctf)
+{
+    ctf->RemoveAllPoints();
+
+    double range[2];
+    lut->GetTableRange(range);
+
+    const vtkIdType n = lut->GetNumberOfTableValues();
+    for (vtkIdType i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / (n - 1);
+        const double value = range[0] + t * (range[1] - range[0]);
+        double rgba[4];
+        lut->GetTableValue(i, rgba);
+        ctf->AddRGBPoint(value, rgba[0], rgba[1], rgba[2]);
     }
 }
 

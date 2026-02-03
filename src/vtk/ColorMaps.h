@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+class vtkColorTransferFunction;
 class vtkLookupTable;
 
 /**
@@ -34,6 +35,13 @@ public:
    */
     static void SetColorMap(vtkLookupTable *lut,
                             const std::string &name = ColorMaps::DefaultColorMap);
+
+    /**
+     * Create a ColorTransferFunction from a LookupTable
+     * @param lut vtkLookupTable
+     * @param ctf vtkColorTransferFunction
+     */
+    static void SetColorTransferFunction(vtkLookupTable *lut, vtkColorTransferFunction *ctf);
 
 private:
     static const std::map<std::string, std::function<void(vtkLookupTable *)>> LookupTables;
