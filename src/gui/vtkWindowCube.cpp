@@ -27,6 +27,7 @@
 #include <vtkImageReslice.h>
 #include <vtkImageSlice.h>
 #include <vtkImageSliceMapper.h>
+#include <vtkImageThreshold.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
@@ -228,8 +229,17 @@ void vtkWindowCube::setupCubeRenderer()
     volumeProperty->SetColor(this->volumeColorTransferFunction);
     volumeProperty->SetScalarOpacity(this->volumeOpacity);
     volumeProperty->SetInterpolationTypeToLinear();
+    vtkNew<vtkImageThreshold> nanMask;
+    nanMask->SetInputConnection(this->reader->GetOutputPort());
+    nanMask->ThresholdBetween(this->reader->GetMin(), this->reader->GetMax());
+    nanMask->SetOutValue(0.0);
+    nanMask->SetInValue(255.0);
+    nanMask->SetOutputScalarTypeToUnsignedChar();
+    nanMask->Update();
     vtkNew<vtkGPUVolumeRayCastMapper> volumeMapper;
     volumeMapper->SetInputConnection(this->reader->GetOutputPort());
+    volumeMapper->SetMaskInput(nanMask->GetOutput());
+    volumeMapper->SetMaskTypeToBinary();
     this->volume->SetMapper(volumeMapper);
     this->volume->SetProperty(volumeProperty);
     // By default, we show the isosurface
