@@ -1,0 +1,8 @@
+[project]
+name = "visivo-docs"
+version = "0.0.1"
+requires-python = ">=3.12"
+dependencies = [
+    "furo>=2025.12.19",
+    "sphinx>=9.1.0",
+]
