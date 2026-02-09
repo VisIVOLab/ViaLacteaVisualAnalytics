@@ -62,6 +62,7 @@ add_library(wcs STATIC
 )
 
 set_target_properties(wcs PROPERTIES
+        C_STANDARD 90
         AUTOMOC OFF
         AUTOUIC OFF
 )
