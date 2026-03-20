@@ -41,6 +41,7 @@ private slots:
 
     void updateLut();
     void buttonClicked(QAbstractButton *btn);
+    void changeAxisScaling(bool logarithmic);
 
 private:
     Ui::LUTCustomizerDialog *ui;

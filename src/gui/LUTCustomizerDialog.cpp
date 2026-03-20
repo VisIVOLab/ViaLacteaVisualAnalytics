@@ -45,6 +45,10 @@ LUTCustomizerDialog::LUTCustomizerDialog(QWidget *parent)
     });
     ui->comboLut->setCurrentText(QString::fromStdString(ColorMaps::DefaultColorMap));
 
+    // Axis scaling
+    QObject::connect(ui->comboScale, &QComboBox::currentIndexChanged, this,
+                     &LUTCustomizerDialog::changeAxisScaling);
+
     // Apply button
     QObject::connect(ui->buttonBox, &QDialogButtonBox::clicked, this,
                      &LUTCustomizerDialog::buttonClicked);
@@ -108,6 +112,19 @@ void LUTCustomizerDialog::plotHistogram()
     this->refLineMin->end->setCoords(lutRange[0], ui->plot->yAxis->range().upper);
     this->refLineMax->start->setCoords(lutRange[1], 0.);
     this->refLineMax->end->setCoords(lutRange[1], ui->plot->yAxis->range().upper);
+
+    this->changeAxisScaling(this->lut->UsingLogScale());
+}
+
+void LUTCustomizerDialog::changeAxisScaling(bool logarithmic)
+{
+    if (logarithmic) {
+        ui->plot->xAxis->setScaleType(QCPAxis::stLogarithmic);
+        ui->plot->xAxis->setTicker(QSharedPointer<QCPAxisTickerLog>(new QCPAxisTickerLog));
+    } else {
+        ui->plot->xAxis->setScaleType(QCPAxis::stLinear);
+        ui->plot->xAxis->setTicker(QSharedPointer<QCPAxisTicker>(new QCPAxisTicker));
+    }
 
     ui->plot->replot();
 }
