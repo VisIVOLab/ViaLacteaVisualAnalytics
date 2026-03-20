@@ -291,6 +291,7 @@ void vtkWindowCube::setupSliceRenderer()
 {
     vtkNew<vtkRenderer> ren;
     ren->SetBackground(0.21, 0.23, 0.25);
+    ren->GetActiveCamera()->ParallelProjectionOn();
 
     this->sliceWin->AddRenderer(ren);
     ui->vtkImage->setRenderWindow(this->sliceWin);
@@ -352,6 +353,7 @@ void vtkWindowCube::setupMomentRenderer()
 {
     vtkNew<vtkRenderer> ren;
     ren->SetBackground(0.21, 0.23, 0.25);
+    ren->GetActiveCamera()->ParallelProjectionOn();
     this->momentWin->AddRenderer(ren);
 
     vtkNew<QVTKInteractor> iren;

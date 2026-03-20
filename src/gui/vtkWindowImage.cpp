@@ -9,6 +9,7 @@
 #include "vtkLegendScaleActorWCS.h"
 #include "wcs.h"
 
+#include <vtkCamera.h>
 #include <vtkCoordinate.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageStack.h>
@@ -150,6 +151,7 @@ void vtkWindowImage::setupRenderer()
 {
     vtkNew<vtkRenderer> ren;
     ren->SetBackground(0.21, 0.23, 0.25);
+    ren->GetActiveCamera()->ParallelProjectionOn();
 
     vtkNew<vtkGenericOpenGLRenderWindow> win;
     win->AddRenderer(ren);
