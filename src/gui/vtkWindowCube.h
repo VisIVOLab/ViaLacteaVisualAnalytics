@@ -3,11 +3,13 @@
 
 #include "AstroUtils.h"
 
+#include <vtkSmartPointer.h>
 #include <vtkNew.h>
 
 #include <QMainWindow>
 #include <QPointer>
 
+#include <array>
 #include <memory>
 
 class CubeViewController;
@@ -22,12 +24,14 @@ class vtkFITSReader;
 class vtkFlyingEdges2D;
 class vtkFlyingEdges3D;
 class vtkGenericOpenGLRenderWindow;
+class vtkImageData;
 class vtkImageReslice;
 class vtkLegendScaleActorWCS;
 class vtkLookupTable;
 class vtkMomentMapFilter;
 class vtkOrientationMarkerWidget;
 class vtkPiecewiseFunction;
+class vtkTrivialProducer;
 class vtkVolume;
 
 QT_BEGIN_NAMESPACE
@@ -74,6 +78,12 @@ private slots:
     void setInteractorStyleProfile();
 
 private:
+    struct MomentMapApplyResult
+    {
+        vtkSmartPointer<vtkImageData> imageData;
+        std::array<double, 2> imageRange;
+    };
+
     Ui::vtkWindowCube *ui;
     const QString filepath;
     AstroUtils astro;
@@ -129,8 +139,10 @@ private:
 
     // Moment
     vtkNew<vtkMomentMapFilter> moment;
+    vtkNew<vtkTrivialProducer> momentDisplaySource;
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
+    void applyMomentMapResult(const MomentMapApplyResult &result);
     void setMomentOrder(int order);
 };
 #endif

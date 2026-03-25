@@ -40,6 +40,7 @@
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkScalarBarActor.h>
+#include <vtkTrivialProducer.h>
 #include <vtkVolume.h>
 #include <vtkVolumeProperty.h>
 
@@ -392,12 +393,13 @@ void vtkWindowCube::setupMomentRenderer()
     this->moment->SetInputConnection(this->reader->GetOutputPort());
     this->moment->Init(this->filepath.toStdString());
     this->moment->Update();
+    this->momentDisplaySource->SetOutput(this->moment->GetOutput());
 
     this->lutMoment->SetTableRange(this->moment->GetOutput()->GetScalarRange());
     this->lutMoment->SetNanColor(1., 1., 1., 1.);
     ColorMaps::SetColorMap(this->lutMoment);
     vtkNew<vtkImageMapToColors> colors;
-    colors->SetInputConnection(this->moment->GetOutputPort());
+    colors->SetInputConnection(this->momentDisplaySource->GetOutputPort());
     colors->SetLookupTable(this->lutMoment);
     vtkNew<vtkImageSliceMapper> momentMapper;
     momentMapper->SetInputConnection(colors->GetOutputPort());
@@ -541,13 +543,8 @@ void vtkWindowCube::setMomentOrder(int order)
         return;
     }
 
-    if (!this->viewingSlice()) {
-        ui->lineImgMin->setText(QString::number(result.imageRange[0]));
-        ui->lineImgMax->setText(QString::number(result.imageRange[1]));
-        this->updateLUTCustomizer();
-    }
-
-    ui->actionMomentMap->trigger();
+    this->applyMomentMapResult(
+            { this->moment->GetOutput(), { result.imageRange[0], result.imageRange[1] } });
 }
 
 void vtkWindowCube::updateContours()
@@ -624,8 +621,28 @@ void vtkWindowCube::updateLUTCustomizer()
     if (this->viewingSlice()) {
         this->lutCustomizer->init(this->slice->GetOutput(), this->lutSlice);
     } else {
-        this->lutCustomizer->init(this->moment->GetOutput(), this->lutMoment);
+        this->lutCustomizer->init(
+                vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0)),
+                this->lutMoment);
     }
+}
+
+void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
+{
+    if (!result.imageData) {
+        return;
+    }
+
+    this->momentDisplaySource->SetOutput(result.imageData);
+    this->lutMoment->SetTableRange(result.imageRange[0], result.imageRange[1]);
+
+    if (!this->viewingSlice()) {
+        ui->lineImgMin->setText(QString::number(result.imageRange[0]));
+        ui->lineImgMax->setText(QString::number(result.imageRange[1]));
+        this->updateLUTCustomizer();
+    }
+
+    ui->actionMomentMap->trigger();
 }
 
 void vtkWindowCube::setInteractorStyleImage()
@@ -661,7 +678,8 @@ void vtkWindowCube::changeImageRenderer()
     } else {
         ui->vtkImage->setRenderWindow(this->momentWin);
         ui->labelImg->setText(u"Moment:"_s);
-        this->moment->GetOutput()->GetScalarRange(imgRange);
+        vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0))
+                ->GetScalarRange(imgRange);
     }
 
     ui->lineImgMin->setText(QString::number(imgRange[0]));
