@@ -39,6 +39,15 @@ message(STATUS "Using VTK v${VTK_VERSION}")
 find_package(cfitsio CONFIG REQUIRED)
 message(STATUS "Using cfitsio v${cfitsio_VERSION}")
 
+get_target_property(cfitsio_include_dirs CFITSIO::cfitsio INTERFACE_INCLUDE_DIRECTORIES)
+if (cfitsio_include_dirs)
+    list(FILTER cfitsio_include_dirs EXCLUDE REGEX
+            "^/Library/Developer/CommandLineTools/SDKs/.*/usr/include$")
+    set_target_properties(CFITSIO::cfitsio PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${cfitsio_include_dirs}"
+    )
+endif ()
+
 qt_standard_project_setup()
 set(CMAKE_AUTOUIC OFF)
 
@@ -48,6 +57,8 @@ set(PROJECT_SOURCES
         src/LayerListModel.cpp
         src/LayerListModel.h
         src/main.cpp
+        src/Settings.cpp
+        src/Settings.h
         src/WebViewProcess.cpp
         src/WebViewProcess.h
         src/auth/AuthKeys.h
@@ -152,6 +163,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/auth"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/gui"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/libwcs"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

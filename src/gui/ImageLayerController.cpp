@@ -3,6 +3,7 @@
 #include "LayerListModel.h"
 
 #include <vtkImageStack.h>
+#include <vtkLookupTable.h>
 #include <vtkScalarBarActor.h>
 
 ImageLayerController::ImageLayerController(LayerListModel &layers, vtkImageStack *stack,
