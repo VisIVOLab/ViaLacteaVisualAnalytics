@@ -23,5 +23,6 @@ struct CubeOpenStageResult
 };
 
 CubeOpenStageResult loadCubeOpenPreview(const QString &filepath);
+CubeOpenStageResult loadCubeOpenFull(const QString &filepath);
 
 #endif

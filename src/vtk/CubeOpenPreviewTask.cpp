@@ -1,5 +1,6 @@
 #include "CubeOpenPreviewTask.h"
 
+#include "vtkFITSReader.h"
 #include "vtkMomentMapFilter.h"
 
 #include <fitsio.h>
@@ -128,4 +129,38 @@ CubeOpenStageResult loadCubeOpenPreview(const QString &filepath)
              { 0, dims[0] - 1, 0, dims[1] - 1, 0, dims[2] - 1 },
              cubeMean,
              cubeRms };
+}
+
+CubeOpenStageResult loadCubeOpenFull(const QString &filepath)
+{
+    vtkNew<vtkFITSReader> reader;
+    reader->SetFileName(filepath.toUtf8());
+    reader->Update();
+
+    vtkNew<vtkImageData> cubeImage;
+    cubeImage->DeepCopy(reader->GetOutput());
+
+    vtkNew<vtkTrivialProducer> fullSource;
+    fullSource->SetOutput(cubeImage);
+
+    vtkNew<vtkMomentMapFilter> moment;
+    moment->SetInputConnection(fullSource->GetOutputPort());
+    moment->Init(filepath.toStdString());
+    moment->SetMomentOrder(0);
+    moment->Update();
+
+    vtkNew<vtkImageData> momentImage;
+    momentImage->DeepCopy(moment->GetOutput());
+    const double *momentRange = momentImage->GetScalarRange();
+    const int *extent = cubeImage->GetExtent();
+
+    return { true,
+             { },
+             cubeImage,
+             momentImage,
+             { reader->GetMin(), reader->GetMax() },
+             { momentRange[0], momentRange[1] },
+             { extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] },
+             reader->GetMean(),
+             reader->GetRMS() };
 }

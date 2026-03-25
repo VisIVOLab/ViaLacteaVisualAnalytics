@@ -94,6 +94,7 @@ private:
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
 
     vtkNew<vtkFITSReader> reader;
@@ -149,6 +150,7 @@ private:
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);
+    void setCubeOpenActionsEnabled(bool enabled);
     void setMomentActionsEnabled(bool enabled);
     void setMomentOrder(int order);
 };

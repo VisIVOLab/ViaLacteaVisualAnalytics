@@ -123,6 +123,23 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         this->legendSlice,
         this->legendMoment
     });
+    QObject::connect(&this->cubeOpenWatcher, &QFutureWatcher<CubeOpenStageResult>::finished, this,
+                     [this]() {
+                         this->setCubeOpenActionsEnabled(true);
+
+                         const auto result = this->cubeOpenWatcher.result();
+                         if (!result.valid || !result.cubeImageData || !result.momentImageData) {
+                             if (!result.errorMessage.isEmpty()) {
+                                 this->statusBar()->showMessage(result.errorMessage);
+                             } else {
+                                 this->statusBar()->clearMessage();
+                             }
+                             return;
+                         }
+
+                         this->applyCubeOpenResult(result);
+                         this->statusBar()->clearMessage();
+                     });
     QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
                      this, [this]() {
                          this->setMomentActionsEnabled(true);
@@ -253,6 +270,9 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         ui->lineCubeMax->setText(QString::number(preview.cubeRange[1]));
         ui->lineCubeMean->setText(QString::number(preview.cubeMean));
         ui->lineCubeRms->setText(QString::number(preview.cubeRms));
+        this->setCubeOpenActionsEnabled(false);
+        this->statusBar()->showMessage(u"Loading full cube..."_s);
+        this->cubeOpenWatcher.setFuture(QtConcurrent::run(&loadCubeOpenFull, this->filepath));
     } else {
         ui->lineCubeMin->setText(QString::number(this->reader->GetMin()));
         ui->lineCubeMax->setText(QString::number(this->reader->GetMax()));
@@ -268,6 +288,12 @@ vtkWindowCube::~vtkWindowCube()
 
 void vtkWindowCube::closeEvent(QCloseEvent *event)
 {
+    if (this->cubeOpenWatcher.isRunning()) {
+        this->statusBar()->showMessage(u"Full cube loading in progress. Please wait."_s);
+        event->ignore();
+        return;
+    }
+
     if (this->momentComputeWatcher.isRunning()) {
         this->statusBar()->showMessage(u"Moment map computation in progress. Please wait."_s);
         event->ignore();
@@ -610,6 +636,10 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
 
     ui->sliderSlice->setMaximum(result.dataExtent[5] + 1);
     ui->spinSlice->setMaximum(result.dataExtent[5] + 1);
+    ui->lineCubeMin->setText(QString::number(result.cubeRange[0]));
+    ui->lineCubeMax->setText(QString::number(result.cubeRange[1]));
+    ui->lineCubeMean->setText(QString::number(result.cubeMean));
+    ui->lineCubeRms->setText(QString::number(result.cubeRms));
 
     if (this->viewingSlice()) {
         ui->lineImgMin->setText(QString::number(sliceRange[0]));
@@ -655,6 +685,10 @@ void vtkWindowCube::updateContoursVisibility()
 
 void vtkWindowCube::setMomentOrder(int order)
 {
+    if (this->cubeOpenWatcher.isRunning()) {
+        return;
+    }
+
     if (this->momentComputeWatcher.isRunning()) {
         return;
     }
@@ -771,6 +805,12 @@ void vtkWindowCube::setMomentActionsEnabled(bool enabled)
     ui->actionMoment6->setEnabled(enabled);
     ui->actionMoment8->setEnabled(enabled);
     ui->actionMoment10->setEnabled(enabled);
+}
+
+void vtkWindowCube::setCubeOpenActionsEnabled(bool enabled)
+{
+    this->setMomentActionsEnabled(enabled);
+    ui->actionExtractSpectrum->setEnabled(enabled);
 }
 
 void vtkWindowCube::setInteractorStyleImage()
