@@ -2,6 +2,7 @@
 #include "ui_vtkWindowImage.h"
 
 #include "ColorMaps.h"
+#include "ImageLayerController.h"
 #include "LUTCustomizerDialog.h"
 #include "LayerListModel.h"
 #include "ProfileWidget.h"
@@ -178,6 +179,9 @@ void vtkWindowImage::setupRenderer()
     this->colorbar->SetLookupTable(this->layers->getLookupTable(this->layers->getMasterIndex()));
     ren->AddViewProp(this->colorbar);
 
+    this->layerController =
+            std::make_unique<ImageLayerController>(*(this->layers), this->stack, this->colorbar);
+
     // Legend
     this->legendWCS->Init(this->filepath.toStdString());
     this->legendWCS->SetWCS(WCS_GALACTIC);
@@ -263,33 +267,40 @@ void vtkWindowImage::changeLegendWCS()
 
 void vtkWindowImage::changeCurrentColorMap()
 {
-    this->layers->setColorMap(this->currentLayerIndex(), ui->comboLut->currentText().toStdString());
+    this->layerController->setCurrentColorMap(this->currentLayerIndex(),
+                                              ui->comboLut->currentText().toStdString());
+    this->vtkRender();
 }
 
 void vtkWindowImage::changeCurrentColorScale()
 {
-    this->layers->setLogScale(this->currentLayerIndex(), ui->radioLog->isChecked());
+    this->layerController->setCurrentLogScale(this->currentLayerIndex(), ui->radioLog->isChecked());
+    this->vtkRender();
 }
 
 void vtkWindowImage::changeCurrentLayerOpacity()
 {
     const double opacity = ui->sliderOpacity->sliderPosition() / 100.;
-    this->layers->setLayerOpacity(ui->listLayer->currentIndex().row(), opacity);
+    this->layerController->setCurrentOpacity(this->currentLayerIndex(), opacity);
+    this->vtkRender();
 }
 
 void vtkWindowImage::showCurrentLayerSettings()
 {
     const int index = this->currentLayerIndex();
-    const int opacity = this->layers->getLayerOpacity(index) * 100;
-    ui->comboLut->setCurrentText(QString::fromStdString(this->layers->getColorMapName(index)));
-    if (this->layers->usingLogScale(index)) {
+    const auto state = this->layerController->layerViewState(index);
+    if (!state.valid) {
+        return;
+    }
+
+    ui->comboLut->setCurrentText(QString::fromStdString(state.colorMapName));
+    if (state.usingLogScale) {
         ui->radioLog->setChecked(true);
     } else {
         ui->radioLinear->setChecked(true);
     }
-    ui->sliderOpacity->setValue(opacity);
+    ui->sliderOpacity->setValue(state.opacityPercent);
 
-    this->stack->SetActiveLayer(index);
-    this->colorbar->SetLookupTable(this->layers->getLookupTable(index));
+    this->layerController->activateLayer(index);
     this->vtkRender();
 }

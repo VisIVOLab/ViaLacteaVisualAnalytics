@@ -70,6 +70,8 @@ set(PROJECT_SOURCES
         src/gui/AboutDialog.h
         src/gui/DatasetWindowFactory.cpp
         src/gui/DatasetWindowFactory.h
+        src/gui/ImageLayerController.cpp
+        src/gui/ImageLayerController.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp

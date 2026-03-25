@@ -8,6 +8,9 @@
 #include <QMainWindow>
 #include <QPointer>
 
+#include <memory>
+
+class ImageLayerController;
 class LayerListModel;
 class LUTCustomizerDialog;
 class ProfileWidget;
@@ -64,6 +67,7 @@ private:
     // Stack
     vtkNew<vtkImageStack> stack;
     LayerListModel *layers;
+    std::unique_ptr<ImageLayerController> layerController;
     int currentLayerIndex() const;
     void addLayerImage(const std::string &filepath);
 };
