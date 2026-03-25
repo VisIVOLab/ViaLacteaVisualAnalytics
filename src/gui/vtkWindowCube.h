@@ -12,6 +12,7 @@
 
 class CubeViewController;
 class LUTCustomizerDialog;
+class MomentProcessingService;
 class ProfileWidget;
 class vtkActor;
 class vtkColorTransferFunction;
@@ -79,6 +80,7 @@ private:
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    std::unique_ptr<MomentProcessingService> momentProcessingService;
 
     vtkNew<vtkFITSReader> reader;
     float lowerBound;

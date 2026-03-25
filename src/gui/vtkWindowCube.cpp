@@ -4,6 +4,7 @@
 #include "ColorMaps.h"
 #include "CubeViewController.h"
 #include "LUTCustomizerDialog.h"
+#include "MomentProcessingService.h"
 #include "ProfileWidget.h"
 #include "vtkFITSReader.h"
 #include "vtkInteractorStyleProfile.h"
@@ -58,6 +59,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
       astro(filepath.toStdString()),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
+      momentProcessingService(nullptr),
       level(15)
 {
     ui->setupUi(this);
@@ -73,6 +75,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
+    this->momentProcessingService =
+            std::make_unique<MomentProcessingService>(this->moment, this->lutMoment);
     this->viewController = std::make_unique<CubeViewController>(CubeViewContext {
         this->reader,
         this->astro,
@@ -532,7 +536,7 @@ void vtkWindowCube::updateContoursVisibility()
 
 void vtkWindowCube::setMomentOrder(int order)
 {
-    const auto result = this->viewController->updateMomentOrder(order);
+    const auto result = this->momentProcessingService->process(MomentMapRequest { order });
     if (!result.valid) {
         return;
     }

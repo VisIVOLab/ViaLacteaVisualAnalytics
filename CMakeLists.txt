@@ -85,6 +85,8 @@ set(PROJECT_SOURCES
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
         src/gui/MainWindow.h
+        src/gui/MomentProcessingService.cpp
+        src/gui/MomentProcessingService.h
         src/gui/ProfileWidget.cpp
         src/gui/ProfileWidget.h
         src/gui/SettingsDialog.cpp
