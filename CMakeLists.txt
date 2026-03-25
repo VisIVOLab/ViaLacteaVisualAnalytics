@@ -68,6 +68,8 @@ set(PROJECT_SOURCES
         src/auth/VisIVOUrlSchemeHandler.h
         src/gui/AboutDialog.cpp
         src/gui/AboutDialog.h
+        src/gui/CubeViewController.cpp
+        src/gui/CubeViewController.h
         src/gui/DatasetWindowFactory.cpp
         src/gui/DatasetWindowFactory.h
         src/gui/ImageLayerController.cpp

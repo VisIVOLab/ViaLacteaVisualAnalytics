@@ -8,6 +8,9 @@
 #include <QMainWindow>
 #include <QPointer>
 
+#include <memory>
+
+class CubeViewController;
 class LUTCustomizerDialog;
 class ProfileWidget;
 class vtkActor;
@@ -88,6 +91,7 @@ private:
     vtkNew<vtkCoordinate> coordinate;
     double initialCameraPosition[3];
     double initialCameraFocalPoint[3];
+    std::unique_ptr<CubeViewController> viewController;
     void setupCubeRenderer();
     void setupSliceRenderer();
     void setupMomentRenderer();

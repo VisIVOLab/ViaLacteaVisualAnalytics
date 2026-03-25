@@ -2,6 +2,7 @@
 #include "ui_vtkWindowCube.h"
 
 #include "ColorMaps.h"
+#include "CubeViewController.h"
 #include "LUTCustomizerDialog.h"
 #include "ProfileWidget.h"
 #include "vtkFITSReader.h"
@@ -72,6 +73,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
+    this->viewController = std::make_unique<CubeViewController>(CubeViewContext {
+        this->reader,       this->astro,       this->isosurfaceFilter, this->volumeOpacity,
+        this->slice,        this->sliceOnCube, this->lutSlice,         this->lutSliceOnCube,
+        this->contours,     this->contoursActor,
+        this->legendSlice,  this->legendMoment
+    });
 
     // Setup menu Camera
     ui->actionCameraFront->setIcon(QIcon(u":/icons/PIC_FRONT.png"_s));
@@ -479,48 +486,34 @@ bool vtkWindowCube::viewingSlice() const
 void vtkWindowCube::updateCube()
 {
     double threshold = ui->lineThreshold->text().toDouble();
-    this->isosurfaceFilter->SetValue(0, threshold);
-    this->volumeOpacity->RemoveAllPoints();
-    this->volumeOpacity->AddPoint(this->reader->GetMin(), 0.0);
-    this->volumeOpacity->AddPoint(threshold, 0.05);
-    this->volumeOpacity->AddPoint(this->reader->GetMax(), 0.3);
+    this->viewController->updateCube(threshold);
     ui->vtkCube->renderWindow()->Render();
 }
 
 void vtkWindowCube::updateSlice()
 {
     const int slice = ui->spinSlice->value() - 1;
-    double spectralValue =
-            this->astro.getInitialSpectralValue() + this->astro.getIncrements()[2] * slice;
-    ui->lineSpectral->setText(QString::number(spectralValue));
+    const auto result = this->viewController->updateSlice(slice);
+    if (!result.valid) {
+        return;
+    }
 
-    // Slice on Cube
-    int extent[6];
-    this->reader->GetDataExtent(extent);
-    extent[4] = extent[5] = slice;
-    this->sliceOnCube->SetVOI(extent);
-    this->sliceOnCube->Update();
-    const double *imgRange = this->sliceOnCube->GetOutput()->GetScalarRange();
-    this->lutSliceOnCube->SetTableRange(imgRange);
-
-    // Slice
-    this->slice->SetResliceAxesOrigin(0., 0., slice);
-    this->lutSlice->SetTableRange(this->lutSliceOnCube->GetTableRange());
+    ui->lineSpectral->setText(QString::number(result.spectralValue));
 
     ui->vtkCube->renderWindow()->Render();
     this->sliceWin->GetRenderers()->GetFirstRenderer()->ResetCamera();
     this->sliceWin->Render();
 
     if (this->viewingSlice()) {
-        ui->lineImgMin->setText(QString::number(imgRange[0]));
-        ui->lineImgMax->setText(QString::number(imgRange[1]));
+        ui->lineImgMin->setText(QString::number(result.imageRange[0]));
+        ui->lineImgMax->setText(QString::number(result.imageRange[1]));
         this->updateLUTCustomizer();
     }
 }
 
 void vtkWindowCube::updateContoursVisibility()
 {
-    this->contoursActor->SetVisibility(ui->checkContours->isChecked());
+    this->viewController->setContoursVisible(ui->checkContours->isChecked());
     this->sliceWin->Render();
 }
 
@@ -534,9 +527,9 @@ void vtkWindowCube::setMomentOrder(int order)
 
 void vtkWindowCube::updateContours()
 {
-    this->contours->GenerateValues(ui->lineLevel->text().toInt(),
-                                   ui->lineLowerBound->text().toDouble(),
-                                   ui->lineUpperBound->text().toDouble());
+    this->viewController->updateContours(ui->lineLevel->text().toInt(),
+                                         ui->lineLowerBound->text().toDouble(),
+                                         ui->lineUpperBound->text().toDouble());
     this->sliceWin->Render();
 }
 
@@ -577,8 +570,7 @@ void vtkWindowCube::changeLegendWCS()
     const int wcs = (ui->actionGalactic->isChecked()
                              ? WCS_GALACTIC
                              : (ui->actionFK5->isChecked() ? WCS_J2000 : WCS_ECLIPTIC));
-    this->legendSlice->SetWCS(wcs);
-    this->legendMoment->SetWCS(wcs);
+    this->viewController->setLegendWcs(wcs);
     ui->vtkImage->renderWindow()->Render();
 }
 
