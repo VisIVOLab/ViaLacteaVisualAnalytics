@@ -91,6 +91,8 @@ The GUI no longer owns dataset classification logic directly.
 
 `vtkWindowCube` still owns UI orchestration, but moment recomputation and LUT/range update are outside the widget.
 
+`MomentProcessingService` should currently be read as a local VTK-bound processing boundary, not as a transport-neutral processing API.
+
 ### Image layer runtime state
 - `ImageLayerSet`
 
@@ -173,9 +175,18 @@ Reason:
 - represents a real processing boundary
 - strongest candidate for eventual async local execution or remote processing
 
+Current semantics:
+- the current implementation is a local VTK-bound processing service
+- it operates on live `vtkMomentMapFilter` and `vtkLookupTable` instances
+- `MomentMapResult` exposes only part of the useful outcome; the implementation also mutates local VTK runtime state
+
 Constraint today:
 - it is still bound to live VTK runtime objects (`vtkMomentMapFilter`, `vtkLookupTable`)
 - this means the contract exists, but it is not yet directly remotizable without one more decoupling step
+
+Future step needed:
+- separate "compute moment map result" from "apply result to local VTK/LUT state"
+- only after that separation will a clean local/remote split become realistic
 
 ## Non-Goals / Deferred Items
 

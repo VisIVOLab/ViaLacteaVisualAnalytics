@@ -8,6 +8,7 @@ class vtkMomentMapFilter;
 
 struct MomentMapRequest
 {
+    // Requested moment order for the current local VTK processing context.
     int momentOrder;
 };
 
@@ -20,8 +21,10 @@ struct MomentMapResult
 class MomentProcessingService
 {
 public:
+    // Binds the service to the current local VTK runtime objects used by the cube view.
     MomentProcessingService(vtkMomentMapFilter *moment, vtkLookupTable *lutMoment);
 
+    // Recomputes the moment map in the local VTK runtime and updates the associated LUT range.
     MomentMapResult process(const MomentMapRequest &request) const;
 
 private:
