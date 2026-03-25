@@ -1,16 +1,15 @@
 #ifndef ImageLayerImportService_h
 #define ImageLayerImportService_h
 
+#include "ImageLayerImportRequest.h"
 #include "ImageLayerImportResult.h"
-
-class AstroUtils;
 
 class ImageLayerImportService
 {
 public:
     ImageLayerImportService() = default;
 
-    ImageLayerImportResult inspect(const AstroUtils &baseImage, const QString &filepath) const;
+    ImageLayerImportResult inspect(const ImageLayerImportRequest &request) const;
 };
 
 #endif

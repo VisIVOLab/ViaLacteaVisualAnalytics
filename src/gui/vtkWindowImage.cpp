@@ -137,7 +137,8 @@ void vtkWindowImage::addLocalFile()
         return;
     }
 
-    const ImageLayerImportResult result = this->importService->inspect(this->astro, filepath);
+    const ImageLayerImportResult result =
+            this->importService->inspect(ImageLayerImportRequest { this->filepath, filepath });
     if (!result.accepted) {
         QMessageBox::warning(this, u"Import FITS file"_s, result.errorMessage);
         return;

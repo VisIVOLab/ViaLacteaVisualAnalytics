@@ -2,22 +2,22 @@
 
 #include "AstroUtils.h"
 
-ImageLayerImportResult ImageLayerImportService::inspect(const AstroUtils &baseImage,
-                                                        const QString &filepath) const
+ImageLayerImportResult ImageLayerImportService::inspect(const ImageLayerImportRequest &request) const
 {
-    ImageLayerImportResult result{ filepath, false, { } };
+    ImageLayerImportResult result{ request.layerFilepath, false, { } };
 
-    if (filepath.isEmpty()) {
+    if (request.layerFilepath.isEmpty()) {
         result.errorMessage = "Empty dataset path.";
         return result;
     }
 
-    if (!baseImage.overlap(filepath.toStdString())) {
+    AstroUtils baseImage(request.baseDatasetPath.toStdString());
+    if (!baseImage.overlap(request.layerFilepath.toStdString())) {
         result.errorMessage = "The regions do not overlap each other, the file cannot be imported.";
         return result;
     }
 
-    AstroUtils other(filepath.toStdString());
+    AstroUtils other(request.layerFilepath.toStdString());
     if (!other.isImage()) {
         result.errorMessage = "Only FITS images can be imported as layers.";
         return result;
