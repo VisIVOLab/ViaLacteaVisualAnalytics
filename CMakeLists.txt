@@ -72,6 +72,9 @@ set(PROJECT_SOURCES
         src/gui/DatasetWindowFactory.h
         src/gui/ImageLayerController.cpp
         src/gui/ImageLayerController.h
+        src/gui/ImageLayerImportResult.h
+        src/gui/ImageLayerImportService.cpp
+        src/gui/ImageLayerImportService.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp

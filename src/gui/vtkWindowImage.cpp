@@ -3,6 +3,7 @@
 
 #include "ColorMaps.h"
 #include "ImageLayerController.h"
+#include "ImageLayerImportService.h"
 #include "LUTCustomizerDialog.h"
 #include "LayerListModel.h"
 #include "ProfileWidget.h"
@@ -35,7 +36,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
       filepath(filepath),
       astro(filepath.toStdString()),
       lutCustomizer(nullptr),
-      profileWidget(nullptr)
+      profileWidget(nullptr),
+      importService(std::make_unique<ImageLayerImportService>())
 {
     ui->setupUi(this);
     this->setWindowTitle(this->filepath);
@@ -135,17 +137,13 @@ void vtkWindowImage::addLocalFile()
         return;
     }
 
-    if (!this->astro.overlap(filepath.toStdString())) {
-        QMessageBox::warning(
-                this, u"Import FITS file"_s,
-                u"The regions do not overlap each other, the file cannot be imported."_s);
+    const ImageLayerImportResult result = this->importService->inspect(this->astro, filepath);
+    if (!result.accepted) {
+        QMessageBox::warning(this, u"Import FITS file"_s, result.errorMessage);
         return;
     }
 
-    AstroUtils other(filepath.toStdString());
-    if (other.isImage()) {
-        this->addLayerImage(filepath.toStdString());
-    }
+    this->addLayerImage(filepath.toStdString());
 }
 
 void vtkWindowImage::setupRenderer()

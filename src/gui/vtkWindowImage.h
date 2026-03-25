@@ -11,6 +11,7 @@
 #include <memory>
 
 class ImageLayerController;
+class ImageLayerImportService;
 class LayerListModel;
 class LUTCustomizerDialog;
 class ProfileWidget;
@@ -56,6 +57,7 @@ private:
     AstroUtils astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    std::unique_ptr<ImageLayerImportService> importService;
 
     // Renderer
     vtkNew<vtkLegendScaleActorWCS> legendWCS;
