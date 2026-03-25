@@ -12,12 +12,18 @@ class vtkFITSReader;
 class vtkImageReslice;
 class vtkLegendScaleActorWCS;
 class vtkLookupTable;
+class vtkMomentMapFilter;
 class vtkPiecewiseFunction;
+class vtkRenderer;
+class vtkVolume;
 
 struct CubeViewContext
 {
     vtkFITSReader *reader;
     const AstroUtils &astro;
+    vtkRenderer *cubeRenderer;
+    vtkActor *isosurface;
+    vtkVolume *volume;
     vtkFlyingEdges3D *isosurfaceFilter;
     vtkPiecewiseFunction *volumeOpacity;
     vtkImageReslice *slice;
@@ -26,6 +32,8 @@ struct CubeViewContext
     vtkLookupTable *lutSliceOnCube;
     vtkFlyingEdges2D *contours;
     vtkActor *contoursActor;
+    vtkMomentMapFilter *moment;
+    vtkLookupTable *lutMoment;
     vtkLegendScaleActorWCS *legendSlice;
     vtkLegendScaleActorWCS *legendMoment;
 };
@@ -47,6 +55,9 @@ public:
     void setContoursVisible(bool visible) const;
     void updateContours(int levels, double lowerBound, double upperBound) const;
     void setLegendWcs(int wcs) const;
+    bool setMomentOrder(int order) const;
+    void syncSlicesLut() const;
+    void setCubeRenderMode(bool isosurfaceMode) const;
 
 private:
     CubeViewContext context;

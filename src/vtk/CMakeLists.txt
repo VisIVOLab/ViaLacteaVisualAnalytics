@@ -1,0 +1,32 @@
+add_library(visivo_shared_vtk STATIC
+        ${PROJECT_SOURCE_DIR}/src/vtk/ColorMaps.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/ColorMaps.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayer.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayer.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerSet.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerSet.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkFITSReader.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkFITSReader.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkFITSWriter.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkFITSWriter.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkInteractorStyleProfile.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkInteractorStyleProfile.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkLegendScaleActorWCS.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkLegendScaleActorWCS.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkMomentMapFilter.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/vtkMomentMapFilter.h
+)
+
+target_link_libraries(visivo_shared_vtk
+        PUBLIC
+        visivo_shared_core
+        ${VTK_LIBRARIES}
+        PRIVATE
+        wcs
+)
+
+target_include_directories(visivo_shared_vtk
+        PUBLIC
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/src/vtk
+)

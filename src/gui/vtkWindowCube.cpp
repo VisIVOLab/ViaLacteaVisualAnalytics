@@ -74,10 +74,23 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setupSliceRenderer();
     this->setupMomentRenderer();
     this->viewController = std::make_unique<CubeViewController>(CubeViewContext {
-        this->reader,       this->astro,       this->isosurfaceFilter, this->volumeOpacity,
-        this->slice,        this->sliceOnCube, this->lutSlice,         this->lutSliceOnCube,
-        this->contours,     this->contoursActor,
-        this->legendSlice,  this->legendMoment
+        this->reader,
+        this->astro,
+        ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer(),
+        this->isosurface,
+        this->volume,
+        this->isosurfaceFilter,
+        this->volumeOpacity,
+        this->slice,
+        this->sliceOnCube,
+        this->lutSlice,
+        this->lutSliceOnCube,
+        this->contours,
+        this->contoursActor,
+        this->moment,
+        this->lutMoment,
+        this->legendSlice,
+        this->legendMoment
     });
 
     // Setup menu Camera
@@ -519,9 +532,10 @@ void vtkWindowCube::updateContoursVisibility()
 
 void vtkWindowCube::setMomentOrder(int order)
 {
-    this->moment->SetMomentOrder(order);
-    this->moment->Update();
-    this->lutMoment->SetTableRange(this->moment->GetOutput()->GetScalarRange());
+    if (!this->viewController->setMomentOrder(order)) {
+        return;
+    }
+
     ui->actionMomentMap->trigger();
 }
 
@@ -647,15 +661,7 @@ void vtkWindowCube::changeImageRenderer()
 
 void vtkWindowCube::changeCubeRender()
 {
-    auto ren = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
-    if (ui->actionIsosurface->isChecked()) {
-        ren->AddViewProp(this->isosurface);
-        ren->RemoveViewProp(this->volume);
-    } else {
-        ren->AddViewProp(this->volume);
-        ren->RemoveViewProp(this->isosurface);
-    }
-
+    this->viewController->setCubeRenderMode(ui->actionIsosurface->isChecked());
     ui->vtkCube->renderWindow()->Render();
 }
 
@@ -735,11 +741,6 @@ void vtkWindowCube::renderImage()
 
 void vtkWindowCube::syncSlicesLUT()
 {
-    double range[2];
-    this->lutSlice->GetTableRange(range);
-
-    ColorMaps::SetColorMap(this->lutSliceOnCube, this->lutSlice->GetObjectName());
-    this->lutSliceOnCube->SetTableRange(range);
-    this->lutSliceOnCube->SetScale(this->lutSlice->GetScale());
+    this->viewController->syncSlicesLut();
     ui->vtkCube->renderWindow()->Render();
 }

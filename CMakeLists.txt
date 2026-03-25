@@ -45,16 +45,9 @@ set(CMAKE_AUTOUIC OFF)
 configure_file(src/Version.h.in Version.h @ONLY)
 
 set(PROJECT_SOURCES
-        src/AstroUtils.h
-        src/AstroUtils.cpp
-        src/app/DatasetOpenService.cpp
-        src/app/DatasetOpenService.h
-        src/app/DatasetOpenTypes.h
         src/LayerListModel.cpp
         src/LayerListModel.h
         src/main.cpp
-        src/Settings.cpp
-        src/Settings.h
         src/WebViewProcess.cpp
         src/WebViewProcess.h
         src/auth/AuthKeys.h
@@ -89,22 +82,6 @@ set(PROJECT_SOURCES
         src/gui/vtkWindowCube.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
-        src/vtk/ColorMaps.cpp
-        src/vtk/ColorMaps.h
-        src/vtk/ImageLayer.cpp
-        src/vtk/ImageLayer.h
-        src/vtk/ImageLayerSet.cpp
-        src/vtk/ImageLayerSet.h
-        src/vtk/vtkFITSReader.cpp
-        src/vtk/vtkFITSReader.h
-        src/vtk/vtkFITSWriter.cpp
-        src/vtk/vtkFITSWriter.h
-        src/vtk/vtkInteractorStyleProfile.cpp
-        src/vtk/vtkInteractorStyleProfile.h
-        src/vtk/vtkLegendScaleActorWCS.cpp
-        src/vtk/vtkLegendScaleActorWCS.h
-        src/vtk/vtkMomentMapFilter.cpp
-        src/vtk/vtkMomentMapFilter.h
 )
 
 set(PROJECT_UI
@@ -162,6 +139,10 @@ add_subdirectory(src/libwcs)
 
 add_subdirectory(src/qcustomplot)
 
+add_subdirectory(src/core)
+
+add_subdirectory(src/vtk)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>
 )
@@ -169,17 +150,14 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/auth"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/gui"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/vtk"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        visivo_shared_core
+        visivo_shared_vtk
         ${qt_modules}
-        ${VTK_LIBRARIES}
-        CFITSIO::cfitsio
-        wcs
         QCustomPlot
 )
 
