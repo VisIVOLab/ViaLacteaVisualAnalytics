@@ -98,6 +98,25 @@ The GUI no longer owns dataset classification logic directly.
 
 `LayerListModel` no longer owns the full non-Qt layer management logic.
 
+## First Local Async Path
+
+The project now includes one real local async processing path:
+
+- moment-map recomputation on moment-order change in `vtkWindowCube`
+
+Current design:
+- compute runs off the UI thread using `QtConcurrent::run` and `QFutureWatcher`
+- the worker uses its own VTK objects and does not touch the visible pipeline
+- the UI thread receives a result payload and applies it through `applyMomentMapResult(...)`
+- the visible moment pipeline is fed through a display-side bridge (`vtkTrivialProducer`)
+- moment actions are temporarily disabled while computation is running
+- `vtkWindowCube` cannot be closed while the moment computation is in progress
+
+Current limitation:
+- this async path is intentionally use-case-specific
+- it is not a general async/job framework
+- the moment display pipeline and the worker pipeline are now separated, but further async use cases must repeat the same explicit separation between compute-side state and displayed state
+
 ## Current Responsibilities
 
 ### Shared Core
@@ -195,7 +214,7 @@ The following are intentionally not implemented yet:
 - no backend
 - no remote rendering
 - no remote job execution
-- no general async/job framework
+- no general async/job framework beyond the current moment-map use case
 - no generic service interfaces
 - no large widget rewrite
 - no full decomposition of `vtkWindowCube`
