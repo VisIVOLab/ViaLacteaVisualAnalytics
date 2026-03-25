@@ -4,7 +4,7 @@
 #include "ColorMaps.h"
 #include "CubeViewController.h"
 #include "LUTCustomizerDialog.h"
-#include "MomentProcessingService.h"
+#include "MomentMapComputeTask.h"
 #include "ProfileWidget.h"
 #include "vtkFITSReader.h"
 #include "vtkInteractorStyleProfile.h"
@@ -47,8 +47,10 @@
 #include <QActionGroup>
 #include <QColorDialog>
 #include <QDoubleValidator>
+#include <QtConcurrentRun>
 #include <QInputDialog>
 
+#include <limits>
 #include <sstream>
 
 using namespace Qt::StringLiterals;
@@ -60,7 +62,6 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
       astro(filepath.toStdString()),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
-      momentProcessingService(nullptr),
       level(15)
 {
     ui->setupUi(this);
@@ -76,8 +77,6 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
-    this->momentProcessingService =
-            std::make_unique<MomentProcessingService>(this->moment, this->lutMoment);
     this->viewController = std::make_unique<CubeViewController>(CubeViewContext {
         this->reader,
         this->astro,
@@ -97,6 +96,24 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         this->legendSlice,
         this->legendMoment
     });
+    QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
+                     this, [this]() {
+                         this->setMomentActionsEnabled(true);
+
+                         const auto result = this->momentComputeWatcher.result();
+                         if (!result.valid || !result.imageData) {
+                             if (!result.errorMessage.isEmpty()) {
+                                 this->statusBar()->showMessage(result.errorMessage);
+                             } else {
+                                 this->statusBar()->clearMessage();
+                             }
+                             return;
+                         }
+
+                         this->applyMomentMapResult(
+                                 { result.imageData, { result.imageRange[0], result.imageRange[1] } });
+                         this->statusBar()->clearMessage();
+                     });
 
     // Setup menu Camera
     ui->actionCameraFront->setIcon(QIcon(u":/icons/PIC_FRONT.png"_s));
@@ -470,7 +487,11 @@ void vtkWindowCube::mouseCallback()
                 this->reader->GetValue(imageCoord[0], imageCoord[1], ui->spinSlice->value() - 1);
         ss << val;
     } else {
-        const float val = this->moment->GetValue(imageCoord[0], imageCoord[1]);
+        const auto momentImage =
+                vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+        const float val = momentImage
+                ? momentImage->GetScalarComponentAsFloat(imageCoord[0], imageCoord[1], 0, 0)
+                : std::numeric_limits<float>::quiet_NaN();
         ss << val;
     }
 
@@ -538,13 +559,14 @@ void vtkWindowCube::updateContoursVisibility()
 
 void vtkWindowCube::setMomentOrder(int order)
 {
-    const auto result = this->momentProcessingService->process(MomentMapRequest { order });
-    if (!result.valid) {
+    if (this->momentComputeWatcher.isRunning()) {
         return;
     }
 
-    this->applyMomentMapResult(
-            { this->moment->GetOutput(), { result.imageRange[0], result.imageRange[1] } });
+    this->setMomentActionsEnabled(false);
+    this->statusBar()->showMessage(u"Computing moment map..."_s);
+    this->momentComputeWatcher.setFuture(
+            QtConcurrent::run(&computeMomentMap, MomentMapComputeRequest { this->filepath, order }));
 }
 
 void vtkWindowCube::updateContours()
@@ -643,6 +665,16 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     }
 
     ui->actionMomentMap->trigger();
+}
+
+void vtkWindowCube::setMomentActionsEnabled(bool enabled)
+{
+    ui->actionMoment0->setEnabled(enabled);
+    ui->actionMoment1->setEnabled(enabled);
+    ui->actionMoment2->setEnabled(enabled);
+    ui->actionMoment6->setEnabled(enabled);
+    ui->actionMoment8->setEnabled(enabled);
+    ui->actionMoment10->setEnabled(enabled);
 }
 
 void vtkWindowCube::setInteractorStyleImage()

@@ -2,10 +2,12 @@
 #define vtkWindowCube_H
 
 #include "AstroUtils.h"
+#include "MomentMapComputeTask.h"
 
 #include <vtkSmartPointer.h>
 #include <vtkNew.h>
 
+#include <QFutureWatcher>
 #include <QMainWindow>
 #include <QPointer>
 
@@ -14,7 +16,6 @@
 
 class CubeViewController;
 class LUTCustomizerDialog;
-class MomentProcessingService;
 class ProfileWidget;
 class vtkActor;
 class vtkColorTransferFunction;
@@ -90,7 +91,7 @@ private:
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
-    std::unique_ptr<MomentProcessingService> momentProcessingService;
+    QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
 
     vtkNew<vtkFITSReader> reader;
     float lowerBound;
@@ -143,6 +144,7 @@ private:
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);
+    void setMomentActionsEnabled(bool enabled);
     void setMomentOrder(int order);
 };
 #endif

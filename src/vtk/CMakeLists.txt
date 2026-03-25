@@ -5,6 +5,8 @@ add_library(visivo_shared_vtk STATIC
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayer.h
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerSet.cpp
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerSet.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/MomentMapComputeTask.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/MomentMapComputeTask.h
         ${PROJECT_SOURCE_DIR}/src/vtk/MomentProcessingService.cpp
         ${PROJECT_SOURCE_DIR}/src/vtk/MomentProcessingService.h
         ${PROJECT_SOURCE_DIR}/src/vtk/vtkFITSReader.cpp

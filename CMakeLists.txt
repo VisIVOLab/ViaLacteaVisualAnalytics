@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Configuring ${PROJECT_NAME} v${PROJECT_VERSION}")
 
 set(qt_components
+        Concurrent
         Widgets
         Network
         NetworkAuth
