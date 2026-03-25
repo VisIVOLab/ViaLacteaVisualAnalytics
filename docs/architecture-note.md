@@ -73,6 +73,8 @@ The following local boundaries are now explicitly present in the code:
 
 The GUI no longer owns dataset classification logic directly.
 
+`DatasetOpenService` should currently be read as a local dataset inspection service, not as a generic remote-ready implementation.
+
 ### Image layer import validation
 - `ImageLayerImportRequest`
 - `ImageLayerImportService`
@@ -137,6 +139,15 @@ Reason:
 - already has explicit request/result shape
 - behavior is local and bounded
 - good future candidate for remote dataset inspection or catalog-backed open flows
+
+Current semantics:
+- `DatasetOpenRequest.filepath` is currently a local desktop file path
+- the current implementation is a local inspection service backed by `AstroUtils`
+
+Future mapping:
+- local implementation: inspect a local FITS path
+- remote implementation: inspect a dataset reference or remote resource identifier
+- the widget/client should not depend on how inspection is performed
 
 ### `ImageLayerImportService`
 Reason:

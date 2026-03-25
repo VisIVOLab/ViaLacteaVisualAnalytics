@@ -5,6 +5,7 @@
 
 struct DatasetOpenRequest
 {
+    // Current implementation expects a local desktop FITS file path.
     QString filepath;
 };
 
