@@ -8,6 +8,7 @@
 #include <vtkNew.h>
 
 #include <QFutureWatcher>
+#include <QCloseEvent>
 #include <QMainWindow>
 #include <QPointer>
 
@@ -48,6 +49,7 @@ class vtkWindowCube : public QMainWindow
 public:
     vtkWindowCube(const QString &filepath, QWidget *parent = nullptr);
     ~vtkWindowCube() override;
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void resetCameraFront();

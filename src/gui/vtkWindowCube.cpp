@@ -238,6 +238,17 @@ vtkWindowCube::~vtkWindowCube()
     delete ui;
 }
 
+void vtkWindowCube::closeEvent(QCloseEvent *event)
+{
+    if (this->momentComputeWatcher.isRunning()) {
+        this->statusBar()->showMessage(u"Moment map computation in progress. Please wait."_s);
+        event->ignore();
+        return;
+    }
+
+    QMainWindow::closeEvent(event);
+}
+
 void vtkWindowCube::setupCubeRenderer()
 {
     vtkNew<vtkRenderer> ren;
