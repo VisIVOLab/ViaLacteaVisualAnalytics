@@ -8,18 +8,18 @@ class vtkActor;
 class vtkExtractVOI;
 class vtkFlyingEdges2D;
 class vtkFlyingEdges3D;
-class vtkFITSReader;
 class vtkImageReslice;
 class vtkLegendScaleActorWCS;
 class vtkLookupTable;
 class vtkMomentMapFilter;
 class vtkPiecewiseFunction;
 class vtkRenderer;
+class vtkTrivialProducer;
 class vtkVolume;
 
 struct CubeViewContext
 {
-    vtkFITSReader *reader;
+    vtkTrivialProducer *cubeDisplaySource;
     const AstroUtils &astro;
     vtkRenderer *cubeRenderer;
     vtkActor *isosurface;

@@ -69,22 +69,43 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setAttribute(Qt::WA_DeleteOnClose);
 
     this->reader->SetFileName(this->filepath.toUtf8());
-    this->reader->Update();
-    this->cubeDisplaySource->SetOutput(this->reader->GetOutput());
-    this->lowerBound = 3.f * this->reader->GetRMS();
-    this->upperBound = this->reader->GetMax();
+    const CubeOpenStageResult preview = loadCubeOpenPreview(this->filepath);
+    const bool usingPreview = preview.valid && preview.cubeImageData && preview.momentImageData;
+
+    if (usingPreview) {
+        this->cubeDisplaySource->SetOutput(preview.cubeImageData);
+        this->momentDisplaySource->SetOutput(preview.momentImageData);
+        this->lowerBound = 3.f * preview.cubeRms;
+        this->upperBound = preview.cubeRange[1];
+    } else {
+        this->reader->Update();
+        this->cubeDisplaySource->SetOutput(this->reader->GetOutput());
+        this->lowerBound = 3.f * this->reader->GetRMS();
+        this->upperBound = this->reader->GetMax();
+    }
 
     // Setup Renderers
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
-    this->applyCubeOpenResult({ this->reader->GetOutput(),
-                                { this->reader->GetMin(), this->reader->GetMax() },
-                                { this->reader->GetDataExtent()[0], this->reader->GetDataExtent()[1],
-                                  this->reader->GetDataExtent()[2], this->reader->GetDataExtent()[3],
-                                  this->reader->GetDataExtent()[4], this->reader->GetDataExtent()[5] } });
+    if (usingPreview) {
+        this->applyCubeOpenResult(preview);
+    } else {
+        this->applyCubeOpenResult({ true,
+                                    { },
+                                    this->reader->GetOutput(),
+                                    this->moment->GetOutput(),
+                                    { this->reader->GetMin(), this->reader->GetMax() },
+                                    { this->moment->GetOutput()->GetScalarRange()[0],
+                                      this->moment->GetOutput()->GetScalarRange()[1] },
+                                    { this->reader->GetDataExtent()[0], this->reader->GetDataExtent()[1],
+                                      this->reader->GetDataExtent()[2], this->reader->GetDataExtent()[3],
+                                      this->reader->GetDataExtent()[4], this->reader->GetDataExtent()[5] },
+                                    this->reader->GetMean(),
+                                    this->reader->GetRMS() });
+    }
     this->viewController = std::make_unique<CubeViewController>(CubeViewContext {
-        this->reader,
+        this->cubeDisplaySource,
         this->astro,
         ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer(),
         this->isosurface,
@@ -200,13 +221,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                      &vtkWindowCube::changeCubeColor);
 
     // Setup Slice UI
-    const int *extent = this->reader->GetDataExtent();
     const std::string unit = astro.getAxisUnit(2);
     if (!unit.empty()) {
         ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(QString::fromStdString(unit)));
     }
-    ui->sliderSlice->setMaximum(extent[5] + 1);
-    ui->spinSlice->setMaximum(extent[5] + 1);
     ui->lineSpectral->setText(QString::number(this->astro.getInitialSpectralValue()));
     QObject::connect(ui->sliderSlice, &QSlider::actionTriggered, this,
                      &vtkWindowCube::sliceSliderChanged);
@@ -230,10 +248,17 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                      &vtkWindowCube::updateContours);
 
     // Setup Statistics UI
-    ui->lineCubeMin->setText(QString::number(this->reader->GetMin()));
-    ui->lineCubeMax->setText(QString::number(this->reader->GetMax()));
-    ui->lineCubeMean->setText(QString::number(this->reader->GetMean()));
-    ui->lineCubeRms->setText(QString::number(this->reader->GetRMS()));
+    if (usingPreview) {
+        ui->lineCubeMin->setText(QString::number(preview.cubeRange[0]));
+        ui->lineCubeMax->setText(QString::number(preview.cubeRange[1]));
+        ui->lineCubeMean->setText(QString::number(preview.cubeMean));
+        ui->lineCubeRms->setText(QString::number(preview.cubeRms));
+    } else {
+        ui->lineCubeMin->setText(QString::number(this->reader->GetMin()));
+        ui->lineCubeMax->setText(QString::number(this->reader->GetMax()));
+        ui->lineCubeMean->setText(QString::number(this->reader->GetMean()));
+        ui->lineCubeRms->setText(QString::number(this->reader->GetRMS()));
+    }
 }
 
 vtkWindowCube::~vtkWindowCube()
@@ -273,21 +298,26 @@ void vtkWindowCube::setupCubeRenderer()
     ren->AddViewProp(this->isosurface);
 
     // Volume
+    const auto cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    double cubeRange[2] = { 0., 0. };
+    if (cubeImage) {
+        cubeImage->GetScalarRange(cubeRange);
+    }
     vtkNew<vtkLookupTable> lutVolume;
-    lutVolume->SetTableRange(this->reader->GetMin(), this->reader->GetMax());
+    lutVolume->SetTableRange(cubeRange);
     ColorMaps::SetColorMap(lutVolume);
     ColorMaps::SetColorTransferFunction(lutVolume, this->volumeColorTransferFunction);
     this->volumeColorTransferFunction->SetObjectName(lutVolume->GetObjectName());
-    this->volumeOpacity->AddPoint(this->reader->GetMin(), 0.0);
+    this->volumeOpacity->AddPoint(cubeRange[0], 0.0);
     this->volumeOpacity->AddPoint(this->lowerBound, 0.05);
-    this->volumeOpacity->AddPoint(this->reader->GetMax(), 0.3);
+    this->volumeOpacity->AddPoint(cubeRange[1], 0.3);
     vtkNew<vtkVolumeProperty> volumeProperty;
     volumeProperty->SetColor(this->volumeColorTransferFunction);
     volumeProperty->SetScalarOpacity(this->volumeOpacity);
     volumeProperty->SetInterpolationTypeToLinear();
     vtkNew<vtkImageThreshold> nanMask;
     nanMask->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
-    nanMask->ThresholdBetween(this->reader->GetMin(), this->reader->GetMax());
+    nanMask->ThresholdBetween(cubeRange[0], cubeRange[1]);
     nanMask->SetOutValue(0.0);
     nanMask->SetInValue(255.0);
     nanMask->SetOutputScalarTypeToUnsignedChar();
@@ -310,8 +340,10 @@ void vtkWindowCube::setupCubeRenderer()
     ren->AddViewProp(outlineActor);
 
     // Slice
-    int extent[6];
-    this->reader->GetDataExtent(extent);
+    int extent[6] = { 0, -1, 0, -1, 0, -1 };
+    if (cubeImage) {
+        cubeImage->GetExtent(extent);
+    }
     extent[4] = extent[5] = 0;
     this->sliceOnCube->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     this->sliceOnCube->SetVOI(extent);
@@ -421,12 +453,20 @@ void vtkWindowCube::setupMomentRenderer()
     iren->SetInteractorStyle(style);
 
     // Moment
-    this->moment->SetInputConnection(this->reader->GetOutputPort());
-    this->moment->Init(this->filepath.toStdString());
-    this->moment->Update();
-    this->momentDisplaySource->SetOutput(this->moment->GetOutput());
+    if (!vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0))) {
+        this->moment->SetInputConnection(this->reader->GetOutputPort());
+        this->moment->Init(this->filepath.toStdString());
+        this->moment->Update();
+        this->momentDisplaySource->SetOutput(this->moment->GetOutput());
+    }
 
-    this->lutMoment->SetTableRange(this->moment->GetOutput()->GetScalarRange());
+    const auto momentImage =
+            vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    if (momentImage) {
+        this->lutMoment->SetTableRange(momentImage->GetScalarRange());
+    } else {
+        this->lutMoment->SetTableRange(0., 0.);
+    }
     this->lutMoment->SetNanColor(1., 1., 1., 1.);
     ColorMaps::SetColorMap(this->lutMoment);
     vtkNew<vtkImageMapToColors> colors;
@@ -555,6 +595,10 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     }
 
     this->cubeDisplaySource->SetOutput(result.cubeImageData);
+    if (result.momentImageData) {
+        this->momentDisplaySource->SetOutput(result.momentImageData);
+        this->lutMoment->SetTableRange(result.momentRange[0], result.momentRange[1]);
+    }
     this->slice->Update();
     this->sliceOnCube->Update();
 
@@ -572,6 +616,11 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         ui->lineImgMax->setText(QString::number(sliceRange[1]));
         this->updateLUTCustomizer();
         this->sliceWin->Render();
+    } else if (result.momentImageData) {
+        ui->lineImgMin->setText(QString::number(result.momentRange[0]));
+        ui->lineImgMax->setText(QString::number(result.momentRange[1]));
+        this->updateLUTCustomizer();
+        this->momentWin->Render();
     }
 
     ui->vtkCube->renderWindow()->Render();
@@ -803,8 +852,14 @@ void vtkWindowCube::changeCubeColor()
                 QInputDialog::getItem(this, u"Select color palette"_s, u"Color palette:"_s, items,
                                       idxCurrent, false, &ok);
         if (ok && !palette.isEmpty()) {
+            const auto cubeImage =
+                    vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+            double cubeRange[2] = { 0., 0. };
+            if (cubeImage) {
+                cubeImage->GetScalarRange(cubeRange);
+            }
             vtkNew<vtkLookupTable> lut;
-            lut->SetTableRange(this->reader->GetMin(), this->reader->GetMax());
+            lut->SetTableRange(cubeRange);
             ColorMaps::SetColorMap(lut, palette.toStdString());
             ColorMaps::SetColorTransferFunction(lut, this->volumeColorTransferFunction);
             this->volumeColorTransferFunction->SetObjectName(palette.toStdString());

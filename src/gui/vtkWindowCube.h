@@ -2,6 +2,7 @@
 #define vtkWindowCube_H
 
 #include "AstroUtils.h"
+#include "CubeOpenPreviewTask.h"
 #include "MomentMapComputeTask.h"
 
 #include <vtkSmartPointer.h>
@@ -81,13 +82,6 @@ private slots:
     void setInteractorStyleProfile();
 
 private:
-    struct CubeOpenStageResult
-    {
-        vtkSmartPointer<vtkImageData> cubeImageData;
-        std::array<double, 2> cubeRange;
-        std::array<int, 6> dataExtent;
-    };
-
     struct MomentMapApplyResult
     {
         vtkSmartPointer<vtkImageData> imageData;

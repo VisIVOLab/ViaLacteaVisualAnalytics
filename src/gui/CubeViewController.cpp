@@ -2,7 +2,6 @@
 
 #include "AstroUtils.h"
 #include "ColorMaps.h"
-#include "vtkFITSReader.h"
 
 #include <vtkActor.h>
 #include <vtkExtractVOI.h>
@@ -15,28 +14,50 @@
 #include <vtkMomentMapFilter.h>
 #include <vtkPiecewiseFunction.h>
 #include <vtkRenderer.h>
+#include <vtkTrivialProducer.h>
 #include <vtkVolume.h>
 
 CubeViewController::CubeViewController(const CubeViewContext &context) : context(context) { }
 
+namespace {
+vtkImageData *currentCubeData(const CubeViewContext &context)
+{
+    return vtkImageData::SafeDownCast(context.cubeDisplaySource->GetOutputDataObject(0));
+}
+}
+
 void CubeViewController::updateCube(double threshold) const
 {
+    auto *cubeData = currentCubeData(this->context);
+    if (!cubeData) {
+        return;
+    }
+
+    double cubeRange[2];
+    cubeData->GetScalarRange(cubeRange);
+
     this->context.isosurfaceFilter->SetValue(0, threshold);
     this->context.volumeOpacity->RemoveAllPoints();
-    this->context.volumeOpacity->AddPoint(this->context.reader->GetMin(), 0.0);
+    this->context.volumeOpacity->AddPoint(cubeRange[0], 0.0);
     this->context.volumeOpacity->AddPoint(threshold, 0.05);
-    this->context.volumeOpacity->AddPoint(this->context.reader->GetMax(), 0.3);
+    this->context.volumeOpacity->AddPoint(cubeRange[1], 0.3);
 }
 
 CubeViewController::SliceUpdateResult CubeViewController::updateSlice(int sliceIndex) const
 {
-    const int *extentData = this->context.reader->GetDataExtent();
+    auto *cubeData = currentCubeData(this->context);
+    if (!cubeData) {
+        return { false, 0., { 0., 0. } };
+    }
+
+    int extentData[6];
+    cubeData->GetExtent(extentData);
     if (sliceIndex < extentData[4] || sliceIndex > extentData[5]) {
         return { false, 0., { 0., 0. } };
     }
 
-    int extent[6];
-    this->context.reader->GetDataExtent(extent);
+    int extent[6] = { extentData[0], extentData[1], extentData[2],
+                      extentData[3], extentData[4], extentData[5] };
     extent[4] = extent[5] = sliceIndex;
     this->context.sliceOnCube->SetVOI(extent);
     this->context.sliceOnCube->Update();
