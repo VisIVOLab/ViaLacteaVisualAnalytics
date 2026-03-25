@@ -82,6 +82,8 @@ The GUI no longer owns dataset classification logic directly.
 
 `vtkWindowImage` still owns the UI flow, but import validation is outside the widget.
 
+`ImageLayerImportService` should currently be read as a local image-layer validation service, not as a transport-neutral validation API.
+
 ### Moment map processing
 - `MomentMapRequest`
 - `MomentMapResult`
@@ -154,6 +156,16 @@ Reason:
 - already has explicit request/result shape
 - validates compatibility between a base dataset and a candidate layer
 - good future candidate for remote validation
+
+Current semantics:
+- `ImageLayerImportRequest.baseDatasetPath` is currently a local desktop path for the base dataset
+- `ImageLayerImportRequest.layerFilepath` is currently a local desktop path for the candidate image layer
+- the current implementation is a local validation service backed by `AstroUtils`
+
+Future mapping:
+- local implementation: validate overlap and image compatibility using local FITS/WCS inspection
+- remote implementation: validate a base dataset reference against a candidate layer reference
+- the widget/client should not depend on how validation is performed
 
 ### `MomentProcessingService`
 Reason:
