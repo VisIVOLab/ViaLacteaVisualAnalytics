@@ -10,9 +10,9 @@
 #include <vtkLookupTable.h>
 #include <vtkMath.h>
 
-#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 ImageLayerSet::ImageLayerSet(const std::string &masterFilepath)
     : masterFilepath(masterFilepath), masterIdx(0)
@@ -40,111 +40,119 @@ vtkImageSlice *ImageLayerSet::masterLayerActor() const
 
 vtkImageSlice *ImageLayerSet::layerActor(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getActor();
+    if (!this->isValidIndex(index)) {
+        return nullptr;
     }
 
-    return nullptr;
+    return this->layers[index]->getActor();
 }
 
 float ImageLayerSet::pixelValue(int index, int x, int y) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getPixelValue(x, y);
+    if (!this->isValidIndex(index)) {
+        return std::numeric_limits<float>::quiet_NaN();
     }
 
-    return std::numeric_limits<float>::quiet_NaN();
+    return this->layers[index]->getPixelValue(x, y);
 }
 
 vtkImageData *ImageLayerSet::imageData(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getImageData();
+    if (!this->isValidIndex(index)) {
+        return nullptr;
     }
 
-    return nullptr;
+    return this->layers[index]->getImageData();
 }
 
 vtkLookupTable *ImageLayerSet::lookupTable(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getLookupTable();
+    if (!this->isValidIndex(index)) {
+        return nullptr;
     }
 
-    return nullptr;
+    return this->layers[index]->getLookupTable();
 }
 
 double ImageLayerSet::layerOpacity(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getOpacity();
+    if (!this->isValidIndex(index)) {
+        return 0.;
     }
 
-    return 0.;
+    return this->layers[index]->getOpacity();
 }
 
 void ImageLayerSet::setLayerOpacity(int index, double opacity)
 {
-    if (this->isValidIndex(index)) {
-        this->layers[index]->setOpacity(opacity);
+    if (!this->isValidIndex(index)) {
+        return;
     }
+
+    this->layers[index]->setOpacity(opacity);
 }
 
 bool ImageLayerSet::usingLogScale(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->usingLogScale();
+    if (!this->isValidIndex(index)) {
+        return false;
     }
 
-    return false;
+    return this->layers[index]->usingLogScale();
 }
 
 void ImageLayerSet::setLogScale(int index, bool flag)
 {
-    if (this->isValidIndex(index)) {
-        this->layers[index]->setLogScale(flag);
+    if (!this->isValidIndex(index)) {
+        return;
     }
+
+    this->layers[index]->setLogScale(flag);
 }
 
 std::string ImageLayerSet::colorMapName(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getColorMapName();
+    if (!this->isValidIndex(index)) {
+        return { };
     }
 
-    return { };
+    return this->layers[index]->getColorMapName();
 }
 
 void ImageLayerSet::setColorMap(int index, const std::string &name)
 {
-    if (this->isValidIndex(index)) {
-        this->layers[index]->setColorMap(name);
+    if (!this->isValidIndex(index)) {
+        return;
     }
+
+    this->layers[index]->setColorMap(name);
 }
 
 std::string ImageLayerSet::filepath(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->getFilepath();
+    if (!this->isValidIndex(index)) {
+        return { };
     }
 
-    return { };
+    return this->layers[index]->getFilepath();
 }
 
 bool ImageLayerSet::isVisible(int index) const
 {
-    if (this->isValidIndex(index)) {
-        return this->layers[index]->isVisible();
+    if (!this->isValidIndex(index)) {
+        return false;
     }
 
-    return false;
+    return this->layers[index]->isVisible();
 }
 
 void ImageLayerSet::setVisible(int index, bool visible)
 {
-    if (this->isValidIndex(index)) {
-        this->layers[index]->setVisibility(visible);
+    if (!this->isValidIndex(index)) {
+        return;
     }
+
+    this->layers[index]->setVisibility(visible);
 }
 
 vtkImageSlice *ImageLayerSet::addLayer(const std::string &filepath)
@@ -161,19 +169,23 @@ vtkImageSlice *ImageLayerSet::addLayer(const std::string &filepath)
 
 bool ImageLayerSet::moveLayer(int sourceIndex, int destinationRow)
 {
-    if (!this->isValidIndex(sourceIndex) || destinationRow < 0 || destinationRow > this->size()) {
+    const int n = this->size();
+    if (!this->isValidIndex(sourceIndex) || destinationRow < 0 || destinationRow > n) {
         return false;
     }
 
-    if (sourceIndex > destinationRow) {
-        for (int i = sourceIndex - 1; i >= destinationRow; --i) {
-            std::iter_swap(this->layers.begin() + i, this->layers.begin() + i + 1);
-        }
-    } else {
-        for (int i = sourceIndex + 1; i < destinationRow; ++i) {
-            std::iter_swap(this->layers.begin() + i, this->layers.begin() + i - 1);
-        }
+    int insertIndex = destinationRow;
+    if (sourceIndex < destinationRow) {
+        insertIndex -= 1;
     }
+
+    if (insertIndex == sourceIndex || insertIndex < 0 || insertIndex >= n) {
+        return false;
+    }
+
+    auto moved = std::move(this->layers[sourceIndex]);
+    this->layers.erase(this->layers.begin() + sourceIndex);
+    this->layers.insert(this->layers.begin() + insertIndex, std::move(moved));
 
     this->refreshLayerNumbers();
     return true;

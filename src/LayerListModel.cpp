@@ -25,9 +25,10 @@ LayerListModel::~LayerListModel() = default;
 
 vtkImageSlice *LayerListModel::addLayer(const std::string &filepath)
 {
-    const int lastIdx = this->layerSet->size();
+    const int newRow = this->rowCount();
+    this->beginInsertRows(QModelIndex(), newRow, newRow);
     auto actor = this->layerSet->addLayer(filepath);
-    emit this->dataChanged(this->index(lastIdx), this->index(lastIdx));
+    this->endInsertRows();
     return actor;
 }
 
@@ -53,6 +54,10 @@ double LayerListModel::getLayerOpacity(int index) const
 
 void LayerListModel::setLayerOpacity(int index, double opacity)
 {
+    if (index < 0 || index >= this->rowCount()) {
+        return;
+    }
+
     this->layerSet->setLayerOpacity(index, opacity);
     emit this->dataChanged(this->index(index), this->index(index));
 }
@@ -64,6 +69,10 @@ bool LayerListModel::usingLogScale(int index) const
 
 void LayerListModel::setLogScale(int index, bool flag)
 {
+    if (index < 0 || index >= this->rowCount()) {
+        return;
+    }
+
     this->layerSet->setLogScale(index, flag);
     emit this->dataChanged(this->index(index), this->index(index));
 }
@@ -75,12 +84,20 @@ std::string LayerListModel::getColorMapName(int index) const
 
 void LayerListModel::setColorMap(int index, const std::string &name)
 {
+    if (index < 0 || index >= this->rowCount()) {
+        return;
+    }
+
     this->layerSet->setColorMap(index, name);
     emit this->dataChanged(this->index(index), this->index(index));
 }
 
 int LayerListModel::rowCount(const QModelIndex &parent) const
 {
+    if (parent.isValid()) {
+        return 0;
+    }
+
     return this->layerSet->size();
 }
 
@@ -140,6 +157,10 @@ QStringList LayerListModel::mimeTypes() const
 
 QMimeData *LayerListModel::mimeData(const QModelIndexList &indexes) const
 {
+    if (indexes.isEmpty()) {
+        return nullptr;
+    }
+
     auto mimeData = new QMimeData;
     QByteArray encodedData;
     QDataStream stream(&encodedData, QIODevice::WriteOnly);
@@ -156,12 +177,14 @@ bool LayerListModel::canDropMimeData(const QMimeData *data, Qt::DropAction actio
     Q_UNUSED(column);
     Q_UNUSED(parent);
 
-    return data->hasFormat(this->layerMimeType);
+    return data && data->hasFormat(this->layerMimeType);
 }
 
 bool LayerListModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
                                   const QModelIndex &parent)
 {
+    Q_UNUSED(column);
+
     if (!this->canDropMimeData(data, action, row, column, parent)) {
         return false;
     }
@@ -170,16 +193,27 @@ bool LayerListModel::dropMimeData(const QMimeData *data, Qt::DropAction action, 
         return true;
     }
 
+    int destinationRow = row;
+    if (destinationRow < 0) {
+        destinationRow = parent.isValid() ? parent.row() : this->rowCount();
+    }
+
     QByteArray encodedData = data->data(this->layerMimeType);
     QDataStream stream(&encodedData, QIODevice::ReadOnly);
-    int idxSrc;
-    stream >> idxSrc;
+    int sourceRow = -1;
+    stream >> sourceRow;
 
-    if (!this->layerSet->moveLayer(idxSrc, row)) {
+    if (sourceRow < 0 || sourceRow >= this->rowCount()) {
         return false;
     }
 
-    emit this->dataChanged(this->index(0), this->index(this->rowCount() - 1));
+    this->beginResetModel();
+    const bool moved = this->layerSet->moveLayer(sourceRow, destinationRow);
+    this->endResetModel();
+
+    if (!moved) {
+        return false;
+    }
 
     return true;
 }
