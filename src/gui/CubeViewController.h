@@ -48,6 +48,12 @@ public:
         std::array<double, 2> imageRange;
     };
 
+    struct MomentUpdateResult
+    {
+        bool valid;
+        std::array<double, 2> imageRange;
+    };
+
     explicit CubeViewController(const CubeViewContext &context);
 
     void updateCube(double threshold) const;
@@ -55,7 +61,7 @@ public:
     void setContoursVisible(bool visible) const;
     void updateContours(int levels, double lowerBound, double upperBound) const;
     void setLegendWcs(int wcs) const;
-    bool setMomentOrder(int order) const;
+    MomentUpdateResult updateMomentOrder(int order) const;
     void syncSlicesLut() const;
     void setCubeRenderMode(bool isosurfaceMode) const;
 

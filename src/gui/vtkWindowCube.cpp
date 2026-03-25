@@ -532,8 +532,15 @@ void vtkWindowCube::updateContoursVisibility()
 
 void vtkWindowCube::setMomentOrder(int order)
 {
-    if (!this->viewController->setMomentOrder(order)) {
+    const auto result = this->viewController->updateMomentOrder(order);
+    if (!result.valid) {
         return;
+    }
+
+    if (!this->viewingSlice()) {
+        ui->lineImgMin->setText(QString::number(result.imageRange[0]));
+        ui->lineImgMax->setText(QString::number(result.imageRange[1]));
+        this->updateLUTCustomizer();
     }
 
     ui->actionMomentMap->trigger();

@@ -69,7 +69,7 @@ void CubeViewController::setLegendWcs(int wcs) const
     this->context.legendMoment->SetWCS(wcs);
 }
 
-bool CubeViewController::setMomentOrder(int order) const
+CubeViewController::MomentUpdateResult CubeViewController::updateMomentOrder(int order) const
 {
     switch (order) {
     case 0:
@@ -80,13 +80,14 @@ bool CubeViewController::setMomentOrder(int order) const
     case 10:
         break;
     default:
-        return false;
+        return { false, { 0., 0. } };
     }
 
     this->context.moment->SetMomentOrder(order);
     this->context.moment->Update();
-    this->context.lutMoment->SetTableRange(this->context.moment->GetOutput()->GetScalarRange());
-    return true;
+    const double *range = this->context.moment->GetOutput()->GetScalarRange();
+    this->context.lutMoment->SetTableRange(range);
+    return { true, { range[0], range[1] } };
 }
 
 void CubeViewController::syncSlicesLut() const

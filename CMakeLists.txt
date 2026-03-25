@@ -173,6 +173,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         QCustomPlot
 )
 
+if (APPLE)
+    target_link_options(${PROJECT_NAME} PRIVATE
+            "LINKER:-no_warn_duplicate_libraries"
+    )
+endif ()
+
 vtk_module_autoinit(
         TARGETS ${PROJECT_NAME}
         MODULES ${VTK_LIBRARIES}

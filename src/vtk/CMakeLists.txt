@@ -19,9 +19,9 @@ add_library(visivo_shared_vtk STATIC
 
 target_link_libraries(visivo_shared_vtk
         PUBLIC
-        visivo_shared_core
         ${VTK_LIBRARIES}
         PRIVATE
+        visivo_shared_core
         wcs
 )
 
