@@ -70,6 +70,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
 
     this->reader->SetFileName(this->filepath.toUtf8());
     this->reader->Update();
+    this->cubeDisplaySource->SetOutput(this->reader->GetOutput());
     this->lowerBound = 3.f * this->reader->GetRMS();
     this->upperBound = this->reader->GetMax();
 
@@ -77,6 +78,11 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
+    this->applyCubeOpenResult({ this->reader->GetOutput(),
+                                { this->reader->GetMin(), this->reader->GetMax() },
+                                { this->reader->GetDataExtent()[0], this->reader->GetDataExtent()[1],
+                                  this->reader->GetDataExtent()[2], this->reader->GetDataExtent()[3],
+                                  this->reader->GetDataExtent()[4], this->reader->GetDataExtent()[5] } });
     this->viewController = std::make_unique<CubeViewController>(CubeViewContext {
         this->reader,
         this->astro,
@@ -224,9 +230,6 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                      &vtkWindowCube::updateContours);
 
     // Setup Statistics UI
-    const double *imgRange = this->slice->GetOutput()->GetScalarRange();
-    ui->lineImgMin->setText(QString::number(imgRange[0]));
-    ui->lineImgMax->setText(QString::number(imgRange[1]));
     ui->lineCubeMin->setText(QString::number(this->reader->GetMin()));
     ui->lineCubeMax->setText(QString::number(this->reader->GetMax()));
     ui->lineCubeMean->setText(QString::number(this->reader->GetMean()));
@@ -260,7 +263,7 @@ void vtkWindowCube::setupCubeRenderer()
     ui->vtkCube->setEnableTouchEventProcessing(false);
 
     // Isosurface
-    this->isosurfaceFilter->SetInputConnection(this->reader->GetOutputPort());
+    this->isosurfaceFilter->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     this->isosurfaceFilter->SetValue(0, this->lowerBound);
     vtkNew<vtkPolyDataMapper> isosurfaceMapper;
     isosurfaceMapper->SetInputConnection(this->isosurfaceFilter->GetOutputPort());
@@ -283,14 +286,14 @@ void vtkWindowCube::setupCubeRenderer()
     volumeProperty->SetScalarOpacity(this->volumeOpacity);
     volumeProperty->SetInterpolationTypeToLinear();
     vtkNew<vtkImageThreshold> nanMask;
-    nanMask->SetInputConnection(this->reader->GetOutputPort());
+    nanMask->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     nanMask->ThresholdBetween(this->reader->GetMin(), this->reader->GetMax());
     nanMask->SetOutValue(0.0);
     nanMask->SetInValue(255.0);
     nanMask->SetOutputScalarTypeToUnsignedChar();
     nanMask->Update();
     vtkNew<vtkGPUVolumeRayCastMapper> volumeMapper;
-    volumeMapper->SetInputConnection(this->reader->GetOutputPort());
+    volumeMapper->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     volumeMapper->SetMaskInput(nanMask->GetOutput());
     volumeMapper->SetMaskTypeToBinary();
     this->volume->SetMapper(volumeMapper);
@@ -299,7 +302,7 @@ void vtkWindowCube::setupCubeRenderer()
 
     // Outline
     vtkNew<vtkOutlineFilter> outline;
-    outline->SetInputConnection(this->reader->GetOutputPort());
+    outline->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     vtkNew<vtkPolyDataMapper> outlineMapper;
     outlineMapper->SetInputConnection(outline->GetOutputPort());
     vtkNew<vtkActor> outlineActor;
@@ -310,7 +313,7 @@ void vtkWindowCube::setupCubeRenderer()
     int extent[6];
     this->reader->GetDataExtent(extent);
     extent[4] = extent[5] = 0;
-    this->sliceOnCube->SetInputConnection(this->reader->GetOutputPort());
+    this->sliceOnCube->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     this->sliceOnCube->SetVOI(extent);
     this->sliceOnCube->Update();
     this->lutSliceOnCube->SetTableRange(this->sliceOnCube->GetOutput()->GetScalarRange());
@@ -358,7 +361,7 @@ void vtkWindowCube::setupSliceRenderer()
     this->coordinate->SetViewport(ren);
 
     // Slice
-    this->slice->SetInputConnection(this->reader->GetOutputPort());
+    this->slice->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
     this->slice->SetResliceAxesOrigin(0., 0., 0.);
     this->slice->SetOutputDimensionality(2);
     this->slice->Update();
@@ -484,8 +487,17 @@ void vtkWindowCube::mouseCallback()
     const double *worldCoord = this->coordinate->GetComputedWorldValue(nullptr);
     const long imageCoord[2] = { std::lround(worldCoord[0]), std::lround(worldCoord[1]) };
 
-    const int *extent = this->reader->GetDataExtent();
-    if (imageCoord[0] < 0 || imageCoord[0] > extent[1] || imageCoord[1] < 0
+    const auto imageData = this->viewingSlice()
+            ? this->slice->GetOutput()
+            : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    if (!imageData) {
+        this->statusBar()->clearMessage();
+        return;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    if (imageCoord[0] < extent[0] || imageCoord[0] > extent[1] || imageCoord[1] < extent[2]
         || imageCoord[1] > extent[3]) {
         this->statusBar()->clearMessage();
         return;
@@ -494,15 +506,10 @@ void vtkWindowCube::mouseCallback()
     std::ostringstream ss;
     ss << "<value> ";
     if (this->viewingSlice()) {
-        const float val =
-                this->reader->GetValue(imageCoord[0], imageCoord[1], ui->spinSlice->value() - 1);
+        const float val = imageData->GetScalarComponentAsFloat(imageCoord[0], imageCoord[1], 0, 0);
         ss << val;
     } else {
-        const auto momentImage =
-                vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
-        const float val = momentImage
-                ? momentImage->GetScalarComponentAsFloat(imageCoord[0], imageCoord[1], 0, 0)
-                : std::numeric_limits<float>::quiet_NaN();
+        const float val = imageData->GetScalarComponentAsFloat(imageCoord[0], imageCoord[1], 0, 0);
         ss << val;
     }
 
@@ -538,6 +545,35 @@ void vtkWindowCube::updateCube()
 {
     double threshold = ui->lineThreshold->text().toDouble();
     this->viewController->updateCube(threshold);
+    ui->vtkCube->renderWindow()->Render();
+}
+
+void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
+{
+    if (!result.cubeImageData) {
+        return;
+    }
+
+    this->cubeDisplaySource->SetOutput(result.cubeImageData);
+    this->slice->Update();
+    this->sliceOnCube->Update();
+
+    const double *sliceRange = this->slice->GetOutput()->GetScalarRange();
+    this->lutSlice->SetTableRange(sliceRange);
+
+    const double *sliceOnCubeRange = this->sliceOnCube->GetOutput()->GetScalarRange();
+    this->lutSliceOnCube->SetTableRange(sliceOnCubeRange);
+
+    ui->sliderSlice->setMaximum(result.dataExtent[5] + 1);
+    ui->spinSlice->setMaximum(result.dataExtent[5] + 1);
+
+    if (this->viewingSlice()) {
+        ui->lineImgMin->setText(QString::number(sliceRange[0]));
+        ui->lineImgMax->setText(QString::number(sliceRange[1]));
+        this->updateLUTCustomizer();
+        this->sliceWin->Render();
+    }
+
     ui->vtkCube->renderWindow()->Render();
 }
 
@@ -702,7 +738,8 @@ void vtkWindowCube::setInteractorStyleProfile()
         ui->vtkImage->renderWindow()->GetInteractor()->SetInteractorStyle(style);
         ui->vtkImage->renderWindow()->Render();
 
-        this->profileWidget = new ProfileWidget(style, this->reader->GetOutput(),
+        this->profileWidget = new ProfileWidget(
+                style, vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0)),
                                                 this->filepath.toStdString(), this);
         this->profileWidget->setupSpectrumPlot();
         QObject::connect(this->profileWidget, &ProfileWidget::destroyed, this,

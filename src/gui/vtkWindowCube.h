@@ -81,6 +81,13 @@ private slots:
     void setInteractorStyleProfile();
 
 private:
+    struct CubeOpenStageResult
+    {
+        vtkSmartPointer<vtkImageData> cubeImageData;
+        std::array<double, 2> cubeRange;
+        std::array<int, 6> dataExtent;
+    };
+
     struct MomentMapApplyResult
     {
         vtkSmartPointer<vtkImageData> imageData;
@@ -118,11 +125,13 @@ private:
     bool viewingSlice() const;
 
     // Cube
+    vtkNew<vtkTrivialProducer> cubeDisplaySource;
     vtkNew<vtkFlyingEdges3D> isosurfaceFilter;
     vtkNew<vtkActor> isosurface;
     vtkNew<vtkVolume> volume;
     vtkNew<vtkColorTransferFunction> volumeColorTransferFunction;
     vtkNew<vtkPiecewiseFunction> volumeOpacity;
+    void applyCubeOpenResult(const CubeOpenStageResult &result);
     void updateCube();
 
     // Slice
