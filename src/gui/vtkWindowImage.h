@@ -6,6 +6,8 @@
 
 #include <vtkNew.h>
 
+#include <QCloseEvent>
+#include <QFutureWatcher>
 #include <QMainWindow>
 #include <QPointer>
 
@@ -34,6 +36,7 @@ class vtkWindowImage : public QMainWindow
 public:
     explicit vtkWindowImage(const QString &filepath, QWidget *parent = nullptr);
     ~vtkWindowImage();
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void showLUTCustomizer();
@@ -58,6 +61,7 @@ private:
     AstroUtils astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     std::unique_ptr<ImageLayerImportService> importService;
 
     // Renderer
@@ -72,6 +76,7 @@ private:
     LayerListModel *layers;
     std::unique_ptr<ImageLayerController> layerController;
     void applyLoadedLayer(const ImageLayerLoadResult &result);
+    void setLayerImportEnabled(bool enabled);
     int currentLayerIndex() const;
     void addLayerImage(const std::string &filepath);
 };

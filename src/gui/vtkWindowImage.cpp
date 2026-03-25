@@ -26,6 +26,7 @@
 #include <QButtonGroup>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QtConcurrentRun>
 
 #include <sstream>
 
@@ -43,6 +44,23 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
     ui->setupUi(this);
     this->setWindowTitle(this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
+    QObject::connect(&this->layerLoadWatcher, &QFutureWatcher<ImageLayerLoadResult>::finished, this,
+                     [this]() {
+                         this->setLayerImportEnabled(true);
+
+                         const auto result = this->layerLoadWatcher.result();
+                         if (!result.valid) {
+                             if (!result.errorMessage.empty()) {
+                                 QMessageBox::warning(this, u"Import FITS file"_s,
+                                                      QString::fromStdString(result.errorMessage));
+                             }
+                             this->statusBar()->clearMessage();
+                             return;
+                         }
+
+                         this->applyLoadedLayer(result);
+                         this->statusBar()->clearMessage();
+                     });
 
     this->setupRenderer();
 
@@ -105,6 +123,17 @@ vtkWindowImage::~vtkWindowImage()
     delete ui;
 }
 
+void vtkWindowImage::closeEvent(QCloseEvent *event)
+{
+    if (this->layerLoadWatcher.isRunning()) {
+        this->statusBar()->showMessage(u"Layer loading in progress. Please wait."_s);
+        event->ignore();
+        return;
+    }
+
+    QMainWindow::closeEvent(event);
+}
+
 void vtkWindowImage::showLUTCustomizer()
 {
     const int index = this->currentLayerIndex();
@@ -131,6 +160,10 @@ void vtkWindowImage::updateLUTCustomizer()
 
 void vtkWindowImage::addLocalFile()
 {
+    if (this->layerLoadWatcher.isRunning()) {
+        return;
+    }
+
     const QString filepath = QFileDialog::getOpenFileName(this, u"Import FITS file"_s, QString(),
                                                           u"FITS files (*.fits *.fit)"_s);
 
@@ -248,20 +281,21 @@ int vtkWindowImage::currentLayerIndex() const
 
 void vtkWindowImage::addLayerImage(const std::string &filepath)
 {
-    const auto result = loadImageLayer(
-            ImageLayerLoadRequest { this->filepath.toStdString(), filepath });
-    if (!result.valid) {
-        QMessageBox::warning(this, u"Import FITS file"_s,
-                             QString::fromStdString(result.errorMessage));
-        return;
-    }
-
-    this->applyLoadedLayer(result);
+    this->setLayerImportEnabled(false);
+    this->statusBar()->showMessage(u"Loading image layer..."_s);
+    this->layerLoadWatcher.setFuture(QtConcurrent::run(
+            &loadImageLayer, ImageLayerLoadRequest { this->filepath.toStdString(), filepath }));
 }
 
 void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
 {
     this->stack->AddImage(this->layers->addLayer(result));
+    this->vtkRender();
+}
+
+void vtkWindowImage::setLayerImportEnabled(bool enabled)
+{
+    ui->actionAddFITS->setEnabled(enabled);
 }
 
 void vtkWindowImage::vtkRender()
