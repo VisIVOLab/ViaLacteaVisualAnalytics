@@ -2,13 +2,12 @@
 #include "ui_MainWindow.h"
 
 #include "AboutDialog.h"
-#include "AstroUtils.h"
 #include "AuthWrapper.h"
+#include "DatasetOpenService.h"
+#include "DatasetWindowFactory.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "WebViewProcess.h"
-#include "vtkWindowCube.h"
-#include "vtkWindowImage.h"
 
 #include <QButtonGroup>
 #include <QCloseEvent>
@@ -34,6 +33,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Create core objects
     this->settings = new Settings(workDir, this);
     this->auth = new AuthWrapper(this);
+    this->datasetOpenService = std::make_unique<DatasetOpenService>();
+    this->datasetWindowFactory = std::make_unique<DatasetWindowFactory>();
     QObject::connect(this->settings, &Settings::updated, this, &MainWindow::setApplicationTheme);
     QObject::connect(this->settings, &Settings::updated, this, &MainWindow::loadPanoramicView);
 
@@ -107,16 +108,14 @@ void MainWindow::openLocalData()
         return;
     }
 
-    const AstroUtils astro(filepath.toStdString());
-    QWidget *win;
-    if (astro.isImage()) {
-        // Image
-        win = new vtkWindowImage(filepath, this);
-    } else if (astro.isCube()) {
-        // Cube
-        win = new vtkWindowCube(filepath, this);
-    } else {
-        // Unknown
+    const DatasetOpenInfo dataset = this->datasetOpenService->inspect(filepath);
+    if (!dataset.isValid()) {
+        QMessageBox::critical(this, u"Could not open file"_s, dataset.errorMessage);
+        return;
+    }
+
+    QWidget *win = this->datasetWindowFactory->createWindow(dataset, this);
+    if (!win) {
         QMessageBox::critical(this, u"Could not open file"_s, u"Unknown file format."_s);
         return;
     }

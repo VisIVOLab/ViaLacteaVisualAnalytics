@@ -47,6 +47,9 @@ configure_file(src/Version.h.in Version.h @ONLY)
 set(PROJECT_SOURCES
         src/AstroUtils.h
         src/AstroUtils.cpp
+        src/app/DatasetOpenService.cpp
+        src/app/DatasetOpenService.h
+        src/app/DatasetOpenTypes.h
         src/LayerListModel.cpp
         src/LayerListModel.h
         src/main.cpp
@@ -65,6 +68,8 @@ set(PROJECT_SOURCES
         src/auth/VisIVOUrlSchemeHandler.h
         src/gui/AboutDialog.cpp
         src/gui/AboutDialog.h
+        src/gui/DatasetWindowFactory.cpp
+        src/gui/DatasetWindowFactory.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
@@ -155,6 +160,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/auth"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/gui"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/vtk"

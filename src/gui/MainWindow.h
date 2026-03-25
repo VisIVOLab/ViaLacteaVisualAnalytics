@@ -4,6 +4,10 @@
 #include <QMainWindow>
 #include <QPointer>
 
+#include <memory>
+
+class DatasetOpenService;
+class DatasetWindowFactory;
 class AuthWrapper;
 class Settings;
 
@@ -67,6 +71,8 @@ private:
     Ui::MainWindow *ui;
     QPointer<Settings> settings;
     QPointer<AuthWrapper> auth;
+    std::unique_ptr<DatasetOpenService> datasetOpenService;
+    std::unique_ptr<DatasetWindowFactory> datasetWindowFactory;
 };
 
 #endif
