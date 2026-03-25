@@ -129,6 +129,28 @@ Current limitations:
 - they do not form a general async/job framework
 - cancellation, progress reporting, and queued execution are not implemented
 - any new async use case must still define its own explicit separation between worker-side state and UI/display-side apply
+- initial cube open is still synchronous, although `vtkWindowCube` now has a display-side apply seam that prepares a future preview-first or async open path
+
+## Cube Display-Side Open Seam
+
+`vtkWindowCube` now includes a preparatory display-side seam for future cube-open evolution.
+
+Current state:
+- the visible cube and slice pipeline is no longer hard-wired directly to `reader->GetOutputPort()`
+- the visible pipeline is now fed through a display-side bridge (`cubeDisplaySource`, a `vtkTrivialProducer`)
+- `vtkWindowCube` exposes `applyCubeOpenResult(...)` as the UI-thread apply point for externally prepared cube data
+- `CubeOpenStageResult` is the current payload shape used by that apply step
+
+What this enables:
+- a future preview-first cube-open path
+- a future async full cube-open path using the same UI-thread apply seam
+
+What is not implemented yet:
+- no preview-first cube-open pipeline
+- no async cube-open worker/task
+- no staged preview/final replacement during initial open
+
+This seam is preparatory only. The current initial cube open is still synchronous.
 
 ## Current Responsibilities
 
