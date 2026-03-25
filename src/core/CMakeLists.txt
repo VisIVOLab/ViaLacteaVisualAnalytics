@@ -4,6 +4,9 @@ add_library(visivo_shared_core STATIC
         ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenService.cpp
         ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenService.h
         ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenTypes.h
+        ${PROJECT_SOURCE_DIR}/src/app/ImageLayerImportResult.h
+        ${PROJECT_SOURCE_DIR}/src/app/ImageLayerImportService.cpp
+        ${PROJECT_SOURCE_DIR}/src/app/ImageLayerImportService.h
 )
 
 target_link_libraries(visivo_shared_core
