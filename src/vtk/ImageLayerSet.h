@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+struct ImageLayerLoadResult;
+
 class ImageLayer;
 class vtkImageData;
 class vtkImageSlice;
@@ -40,6 +42,7 @@ public:
     void setVisible(int index, bool visible);
 
     vtkImageSlice *addLayer(const std::string &filepath);
+    vtkImageSlice *addLayer(const ImageLayerLoadResult &result);
     bool moveLayer(int sourceIndex, int destinationRow);
 
 private:

@@ -2,13 +2,17 @@
 #define ImageLayer_h
 
 #include <vtkNew.h>
+#include <vtkSmartPointer.h>
 
 #include <string>
+
+struct ImageLayerLoadResult;
 
 class vtkFITSReader;
 class vtkImageData;
 class vtkImageSlice;
 class vtkLookupTable;
+class vtkTrivialProducer;
 
 /**
  * Layer represented in vtkWindowImage
@@ -21,6 +25,7 @@ public:
    * @param filepath FITS absolute filepath
    */
     ImageLayer(const std::string &filepath);
+    ImageLayer(const ImageLayerLoadResult &result);
     ~ImageLayer();
 
     /**
@@ -113,8 +118,12 @@ public:
     void setRotation(double angle);
 
 private:
+    bool readerBacked;
+    double scalarRange[2];
     std::string filepath;
+    vtkSmartPointer<vtkImageData> imageData;
     vtkNew<vtkFITSReader> reader;
+    vtkNew<vtkTrivialProducer> source;
     vtkNew<vtkLookupTable> lut;
     vtkNew<vtkImageSlice> actor;
 };

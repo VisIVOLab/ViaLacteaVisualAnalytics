@@ -3,6 +3,8 @@ add_library(visivo_shared_vtk STATIC
         ${PROJECT_SOURCE_DIR}/src/vtk/ColorMaps.h
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayer.cpp
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayer.h
+        ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerLoadTask.cpp
+        ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerLoadTask.h
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerSet.cpp
         ${PROJECT_SOURCE_DIR}/src/vtk/ImageLayerSet.h
         ${PROJECT_SOURCE_DIR}/src/vtk/MomentMapComputeTask.cpp

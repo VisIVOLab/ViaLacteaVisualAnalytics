@@ -2,6 +2,7 @@
 #define vtkWindowImage_h
 
 #include "AstroUtils.h"
+#include "ImageLayerLoadTask.h"
 
 #include <vtkNew.h>
 
@@ -70,6 +71,7 @@ private:
     vtkNew<vtkImageStack> stack;
     LayerListModel *layers;
     std::unique_ptr<ImageLayerController> layerController;
+    void applyLoadedLayer(const ImageLayerLoadResult &result);
     int currentLayerIndex() const;
     void addLayerImage(const std::string &filepath);
 };

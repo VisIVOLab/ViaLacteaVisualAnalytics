@@ -1,5 +1,6 @@
 #include "LayerListModel.h"
 #include "ImageLayerSet.h"
+#include "ImageLayerLoadTask.h"
 
 #include <QDataStream>
 #include <QIODevice>
@@ -28,6 +29,15 @@ vtkImageSlice *LayerListModel::addLayer(const std::string &filepath)
     const int newRow = this->rowCount();
     this->beginInsertRows(QModelIndex(), newRow, newRow);
     auto actor = this->layerSet->addLayer(filepath);
+    this->endInsertRows();
+    return actor;
+}
+
+vtkImageSlice *LayerListModel::addLayer(const ImageLayerLoadResult &result)
+{
+    const int newRow = this->rowCount();
+    this->beginInsertRows(QModelIndex(), newRow, newRow);
+    auto actor = this->layerSet->addLayer(result);
     this->endInsertRows();
     return actor;
 }

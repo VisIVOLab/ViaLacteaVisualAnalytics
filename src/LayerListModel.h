@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+struct ImageLayerLoadResult;
+
 class ImageLayerSet;
 class vtkImageData;
 class vtkImageSlice;
@@ -42,6 +44,7 @@ public:
    * @return the vtkImageSlice of the added layer
    */
     vtkImageSlice *addLayer(const std::string &filepath);
+    vtkImageSlice *addLayer(const ImageLayerLoadResult &result);
 
     /**
    * @param index inside the model

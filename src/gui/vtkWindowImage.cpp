@@ -4,6 +4,7 @@
 #include "ColorMaps.h"
 #include "ImageLayerController.h"
 #include "ImageLayerImportService.h"
+#include "ImageLayerLoadTask.h"
 #include "LUTCustomizerDialog.h"
 #include "LayerListModel.h"
 #include "ProfileWidget.h"
@@ -247,7 +248,20 @@ int vtkWindowImage::currentLayerIndex() const
 
 void vtkWindowImage::addLayerImage(const std::string &filepath)
 {
-    this->stack->AddImage(this->layers->addLayer(filepath));
+    const auto result = loadImageLayer(
+            ImageLayerLoadRequest { this->filepath.toStdString(), filepath });
+    if (!result.valid) {
+        QMessageBox::warning(this, u"Import FITS file"_s,
+                             QString::fromStdString(result.errorMessage));
+        return;
+    }
+
+    this->applyLoadedLayer(result);
+}
+
+void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
+{
+    this->stack->AddImage(this->layers->addLayer(result));
 }
 
 void vtkWindowImage::vtkRender()

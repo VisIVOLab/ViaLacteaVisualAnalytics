@@ -2,6 +2,7 @@
 
 #include "AstroUtils.h"
 #include "ImageLayer.h"
+#include "ImageLayerLoadTask.h"
 
 #include "wcs.h"
 
@@ -161,6 +162,17 @@ vtkImageSlice *ImageLayerSet::addLayer(const std::string &filepath)
     auto &layer = *this->layers.back();
 
     this->registerLayerToMaster(layer);
+    layer.getActor()->GetProperty()->SetOpacity(0.5);
+
+    this->refreshLayerNumbers();
+    return layer.getActor();
+}
+
+vtkImageSlice *ImageLayerSet::addLayer(const ImageLayerLoadResult &result)
+{
+    this->layers.push_back(std::make_unique<ImageLayer>(result));
+    auto &layer = *this->layers.back();
+
     layer.getActor()->GetProperty()->SetOpacity(0.5);
 
     this->refreshLayerNumbers();
