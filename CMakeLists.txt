@@ -86,6 +86,8 @@ set(PROJECT_SOURCES
         src/vtk/ColorMaps.h
         src/vtk/ImageLayer.cpp
         src/vtk/ImageLayer.h
+        src/vtk/ImageLayerSet.cpp
+        src/vtk/ImageLayerSet.h
         src/vtk/vtkFITSReader.cpp
         src/vtk/vtkFITSReader.h
         src/vtk/vtkFITSWriter.cpp

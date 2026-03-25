@@ -1,11 +1,12 @@
 #ifndef LayerListModel_h
 #define LayerListModel_h
 
-#include "ImageLayer.h"
-
 #include <QAbstractListModel>
 
-class vtkFITSReader;
+#include <memory>
+#include <string>
+
+class ImageLayerSet;
 class vtkImageData;
 class vtkImageSlice;
 class vtkLookupTable;
@@ -120,9 +121,7 @@ public:
                       const QModelIndex &parent) override;
 
 private:
-    std::string masterFilepath;
-    int masterIdx;
-    std::vector<std::unique_ptr<ImageLayer>> layers;
+    std::unique_ptr<ImageLayerSet> layerSet;
     QString layerMimeType;
 };
 
