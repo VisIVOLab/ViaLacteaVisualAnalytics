@@ -2,17 +2,17 @@
 
 #include "AstroUtils.h"
 
-DatasetOpenInfo DatasetOpenService::inspect(const QString &filepath) const
+DatasetOpenInfo DatasetOpenService::inspect(const DatasetOpenRequest &request) const
 {
     DatasetOpenInfo result;
-    result.filepath = filepath;
+    result.filepath = request.filepath;
 
-    if (filepath.isEmpty()) {
+    if (request.filepath.isEmpty()) {
         result.errorMessage = "Empty dataset path.";
         return result;
     }
 
-    const AstroUtils astro(filepath.toStdString());
+    const AstroUtils astro(request.filepath.toStdString());
     if (astro.isImage()) {
         result.kind = DatasetKind::Image;
         return result;

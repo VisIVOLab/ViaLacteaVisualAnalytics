@@ -1,6 +1,7 @@
 add_library(visivo_shared_core STATIC
         ${PROJECT_SOURCE_DIR}/src/AstroUtils.cpp
         ${PROJECT_SOURCE_DIR}/src/AstroUtils.h
+        ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenRequest.h
         ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenService.cpp
         ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenService.h
         ${PROJECT_SOURCE_DIR}/src/app/DatasetOpenTypes.h

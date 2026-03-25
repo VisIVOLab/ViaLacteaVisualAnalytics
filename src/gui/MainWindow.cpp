@@ -108,7 +108,7 @@ void MainWindow::openLocalData()
         return;
     }
 
-    const DatasetOpenInfo dataset = this->datasetOpenService->inspect(filepath);
+    const DatasetOpenInfo dataset = this->datasetOpenService->inspect(DatasetOpenRequest { filepath });
     if (!dataset.isValid()) {
         QMessageBox::critical(this, u"Could not open file"_s, dataset.errorMessage);
         return;
