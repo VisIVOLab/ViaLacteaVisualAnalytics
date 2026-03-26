@@ -108,8 +108,11 @@ private:
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
     QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
+    QTimer isosurfaceDebounceTimer;
     int currentMomentRequestId{ 0 };
     int currentIsosurfaceRequestId{ 0 };
+    int currentFullCubeGeneration{ 0 };
+    int lastIsosurfacePrewarmGeneration{ 0 };
     QTimer statusMessageClearTimer;
     QElapsedTimer statusMessageElapsed;
     int statusMessageMinDurationMs{ 0 };
@@ -147,6 +150,8 @@ private:
     vtkNew<vtkPiecewiseFunction> volumeOpacity;
     void applyCubeOpenResult(const CubeOpenStageResult &result);
     void startAsyncIsosurface(double isoValue);
+    void scheduleIsosurfaceRecompute();
+    void scheduleIsosurfacePrewarm();
     void setCubeRenderModeLocally(bool isosurfaceMode);
     void updateCube();
 

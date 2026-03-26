@@ -106,6 +106,14 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         this->persistentStatusActive = false;
         this->statusBar()->clearMessage();
     });
+    this->isosurfaceDebounceTimer.setSingleShot(true);
+    QObject::connect(&this->isosurfaceDebounceTimer, &QTimer::timeout, this, [this]() {
+        if (this->cubeOpenWatcher.isRunning() || !ui->actionIsosurface->isChecked()) {
+            return;
+        }
+
+        this->startAsyncIsosurface(ui->lineThreshold->text().toDouble());
+    });
 
     this->reader->SetFileName(this->filepath.toUtf8());
     const CubeOpenStageResult preview = loadCubeOpenPreview(this->filepath);
@@ -183,9 +191,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          this->showPersistentStatusMessage(u"Applying full resolution..."_s);
                          QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
                          this->applyCubeOpenResult(result);
-                         if (ui->actionIsosurface->isChecked()) {
-                             this->startAsyncIsosurface(ui->lineThreshold->text().toDouble());
-                         }
+                         ++this->currentFullCubeGeneration;
+                         this->scheduleIsosurfacePrewarm();
                          this->setCubeOpenStateLabel({ });
                          this->clearPersistentStatusMessage();
                      });
@@ -712,7 +719,7 @@ void vtkWindowCube::updateCube()
     const double threshold = ui->lineThreshold->text().toDouble();
     this->viewController->updateCube(threshold);
     if (!this->cubeOpenWatcher.isRunning() && ui->actionIsosurface->isChecked()) {
-        this->startAsyncIsosurface(threshold);
+        this->scheduleIsosurfaceRecompute();
     }
     ui->vtkCube->renderWindow()->Render();
 }
@@ -1174,6 +1181,28 @@ void vtkWindowCube::startAsyncIsosurface(double isoValue)
             QtConcurrent::run([data, isoValue, requestId]() {
                 return computeIsosurface(data, isoValue, requestId);
             }));
+}
+
+void vtkWindowCube::scheduleIsosurfaceRecompute()
+{
+    this->isosurfaceDebounceTimer.start(150);
+}
+
+void vtkWindowCube::scheduleIsosurfacePrewarm()
+{
+    if (this->currentFullCubeGeneration <= 0
+        || this->lastIsosurfacePrewarmGeneration == this->currentFullCubeGeneration) {
+        return;
+    }
+
+    this->lastIsosurfacePrewarmGeneration = this->currentFullCubeGeneration;
+    QTimer::singleShot(0, this, [this]() {
+        if (this->isosurfaceWatcher.isRunning()) {
+            return;
+        }
+
+        this->startAsyncIsosurface(ui->lineThreshold->text().toDouble());
+    });
 }
 
 void vtkWindowCube::setCubeRenderModeLocally(bool isosurfaceMode)
