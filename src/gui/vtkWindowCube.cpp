@@ -146,6 +146,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          }
 
                          this->setCubeOpenStateLabel(u"Applying full resolution..."_s);
+                         this->statusBar()->showMessage(u"Applying full resolution..."_s);
                          QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
                          this->applyCubeOpenResult(result);
                          this->setCubeOpenStateLabel({ });
@@ -282,8 +283,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         ui->lineCubeMean->setText(QString::number(preview.cubeMean));
         ui->lineCubeRms->setText(QString::number(preview.cubeRms));
         this->setCubeOpenActionsEnabled(false);
-        this->setCubeOpenStateLabel(u"Preview | Loading full resolution..."_s);
-        this->statusBar()->showMessage(u"Loading full cube..."_s);
+        this->setCubeOpenStateLabel(u"Preview"_s);
+        this->statusBar()->showMessage(u"Loading full resolution..."_s);
         this->cubeOpenWatcher.setFuture(QtConcurrent::run(&loadCubeOpenFull, this->filepath));
     } else {
         ui->lineCubeMin->setText(QString::number(this->reader->GetMin()));
@@ -301,13 +302,13 @@ vtkWindowCube::~vtkWindowCube()
 void vtkWindowCube::closeEvent(QCloseEvent *event)
 {
     if (this->cubeOpenWatcher.isRunning()) {
-        this->statusBar()->showMessage(u"Full cube loading in progress. Please wait."_s);
+        this->statusBar()->showMessage(u"Loading full resolution..."_s);
         event->ignore();
         return;
     }
 
     if (this->momentComputeWatcher.isRunning()) {
-        this->statusBar()->showMessage(u"Moment map computation in progress. Please wait."_s);
+        this->statusBar()->showMessage(u"Computing moment..."_s);
         event->ignore();
         return;
     }
@@ -733,7 +734,7 @@ void vtkWindowCube::setMomentOrder(int order)
     }
 
     this->setMomentActionsEnabled(false);
-    this->statusBar()->showMessage(u"Computing moment map..."_s);
+    this->statusBar()->showMessage(u"Computing moment..."_s);
     this->momentComputeWatcher.setFuture(
             QtConcurrent::run(&computeMomentMap, MomentMapComputeRequest { this->filepath, order }));
 }

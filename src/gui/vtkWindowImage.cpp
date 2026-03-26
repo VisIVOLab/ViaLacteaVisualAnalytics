@@ -126,7 +126,7 @@ vtkWindowImage::~vtkWindowImage()
 void vtkWindowImage::closeEvent(QCloseEvent *event)
 {
     if (this->layerLoadWatcher.isRunning()) {
-        this->statusBar()->showMessage(u"Layer loading in progress. Please wait."_s);
+        this->statusBar()->showMessage(u"Loading layer..."_s);
         event->ignore();
         return;
     }
@@ -282,7 +282,7 @@ int vtkWindowImage::currentLayerIndex() const
 void vtkWindowImage::addLayerImage(const std::string &filepath)
 {
     this->setLayerImportEnabled(false);
-    this->statusBar()->showMessage(u"Loading image layer..."_s);
+    this->statusBar()->showMessage(u"Loading layer..."_s);
     this->layerLoadWatcher.setFuture(QtConcurrent::run(
             &loadImageLayer, ImageLayerLoadRequest { this->filepath.toStdString(), filepath }));
 }
