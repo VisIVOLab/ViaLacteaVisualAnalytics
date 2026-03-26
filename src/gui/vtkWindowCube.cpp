@@ -53,6 +53,7 @@
 #include <QSignalBlocker>
 #include <QtConcurrentRun>
 
+#include <cmath>
 #include <limits>
 #include <sstream>
 
@@ -802,12 +803,24 @@ void vtkWindowCube::thresholdLineChanged()
 void vtkWindowCube::sliceSliderChanged(int action)
 {
     Q_UNUSED(action);
+    if (this->cubeOpenWatcher.isRunning()) {
+        const QSignalBlocker blockSpin(ui->spinSlice);
+        ui->spinSlice->setValue(ui->sliderSlice->sliderPosition());
+        return;
+    }
+
     ui->spinSlice->setValue(ui->sliderSlice->sliderPosition());
     // updateSlice is called by spinSlice
 }
 
 void vtkWindowCube::sliceSpinChanged(int value)
 {
+    if (this->cubeOpenWatcher.isRunning()) {
+        const QSignalBlocker blockSlider(ui->sliderSlice);
+        ui->sliderSlice->setValue(value);
+        return;
+    }
+
     ui->sliderSlice->setValue(value);
     this->updateSlice();
 }
@@ -859,7 +872,12 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     }
 
     this->momentDisplaySource->SetOutput(result.imageData);
-    this->lutMoment->SetTableRange(result.imageRange[0], result.imageRange[1]);
+    double currentRange[2];
+    this->lutMoment->GetTableRange(currentRange);
+    if (std::fabs(currentRange[0] - result.imageRange[0]) >= 1e-6
+        || std::fabs(currentRange[1] - result.imageRange[1]) >= 1e-6) {
+        this->lutMoment->SetTableRange(result.imageRange[0], result.imageRange[1]);
+    }
 
     if (!this->viewingSlice()) {
         ui->lineImgMin->setText(QString::number(result.imageRange[0]));
