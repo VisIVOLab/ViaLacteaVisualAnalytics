@@ -35,6 +35,7 @@
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineFilter.h>
 #include <vtkPiecewiseFunction.h>
+#include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
@@ -58,6 +59,31 @@
 #include <sstream>
 
 using namespace Qt::StringLiterals;
+
+namespace {
+AsyncIsosurfaceResult computeIsosurface(vtkSmartPointer<vtkImageData> image, double isoValue,
+                                        int requestId)
+{
+    AsyncIsosurfaceResult result;
+    result.requestId = requestId;
+
+    if (!image) {
+        return result;
+    }
+
+    vtkNew<vtkFlyingEdges3D> filter;
+    filter->SetInputData(image);
+    filter->SetValue(0, isoValue);
+    filter->ComputeNormalsOff();
+    filter->ComputeGradientsOff();
+    filter->Update();
+
+    vtkSmartPointer<vtkPolyData> mesh = vtkSmartPointer<vtkPolyData>::New();
+    mesh->ShallowCopy(filter->GetOutput());
+    result.mesh = mesh;
+    return result;
+}
+}
 
 vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     : QMainWindow(parent),
@@ -157,6 +183,9 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          this->showPersistentStatusMessage(u"Applying full resolution..."_s);
                          QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
                          this->applyCubeOpenResult(result);
+                         if (ui->actionIsosurface->isChecked()) {
+                             this->startAsyncIsosurface(ui->lineThreshold->text().toDouble());
+                         }
                          this->setCubeOpenStateLabel({ });
                          this->clearPersistentStatusMessage();
                      });
@@ -185,6 +214,41 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          this->applyMomentMapResult(
                                  { result.imageData, { result.imageRange[0], result.imageRange[1] } });
                          this->clearPersistentStatusMessage();
+                     });
+    QObject::connect(&this->isosurfaceWatcher, &QFutureWatcher<AsyncIsosurfaceResult>::finished,
+                     this, [this]() {
+                         const auto result = this->isosurfaceWatcher.result();
+                         if (result.requestId != this->currentIsosurfaceRequestId) {
+                             return;
+                         }
+
+                         if (!result.mesh || result.mesh->GetNumberOfPoints() == 0) {
+                             return;
+                         }
+
+                         vtkNew<vtkPolyDataMapper> mapper;
+                         mapper->SetInputData(result.mesh);
+                         mapper->ScalarVisibilityOff();
+
+                         vtkNew<vtkActor> newActor;
+                         newActor->SetMapper(mapper);
+                         if (this->currentIsosurfaceActor) {
+                             newActor->GetProperty()->DeepCopy(
+                                     this->currentIsosurfaceActor->GetProperty());
+                         } else {
+                             newActor->GetProperty()->SetColor(1., 0.5, 1.);
+                         }
+
+                         auto *renderer =
+                                 ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+                         if (this->currentIsosurfaceActor
+                             && renderer->HasViewProp(this->currentIsosurfaceActor)) {
+                             renderer->RemoveActor(this->currentIsosurfaceActor);
+                         }
+
+                         this->currentIsosurfaceActor = newActor;
+                         this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
+                         ui->vtkCube->renderWindow()->Render();
                      });
 
     // Setup menu Camera
@@ -349,6 +413,7 @@ void vtkWindowCube::setupCubeRenderer()
     this->isosurface->SetMapper(isosurfaceMapper);
     this->isosurface->GetProperty()->SetColor(1., 0.5, 1.);
     ren->AddViewProp(this->isosurface);
+    this->currentIsosurfaceActor = this->isosurface;
 
     // Volume
     const auto cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
@@ -629,8 +694,12 @@ void vtkWindowCube::mouseCallback()
 
 bool vtkWindowCube::viewingIsosurface() const
 {
+    if (!this->currentIsosurfaceActor) {
+        return false;
+    }
+
     return ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer()->HasViewProp(
-            this->isosurface);
+            this->currentIsosurfaceActor);
 }
 
 bool vtkWindowCube::viewingSlice() const
@@ -640,8 +709,11 @@ bool vtkWindowCube::viewingSlice() const
 
 void vtkWindowCube::updateCube()
 {
-    double threshold = ui->lineThreshold->text().toDouble();
+    const double threshold = ui->lineThreshold->text().toDouble();
     this->viewController->updateCube(threshold);
+    if (!this->cubeOpenWatcher.isRunning() && ui->actionIsosurface->isChecked()) {
+        this->startAsyncIsosurface(threshold);
+    }
     ui->vtkCube->renderWindow()->Render();
 }
 
@@ -992,7 +1064,7 @@ void vtkWindowCube::changeImageRenderer()
 
 void vtkWindowCube::changeCubeRender()
 {
-    this->viewController->setCubeRenderMode(ui->actionIsosurface->isChecked());
+    this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
     ui->vtkCube->renderWindow()->Render();
 }
 
@@ -1000,7 +1072,7 @@ void vtkWindowCube::changeCubeColor()
 {
     if (this->viewingIsosurface()) {
         double rgb[3];
-        this->isosurface->GetProperty()->GetColor(rgb);
+        this->currentIsosurfaceActor->GetProperty()->GetColor(rgb);
 
         QColor color;
         color.setRgbF(rgb[0], rgb[1], rgb[2]);
@@ -1008,8 +1080,9 @@ void vtkWindowCube::changeCubeColor()
         dialog.setOption(QColorDialog::ShowAlphaChannel, false);
         if (dialog.exec() == QDialog::Accepted) {
             const QColor selected = dialog.selectedColor();
-            this->isosurface->GetProperty()->SetColor(selected.redF(), selected.greenF(),
-                                                      selected.blueF());
+            this->currentIsosurfaceActor->GetProperty()->SetColor(selected.redF(),
+                                                                  selected.greenF(),
+                                                                  selected.blueF());
             ui->vtkCube->renderWindow()->Render();
         }
     } else {
@@ -1080,4 +1153,49 @@ void vtkWindowCube::syncSlicesLUT()
 {
     this->viewController->syncSlicesLut();
     ui->vtkCube->renderWindow()->Render();
+}
+
+void vtkWindowCube::startAsyncIsosurface(double isoValue)
+{
+    if (this->isosurfaceWatcher.isRunning()) {
+        return;
+    }
+
+    auto *source = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    if (!source) {
+        return;
+    }
+
+    vtkSmartPointer<vtkImageData> data = vtkSmartPointer<vtkImageData>::New();
+    data->DeepCopy(source);
+
+    const int requestId = ++this->currentIsosurfaceRequestId;
+    this->isosurfaceWatcher.setFuture(
+            QtConcurrent::run([data, isoValue, requestId]() {
+                return computeIsosurface(data, isoValue, requestId);
+            }));
+}
+
+void vtkWindowCube::setCubeRenderModeLocally(bool isosurfaceMode)
+{
+    auto *renderer = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    if (!renderer) {
+        return;
+    }
+
+    if (isosurfaceMode) {
+        if (this->currentIsosurfaceActor && !renderer->HasViewProp(this->currentIsosurfaceActor)) {
+            renderer->AddActor(this->currentIsosurfaceActor);
+        }
+        if (renderer->HasViewProp(this->volume)) {
+            renderer->RemoveViewProp(this->volume);
+        }
+    } else {
+        if (this->currentIsosurfaceActor && renderer->HasViewProp(this->currentIsosurfaceActor)) {
+            renderer->RemoveActor(this->currentIsosurfaceActor);
+        }
+        if (!renderer->HasViewProp(this->volume)) {
+            renderer->AddViewProp(this->volume);
+        }
+    }
 }

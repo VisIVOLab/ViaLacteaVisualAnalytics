@@ -37,6 +37,7 @@ class vtkLookupTable;
 class vtkMomentMapFilter;
 class vtkOrientationMarkerWidget;
 class vtkPiecewiseFunction;
+class vtkPolyData;
 class vtkTrivialProducer;
 class vtkVolume;
 
@@ -45,6 +46,12 @@ namespace Ui {
 class vtkWindowCube;
 }
 QT_END_NAMESPACE
+
+struct AsyncIsosurfaceResult
+{
+    vtkSmartPointer<vtkPolyData> mesh;
+    int requestId{ 0 };
+};
 
 class vtkWindowCube : public QMainWindow
 {
@@ -100,7 +107,9 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
+    QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
     int currentMomentRequestId{ 0 };
+    int currentIsosurfaceRequestId{ 0 };
     QTimer statusMessageClearTimer;
     QElapsedTimer statusMessageElapsed;
     int statusMessageMinDurationMs{ 0 };
@@ -132,10 +141,13 @@ private:
     vtkNew<vtkTrivialProducer> cubeDisplaySource;
     vtkNew<vtkFlyingEdges3D> isosurfaceFilter;
     vtkNew<vtkActor> isosurface;
+    vtkSmartPointer<vtkActor> currentIsosurfaceActor;
     vtkNew<vtkVolume> volume;
     vtkNew<vtkColorTransferFunction> volumeColorTransferFunction;
     vtkNew<vtkPiecewiseFunction> volumeOpacity;
     void applyCubeOpenResult(const CubeOpenStageResult &result);
+    void startAsyncIsosurface(double isoValue);
+    void setCubeRenderModeLocally(bool isosurfaceMode);
     void updateCube();
 
     // Slice
