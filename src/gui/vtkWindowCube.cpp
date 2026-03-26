@@ -40,6 +40,7 @@
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
+#include <vtkRenderWindow.h>
 #include <vtkScalarBarActor.h>
 #include <vtkTrivialProducer.h>
 #include <vtkVolume.h>
@@ -63,6 +64,99 @@
 using namespace Qt::StringLiterals;
 
 namespace {
+constexpr double pi = 3.14159265358979323846;
+
+bool validBounds(const double bounds[6])
+{
+    return std::isfinite(bounds[0]) && std::isfinite(bounds[1]) && std::isfinite(bounds[2])
+            && std::isfinite(bounds[3]) && std::isfinite(bounds[4]) && std::isfinite(bounds[5])
+            && bounds[0] <= bounds[1] && bounds[2] <= bounds[3] && bounds[4] <= bounds[5];
+}
+
+void refitParallelSliceCamera(vtkRenderer *renderer, vtkImageData *sliceImage, vtkRenderWindow *win)
+{
+    if (!renderer || !sliceImage || !win) {
+        return;
+    }
+
+    double bounds[6];
+    sliceImage->GetBounds(bounds);
+    if (!validBounds(bounds)) {
+        return;
+    }
+
+    auto *camera = renderer->GetActiveCamera();
+    double position[3];
+    double focalPoint[3];
+    camera->GetPosition(position);
+    camera->GetFocalPoint(focalPoint);
+
+    const double center[3] = { 0.5 * (bounds[0] + bounds[1]), 0.5 * (bounds[2] + bounds[3]),
+                               0.5 * (bounds[4] + bounds[5]) };
+    const double offset[3] = { position[0] - focalPoint[0], position[1] - focalPoint[1],
+                               position[2] - focalPoint[2] };
+
+    camera->SetFocalPoint(center);
+    camera->SetPosition(center[0] + offset[0], center[1] + offset[1], center[2] + offset[2]);
+
+    const int *size = win->GetSize();
+    const double aspect = (size && size[1] > 0) ? static_cast<double>(size[0]) / size[1] : 1.0;
+    const double width = std::max(1e-6, bounds[1] - bounds[0]);
+    const double height = std::max(1e-6, bounds[3] - bounds[2]);
+    constexpr double margin = 1.1;
+    camera->SetParallelScale(
+            margin * std::max(height * 0.5, width * 0.5 / std::max(1.0, aspect)));
+}
+
+void refitCubeCamera(vtkRenderer *renderer, vtkImageData *cubeImage)
+{
+    if (!renderer || !cubeImage) {
+        return;
+    }
+
+    double bounds[6];
+    cubeImage->GetBounds(bounds);
+    if (!validBounds(bounds)) {
+        return;
+    }
+
+    auto *camera = renderer->GetActiveCamera();
+    double position[3];
+    double focalPoint[3];
+    camera->GetPosition(position);
+    camera->GetFocalPoint(focalPoint);
+
+    double direction[3] = { position[0] - focalPoint[0], position[1] - focalPoint[1],
+                            position[2] - focalPoint[2] };
+    double distance = std::sqrt(direction[0] * direction[0] + direction[1] * direction[1]
+                                + direction[2] * direction[2]);
+    if (distance <= 1e-6) {
+        direction[0] = 0.;
+        direction[1] = 0.;
+        direction[2] = 1.;
+        distance = 1.;
+    } else {
+        direction[0] /= distance;
+        direction[1] /= distance;
+        direction[2] /= distance;
+    }
+
+    const double center[3] = { 0.5 * (bounds[0] + bounds[1]), 0.5 * (bounds[2] + bounds[3]),
+                               0.5 * (bounds[4] + bounds[5]) };
+    const double dx = bounds[1] - bounds[0];
+    const double dy = bounds[3] - bounds[2];
+    const double dz = bounds[5] - bounds[4];
+    const double radius = std::max(1e-6, 0.5 * std::sqrt(dx * dx + dy * dy + dz * dz));
+    const double viewAngleRad = std::max(1e-3, camera->GetViewAngle() * pi / 180.);
+    const double fitDistance = radius / std::sin(viewAngleRad * 0.5);
+    const double finalDistance = std::max(distance, fitDistance);
+
+    camera->SetFocalPoint(center);
+    camera->SetPosition(center[0] + direction[0] * finalDistance,
+                        center[1] + direction[1] * finalDistance,
+                        center[2] + direction[2] * finalDistance);
+}
+
 AsyncIsosurfaceResult computeIsosurface(vtkSmartPointer<vtkImageData> image, double isoValue,
                                         int requestId)
 {
@@ -773,9 +867,18 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     totalTimer.start();
 
     this->cubeDisplaySource->SetOutput(result.cubeImageData);
+    this->cubeDisplaySource->Modified();
+    result.cubeImageData->Modified();
     if (result.momentImageData) {
         this->momentDisplaySource->SetOutput(result.momentImageData);
+        this->momentDisplaySource->Modified();
         this->lutMoment->SetTableRange(result.momentRange[0], result.momentRange[1]);
+    }
+    if (auto *mapper = this->volume->GetMapper()) {
+        mapper->Modified();
+    }
+    if (this->currentIsosurfaceActor && this->currentIsosurfaceActor->GetMapper()) {
+        this->currentIsosurfaceActor->GetMapper()->Modified();
     }
 
     const int clampedSlice = std::clamp(ui->spinSlice->value() - 1, result.dataExtent[4],
@@ -855,10 +958,21 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     QElapsedTimer cameraTimer;
     cameraTimer.start();
     auto cubeRenderer = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    QElapsedTimer cubeFitTimer;
+    cubeFitTimer.start();
+    refitCubeCamera(cubeRenderer, result.cubeImageData);
+    cubeRenderer->ResetCameraClippingRange();
     qDebug().noquote()
-            << QStringLiteral("[perf][cube] apply cube clipping sync: %1 ms").arg(0);
+            << QStringLiteral("[perf][cube] apply cube clipping sync: %1 ms").arg(
+                       cubeFitTimer.elapsed());
 
     auto sliceRenderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
+    QElapsedTimer sliceFitTimer;
+    sliceFitTimer.start();
+    refitParallelSliceCamera(sliceRenderer, this->slice->GetOutput(), this->sliceWin);
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply slice fit: %1 ms").arg(sliceFitTimer.elapsed());
+
     QElapsedTimer sliceClipTimer;
     sliceClipTimer.start();
     sliceRenderer->ResetCameraClippingRange();
@@ -891,10 +1005,15 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
             << QStringLiteral("[perf][cube] apply image UI fields: %1 ms").arg(
                        imgFieldsTimer.elapsed());
 
+    this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
+    cubeRenderer->Modified();
+    ui->vtkCube->renderWindow()->Modified();
+
     QElapsedTimer renderTimer;
     renderTimer.start();
     ui->vtkCube->renderWindow()->Render();
     ui->vtkImage->renderWindow()->Render();
+    QTimer::singleShot(0, this, [this]() { ui->vtkCube->renderWindow()->Render(); });
     qDebug().noquote()
             << QStringLiteral("[perf][cube] apply render: %1 ms").arg(renderTimer.elapsed());
     qDebug().noquote() << QStringLiteral("[perf][cube] apply total: %1 ms").arg(
