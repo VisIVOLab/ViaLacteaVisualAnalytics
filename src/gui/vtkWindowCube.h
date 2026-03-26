@@ -152,6 +152,7 @@ private:
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);
+    bool isBusy() const;
     void setCubeOpenStateLabel(const QString &text);
     void setCubeOpenActionsEnabled(bool enabled);
     void setMomentActionsEnabled(bool enabled);

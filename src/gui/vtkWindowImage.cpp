@@ -125,7 +125,7 @@ vtkWindowImage::~vtkWindowImage()
 
 void vtkWindowImage::closeEvent(QCloseEvent *event)
 {
-    if (this->layerLoadWatcher.isRunning()) {
+    if (this->isBusy()) {
         this->statusBar()->showMessage(u"Loading layer..."_s);
         event->ignore();
         return;
@@ -160,7 +160,7 @@ void vtkWindowImage::updateLUTCustomizer()
 
 void vtkWindowImage::addLocalFile()
 {
-    if (this->layerLoadWatcher.isRunning()) {
+    if (this->isBusy()) {
         return;
     }
 
@@ -291,6 +291,11 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
 {
     this->stack->AddImage(this->layers->addLayer(result));
     this->vtkRender();
+}
+
+bool vtkWindowImage::isBusy() const
+{
+    return this->layerLoadWatcher.isRunning();
 }
 
 void vtkWindowImage::setLayerImportEnabled(bool enabled)

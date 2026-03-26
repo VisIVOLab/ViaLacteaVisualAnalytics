@@ -76,6 +76,7 @@ private:
     LayerListModel *layers;
     std::unique_ptr<ImageLayerController> layerController;
     void applyLoadedLayer(const ImageLayerLoadResult &result);
+    bool isBusy() const;
     void setLayerImportEnabled(bool enabled);
     int currentLayerIndex() const;
     void addLayerImage(const std::string &filepath);

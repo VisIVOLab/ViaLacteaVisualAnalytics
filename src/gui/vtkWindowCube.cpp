@@ -301,14 +301,12 @@ vtkWindowCube::~vtkWindowCube()
 
 void vtkWindowCube::closeEvent(QCloseEvent *event)
 {
-    if (this->cubeOpenWatcher.isRunning()) {
-        this->statusBar()->showMessage(u"Loading full resolution..."_s);
-        event->ignore();
-        return;
-    }
-
-    if (this->momentComputeWatcher.isRunning()) {
-        this->statusBar()->showMessage(u"Computing moment..."_s);
+    if (this->isBusy()) {
+        if (this->cubeOpenWatcher.isRunning()) {
+            this->statusBar()->showMessage(u"Loading full resolution..."_s);
+        } else {
+            this->statusBar()->showMessage(u"Computing moment..."_s);
+        }
         event->ignore();
         return;
     }
@@ -725,11 +723,7 @@ void vtkWindowCube::updateContoursVisibility()
 
 void vtkWindowCube::setMomentOrder(int order)
 {
-    if (this->cubeOpenWatcher.isRunning()) {
-        return;
-    }
-
-    if (this->momentComputeWatcher.isRunning()) {
+    if (this->isBusy()) {
         return;
     }
 
@@ -835,6 +829,11 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     }
 
     ui->actionMomentMap->trigger();
+}
+
+bool vtkWindowCube::isBusy() const
+{
+    return this->cubeOpenWatcher.isRunning() || this->momentComputeWatcher.isRunning();
 }
 
 void vtkWindowCube::setMomentActionsEnabled(bool enabled)
