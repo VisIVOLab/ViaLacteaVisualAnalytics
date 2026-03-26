@@ -24,6 +24,8 @@
 
 #include <QActionGroup>
 #include <QButtonGroup>
+#include <QDebug>
+#include <QElapsedTimer>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QtConcurrentRun>
@@ -65,7 +67,12 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
                              return;
                          }
 
+                         QElapsedTimer applyTimer;
+                         applyTimer.start();
                          this->applyLoadedLayer(result);
+                         qDebug().noquote()
+                                 << QStringLiteral("[perf][layer] UI apply: %1 ms")
+                                            .arg(applyTimer.elapsed());
                          this->clearPersistentStatusMessage();
                      });
 
@@ -300,8 +307,12 @@ void vtkWindowImage::addLayerImage(const std::string &filepath)
 
 void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
 {
+    QElapsedTimer timer;
+    timer.start();
     this->stack->AddImage(this->layers->addLayer(result));
     this->vtkRender();
+    qDebug().noquote()
+            << QStringLiteral("[perf][layer] render after apply: %1 ms").arg(timer.elapsed());
 }
 
 bool vtkWindowImage::isBusy() const

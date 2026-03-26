@@ -48,7 +48,9 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QColorDialog>
+#include <QDebug>
 #include <QDoubleValidator>
+#include <QElapsedTimer>
 #include <QInputDialog>
 #include <QLabel>
 #include <QSignalBlocker>
@@ -64,6 +66,8 @@ namespace {
 AsyncIsosurfaceResult computeIsosurface(vtkSmartPointer<vtkImageData> image, double isoValue,
                                         int requestId)
 {
+    QElapsedTimer timer;
+    timer.start();
     AsyncIsosurfaceResult result;
     result.requestId = requestId;
 
@@ -81,6 +85,8 @@ AsyncIsosurfaceResult computeIsosurface(vtkSmartPointer<vtkImageData> image, dou
     vtkSmartPointer<vtkPolyData> mesh = vtkSmartPointer<vtkPolyData>::New();
     mesh->ShallowCopy(filter->GetOutput());
     result.mesh = mesh;
+    qDebug().noquote()
+            << QStringLiteral("[perf][isosurface] compute: %1 ms").arg(timer.elapsed());
     return result;
 }
 }
@@ -140,7 +146,11 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
             return;
         }
 
+        QElapsedTimer timer;
+        timer.start();
         ui->vtkCube->renderWindow()->Render();
+        qDebug().noquote()
+                << QStringLiteral("[perf][cube] warm-up render: %1 ms").arg(timer.elapsed());
     });
     if (usingPreview) {
         this->applyCubeOpenResult(preview);
@@ -182,7 +192,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          this->setCubeOpenActionsEnabled(true);
 
                          const auto result = this->cubeOpenWatcher.result();
-                         if (!result.valid || !result.cubeImageData || !result.momentImageData) {
+                         if (!result.valid || !result.cubeImageData) {
                              this->setCubeOpenStateLabel(u"Preview"_s);
                              if (!result.errorMessage.isEmpty()) {
                                  this->persistentStatusActive = false;
@@ -197,7 +207,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          this->setCubeOpenStateLabel(u"Applying full resolution..."_s);
                          this->showPersistentStatusMessage(u"Applying full resolution..."_s);
                          QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+                         QElapsedTimer applyTimer;
+                         applyTimer.start();
                          this->applyCubeOpenResult(result);
+                         qDebug().noquote()
+                                 << QStringLiteral("[perf][cube] apply full result: %1 ms")
+                                            .arg(applyTimer.elapsed());
                          ++this->currentFullCubeGeneration;
                          this->scheduleIsosurfacePrewarm();
                          this->setCubeOpenStateLabel({ });
@@ -225,8 +240,13 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                              return;
                          }
 
+                         QElapsedTimer applyTimer;
+                         applyTimer.start();
                          this->applyMomentMapResult(
                                  { result.imageData, { result.imageRange[0], result.imageRange[1] } });
+                         qDebug().noquote()
+                                 << QStringLiteral("[perf][moment] UI apply: %1 ms")
+                                            .arg(applyTimer.elapsed());
                          this->clearPersistentStatusMessage();
                      });
     QObject::connect(&this->isosurfaceWatcher, &QFutureWatcher<AsyncIsosurfaceResult>::finished,
@@ -240,6 +260,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                              return;
                          }
 
+                         QElapsedTimer actorTimer;
+                         actorTimer.start();
                          vtkNew<vtkPolyDataMapper> mapper;
                          mapper->SetInputData(result.mesh);
                          mapper->ScalarVisibilityOff();
@@ -261,8 +283,18 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          }
 
                          this->currentIsosurfaceActor = newActor;
+                         qDebug().noquote()
+                                 << QStringLiteral("[perf][isosurface] actor creation+swap: %1 ms")
+                                            .arg(actorTimer.elapsed());
+
+                         QElapsedTimer renderTimer;
+                         renderTimer.start();
                          this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
                          ui->vtkCube->renderWindow()->Render();
+                         qDebug().noquote()
+                                 << QStringLiteral("[perf][isosurface] render after apply: %1 ms")
+                                            .arg(renderTimer.elapsed());
+                         this->clearPersistentStatusMessage();
                      });
 
     // Setup menu Camera
@@ -737,6 +769,9 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         return;
     }
 
+    QElapsedTimer totalTimer;
+    totalTimer.start();
+
     this->cubeDisplaySource->SetOutput(result.cubeImageData);
     if (result.momentImageData) {
         this->momentDisplaySource->SetOutput(result.momentImageData);
@@ -745,6 +780,12 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
 
     const int clampedSlice = std::clamp(ui->spinSlice->value() - 1, result.dataExtent[4],
                                         result.dataExtent[5]);
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply clamp slice index: %1 ms").arg(
+                       totalTimer.elapsed());
+
+    QElapsedTimer sliderSyncTimer;
+    sliderSyncTimer.start();
     {
         const QSignalBlocker blockSlider(ui->sliderSlice);
         const QSignalBlocker blockSpin(ui->spinSlice);
@@ -753,39 +794,90 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         ui->sliderSlice->setValue(clampedSlice + 1);
         ui->spinSlice->setValue(clampedSlice + 1);
     }
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply slider/spin sync: %1 ms").arg(
+                       sliderSyncTimer.elapsed());
 
     int sliceExtent[6] = { result.dataExtent[0], result.dataExtent[1], result.dataExtent[2],
                            result.dataExtent[3], clampedSlice, clampedSlice };
+    QElapsedTimer sliceOnCubeSetTimer;
+    sliceOnCubeSetTimer.start();
     this->sliceOnCube->SetVOI(sliceExtent);
-    this->sliceOnCube->Update();
-    this->slice->SetResliceAxesOrigin(0., 0., clampedSlice);
-    this->slice->Update();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply sliceOnCube SetVOI: %1 ms").arg(
+                       sliceOnCubeSetTimer.elapsed());
 
+    QElapsedTimer sliceOnCubeUpdateTimer;
+    sliceOnCubeUpdateTimer.start();
+    this->sliceOnCube->Update();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply sliceOnCube update: %1 ms").arg(
+                       sliceOnCubeUpdateTimer.elapsed());
+
+    QElapsedTimer sliceSetTimer;
+    sliceSetTimer.start();
+    this->slice->SetResliceAxesOrigin(0., 0., clampedSlice);
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply slice origin set: %1 ms").arg(
+                       sliceSetTimer.elapsed());
+
+    QElapsedTimer sliceUpdateTimer;
+    sliceUpdateTimer.start();
+    this->slice->Update();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply slice update: %1 ms").arg(
+                       sliceUpdateTimer.elapsed());
+
+    QElapsedTimer lutSyncTimer;
+    lutSyncTimer.start();
     const double *sliceRange = this->slice->GetOutput()->GetScalarRange();
     this->lutSlice->SetTableRange(sliceRange);
 
     const double *sliceOnCubeRange = this->sliceOnCube->GetOutput()->GetScalarRange();
     this->lutSliceOnCube->SetTableRange(sliceOnCubeRange);
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply LUT sync: %1 ms").arg(lutSyncTimer.elapsed());
 
+    QElapsedTimer cubeFieldsTimer;
+    cubeFieldsTimer.start();
     ui->lineCubeMin->setText(QString::number(result.cubeRange[0]));
     ui->lineCubeMax->setText(QString::number(result.cubeRange[1]));
     ui->lineCubeMean->setText(QString::number(result.cubeMean));
     ui->lineCubeRms->setText(QString::number(result.cubeRms));
     ui->lineSpectral->setText(QString::number(this->astro.getInitialSpectralValue()
                                               + this->astro.getIncrements()[2] * clampedSlice));
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply cube UI fields: %1 ms").arg(
+                       cubeFieldsTimer.elapsed());
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply data+ui sync: %1 ms").arg(totalTimer.elapsed());
 
+    QElapsedTimer cameraTimer;
+    cameraTimer.start();
     auto cubeRenderer = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
-    cubeRenderer->ResetCamera();
-    cubeRenderer->ResetCameraClippingRange();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply cube clipping sync: %1 ms").arg(0);
 
     auto sliceRenderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
-    sliceRenderer->ResetCamera();
+    QElapsedTimer sliceClipTimer;
+    sliceClipTimer.start();
     sliceRenderer->ResetCameraClippingRange();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply slice clipping sync: %1 ms").arg(
+                       sliceClipTimer.elapsed());
 
     auto momentRenderer = this->momentWin->GetRenderers()->GetFirstRenderer();
-    momentRenderer->ResetCamera();
+    QElapsedTimer momentClipTimer;
+    momentClipTimer.start();
     momentRenderer->ResetCameraClippingRange();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply moment clipping sync: %1 ms").arg(
+                       momentClipTimer.elapsed());
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply camera sync: %1 ms").arg(cameraTimer.elapsed());
 
+    QElapsedTimer imgFieldsTimer;
+    imgFieldsTimer.start();
     if (this->viewingSlice()) {
         ui->lineImgMin->setText(QString::number(sliceRange[0]));
         ui->lineImgMax->setText(QString::number(sliceRange[1]));
@@ -795,9 +887,18 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         ui->lineImgMax->setText(QString::number(result.momentRange[1]));
         this->updateLUTCustomizer();
     }
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply image UI fields: %1 ms").arg(
+                       imgFieldsTimer.elapsed());
 
+    QElapsedTimer renderTimer;
+    renderTimer.start();
     ui->vtkCube->renderWindow()->Render();
     ui->vtkImage->renderWindow()->Render();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] apply render: %1 ms").arg(renderTimer.elapsed());
+    qDebug().noquote() << QStringLiteral("[perf][cube] apply total: %1 ms").arg(
+            totalTimer.elapsed());
 }
 
 void vtkWindowCube::updateSlice()
@@ -965,6 +1066,9 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
         return;
     }
 
+    QElapsedTimer totalTimer;
+    totalTimer.start();
+
     this->momentDisplaySource->SetOutput(result.imageData);
     double currentRange[2];
     this->lutMoment->GetTableRange(currentRange);
@@ -992,7 +1096,15 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     }
 
     this->updateLUTCustomizer();
+    qDebug().noquote()
+            << QStringLiteral("[perf][moment] apply data+ui sync: %1 ms").arg(totalTimer.elapsed());
+    QElapsedTimer renderTimer;
+    renderTimer.start();
     ui->vtkImage->renderWindow()->Render();
+    qDebug().noquote() << QStringLiteral("[perf][moment] render after apply: %1 ms").arg(
+            renderTimer.elapsed());
+    qDebug().noquote() << QStringLiteral("[perf][moment] apply total: %1 ms").arg(
+            totalTimer.elapsed());
 }
 
 bool vtkWindowCube::isBusy() const
@@ -1181,9 +1293,14 @@ void vtkWindowCube::startAsyncIsosurface(double isoValue)
     }
 
     vtkSmartPointer<vtkImageData> data = vtkSmartPointer<vtkImageData>::New();
+    QElapsedTimer deepCopyTimer;
+    deepCopyTimer.start();
     data->DeepCopy(source);
+    qDebug().noquote() << QStringLiteral("[perf][isosurface] DeepCopy before async launch: %1 ms")
+                              .arg(deepCopyTimer.elapsed());
 
     const int requestId = ++this->currentIsosurfaceRequestId;
+    this->showPersistentStatusMessage(u"Computing isocontour..."_s);
     this->isosurfaceWatcher.setFuture(
             QtConcurrent::run([data, isoValue, requestId]() {
                 return computeIsosurface(data, isoValue, requestId);

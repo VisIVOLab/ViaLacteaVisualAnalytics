@@ -5,6 +5,9 @@
 
 #include <fitsio.h>
 
+#include <QDebug>
+#include <QElapsedTimer>
+
 #include <vtkImageData.h>
 #include <vtkPointData.h>
 #include <vtkTrivialProducer.h>
@@ -59,6 +62,8 @@ void computeStats(vtkImageData *imageData, std::array<double, 2> &range, double 
 
 CubeOpenStageResult loadCubeOpenPreview(const QString &filepath)
 {
+    QElapsedTimer totalTimer;
+    totalTimer.start();
     fitsfile *fptr = nullptr;
     int status = 0;
     if (fits_open_image(&fptr, filepath.toUtf8().constData(), READONLY, &status)) {
@@ -95,17 +100,25 @@ CubeOpenStageResult loadCubeOpenPreview(const QString &filepath)
     long inc[4] = { strideX, strideY, strideZ, 1l };
 
     auto *cubePtr = static_cast<float *>(cubeImage->GetScalarPointer());
+    QElapsedTimer readTimer;
+    readTimer.start();
     if (fits_read_subset(fptr, TFLOAT, fpixel, lpixel, inc, nullptr, cubePtr, nullptr, &status)) {
         fits_close_file(fptr, &status);
         return { false, u"Could not read FITS preview subset."_s };
     }
+    qDebug().noquote() << QStringLiteral("[perf][cube] preview FITS subset read: %1 ms").arg(
+            readTimer.elapsed());
 
     fits_close_file(fptr, &status);
 
     std::array<double, 2> cubeRange{ 0., 0. };
     double cubeMean = 0.;
     double cubeRms = 0.;
+    QElapsedTimer statsTimer;
+    statsTimer.start();
     computeStats(cubeImage, cubeRange, cubeMean, cubeRms);
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] preview stats: %1 ms").arg(statsTimer.elapsed());
 
     vtkNew<vtkTrivialProducer> previewSource;
     previewSource->SetOutput(cubeImage);
@@ -114,11 +127,17 @@ CubeOpenStageResult loadCubeOpenPreview(const QString &filepath)
     moment->SetInputConnection(previewSource->GetOutputPort());
     moment->Init(filepath.toStdString());
     moment->SetMomentOrder(0);
+    QElapsedTimer momentTimer;
+    momentTimer.start();
     moment->Update();
+    qDebug().noquote() << QStringLiteral("[perf][cube] preview moment generation: %1 ms").arg(
+            momentTimer.elapsed());
 
     vtkNew<vtkImageData> momentImage;
     momentImage->DeepCopy(moment->GetOutput());
     const double *momentRange = momentImage->GetScalarRange();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] preview load: %1 ms").arg(totalTimer.elapsed());
 
     return { true,
              { },
@@ -133,33 +152,32 @@ CubeOpenStageResult loadCubeOpenPreview(const QString &filepath)
 
 CubeOpenStageResult loadCubeOpenFull(const QString &filepath)
 {
+    QElapsedTimer totalTimer;
+    totalTimer.start();
     vtkNew<vtkFITSReader> reader;
     reader->SetFileName(filepath.toUtf8());
+    QElapsedTimer readTimer;
+    readTimer.start();
     reader->Update();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] full FITS read: %1 ms").arg(readTimer.elapsed());
 
     vtkNew<vtkImageData> cubeImage;
+    QElapsedTimer deepCopyTimer;
+    deepCopyTimer.start();
     cubeImage->DeepCopy(reader->GetOutput());
-
-    vtkNew<vtkTrivialProducer> fullSource;
-    fullSource->SetOutput(cubeImage);
-
-    vtkNew<vtkMomentMapFilter> moment;
-    moment->SetInputConnection(fullSource->GetOutputPort());
-    moment->Init(filepath.toStdString());
-    moment->SetMomentOrder(0);
-    moment->Update();
-
-    vtkNew<vtkImageData> momentImage;
-    momentImage->DeepCopy(moment->GetOutput());
-    const double *momentRange = momentImage->GetScalarRange();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] full DeepCopy: %1 ms").arg(deepCopyTimer.elapsed());
     const int *extent = cubeImage->GetExtent();
+    qDebug().noquote()
+            << QStringLiteral("[perf][cube] full load: %1 ms").arg(totalTimer.elapsed());
 
     return { true,
              { },
              cubeImage,
-             momentImage,
+             nullptr,
              { reader->GetMin(), reader->GetMax() },
-             { momentRange[0], momentRange[1] },
+             { 0., 0. },
              { extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] },
              reader->GetMean(),
              reader->GetRMS() };
