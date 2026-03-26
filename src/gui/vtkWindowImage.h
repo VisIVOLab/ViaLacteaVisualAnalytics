@@ -7,9 +7,11 @@
 #include <vtkNew.h>
 
 #include <QCloseEvent>
+#include <QElapsedTimer>
 #include <QFutureWatcher>
 #include <QMainWindow>
 #include <QPointer>
+#include <QTimer>
 
 #include <memory>
 
@@ -62,6 +64,10 @@ private:
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
+    QTimer statusMessageClearTimer;
+    QElapsedTimer statusMessageElapsed;
+    int statusMessageMinDurationMs{ 0 };
+    bool persistentStatusActive{ false };
     std::unique_ptr<ImageLayerImportService> importService;
 
     // Renderer
@@ -77,6 +83,8 @@ private:
     std::unique_ptr<ImageLayerController> layerController;
     void applyLoadedLayer(const ImageLayerLoadResult &result);
     bool isBusy() const;
+    void showPersistentStatusMessage(const QString &text, int minDurationMs = 400);
+    void clearPersistentStatusMessage();
     void setLayerImportEnabled(bool enabled);
     int currentLayerIndex() const;
     void addLayerImage(const std::string &filepath);

@@ -10,8 +10,10 @@
 
 #include <QFutureWatcher>
 #include <QCloseEvent>
+#include <QElapsedTimer>
 #include <QMainWindow>
 #include <QPointer>
+#include <QTimer>
 
 #include <array>
 #include <memory>
@@ -98,6 +100,10 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
+    QTimer statusMessageClearTimer;
+    QElapsedTimer statusMessageElapsed;
+    int statusMessageMinDurationMs{ 0 };
+    bool persistentStatusActive{ false };
 
     vtkNew<vtkFITSReader> reader;
     float lowerBound;
@@ -153,6 +159,8 @@ private:
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);
     bool isBusy() const;
+    void showPersistentStatusMessage(const QString &text, int minDurationMs = 400);
+    void clearPersistentStatusMessage();
     void setCubeOpenStateLabel(const QString &text);
     void setCubeOpenActionsEnabled(bool enabled);
     void setMomentActionsEnabled(bool enabled);

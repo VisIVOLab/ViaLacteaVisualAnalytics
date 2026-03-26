@@ -74,6 +74,11 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
     this->cubeOpenStateLabel->hide();
     this->statusBar()->addPermanentWidget(this->cubeOpenStateLabel);
+    this->statusMessageClearTimer.setSingleShot(true);
+    QObject::connect(&this->statusMessageClearTimer, &QTimer::timeout, this, [this]() {
+        this->persistentStatusActive = false;
+        this->statusBar()->clearMessage();
+    });
 
     this->reader->SetFileName(this->filepath.toUtf8());
     const CubeOpenStageResult preview = loadCubeOpenPreview(this->filepath);
@@ -138,19 +143,21 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          if (!result.valid || !result.cubeImageData || !result.momentImageData) {
                              this->setCubeOpenStateLabel(u"Preview"_s);
                              if (!result.errorMessage.isEmpty()) {
+                                 this->persistentStatusActive = false;
+                                 this->statusMessageClearTimer.stop();
                                  this->statusBar()->showMessage(result.errorMessage);
                              } else {
-                                 this->statusBar()->clearMessage();
+                                 this->clearPersistentStatusMessage();
                              }
                              return;
                          }
 
                          this->setCubeOpenStateLabel(u"Applying full resolution..."_s);
-                         this->statusBar()->showMessage(u"Applying full resolution..."_s);
+                         this->showPersistentStatusMessage(u"Applying full resolution..."_s);
                          QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
                          this->applyCubeOpenResult(result);
                          this->setCubeOpenStateLabel({ });
-                         this->statusBar()->clearMessage();
+                         this->clearPersistentStatusMessage();
                      });
     QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
                      this, [this]() {
@@ -159,16 +166,18 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                          const auto result = this->momentComputeWatcher.result();
                          if (!result.valid || !result.imageData) {
                              if (!result.errorMessage.isEmpty()) {
+                                 this->persistentStatusActive = false;
+                                 this->statusMessageClearTimer.stop();
                                  this->statusBar()->showMessage(result.errorMessage);
                              } else {
-                                 this->statusBar()->clearMessage();
+                                 this->clearPersistentStatusMessage();
                              }
                              return;
                          }
 
                          this->applyMomentMapResult(
                                  { result.imageData, { result.imageRange[0], result.imageRange[1] } });
-                         this->statusBar()->clearMessage();
+                         this->clearPersistentStatusMessage();
                      });
 
     // Setup menu Camera
@@ -284,7 +293,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         ui->lineCubeRms->setText(QString::number(preview.cubeRms));
         this->setCubeOpenActionsEnabled(false);
         this->setCubeOpenStateLabel(u"Preview"_s);
-        this->statusBar()->showMessage(u"Loading full resolution..."_s);
+        this->showPersistentStatusMessage(u"Loading full resolution..."_s);
         this->cubeOpenWatcher.setFuture(QtConcurrent::run(&loadCubeOpenFull, this->filepath));
     } else {
         ui->lineCubeMin->setText(QString::number(this->reader->GetMin()));
@@ -303,9 +312,9 @@ void vtkWindowCube::closeEvent(QCloseEvent *event)
 {
     if (this->isBusy()) {
         if (this->cubeOpenWatcher.isRunning()) {
-            this->statusBar()->showMessage(u"Loading full resolution..."_s);
+            this->showPersistentStatusMessage(u"Loading full resolution..."_s);
         } else {
-            this->statusBar()->showMessage(u"Computing moment..."_s);
+            this->showPersistentStatusMessage(u"Computing moment..."_s);
         }
         event->ignore();
         return;
@@ -559,6 +568,10 @@ void vtkWindowCube::setCameraElevation(double el)
 
 void vtkWindowCube::mouseCallback()
 {
+    if (this->isBusy()) {
+        return;
+    }
+
     const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
     this->coordinate->SetValue(position[0], position[1]);
     const double *worldCoord = this->coordinate->GetComputedWorldValue(nullptr);
@@ -568,7 +581,7 @@ void vtkWindowCube::mouseCallback()
             ? this->slice->GetOutput()
             : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
     if (!imageData) {
-        this->statusBar()->clearMessage();
+        this->clearPersistentStatusMessage();
         return;
     }
 
@@ -576,7 +589,7 @@ void vtkWindowCube::mouseCallback()
     imageData->GetExtent(extent);
     if (imageCoord[0] < extent[0] || imageCoord[0] > extent[1] || imageCoord[1] < extent[2]
         || imageCoord[1] > extent[3]) {
-        this->statusBar()->clearMessage();
+        this->clearPersistentStatusMessage();
         return;
     }
 
@@ -728,9 +741,35 @@ void vtkWindowCube::setMomentOrder(int order)
     }
 
     this->setMomentActionsEnabled(false);
-    this->statusBar()->showMessage(u"Computing moment..."_s);
+    this->showPersistentStatusMessage(u"Computing moment..."_s);
     this->momentComputeWatcher.setFuture(
             QtConcurrent::run(&computeMomentMap, MomentMapComputeRequest { this->filepath, order }));
+}
+
+void vtkWindowCube::showPersistentStatusMessage(const QString &text, int minDurationMs)
+{
+    this->statusMessageClearTimer.stop();
+    this->persistentStatusActive = true;
+    this->statusMessageMinDurationMs = minDurationMs;
+    this->statusMessageElapsed.restart();
+    this->statusBar()->showMessage(text);
+}
+
+void vtkWindowCube::clearPersistentStatusMessage()
+{
+    if (!this->persistentStatusActive) {
+        this->statusBar()->clearMessage();
+        return;
+    }
+
+    const int remaining = this->statusMessageMinDurationMs - this->statusMessageElapsed.elapsed();
+    if (remaining <= 0) {
+        this->persistentStatusActive = false;
+        this->statusBar()->clearMessage();
+        return;
+    }
+
+    this->statusMessageClearTimer.start(remaining);
 }
 
 void vtkWindowCube::updateContours()

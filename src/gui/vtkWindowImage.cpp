@@ -44,6 +44,11 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
     ui->setupUi(this);
     this->setWindowTitle(this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
+    this->statusMessageClearTimer.setSingleShot(true);
+    QObject::connect(&this->statusMessageClearTimer, &QTimer::timeout, this, [this]() {
+        this->persistentStatusActive = false;
+        this->statusBar()->clearMessage();
+    });
     QObject::connect(&this->layerLoadWatcher, &QFutureWatcher<ImageLayerLoadResult>::finished, this,
                      [this]() {
                          this->setLayerImportEnabled(true);
@@ -51,15 +56,17 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
                          const auto result = this->layerLoadWatcher.result();
                          if (!result.valid) {
                              if (!result.errorMessage.empty()) {
+                                 this->persistentStatusActive = false;
+                                 this->statusMessageClearTimer.stop();
                                  QMessageBox::warning(this, u"Import FITS file"_s,
                                                       QString::fromStdString(result.errorMessage));
                              }
-                             this->statusBar()->clearMessage();
+                             this->clearPersistentStatusMessage();
                              return;
                          }
 
                          this->applyLoadedLayer(result);
-                         this->statusBar()->clearMessage();
+                         this->clearPersistentStatusMessage();
                      });
 
     this->setupRenderer();
@@ -126,7 +133,7 @@ vtkWindowImage::~vtkWindowImage()
 void vtkWindowImage::closeEvent(QCloseEvent *event)
 {
     if (this->isBusy()) {
-        this->statusBar()->showMessage(u"Loading layer..."_s);
+        this->showPersistentStatusMessage(u"Loading layer..."_s);
         event->ignore();
         return;
     }
@@ -226,6 +233,10 @@ void vtkWindowImage::setupRenderer()
 
 void vtkWindowImage::mouseCallback()
 {
+    if (this->isBusy()) {
+        return;
+    }
+
     const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
     this->coordinate->SetValue(position[0], position[1]);
     const double *worldCoord = this->coordinate->GetComputedWorldValue(nullptr);
@@ -282,7 +293,7 @@ int vtkWindowImage::currentLayerIndex() const
 void vtkWindowImage::addLayerImage(const std::string &filepath)
 {
     this->setLayerImportEnabled(false);
-    this->statusBar()->showMessage(u"Loading layer..."_s);
+    this->showPersistentStatusMessage(u"Loading layer..."_s);
     this->layerLoadWatcher.setFuture(QtConcurrent::run(
             &loadImageLayer, ImageLayerLoadRequest { this->filepath.toStdString(), filepath }));
 }
@@ -296,6 +307,32 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
 bool vtkWindowImage::isBusy() const
 {
     return this->layerLoadWatcher.isRunning();
+}
+
+void vtkWindowImage::showPersistentStatusMessage(const QString &text, int minDurationMs)
+{
+    this->statusMessageClearTimer.stop();
+    this->persistentStatusActive = true;
+    this->statusMessageMinDurationMs = minDurationMs;
+    this->statusMessageElapsed.restart();
+    this->statusBar()->showMessage(text);
+}
+
+void vtkWindowImage::clearPersistentStatusMessage()
+{
+    if (!this->persistentStatusActive) {
+        this->statusBar()->clearMessage();
+        return;
+    }
+
+    const int remaining = this->statusMessageMinDurationMs - this->statusMessageElapsed.elapsed();
+    if (remaining <= 0) {
+        this->persistentStatusActive = false;
+        this->statusBar()->clearMessage();
+        return;
+    }
+
+    this->statusMessageClearTimer.start(remaining);
 }
 
 void vtkWindowImage::setLayerImportEnabled(bool enabled)
