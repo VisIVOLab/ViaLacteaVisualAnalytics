@@ -5,7 +5,7 @@ This note summarizes the current architecture after the recent local refactoring
 
 It describes what is already true in the codebase today, which boundaries are now stable, and which parts are the best candidates for a future local/remote split.
 
-This is not a backend design document. No backend, remote rendering, or async execution is implemented yet.
+This is not a backend design document. No backend or remote rendering is implemented.
 
 ## Current Module Map
 
@@ -100,10 +100,11 @@ The GUI no longer owns dataset classification logic directly.
 
 ## Local Async Paths
 
-The project now includes two real local async processing/load paths:
+The project now includes three real local async or staged load paths:
 
 - moment-map recomputation on moment-order change in `vtkWindowCube`
 - image-layer loading for additional layers in `vtkWindowImage`
+- preview-first cube open in `vtkWindowCube`
 
 Common pattern:
 - compute/load runs off the UI thread using `QtConcurrent::run` and `QFutureWatcher`
@@ -111,6 +112,7 @@ Common pattern:
 - the UI thread receives a result payload and applies it through a dedicated apply seam
 - UI actions are temporarily disabled while the operation is running
 - window closing is blocked while the async operation is still in progress
+- display-side `vtkTrivialProducer` bridges are used where the visible pipeline must be fed from externally prepared data
 
 ### Async moment-map recomputation
 Current design:
@@ -124,33 +126,28 @@ Current design:
 - the payload includes image data and placement metadata needed to build the visible layer without rereading the FITS file in the UI thread
 - the UI thread applies the result through `applyLoadedLayer(...)`
 
+### Preview-first cube open
+Current design:
+- initial cube open in `vtkWindowCube` first tries a synchronous downsampled preview
+- the preview downsamples X/Y, keeps the full Z axis, and also prepares a minimal moment preview
+- the visible cube and slice pipeline is fed through `cubeDisplaySource`
+- the visible moment pipeline is fed through `momentDisplaySource`
+- both preview and full-resolution data are applied through `applyCubeOpenResult(...)`
+- if the preview succeeds, a full-resolution cube load starts in the background and replaces the preview when ready
+- the UI exposes a persistent state indicator during this flow with explicit states such as preview, loading full resolution, and applying full resolution
+- the preview-to-full replacement also performs geometry synchronization:
+  - clamp of the current slice index
+  - immediate update of `slice` and `sliceOnCube`
+  - camera and clipping-range reset after replacement
+- if the preview cannot be built, `vtkWindowCube` falls back to the older synchronous full open path
+
 Current limitations:
-- these async paths are intentionally use-case-specific
+- these async or staged paths are intentionally use-case-specific
 - they do not form a general async/job framework
 - cancellation, progress reporting, and queued execution are not implemented
+- the final preview-to-full replacement can still introduce a small visible lag
+- preview and full-resolution state can temporarily diverge while the full cube is still loading, for example if moment recomputation is considered during that interval
 - any new async use case must still define its own explicit separation between worker-side state and UI/display-side apply
-- initial cube open is still synchronous, although `vtkWindowCube` now has a display-side apply seam that prepares a future preview-first or async open path
-
-## Cube Display-Side Open Seam
-
-`vtkWindowCube` now includes a preparatory display-side seam for future cube-open evolution.
-
-Current state:
-- the visible cube and slice pipeline is no longer hard-wired directly to `reader->GetOutputPort()`
-- the visible pipeline is now fed through a display-side bridge (`cubeDisplaySource`, a `vtkTrivialProducer`)
-- `vtkWindowCube` exposes `applyCubeOpenResult(...)` as the UI-thread apply point for externally prepared cube data
-- `CubeOpenStageResult` is the current payload shape used by that apply step
-
-What this enables:
-- a future preview-first cube-open path
-- a future async full cube-open path using the same UI-thread apply seam
-
-What is not implemented yet:
-- no preview-first cube-open pipeline
-- no async cube-open worker/task
-- no staged preview/final replacement during initial open
-
-This seam is preparatory only. The current initial cube open is still synchronous.
 
 ## Current Responsibilities
 
@@ -249,7 +246,7 @@ The following are intentionally not implemented yet:
 - no backend
 - no remote rendering
 - no remote job execution
-- no general async/job framework beyond the current moment-map and image-layer use cases
+- no general async/job framework beyond the current moment-map, image-layer, and cube-open use cases
 - no generic service interfaces
 - no large widget rewrite
 - no full decomposition of `vtkWindowCube`
