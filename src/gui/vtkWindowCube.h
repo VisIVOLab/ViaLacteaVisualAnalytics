@@ -17,6 +17,7 @@
 #include <memory>
 
 class CubeViewController;
+class QLabel;
 class LUTCustomizerDialog;
 class ProfileWidget;
 class vtkActor;
@@ -94,6 +95,7 @@ private:
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    QPointer<QLabel> cubeOpenStateLabel;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
 
@@ -150,6 +152,7 @@ private:
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);
+    void setCubeOpenStateLabel(const QString &text);
     void setCubeOpenActionsEnabled(bool enabled);
     void setMomentActionsEnabled(bool enabled);
     void setMomentOrder(int order);

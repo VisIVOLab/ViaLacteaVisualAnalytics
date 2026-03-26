@@ -45,10 +45,13 @@
 #include <vtkVolumeProperty.h>
 
 #include <QActionGroup>
+#include <QApplication>
 #include <QColorDialog>
 #include <QDoubleValidator>
-#include <QtConcurrentRun>
 #include <QInputDialog>
+#include <QLabel>
+#include <QSignalBlocker>
+#include <QtConcurrentRun>
 
 #include <limits>
 #include <sstream>
@@ -67,6 +70,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     ui->setupUi(this);
     this->setWindowTitle(this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
+    this->cubeOpenStateLabel = new QLabel(this);
+    this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
+    this->cubeOpenStateLabel->hide();
+    this->statusBar()->addPermanentWidget(this->cubeOpenStateLabel);
 
     this->reader->SetFileName(this->filepath.toUtf8());
     const CubeOpenStageResult preview = loadCubeOpenPreview(this->filepath);
@@ -129,6 +136,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
 
                          const auto result = this->cubeOpenWatcher.result();
                          if (!result.valid || !result.cubeImageData || !result.momentImageData) {
+                             this->setCubeOpenStateLabel(u"Preview"_s);
                              if (!result.errorMessage.isEmpty()) {
                                  this->statusBar()->showMessage(result.errorMessage);
                              } else {
@@ -137,7 +145,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                              return;
                          }
 
+                         this->setCubeOpenStateLabel(u"Applying full resolution..."_s);
+                         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
                          this->applyCubeOpenResult(result);
+                         this->setCubeOpenStateLabel({ });
                          this->statusBar()->clearMessage();
                      });
     QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
@@ -271,6 +282,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
         ui->lineCubeMean->setText(QString::number(preview.cubeMean));
         ui->lineCubeRms->setText(QString::number(preview.cubeRms));
         this->setCubeOpenActionsEnabled(false);
+        this->setCubeOpenStateLabel(u"Preview | Loading full resolution..."_s);
         this->statusBar()->showMessage(u"Loading full cube..."_s);
         this->cubeOpenWatcher.setFuture(QtConcurrent::run(&loadCubeOpenFull, this->filepath));
     } else {
@@ -625,8 +637,24 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         this->momentDisplaySource->SetOutput(result.momentImageData);
         this->lutMoment->SetTableRange(result.momentRange[0], result.momentRange[1]);
     }
-    this->slice->Update();
+
+    const int clampedSlice = std::clamp(ui->spinSlice->value() - 1, result.dataExtent[4],
+                                        result.dataExtent[5]);
+    {
+        const QSignalBlocker blockSlider(ui->sliderSlice);
+        const QSignalBlocker blockSpin(ui->spinSlice);
+        ui->sliderSlice->setMaximum(result.dataExtent[5] + 1);
+        ui->spinSlice->setMaximum(result.dataExtent[5] + 1);
+        ui->sliderSlice->setValue(clampedSlice + 1);
+        ui->spinSlice->setValue(clampedSlice + 1);
+    }
+
+    int sliceExtent[6] = { result.dataExtent[0], result.dataExtent[1], result.dataExtent[2],
+                           result.dataExtent[3], clampedSlice, clampedSlice };
+    this->sliceOnCube->SetVOI(sliceExtent);
     this->sliceOnCube->Update();
+    this->slice->SetResliceAxesOrigin(0., 0., clampedSlice);
+    this->slice->Update();
 
     const double *sliceRange = this->slice->GetOutput()->GetScalarRange();
     this->lutSlice->SetTableRange(sliceRange);
@@ -634,26 +662,37 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     const double *sliceOnCubeRange = this->sliceOnCube->GetOutput()->GetScalarRange();
     this->lutSliceOnCube->SetTableRange(sliceOnCubeRange);
 
-    ui->sliderSlice->setMaximum(result.dataExtent[5] + 1);
-    ui->spinSlice->setMaximum(result.dataExtent[5] + 1);
     ui->lineCubeMin->setText(QString::number(result.cubeRange[0]));
     ui->lineCubeMax->setText(QString::number(result.cubeRange[1]));
     ui->lineCubeMean->setText(QString::number(result.cubeMean));
     ui->lineCubeRms->setText(QString::number(result.cubeRms));
+    ui->lineSpectral->setText(QString::number(this->astro.getInitialSpectralValue()
+                                              + this->astro.getIncrements()[2] * clampedSlice));
+
+    auto cubeRenderer = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    cubeRenderer->ResetCamera();
+    cubeRenderer->ResetCameraClippingRange();
+
+    auto sliceRenderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
+    sliceRenderer->ResetCamera();
+    sliceRenderer->ResetCameraClippingRange();
+
+    auto momentRenderer = this->momentWin->GetRenderers()->GetFirstRenderer();
+    momentRenderer->ResetCamera();
+    momentRenderer->ResetCameraClippingRange();
 
     if (this->viewingSlice()) {
         ui->lineImgMin->setText(QString::number(sliceRange[0]));
         ui->lineImgMax->setText(QString::number(sliceRange[1]));
         this->updateLUTCustomizer();
-        this->sliceWin->Render();
     } else if (result.momentImageData) {
         ui->lineImgMin->setText(QString::number(result.momentRange[0]));
         ui->lineImgMax->setText(QString::number(result.momentRange[1]));
         this->updateLUTCustomizer();
-        this->momentWin->Render();
     }
 
     ui->vtkCube->renderWindow()->Render();
+    ui->vtkImage->renderWindow()->Render();
 }
 
 void vtkWindowCube::updateSlice()
@@ -811,6 +850,22 @@ void vtkWindowCube::setCubeOpenActionsEnabled(bool enabled)
 {
     this->setMomentActionsEnabled(enabled);
     ui->actionExtractSpectrum->setEnabled(enabled);
+}
+
+void vtkWindowCube::setCubeOpenStateLabel(const QString &text)
+{
+    if (!this->cubeOpenStateLabel) {
+        return;
+    }
+
+    if (text.isEmpty()) {
+        this->cubeOpenStateLabel->hide();
+        this->cubeOpenStateLabel->clear();
+        return;
+    }
+
+    this->cubeOpenStateLabel->setText(text);
+    this->cubeOpenStateLabel->show();
 }
 
 void vtkWindowCube::setInteractorStyleImage()
