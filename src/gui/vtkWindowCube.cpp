@@ -879,15 +879,26 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
         this->lutMoment->SetTableRange(result.imageRange[0], result.imageRange[1]);
     }
 
-    if (!this->viewingSlice()) {
+    {
+        const QSignalBlocker blockSliceAction(ui->actionSlice);
+        const QSignalBlocker blockMomentAction(ui->actionMomentMap);
+        ui->actionSlice->setChecked(false);
+        ui->actionMomentMap->setChecked(true);
+    }
+
+    ui->vtkImage->setRenderWindow(this->momentWin);
+    ui->labelImg->setText(u"Moment:"_s);
+    this->coordinate->SetViewport(ui->vtkImage->renderWindow()->GetRenderers()->GetFirstRenderer());
+
+    {
         const QSignalBlocker blockMin(ui->lineImgMin);
         const QSignalBlocker blockMax(ui->lineImgMax);
         ui->lineImgMin->setText(QString::number(result.imageRange[0]));
         ui->lineImgMax->setText(QString::number(result.imageRange[1]));
-        this->updateLUTCustomizer();
     }
 
-    ui->actionMomentMap->trigger();
+    this->updateLUTCustomizer();
+    ui->vtkImage->renderWindow()->Render();
 }
 
 bool vtkWindowCube::isBusy() const
