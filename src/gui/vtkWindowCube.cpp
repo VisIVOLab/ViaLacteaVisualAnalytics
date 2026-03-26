@@ -135,6 +135,13 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
+    QTimer::singleShot(0, this, [this]() {
+        if (!this->isVisible()) {
+            return;
+        }
+
+        ui->vtkCube->renderWindow()->Render();
+    });
     if (usingPreview) {
         this->applyCubeOpenResult(preview);
     } else {
