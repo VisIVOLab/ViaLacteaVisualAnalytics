@@ -880,6 +880,8 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     }
 
     if (!this->viewingSlice()) {
+        const QSignalBlocker blockMin(ui->lineImgMin);
+        const QSignalBlocker blockMax(ui->lineImgMax);
         ui->lineImgMin->setText(QString::number(result.imageRange[0]));
         ui->lineImgMax->setText(QString::number(result.imageRange[1]));
         this->updateLUTCustomizer();
