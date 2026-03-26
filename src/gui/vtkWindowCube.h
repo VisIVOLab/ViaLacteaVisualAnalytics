@@ -100,6 +100,7 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
+    int currentMomentRequestId{ 0 };
     QTimer statusMessageClearTimer;
     QElapsedTimer statusMessageElapsed;
     int statusMessageMinDurationMs{ 0 };

@@ -162,6 +162,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                      });
     QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
                      this, [this]() {
+                         const int requestId =
+                                 this->momentComputeWatcher.property("requestId").toInt();
+                         if (requestId != this->currentMomentRequestId) {
+                             return;
+                         }
+
                          this->setMomentActionsEnabled(true);
 
                          const auto result = this->momentComputeWatcher.result();
@@ -741,6 +747,8 @@ void vtkWindowCube::setMomentOrder(int order)
         return;
     }
 
+    const int requestId = ++this->currentMomentRequestId;
+    this->momentComputeWatcher.setProperty("requestId", requestId);
     this->setMomentActionsEnabled(false);
     this->showPersistentStatusMessage(u"Computing moment..."_s);
     this->momentComputeWatcher.setFuture(
