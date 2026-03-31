@@ -11,6 +11,7 @@
 #include "SettingsDialog.h"
 #include "WebViewProcess.h"
 #include "vtkWindowCube.h"
+#include "vtkWindowImage.h"
 
 #include <QButtonGroup>
 #include <QCloseEvent>
@@ -171,9 +172,15 @@ void MainWindow::openRemoteData()
     }
 
     if (opened.kind != u"cube"_s) {
-        QMessageBox::information(this, u"Remote dataset"_s,
-                                 QStringLiteral("This MVP currently supports remote cube datasets "
-                                                "for moment products only."));
+        if (opened.kind == u"image"_s) {
+            auto *win = new vtkWindowImage(remotePath, client.baseUrl(), opened.datasetId, this);
+            win->show();
+            win->raise();
+            win->activateWindow();
+            return;
+        }
+
+        QMessageBox::information(this, u"Remote dataset"_s, u"Unsupported remote dataset kind."_s);
         return;
     }
 

@@ -12,6 +12,12 @@ LayerListModel::LayerListModel(const std::string &filepath, QObject *parent)
 {
 }
 
+LayerListModel::LayerListModel(const ImageLayerLoadResult &masterResult, QObject *parent)
+    : QAbstractListModel(parent), layerSet(std::make_unique<ImageLayerSet>(masterResult)),
+      layerMimeType("application/x-image-layer")
+{
+}
+
 vtkImageSlice *LayerListModel::getMasterLayerActor() const
 {
     return this->layerSet->masterLayerActor();
@@ -39,6 +45,14 @@ vtkImageSlice *LayerListModel::addLayer(const ImageLayerLoadResult &result)
     this->beginInsertRows(QModelIndex(), newRow, newRow);
     auto actor = this->layerSet->addLayer(result);
     this->endInsertRows();
+    return actor;
+}
+
+vtkImageSlice *LayerListModel::replaceMasterLayer(const ImageLayerLoadResult &result)
+{
+    this->beginResetModel();
+    auto actor = this->layerSet->replaceMasterLayer(result);
+    this->endResetModel();
     return actor;
 }
 

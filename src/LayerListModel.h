@@ -26,6 +26,7 @@ public:
    * @param filepath FITS absolute path for the Master Layer
    */
     explicit LayerListModel(const std::string &filepath, QObject *parent = nullptr);
+    explicit LayerListModel(const ImageLayerLoadResult &masterResult, QObject *parent = nullptr);
     ~LayerListModel() override;
 
     /**
@@ -45,6 +46,7 @@ public:
    */
     vtkImageSlice *addLayer(const std::string &filepath);
     vtkImageSlice *addLayer(const ImageLayerLoadResult &result);
+    vtkImageSlice *replaceMasterLayer(const ImageLayerLoadResult &result);
 
     /**
    * @param index inside the model

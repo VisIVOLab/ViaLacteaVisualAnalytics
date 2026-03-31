@@ -180,6 +180,28 @@ BackendCubeSubvolumeResult BackendClient::requestSubvolume(const QString &datase
     return result;
 }
 
+BackendImageResult BackendClient::requestImage(const QString &datasetId) const
+{
+    BackendImageResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId } });
+    const QByteArray payload =
+            this->performPost(QUrl(this->m_baseUrl + "/image/full"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.width = object.value("width").toInt();
+    result.height = object.value("height").toInt();
+    result.scalarType = object.value("scalar_type").toString();
+    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    return result;
+}
+
 BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetId,
                                                          double threshold) const
 {

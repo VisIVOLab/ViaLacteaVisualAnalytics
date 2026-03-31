@@ -16,6 +16,7 @@ class ImageLayerSet
 {
 public:
     explicit ImageLayerSet(const std::string &masterFilepath);
+    explicit ImageLayerSet(const ImageLayerLoadResult &masterResult);
     ~ImageLayerSet();
 
     int size() const;
@@ -43,6 +44,7 @@ public:
 
     vtkImageSlice *addLayer(const std::string &filepath);
     vtkImageSlice *addLayer(const ImageLayerLoadResult &result);
+    vtkImageSlice *replaceMasterLayer(const ImageLayerLoadResult &result);
     bool moveLayer(int sourceIndex, int destinationRow);
 
 private:

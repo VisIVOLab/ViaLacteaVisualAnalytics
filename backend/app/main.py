@@ -116,6 +116,19 @@ class CubeSubvolumeResponse(BaseModel):
     data_base64: str = ""
 
 
+class ImageFullRequest(BaseModel):
+    dataset_id: str
+
+
+class ImageFullResponse(BaseModel):
+    valid: bool
+    error: str
+    width: int = 0
+    height: int = 0
+    scalar_type: str = ""
+    data_base64: str = ""
+
+
 class IsosurfaceProductRequest(BaseModel):
     dataset_id: str
     threshold: float
@@ -508,4 +521,28 @@ def cube_subvolume(request: CubeSubvolumeRequest) -> CubeSubvolumeResponse:
         depth=int(subvolume.shape[0]),
         scalar_type="float32",
         data_base64=_encode_array(subvolume),
+    )
+
+
+@app.post("/image/full", response_model=ImageFullResponse)
+def image_full(request: ImageFullRequest) -> ImageFullResponse:
+    try:
+        entry = _dataset_entry(request.dataset_id)
+        if entry["kind"] != "image":
+            raise ValueError("Image endpoint requires an image dataset.")
+        image_path = Path(entry["path"])
+        image, _ = _load_dataset_array(image_path)
+        if image.ndim != 2:
+            raise ValueError("Remote image endpoint requires 2D FITS data.")
+        image = np.ascontiguousarray(image, dtype=np.float32)
+    except Exception as exc:
+        return ImageFullResponse(valid=False, error=str(exc))
+
+    return ImageFullResponse(
+        valid=True,
+        error="",
+        width=int(image.shape[1]),
+        height=int(image.shape[0]),
+        scalar_type="float32",
+        data_base64=_encode_array(image),
     )

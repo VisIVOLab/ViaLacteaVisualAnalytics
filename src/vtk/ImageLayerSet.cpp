@@ -22,6 +22,13 @@ ImageLayerSet::ImageLayerSet(const std::string &masterFilepath)
     this->refreshLayerNumbers();
 }
 
+ImageLayerSet::ImageLayerSet(const ImageLayerLoadResult &masterResult)
+    : masterFilepath(masterResult.filepath), masterIdx(0)
+{
+    this->layers.push_back(std::make_unique<ImageLayer>(masterResult));
+    this->refreshLayerNumbers();
+}
+
 ImageLayerSet::~ImageLayerSet() = default;
 
 int ImageLayerSet::size() const
@@ -177,6 +184,18 @@ vtkImageSlice *ImageLayerSet::addLayer(const ImageLayerLoadResult &result)
 
     this->refreshLayerNumbers();
     return layer.getActor();
+}
+
+vtkImageSlice *ImageLayerSet::replaceMasterLayer(const ImageLayerLoadResult &result)
+{
+    if (!this->isValidIndex(this->masterIdx)) {
+        return nullptr;
+    }
+
+    this->masterFilepath = result.filepath;
+    this->layers[this->masterIdx] = std::make_unique<ImageLayer>(result);
+    this->refreshLayerNumbers();
+    return this->layers[this->masterIdx]->getActor();
 }
 
 bool ImageLayerSet::moveLayer(int sourceIndex, int destinationRow)

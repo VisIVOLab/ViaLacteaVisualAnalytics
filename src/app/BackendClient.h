@@ -88,6 +88,16 @@ struct BackendCubeSubvolumeResult
     QByteArray data;
 };
 
+struct BackendImageResult
+{
+    bool valid{ false };
+    QString error;
+    int width{ 0 };
+    int height{ 0 };
+    QString scalarType;
+    QByteArray data;
+};
+
 struct BackendIsosurfaceResult
 {
     bool valid{ false };
@@ -116,6 +126,7 @@ public:
                                         int index) const;
     BackendCubeSubvolumeResult requestSubvolume(const QString &datasetId, int x0, int x1, int y0,
                                                 int y1, int z0, int z1) const;
+    BackendImageResult requestImage(const QString &datasetId) const;
     BackendIsosurfaceResult requestIsosurface(const QString &datasetId, double threshold) const;
     BackendMomentResult requestMoment(const QString &datasetId, int order) const;
 

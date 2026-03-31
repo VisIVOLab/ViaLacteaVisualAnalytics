@@ -1,6 +1,8 @@
 #include "vtkWindowImage.h"
 #include "ui_vtkWindowImage.h"
 
+#include "AstroUtils.h"
+#include "app/BackendClient.h"
 #include "ColorMaps.h"
 #include "ImageLayerController.h"
 #include "ImageLayerImportService.h"
@@ -15,11 +17,13 @@
 #include <vtkCamera.h>
 #include <vtkCoordinate.h>
 #include <vtkGenericOpenGLRenderWindow.h>
+#include <vtkImageData.h>
 #include <vtkImageStack.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkLookupTable.h>
 #include <vtkNew.h>
 #include <vtkRenderer.h>
+#include <vtkRendererCollection.h>
 #include <vtkScalarBarActor.h>
 
 #include <QActionGroup>
@@ -30,21 +34,97 @@
 #include <QMessageBox>
 #include <QtConcurrentRun>
 
+#include <cstring>
 #include <sstream>
 
 using namespace Qt::StringLiterals;
 
+namespace {
+vtkSmartPointer<vtkImageData> createPlaceholderImageData()
+{
+    vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
+    image->SetExtent(0, 0, 0, 0, 0, 0);
+    image->SetOrigin(0., 0., 0.);
+    image->SetSpacing(1., 1., 1.);
+    image->AllocateScalars(VTK_FLOAT, 1);
+    image->SetScalarComponentFromFloat(0, 0, 0, 0, 0.f);
+    return image;
+}
+
+ImageLayerLoadResult createPlaceholderRemoteLayerResult(const QString &filepath)
+{
+    ImageLayerLoadResult result;
+    result.valid = true;
+    result.filepath = filepath.toStdString();
+    result.imageData = createPlaceholderImageData();
+    result.scalarRange = { 0., 0. };
+    return result;
+}
+
+ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QString &datasetId,
+                                           const QString &datasetPath)
+{
+    ImageLayerLoadResult result;
+    result.filepath = datasetPath.toStdString();
+
+    BackendClient client(backendUrl);
+    const auto response = client.requestImage(datasetId);
+    if (!response.valid) {
+        result.errorMessage = response.error.isEmpty() ? "Remote image request failed."
+                                                       : response.error.toStdString();
+        return result;
+    }
+
+    if (response.scalarType != u"float32"_s) {
+        result.errorMessage = "Unsupported remote image scalar type.";
+        return result;
+    }
+
+    const qsizetype expectedBytes =
+            static_cast<qsizetype>(response.width) * response.height * static_cast<qsizetype>(sizeof(float));
+    if (response.width <= 0 || response.height <= 0 || response.data.size() != expectedBytes) {
+        result.errorMessage = "Invalid remote image payload.";
+        return result;
+    }
+
+    vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
+    image->SetExtent(0, response.width - 1, 0, response.height - 1, 0, 0);
+    image->SetOrigin(0., 0., 0.);
+    image->SetSpacing(1., 1., 1.);
+    image->AllocateScalars(VTK_FLOAT, 1);
+    std::memcpy(image->GetScalarPointer(), response.data.constData(),
+                static_cast<std::size_t>(expectedBytes));
+
+    const double *range = image->GetScalarRange();
+    result.imageData = image;
+    result.scalarRange = { range[0], range[1] };
+    result.valid = true;
+    return result;
+}
+}
+
 vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
+    : vtkWindowImage(filepath, {}, {}, parent)
+{
+}
+
+vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUrl,
+                               const QString &datasetId, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowImage),
       filepath(filepath),
-      astro(filepath.toStdString()),
+      isRemoteMode(!datasetId.isEmpty()),
+      remoteBackendUrl(backendUrl),
+      remoteDatasetId(datasetId),
+      astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
+      layers(nullptr),
       importService(std::make_unique<ImageLayerImportService>())
 {
     ui->setupUi(this);
-    this->setWindowTitle(this->filepath);
+    this->setWindowTitle(this->isRemoteMode ? u"%1 [remote image]"_s.arg(this->filepath)
+                                            : this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
     this->statusMessageClearTimer.setSingleShot(true);
     QObject::connect(&this->statusMessageClearTimer, &QTimer::timeout, this, [this]() {
@@ -75,6 +155,25 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
                                             .arg(applyTimer.elapsed());
                          this->clearPersistentStatusMessage();
                      });
+    QObject::connect(&this->remoteImageWatcher, &QFutureWatcher<ImageLayerLoadResult>::finished, this,
+                     [this]() {
+                         const auto result = this->remoteImageWatcher.result();
+                         if (!result.valid || !result.imageData) {
+                             this->persistentStatusActive = false;
+                             this->statusMessageClearTimer.stop();
+                             this->statusBar()->showMessage(result.errorMessage.empty()
+                                                                    ? u"Could not load remote image."_s
+                                                                    : QString::fromStdString(result.errorMessage));
+                             return;
+                         }
+
+                         this->applyRemoteMasterLayer(result);
+                         this->clearPersistentStatusMessage();
+                     });
+
+    this->layers = this->isRemoteMode
+            ? new LayerListModel(createPlaceholderRemoteLayerResult(this->filepath), this)
+            : new LayerListModel(this->filepath.toStdString(), this);
 
     this->setupRenderer();
 
@@ -130,6 +229,18 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
                      &vtkWindowImage::showCurrentLayerSettings);
     QObject::connect(ui->listLayer->selectionModel(), &QItemSelectionModel::currentChanged, this,
                      &vtkWindowImage::updateLUTCustomizer);
+
+    if (this->isRemoteMode) {
+        ui->actionAddFITS->setEnabled(false);
+        ui->actionProfile->setEnabled(false);
+        ui->actionGalactic->setEnabled(false);
+        ui->actionFK5->setEnabled(false);
+        ui->actionEcliptic->setEnabled(false);
+        this->showPersistentStatusMessage(u"Loading remote image..."_s);
+        this->remoteImageWatcher.setFuture(
+                QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl,
+                                  this->remoteDatasetId, this->filepath));
+    }
 }
 
 vtkWindowImage::~vtkWindowImage()
@@ -140,7 +251,8 @@ vtkWindowImage::~vtkWindowImage()
 void vtkWindowImage::closeEvent(QCloseEvent *event)
 {
     if (this->isBusy()) {
-        this->showPersistentStatusMessage(u"Loading layer..."_s);
+        this->showPersistentStatusMessage(this->isRemoteMode ? u"Loading remote image..."_s
+                                                             : u"Loading layer..."_s);
         event->ignore();
         return;
     }
@@ -230,9 +342,11 @@ void vtkWindowImage::setupRenderer()
             std::make_unique<ImageLayerController>(*(this->layers), this->stack, this->colorbar);
 
     // Legend
-    this->legendWCS->Init(this->filepath.toStdString());
-    this->legendWCS->SetWCS(WCS_GALACTIC);
-    ren->AddViewProp(this->legendWCS);
+    if (this->astro) {
+        this->legendWCS->Init(this->filepath.toStdString());
+        this->legendWCS->SetWCS(WCS_GALACTIC);
+        ren->AddViewProp(this->legendWCS);
+    }
 
     ren->ResetCamera();
     win->Render();
@@ -254,15 +368,15 @@ void vtkWindowImage::mouseCallback()
        << this->layers->getPixelValue(this->layers->getMasterIndex(), imageCoord[0], imageCoord[1]);
     ss << "  <image> X: " << worldCoord[0] << " Y: " << worldCoord[1];
 
-    if (!this->astro.isSimulation()) {
+    if (this->astro && !this->astro->isSimulation()) {
         double wcs[2];
-        astro.xy2sky(worldCoord, wcs, WCS_GALACTIC);
+        this->astro->xy2sky(worldCoord, wcs, WCS_GALACTIC);
         ss << "  <galactic> GLON: " << wcs[0] << " GLAT: " << wcs[1];
 
-        astro.xy2sky(worldCoord, wcs, WCS_J2000);
+        this->astro->xy2sky(worldCoord, wcs, WCS_J2000);
         ss << "  <fk5> RA: " << wcs[0] << " Dec: " << wcs[1];
 
-        astro.xy2sky(worldCoord, wcs, WCS_ECLIPTIC);
+        this->astro->xy2sky(worldCoord, wcs, WCS_ECLIPTIC);
         ss << "  <ecliptic> ELON: " << wcs[0] << " ELAT: " << wcs[1];
     }
 
@@ -315,9 +429,30 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
             << QStringLiteral("[perf][layer] render after apply: %1 ms").arg(timer.elapsed());
 }
 
+void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
+{
+    auto *oldActor = this->layers->getMasterLayerActor();
+    auto *newActor = this->layers->replaceMasterLayer(result);
+    if (!newActor) {
+        return;
+    }
+
+    if (oldActor) {
+        this->stack->RemoveImage(oldActor);
+    }
+    this->stack->AddImage(newActor);
+    this->stack->SetActiveLayer(this->layers->getMasterIndex());
+    this->layerController->activateLayer(this->layers->getMasterIndex());
+    auto *renderer = ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer();
+    if (renderer) {
+        renderer->ResetCamera();
+    }
+    this->vtkRender();
+}
+
 bool vtkWindowImage::isBusy() const
 {
-    return this->layerLoadWatcher.isRunning();
+    return this->layerLoadWatcher.isRunning() || this->remoteImageWatcher.isRunning();
 }
 
 void vtkWindowImage::showPersistentStatusMessage(const QString &text, int minDurationMs)
@@ -348,7 +483,7 @@ void vtkWindowImage::clearPersistentStatusMessage()
 
 void vtkWindowImage::setLayerImportEnabled(bool enabled)
 {
-    ui->actionAddFITS->setEnabled(enabled);
+    ui->actionAddFITS->setEnabled(enabled && !this->isRemoteMode);
 }
 
 void vtkWindowImage::vtkRender()

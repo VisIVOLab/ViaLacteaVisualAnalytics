@@ -1,7 +1,6 @@
 #ifndef vtkWindowImage_h
 #define vtkWindowImage_h
 
-#include "AstroUtils.h"
 #include "ImageLayerLoadTask.h"
 
 #include <vtkNew.h>
@@ -13,6 +12,7 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <array>
 #include <memory>
 
 class ImageLayerController;
@@ -20,6 +20,7 @@ class ImageLayerImportService;
 class LayerListModel;
 class LUTCustomizerDialog;
 class ProfileWidget;
+class AstroUtils;
 class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
@@ -37,6 +38,8 @@ class vtkWindowImage : public QMainWindow
 
 public:
     explicit vtkWindowImage(const QString &filepath, QWidget *parent = nullptr);
+    vtkWindowImage(const QString &filepath, const QString &backendUrl, const QString &datasetId,
+                   QWidget *parent = nullptr);
     ~vtkWindowImage();
     void closeEvent(QCloseEvent *event) override;
 
@@ -60,10 +63,14 @@ private slots:
 private:
     Ui::vtkWindowImage *ui;
     const QString filepath;
-    AstroUtils astro;
+    const bool isRemoteMode;
+    const QString remoteBackendUrl;
+    const QString remoteDatasetId;
+    std::unique_ptr<AstroUtils> astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
+    QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
     QElapsedTimer statusMessageElapsed;
     int statusMessageMinDurationMs{ 0 };
@@ -82,6 +89,7 @@ private:
     LayerListModel *layers;
     std::unique_ptr<ImageLayerController> layerController;
     void applyLoadedLayer(const ImageLayerLoadResult &result);
+    void applyRemoteMasterLayer(const ImageLayerLoadResult &result);
     bool isBusy() const;
     void showPersistentStatusMessage(const QString &text, int minDurationMs = 400);
     void clearPersistentStatusMessage();
