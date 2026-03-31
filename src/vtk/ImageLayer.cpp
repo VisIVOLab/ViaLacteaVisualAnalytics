@@ -27,7 +27,10 @@ ImageLayer::ImageLayer(const std::string &filepath) : readerBacked(true), filepa
     ColorMaps::SetColorMap(this->lut);
 
     vtkNew<vtkImageMapToColors> colors;
-    colors->SetInputConnection(this->source->GetOutputPort());
+    auto *img = vtkImageData::SafeDownCast(this->source->GetOutputDataObject(0));
+    if (img) {
+        colors->SetInputData(img);
+    }
     colors->SetLookupTable(this->lut);
 
     vtkNew<vtkImageSliceMapper> mapper;
@@ -52,7 +55,10 @@ ImageLayer::ImageLayer(const ImageLayerLoadResult &result)
     ColorMaps::SetColorMap(this->lut);
 
     vtkNew<vtkImageMapToColors> colors;
-    colors->SetInputConnection(this->source->GetOutputPort());
+    auto *img = vtkImageData::SafeDownCast(this->source->GetOutputDataObject(0));
+    if (img) {
+        colors->SetInputData(img);
+    }
     colors->SetLookupTable(this->lut);
 
     vtkNew<vtkImageSliceMapper> mapper;

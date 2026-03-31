@@ -14,6 +14,7 @@
 class QVTKOpenGLNativeWidget;
 class vtkGenericOpenGLRenderWindow;
 class vtkLookupTable;
+class vtkImageMapToColors;
 class vtkRenderer;
 class vtkScalarBarActor;
 class vtkTrivialProducer;
@@ -49,6 +50,7 @@ private:
     vtkNew<vtkGenericOpenGLRenderWindow> renderWindow;
     vtkNew<vtkRenderer> renderer;
     vtkNew<vtkTrivialProducer> imageSource;
+    vtkNew<vtkImageMapToColors> imageColors;
     vtkNew<vtkLookupTable> lookupTable;
     vtkNew<vtkScalarBarActor> colorbar;
 };

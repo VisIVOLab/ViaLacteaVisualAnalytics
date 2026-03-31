@@ -31,6 +31,7 @@ class vtkFlyingEdges2D;
 class vtkFlyingEdges3D;
 class vtkGenericOpenGLRenderWindow;
 class vtkImageData;
+class vtkImageMapToColors;
 class vtkImageReslice;
 class vtkLegendScaleActorWCS;
 class vtkLookupTable;
@@ -201,6 +202,7 @@ private:
 
     // Slice
     vtkNew<vtkImageReslice> slice;
+    vtkNew<vtkImageMapToColors> sliceColors;
     vtkNew<vtkLookupTable> lutSlice;
     vtkNew<vtkExtractVOI> sliceOnCube;
     vtkNew<vtkLookupTable> lutSliceOnCube;
@@ -220,6 +222,7 @@ private:
     // Moment
     vtkNew<vtkMomentMapFilter> moment;
     vtkNew<vtkTrivialProducer> momentDisplaySource;
+    vtkNew<vtkImageMapToColors> momentColors;
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);

@@ -75,6 +75,15 @@ using namespace Qt::StringLiterals;
 namespace {
 constexpr double pi = 3.14159265358979323846;
 
+vtkSmartPointer<vtkImageData> createPlaceholderImageData()
+{
+    vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
+    image->SetExtent(0, 0, 0, 0, 0, 0);
+    image->AllocateScalars(VTK_FLOAT, 1);
+    image->SetScalarComponentFromFloat(0, 0, 0, 0, 0.f);
+    return image;
+}
+
 bool validBounds(const double bounds[6])
 {
     return std::isfinite(bounds[0]) && std::isfinite(bounds[1]) && std::isfinite(bounds[2])
@@ -937,12 +946,24 @@ void vtkWindowCube::setupSliceRenderer()
     }
     this->lutSlice->SetNanColor(1., 1., 1., 1.);
     ColorMaps::SetColorMap(this->lutSlice);
-    vtkNew<vtkImageMapToColors> colors;
-    colors->SetInputConnection(this->isRemoteMode ? this->remoteSliceDisplaySource->GetOutputPort()
-                                                  : this->slice->GetOutputPort());
-    colors->SetLookupTable(this->lutSlice);
+    if (this->isRemoteMode) {
+        auto *img = vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0));
+        if (img) {
+            this->sliceColors->SetInputData(img);
+        } else {
+            this->sliceColors->SetInputData(createPlaceholderImageData());
+        }
+    } else {
+        auto *img = this->slice->GetOutput();
+        if (img) {
+            this->sliceColors->SetInputData(img);
+        } else {
+            this->sliceColors->SetInputData(createPlaceholderImageData());
+        }
+    }
+    this->sliceColors->SetLookupTable(this->lutSlice);
     vtkNew<vtkImageSliceMapper> sliceMapper;
-    sliceMapper->SetInputConnection(colors->GetOutputPort());
+    sliceMapper->SetInputConnection(this->sliceColors->GetOutputPort());
     sliceMapper->BorderOn();
     vtkNew<vtkImageSlice> sliceActor;
     sliceActor->SetMapper(sliceMapper);
@@ -1011,11 +1032,14 @@ void vtkWindowCube::setupMomentRenderer()
     }
     this->lutMoment->SetNanColor(1., 1., 1., 1.);
     ColorMaps::SetColorMap(this->lutMoment);
-    vtkNew<vtkImageMapToColors> colors;
-    colors->SetInputConnection(this->momentDisplaySource->GetOutputPort());
-    colors->SetLookupTable(this->lutMoment);
+    if (momentImage) {
+        this->momentColors->SetInputData(momentImage);
+    } else {
+        this->momentColors->SetInputData(createPlaceholderImageData());
+    }
+    this->momentColors->SetLookupTable(this->lutMoment);
     vtkNew<vtkImageSliceMapper> momentMapper;
-    momentMapper->SetInputConnection(colors->GetOutputPort());
+    momentMapper->SetInputConnection(this->momentColors->GetOutputPort());
     momentMapper->BorderOn();
     vtkNew<vtkImageSlice> momentActor;
     momentActor->SetMapper(momentMapper);
@@ -1472,6 +1496,13 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
 {
     this->remoteSliceDisplaySource->SetOutput(result.imageData);
     this->remoteSliceDisplaySource->Modified();
+    auto *img = vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0));
+    if (img) {
+        this->sliceColors->SetInputData(img);
+    } else {
+        qWarning() << "[vtk] Expected vtkImageData for remote slice colors but got null";
+        return;
+    }
     this->lutSlice->SetTableRange(result.imageRange[0], result.imageRange[1]);
 
     const QSignalBlocker blockSlider(ui->sliderSlice);
@@ -1684,6 +1715,13 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     totalTimer.start();
 
     this->momentDisplaySource->SetOutput(result.imageData);
+    auto *img = vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    if (img) {
+        this->momentColors->SetInputData(img);
+    } else {
+        qWarning() << "[vtk] Expected vtkImageData for moment colors but got null";
+        return;
+    }
     double currentRange[2];
     this->lutMoment->GetTableRange(currentRange);
     if (std::fabs(currentRange[0] - result.imageRange[0]) >= 1e-6

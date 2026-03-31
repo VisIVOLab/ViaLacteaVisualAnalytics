@@ -27,6 +27,17 @@
 
 using namespace Qt::StringLiterals;
 
+namespace {
+vtkSmartPointer<vtkImageData> createPlaceholderImageData()
+{
+    vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
+    image->SetExtent(0, 0, 0, 0, 0, 0);
+    image->AllocateScalars(VTK_FLOAT, 1);
+    image->SetScalarComponentFromFloat(0, 0, 0, 0, 0.f);
+    return image;
+}
+}
+
 RemoteMomentWindow::RemoteMomentWindow(const QString &backendUrl, const QString &datasetId,
                                        const QString &datasetPath, QWidget *parent)
     : QMainWindow(parent), backendUrl(backendUrl), datasetId(datasetId), datasetPath(datasetPath)
@@ -53,11 +64,15 @@ RemoteMomentWindow::RemoteMomentWindow(const QString &backendUrl, const QString 
     this->lookupTable->SetNanColor(1., 1., 1., 1.);
     ColorMaps::SetColorMap(this->lookupTable);
 
-    vtkNew<vtkImageMapToColors> colors;
-    colors->SetInputConnection(this->imageSource->GetOutputPort());
-    colors->SetLookupTable(this->lookupTable);
+    auto *initialImage = vtkImageData::SafeDownCast(this->imageSource->GetOutputDataObject(0));
+    if (initialImage) {
+        this->imageColors->SetInputData(initialImage);
+    } else {
+        this->imageColors->SetInputData(createPlaceholderImageData());
+    }
+    this->imageColors->SetLookupTable(this->lookupTable);
     vtkNew<vtkImageSliceMapper> mapper;
-    mapper->SetInputConnection(colors->GetOutputPort());
+    mapper->SetInputConnection(this->imageColors->GetOutputPort());
     vtkNew<vtkImageSlice> actor;
     actor->SetMapper(mapper);
     actor->GetProperty()->SetInterpolationTypeToNearest();
@@ -96,6 +111,13 @@ RemoteMomentWindow::RemoteMomentWindow(const QString &backendUrl, const QString 
         }
 
         this->imageSource->SetOutput(result.imageData);
+        auto *img = vtkImageData::SafeDownCast(this->imageSource->GetOutputDataObject(0));
+        if (img) {
+            this->imageColors->SetInputData(img);
+        } else {
+            qWarning() << "[vtk] Expected vtkImageData but got null or wrong type";
+            return;
+        }
         this->lookupTable->SetTableRange(result.imageRange[0], result.imageRange[1]);
         this->renderer->ResetCamera();
         this->renderWindow->Render();
