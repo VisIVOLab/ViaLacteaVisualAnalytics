@@ -62,6 +62,7 @@
 #include <QElapsedTimer>
 #include <QInputDialog>
 #include <QLabel>
+#include <QList>
 #include <QSignalBlocker>
 #include <QtConcurrentRun>
 
@@ -1589,44 +1590,26 @@ void vtkWindowCube::updateSlice()
 void vtkWindowCube::requestRemoteSlice(int sliceIndex)
 {
     sliceIndex = this->clampRemoteSliceIndex(sliceIndex);
+    this->currentRequestedRemoteSliceIndex = sliceIndex;
+    if (this->tryApplyCachedRemoteSlice(sliceIndex)) {
+        return;
+    }
+
+    const QString key = this->remoteSliceCacheKey(sliceIndex);
+    if (this->remoteSliceFetchesInFlight.contains(key)) {
+        this->statusBar()->showMessage(u"Loading remote slice..."_s);
+        return;
+    }
+
     const int requestId = ++this->currentRemoteSliceRequestId;
     ++this->activeRemoteSliceRequests;
     this->statusBar()->showMessage(u"Loading remote slice..."_s);
-
-    auto *watcher = new QFutureWatcher<RemoteCubeSliceResult>(this);
-    watcher->setProperty("requestId", requestId);
-    QObject::connect(watcher, &QFutureWatcher<RemoteCubeSliceResult>::finished, this,
-                     [this, watcher]() {
-                         --this->activeRemoteSliceRequests;
-                         const auto result = watcher->result();
-                         const int requestId = watcher->property("requestId").toInt();
-                         watcher->deleteLater();
-
-                         if (requestId != this->currentRemoteSliceRequestId) {
-                             if (this->activeRemoteSliceRequests == 0) {
-                                 this->clearPersistentStatusMessage();
-                             }
-                             return;
-                         }
-
-                         if (!result.valid || !result.imageData) {
-                             this->persistentStatusActive = false;
-                             this->statusMessageClearTimer.stop();
-                             this->statusBar()->showMessage(result.errorMessage.isEmpty()
-                                                                    ? u"Could not load remote slice."_s
-                                                                    : result.errorMessage);
-                             return;
-                         }
-
-                         this->applyRemoteSliceResult(result);
-                         this->clearPersistentStatusMessage();
-                     });
-    watcher->setFuture(QtConcurrent::run(&fetchRemoteSlice, this->remoteBackendUrl,
-                                         this->remoteDatasetId, sliceIndex));
+    this->startRemoteSliceFetch(sliceIndex, false, requestId);
 }
 
 void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
 {
+    this->cacheRemoteSliceResult(result);
     this->remoteSliceDisplaySource->SetOutput(result.imageData);
     this->remoteSliceDisplaySource->Modified();
     auto *img = vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0));
@@ -1660,6 +1643,7 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     refitParallelSliceCamera(sliceRenderer, result.imageData, this->sliceWin);
     sliceRenderer->ResetCameraClippingRange();
     this->sliceWin->Render();
+    this->prefetchNeighborRemoteSlices(result.index);
 }
 
 int vtkWindowCube::remoteSliceCount() const
@@ -1677,6 +1661,128 @@ double vtkWindowCube::remoteSliceCoordinate(int sliceIndex) const
     const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
     return this->remoteDatasetOrigin[2]
             + this->remoteDatasetSpacing[2] * static_cast<double>(clampedSlice);
+}
+
+QString vtkWindowCube::remoteSliceCacheKey(int sliceIndex) const
+{
+    return QStringLiteral("%1|z|%2")
+            .arg(this->remoteDatasetId)
+            .arg(this->clampRemoteSliceIndex(sliceIndex));
+}
+
+void vtkWindowCube::touchRemoteSliceCacheKey(const QString &key)
+{
+    this->remoteSliceCacheLru.removeAll(key);
+    this->remoteSliceCacheLru.append(key);
+}
+
+void vtkWindowCube::cacheRemoteSliceResult(const RemoteCubeSliceResult &result)
+{
+    if (!result.valid || !result.imageData) {
+        return;
+    }
+
+    const QString key = this->remoteSliceCacheKey(result.index);
+    this->remoteSliceCache.insert(key, result);
+    this->touchRemoteSliceCacheKey(key);
+    while (this->remoteSliceCacheLru.size() > remoteSliceCacheCapacity) {
+        const QString evictedKey = this->remoteSliceCacheLru.takeFirst();
+        this->remoteSliceCache.remove(evictedKey);
+    }
+}
+
+bool vtkWindowCube::tryApplyCachedRemoteSlice(int sliceIndex)
+{
+    const QString key = this->remoteSliceCacheKey(sliceIndex);
+    const auto it = this->remoteSliceCache.constFind(key);
+    if (it == this->remoteSliceCache.cend()) {
+        return false;
+    }
+
+    this->touchRemoteSliceCacheKey(key);
+    this->applyRemoteSliceResult(it.value());
+    this->clearPersistentStatusMessage();
+    return true;
+}
+
+void vtkWindowCube::startRemoteSliceFetch(int sliceIndex, bool isPrefetch, int requestId)
+{
+    sliceIndex = this->clampRemoteSliceIndex(sliceIndex);
+    const QString key = this->remoteSliceCacheKey(sliceIndex);
+    if (this->remoteSliceFetchesInFlight.contains(key)) {
+        return;
+    }
+
+    this->remoteSliceFetchesInFlight.insert(key);
+    auto *watcher = new QFutureWatcher<RemoteCubeSliceResult>(this);
+    watcher->setProperty("requestId", requestId);
+    watcher->setProperty("sliceKey", key);
+    watcher->setProperty("isPrefetch", isPrefetch);
+    QObject::connect(watcher, &QFutureWatcher<RemoteCubeSliceResult>::finished, this,
+                     [this, watcher]() {
+                         const auto result = watcher->result();
+                         const int requestId = watcher->property("requestId").toInt();
+                         const QString key = watcher->property("sliceKey").toString();
+                         const bool isPrefetch = watcher->property("isPrefetch").toBool();
+                         this->remoteSliceFetchesInFlight.remove(key);
+                         if (!isPrefetch) {
+                             --this->activeRemoteSliceRequests;
+                         }
+                         watcher->deleteLater();
+
+                         if (!result.valid || !result.imageData) {
+                             if (!isPrefetch && requestId == this->currentRemoteSliceRequestId) {
+                                 this->persistentStatusActive = false;
+                                 this->statusMessageClearTimer.stop();
+                                 this->statusBar()->showMessage(result.errorMessage.isEmpty()
+                                                                        ? u"Could not load remote slice."_s
+                                                                        : result.errorMessage);
+                             }
+                             return;
+                         }
+
+                         this->cacheRemoteSliceResult(result);
+
+                         const bool requestedSliceMatches = this->clampRemoteSliceIndex(result.index)
+                                 == this->currentRequestedRemoteSliceIndex;
+                         if (!isPrefetch && requestId != this->currentRemoteSliceRequestId) {
+                             if (this->activeRemoteSliceRequests == 0) {
+                                 this->clearPersistentStatusMessage();
+                             }
+                             return;
+                         }
+
+                         if (requestedSliceMatches) {
+                             this->applyRemoteSliceResult(result);
+                             if (!isPrefetch && this->activeRemoteSliceRequests == 0) {
+                                 this->clearPersistentStatusMessage();
+                             }
+                         } else if (!isPrefetch && this->activeRemoteSliceRequests == 0) {
+                             this->clearPersistentStatusMessage();
+                         }
+                     });
+    watcher->setFuture(QtConcurrent::run(&fetchRemoteSlice, this->remoteBackendUrl,
+                                         this->remoteDatasetId, sliceIndex));
+}
+
+void vtkWindowCube::prefetchNeighborRemoteSlices(int sliceIndex)
+{
+    if (!this->isRemoteMode) {
+        return;
+    }
+
+    for (const int neighbor : { sliceIndex - 1, sliceIndex + 1 }) {
+        if (neighbor < 0 || neighbor >= this->remoteSliceCount()) {
+            continue;
+        }
+
+        const QString key = this->remoteSliceCacheKey(neighbor);
+        if (this->remoteSliceCache.contains(key) || this->remoteSliceFetchesInFlight.contains(key)) {
+            continue;
+        }
+
+        this->startRemoteSliceFetch(neighbor, true);
+    }
 }
 
 void vtkWindowCube::updateContoursVisibility()

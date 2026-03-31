@@ -11,8 +11,10 @@
 #include <QFutureWatcher>
 #include <QCloseEvent>
 #include <QElapsedTimer>
+#include <QHash>
 #include <QMainWindow>
 #include <QPointer>
+#include <QSet>
 #include <QTimer>
 
 #include <array>
@@ -155,6 +157,7 @@ private:
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
     QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
     int currentRemoteSliceRequestId{ 0 };
+    int currentRequestedRemoteSliceIndex{ 0 };
     int activeRemoteSliceRequests{ 0 };
     int activeRemoteIsosurfaceRequests{ 0 };
     QTimer isosurfaceDebounceTimer;
@@ -223,9 +226,19 @@ private:
     vtkNew<vtkLookupTable> lutSliceOnCube;
     vtkNew<vtkTrivialProducer> remoteSliceDisplaySource;
     vtkNew<vtkLegendScaleActorWCS> legendSlice;
+    QHash<QString, RemoteCubeSliceResult> remoteSliceCache;
+    QList<QString> remoteSliceCacheLru;
+    QSet<QString> remoteSliceFetchesInFlight;
+    static constexpr int remoteSliceCacheCapacity = 8;
     void updateSlice();
     void requestRemoteSlice(int sliceIndex);
     void applyRemoteSliceResult(const RemoteCubeSliceResult &result);
+    QString remoteSliceCacheKey(int sliceIndex) const;
+    void touchRemoteSliceCacheKey(const QString &key);
+    void cacheRemoteSliceResult(const RemoteCubeSliceResult &result);
+    bool tryApplyCachedRemoteSlice(int sliceIndex);
+    void startRemoteSliceFetch(int sliceIndex, bool isPrefetch, int requestId = 0);
+    void prefetchNeighborRemoteSlices(int sliceIndex);
 
     // Contours
     int level;
