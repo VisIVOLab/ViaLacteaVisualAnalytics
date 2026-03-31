@@ -77,6 +77,16 @@ struct BackendCubeSliceResult
     QByteArray data;
 };
 
+struct BackendIsosurfaceResult
+{
+    bool valid{ false };
+    QString error;
+    int numPoints{ 0 };
+    int numPolys{ 0 };
+    QByteArray pointsData;
+    QByteArray polysData;
+};
+
 class QJsonDocument;
 class QUrl;
 
@@ -93,6 +103,7 @@ public:
     BackendCubePreviewResult requestPreview(const QString &datasetId, int downsample) const;
     BackendCubeSliceResult requestSlice(const QString &datasetId, const QString &axis,
                                         int index) const;
+    BackendIsosurfaceResult requestIsosurface(const QString &datasetId, double threshold) const;
     BackendMomentResult requestMoment(const QString &datasetId, int order) const;
 
 private:

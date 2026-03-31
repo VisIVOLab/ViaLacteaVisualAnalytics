@@ -150,6 +150,31 @@ BackendCubeSliceResult BackendClient::requestSlice(const QString &datasetId, con
     return result;
 }
 
+BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetId,
+                                                         double threshold) const
+{
+    BackendIsosurfaceResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
+                                           { QStringLiteral("threshold"), threshold } });
+    const QByteArray payload =
+            this->performPost(QUrl(this->m_baseUrl + "/products/isosurface"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.numPoints = object.value("num_points").toInt();
+    result.numPolys = object.value("num_polys").toInt();
+    result.pointsData =
+            QByteArray::fromBase64(object.value("points_base64").toString().toUtf8());
+    result.polysData = QByteArray::fromBase64(object.value("polys_base64").toString().toUtf8());
+    return result;
+}
+
 BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int order) const
 {
     BackendMomentResult result;

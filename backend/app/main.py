@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import uuid
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from fastapi import FastAPI, Query
 from pydantic import BaseModel
 
 app = FastAPI(title="VisIVO Backend MVP")
+logger = logging.getLogger("visivo.backend")
 
 _DATASETS: dict[str, dict[str, Any]] = {}
 _FITS_SUFFIXES = {".fits", ".fit", ".fts"}
@@ -94,6 +96,20 @@ class CubeSliceResponse(BaseModel):
     data_base64: str = ""
 
 
+class IsosurfaceProductRequest(BaseModel):
+    dataset_id: str
+    threshold: float
+
+
+class IsosurfaceProductResponse(BaseModel):
+    valid: bool
+    error: str
+    points_base64: str = ""
+    polys_base64: str = ""
+    num_points: int = 0
+    num_polys: int = 0
+
+
 def _normalize_path(raw_path: str) -> Path:
     if not raw_path:
         return Path("/")
@@ -162,7 +178,7 @@ def _detect_kind(path: Path) -> tuple[str, dict[str, Any]]:
     raise ValueError("Unsupported FITS dimensionality.")
 
 
-def _dataset_entry(dataset_id: str) -> dict[str, str]:
+def _dataset_entry(dataset_id: str) -> dict[str, Any]:
     entry = _DATASETS.get(dataset_id)
     if not entry:
         raise ValueError("Unknown dataset_id.")
@@ -185,6 +201,68 @@ def _finite_range(array: np.ndarray) -> tuple[float, float]:
 
 def _encode_array(array: np.ndarray) -> str:
     return base64.b64encode(np.ascontiguousarray(array, dtype=np.float32).tobytes()).decode("ascii")
+
+
+def _encode_int_array(array: np.ndarray) -> str:
+    return base64.b64encode(np.ascontiguousarray(array, dtype=np.int32).tobytes()).decode("ascii")
+
+
+def _compute_isosurface_payload(cube: np.ndarray, entry: dict[str, Any], threshold: float) -> dict[str, Any]:
+    try:
+        import vtk
+        from vtk.util.numpy_support import vtk_to_numpy
+    except Exception as exc:
+        raise RuntimeError(f"VTK Python bindings are required for isosurface compute: {exc}") from exc
+
+    image_import = vtk.vtkImageImport()
+    cube_bytes = np.ascontiguousarray(cube, dtype=np.float32).tobytes()
+    image_import.CopyImportVoidPointer(cube_bytes, len(cube_bytes))
+    image_import.SetDataScalarTypeToFloat()
+    image_import.SetNumberOfScalarComponents(1)
+    image_import.SetDataExtent(0, int(entry["width"]) - 1, 0, int(entry["height"]) - 1, 0,
+                               int(entry["depth"]) - 1)
+    image_import.SetWholeExtent(0, int(entry["width"]) - 1, 0, int(entry["height"]) - 1, 0,
+                                int(entry["depth"]) - 1)
+    spacing = [1.0, 1.0, 1.0]
+    origin = [0.0, 0.0, 0.0]
+    image_import.SetDataSpacing(1.0, 1.0, 1.0)
+    image_import.SetDataOrigin(0.0, 0.0, 0.0)
+    image_import.Update()
+    logger.info(
+        "[remote-iso] image dims=%s spacing=%s origin=%s threshold=%s",
+        (int(entry["width"]), int(entry["height"]), int(entry["depth"])),
+        tuple(float(v) for v in spacing),
+        tuple(float(v) for v in origin),
+        float(threshold),
+    )
+
+    contour = vtk.vtkFlyingEdges3D()
+    contour.SetInputConnection(image_import.GetOutputPort())
+    contour.SetValue(0, float(threshold))
+    contour.ComputeNormalsOff()
+    contour.ComputeGradientsOff()
+    contour.Update()
+
+    mesh = contour.GetOutput()
+    num_points = int(mesh.GetNumberOfPoints())
+    num_polys = int(mesh.GetNumberOfPolys())
+    bounds = mesh.GetBounds()
+    logger.info("[remote-iso] mesh points=%s polys=%s", num_points, num_polys)
+    logger.info(
+        "[remote-iso] mesh bounds=%s",
+        tuple(float(v) for v in bounds),
+    )
+    if num_points == 0 or num_polys == 0:
+        raise ValueError(f"Empty isosurface mesh for threshold {threshold}")
+
+    points_data = vtk_to_numpy(mesh.GetPoints().GetData()).astype(np.float32, copy=False).reshape(-1)
+    polys_data = vtk_to_numpy(mesh.GetPolys().GetData()).astype(np.int32, copy=False)
+    return {
+        "points_base64": _encode_array(points_data),
+        "polys_base64": _encode_int_array(polys_data),
+        "num_points": num_points,
+        "num_polys": num_polys,
+    }
 
 
 def _moment_map(cube: np.ndarray, header: fits.Header, order: int) -> np.ndarray:
@@ -307,6 +385,26 @@ def moment_product(request: MomentProductRequest) -> MomentProductResponse:
         range_max=range_max,
         data_base64=_encode_array(image),
     )
+
+
+@app.post("/products/isosurface", response_model=IsosurfaceProductResponse)
+def isosurface_product(request: IsosurfaceProductRequest) -> IsosurfaceProductResponse:
+    try:
+        entry = _dataset_entry(request.dataset_id)
+        cube_path = _require_cube(request.dataset_id)
+        logger.info(
+            "[remote-iso] request dataset_id=%s threshold=%s path=%s",
+            request.dataset_id,
+            float(request.threshold),
+            cube_path,
+        )
+        cube, _ = _load_dataset_array(cube_path)
+        payload = _compute_isosurface_payload(cube, entry, request.threshold)
+    except Exception as exc:
+        logger.warning("[remote-iso] failed dataset_id=%s error=%s", request.dataset_id, exc)
+        return IsosurfaceProductResponse(valid=False, error=str(exc))
+
+    return IsosurfaceProductResponse(valid=True, error="", **payload)
 
 
 @app.post("/cube/preview", response_model=CubePreviewResponse)

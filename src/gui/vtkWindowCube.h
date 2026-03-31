@@ -51,6 +51,7 @@ QT_END_NAMESPACE
 struct AsyncIsosurfaceResult
 {
     vtkSmartPointer<vtkPolyData> mesh;
+    QString errorMessage;
     int requestId{ 0 };
 };
 
@@ -142,6 +143,7 @@ private:
     QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
     int currentRemoteSliceRequestId{ 0 };
     int activeRemoteSliceRequests{ 0 };
+    int activeRemoteIsosurfaceRequests{ 0 };
     QTimer isosurfaceDebounceTimer;
     int currentMomentRequestId{ 0 };
     int currentIsosurfaceRequestId{ 0 };
@@ -184,7 +186,9 @@ private:
     vtkNew<vtkPiecewiseFunction> volumeOpacity;
     vtkNew<vtkPlaneSource> remoteCuttingPlaneSource;
     vtkNew<vtkActor> remoteCuttingPlaneActor;
+    bool remoteIsosurfaceReady{ false };
     void applyCubeOpenResult(const CubeOpenStageResult &result);
+    void applyIsosurfaceResult(const AsyncIsosurfaceResult &result);
     void startAsyncIsosurface(double isoValue);
     void scheduleIsosurfaceRecompute();
     void scheduleIsosurfacePrewarm();

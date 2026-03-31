@@ -17,9 +17,11 @@
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
+#include <vtkCellArray.h>
 #include <vtkColorTransferFunction.h>
 #include <vtkCoordinate.h>
 #include <vtkExtractVOI.h>
+#include <vtkFloatArray.h>
 #include <vtkFlyingEdges2D.h>
 #include <vtkFlyingEdges3D.h>
 #include <vtkGPUVolumeRayCastMapper.h>
@@ -34,9 +36,10 @@
 #include <vtkInteractorStyleImage.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
-#include <vtkPlaneSource.h>
 #include <vtkOutlineFilter.h>
+#include <vtkPlaneSource.h>
 #include <vtkPiecewiseFunction.h>
+#include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
@@ -44,6 +47,9 @@
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindow.h>
 #include <vtkScalarBarActor.h>
+#include <vtkTransform.h>
+#include <vtkTransformPolyDataFilter.h>
+#include <vtkIdTypeArray.h>
 #include <vtkTrivialProducer.h>
 #include <vtkVolume.h>
 #include <vtkVolumeProperty.h>
@@ -217,6 +223,49 @@ vtkSmartPointer<vtkImageData> decodeRemoteSlice(const QByteArray &data, int widt
     return image;
 }
 
+vtkSmartPointer<vtkPolyData> decodeRemoteIsosurface(const QByteArray &pointsData,
+                                                    const QByteArray &polysData, int numPoints,
+                                                    int numPolys)
+{
+    if (numPoints <= 0 || numPolys <= 0) {
+        return vtkSmartPointer<vtkPolyData>::New();
+    }
+
+    const qsizetype expectedPointsBytes =
+            static_cast<qsizetype>(numPoints) * 3 * static_cast<qsizetype>(sizeof(float));
+    const qsizetype expectedPolysBytes =
+            static_cast<qsizetype>(numPolys) * 4 * static_cast<qsizetype>(sizeof(qint32));
+    if (pointsData.size() != expectedPointsBytes || polysData.size() != expectedPolysBytes) {
+        return nullptr;
+    }
+
+    vtkNew<vtkFloatArray> pointArray;
+    pointArray->SetNumberOfComponents(3);
+    pointArray->SetNumberOfTuples(numPoints);
+    std::memcpy(pointArray->GetVoidPointer(0), pointsData.constData(),
+                static_cast<std::size_t>(expectedPointsBytes));
+
+    vtkNew<vtkPoints> points;
+    points->SetData(pointArray);
+
+    const auto *rawPolys = reinterpret_cast<const qint32 *>(polysData.constData());
+    vtkNew<vtkIdTypeArray> legacyCells;
+    legacyCells->SetNumberOfValues(static_cast<vtkIdType>(numPolys) * 4);
+    for (vtkIdType i = 0; i < legacyCells->GetNumberOfValues(); ++i) {
+        legacyCells->SetValue(i, static_cast<vtkIdType>(rawPolys[i]));
+    }
+
+    vtkNew<vtkCellArray> cells;
+    cells->ImportLegacyFormat(legacyCells);
+
+    vtkSmartPointer<vtkPolyData> mesh = vtkSmartPointer<vtkPolyData>::New();
+    mesh->SetPoints(points);
+    mesh->SetPolys(cells);
+    mesh->BuildCells();
+    mesh->BuildLinks();
+    return mesh;
+}
+
 RemoteCubePreviewResult fetchRemotePreview(const QString &backendUrl, const QString &datasetId,
                                            int downsample)
 {
@@ -276,6 +325,43 @@ RemoteCubeSliceResult fetchRemoteSlice(const QString &backendUrl, const QString 
     result.imageRange = { response.rangeMin, response.rangeMax };
     return result;
 }
+
+AsyncIsosurfaceResult fetchRemoteIsosurface(const QString &backendUrl, const QString &datasetId,
+                                            double isoValue, int requestId)
+{
+    AsyncIsosurfaceResult result;
+    result.requestId = requestId;
+
+    BackendClient client(backendUrl);
+    const auto response = client.requestIsosurface(datasetId, isoValue);
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] response valid=%1 error=%2 num_points=%3 num_polys=%4")
+                       .arg(response.valid)
+                       .arg(response.error)
+                       .arg(response.numPoints)
+                       .arg(response.numPolys);
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] decode points bytes=%1 polys bytes=%2")
+                       .arg(response.pointsData.size())
+                       .arg(response.polysData.size());
+    if (!response.valid) {
+        result.errorMessage =
+                response.error.isEmpty() ? u"Remote isocontour request failed."_s : response.error;
+        return result;
+    }
+
+    result.mesh = decodeRemoteIsosurface(response.pointsData, response.polysData, response.numPoints,
+                                         response.numPolys);
+    if (!result.mesh) {
+        result.errorMessage = u"Invalid remote isocontour payload."_s;
+        return result;
+    }
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] mesh points=%1 polys=%2")
+                       .arg(result.mesh->GetNumberOfPoints())
+                       .arg(result.mesh->GetNumberOfPolys());
+    return result;
+}
 }
 
 vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
@@ -317,10 +403,17 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     });
     this->isosurfaceDebounceTimer.setSingleShot(true);
     QObject::connect(&this->isosurfaceDebounceTimer, &QTimer::timeout, this, [this]() {
+        qDebug().noquote()
+                << QStringLiteral("[remote-iso] debounce fired checked=%1 remote=%2")
+                           .arg(ui->actionIsosurface->isChecked())
+                           .arg(this->isRemoteMode);
         if (this->cubeOpenWatcher.isRunning() || !ui->actionIsosurface->isChecked()) {
             return;
         }
 
+        qDebug().noquote()
+                << QStringLiteral("[remote-iso] launching remote compute threshold=%1")
+                           .arg(ui->lineThreshold->text());
         this->startAsyncIsosurface(ui->lineThreshold->text().toDouble());
     });
 
@@ -502,43 +595,18 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                          }
 
                          if (!result.mesh || result.mesh->GetNumberOfPoints() == 0) {
+                             if (!result.errorMessage.isEmpty()) {
+                                 this->persistentStatusActive = false;
+                                 this->statusMessageClearTimer.stop();
+                                 this->statusBar()->showMessage(result.errorMessage);
+                             }
+                             this->remoteIsosurfaceReady = false;
+                             this->setCubeRenderModeLocally(false);
+                             ui->actionVolume->setChecked(true);
+                             ui->vtkCube->renderWindow()->Render();
                              return;
                          }
-
-                         QElapsedTimer actorTimer;
-                         actorTimer.start();
-                         vtkNew<vtkPolyDataMapper> mapper;
-                         mapper->SetInputData(result.mesh);
-                         mapper->ScalarVisibilityOff();
-
-                         vtkNew<vtkActor> newActor;
-                         newActor->SetMapper(mapper);
-                         if (this->currentIsosurfaceActor) {
-                             newActor->GetProperty()->DeepCopy(
-                                     this->currentIsosurfaceActor->GetProperty());
-                         } else {
-                             newActor->GetProperty()->SetColor(1., 0.5, 1.);
-                         }
-
-                         auto *renderer =
-                                 ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
-                         if (this->currentIsosurfaceActor
-                             && renderer->HasViewProp(this->currentIsosurfaceActor)) {
-                             renderer->RemoveActor(this->currentIsosurfaceActor);
-                         }
-
-                         this->currentIsosurfaceActor = newActor;
-                         qDebug().noquote()
-                                 << QStringLiteral("[perf][isosurface] actor creation+swap: %1 ms")
-                                            .arg(actorTimer.elapsed());
-
-                         QElapsedTimer renderTimer;
-                         renderTimer.start();
-                         this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
-                         ui->vtkCube->renderWindow()->Render();
-                         qDebug().noquote()
-                                 << QStringLiteral("[perf][isosurface] render after apply: %1 ms")
-                                            .arg(renderTimer.elapsed());
+                         this->applyIsosurfaceResult(result);
                          this->clearPersistentStatusMessage();
                      });
 
@@ -664,7 +732,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         ui->lineCubeMean->clear();
         ui->lineCubeRms->clear();
         this->setCubeOpenActionsEnabled(false);
-        ui->actionIsosurface->setEnabled(false);
+        ui->actionIsosurface->setEnabled(true);
         ui->actionIsosurface->setChecked(false);
         ui->actionVolume->setChecked(true);
         this->setCubeRenderModeLocally(false);
@@ -702,6 +770,8 @@ void vtkWindowCube::closeEvent(QCloseEvent *event)
                                                                 : u"Loading full resolution..."_s);
         } else if (this->activeRemoteSliceRequests > 0) {
             this->showPersistentStatusMessage(u"Loading remote slice..."_s);
+        } else if (this->activeRemoteIsosurfaceRequests > 0 || this->isosurfaceWatcher.isRunning()) {
+            this->showPersistentStatusMessage(u"Computing isocontour..."_s);
         } else {
             this->showPersistentStatusMessage(u"Computing moment..."_s);
         }
@@ -730,8 +800,10 @@ void vtkWindowCube::setupCubeRenderer()
     isosurfaceMapper->ScalarVisibilityOff();
     this->isosurface->SetMapper(isosurfaceMapper);
     this->isosurface->GetProperty()->SetColor(1., 0.5, 1.);
-    ren->AddViewProp(this->isosurface);
-    this->currentIsosurfaceActor = this->isosurface;
+    if (!this->isRemoteMode) {
+        ren->AddViewProp(this->isosurface);
+        this->currentIsosurfaceActor = this->isosurface;
+    }
 
     // Volume
     const auto cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
@@ -1652,7 +1724,8 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
 bool vtkWindowCube::isBusy() const
 {
     return this->cubeOpenWatcher.isRunning() || this->remotePreviewWatcher.isRunning()
-            || this->momentComputeWatcher.isRunning() || this->activeRemoteSliceRequests > 0;
+            || this->momentComputeWatcher.isRunning() || this->activeRemoteSliceRequests > 0
+            || this->activeRemoteIsosurfaceRequests > 0 || this->isosurfaceWatcher.isRunning();
 }
 
 void vtkWindowCube::setMomentActionsEnabled(bool enabled)
@@ -1750,6 +1823,18 @@ void vtkWindowCube::changeImageRenderer()
 
 void vtkWindowCube::changeCubeRender()
 {
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] changeCubeRender triggered checked=%1 remote=%2")
+                       .arg(ui->actionIsosurface->isChecked())
+                       .arg(this->isRemoteMode);
+    if (this->isRemoteMode && ui->actionIsosurface->isChecked()) {
+        this->scheduleIsosurfaceRecompute();
+        this->setCubeRenderModeLocally(false);
+        qDebug().noquote()
+                << QStringLiteral("[remote-iso] keeping volume visible while waiting for mesh");
+        ui->vtkCube->renderWindow()->Render();
+        return;
+    }
     this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
     ui->vtkCube->renderWindow()->Render();
 }
@@ -1845,6 +1930,54 @@ void vtkWindowCube::syncSlicesLUT()
 
 void vtkWindowCube::startAsyncIsosurface(double isoValue)
 {
+    const int requestId = ++this->currentIsosurfaceRequestId;
+    this->remoteIsosurfaceReady = false;
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] startAsyncIsosurface requestId=%1 threshold=%2 remote=%3")
+                       .arg(requestId)
+                       .arg(isoValue, 0, 'g', 12)
+                       .arg(this->isRemoteMode);
+    this->showPersistentStatusMessage(u"Computing isocontour..."_s);
+
+    if (this->isRemoteMode) {
+        ++this->activeRemoteIsosurfaceRequests;
+        auto *watcher = new QFutureWatcher<AsyncIsosurfaceResult>(this);
+        watcher->setProperty("requestId", requestId);
+        QObject::connect(watcher, &QFutureWatcher<AsyncIsosurfaceResult>::finished, this,
+                         [this, watcher]() {
+                             --this->activeRemoteIsosurfaceRequests;
+                             const auto result = watcher->result();
+                             const int requestId = watcher->property("requestId").toInt();
+                             watcher->deleteLater();
+
+                             if (requestId != this->currentIsosurfaceRequestId) {
+                                 if (this->activeRemoteIsosurfaceRequests == 0) {
+                                     this->clearPersistentStatusMessage();
+                                 }
+                                 return;
+                             }
+
+                             if (!result.mesh || result.mesh->GetNumberOfPoints() == 0) {
+                                 this->persistentStatusActive = false;
+                                 this->statusMessageClearTimer.stop();
+                                 this->statusBar()->showMessage(result.errorMessage.isEmpty()
+                                                                        ? u"Remote isocontour is empty."_s
+                                                                        : result.errorMessage);
+                                 this->remoteIsosurfaceReady = false;
+                                 this->setCubeRenderModeLocally(false);
+                                 ui->actionVolume->setChecked(true);
+                                 ui->vtkCube->renderWindow()->Render();
+                                 return;
+                             }
+
+                             this->applyIsosurfaceResult(result);
+                             this->clearPersistentStatusMessage();
+                         });
+        watcher->setFuture(QtConcurrent::run(&fetchRemoteIsosurface, this->remoteBackendUrl,
+                                             this->remoteDatasetId, isoValue, requestId));
+        return;
+    }
+
     if (this->isosurfaceWatcher.isRunning()) {
         return;
     }
@@ -1861,8 +1994,6 @@ void vtkWindowCube::startAsyncIsosurface(double isoValue)
     qDebug().noquote() << QStringLiteral("[perf][isosurface] DeepCopy before async launch: %1 ms")
                               .arg(deepCopyTimer.elapsed());
 
-    const int requestId = ++this->currentIsosurfaceRequestId;
-    this->showPersistentStatusMessage(u"Computing isocontour..."_s);
     this->isosurfaceWatcher.setFuture(
             QtConcurrent::run([data, isoValue, requestId]() {
                 return computeIsosurface(data, isoValue, requestId);
@@ -1883,6 +2014,9 @@ void vtkWindowCube::scheduleIsosurfacePrewarm()
 
     this->lastIsosurfacePrewarmGeneration = this->currentFullCubeGeneration;
     QTimer::singleShot(0, this, [this]() {
+        if (this->isRemoteMode) {
+            return;
+        }
         if (this->isosurfaceWatcher.isRunning()) {
             return;
         }
@@ -1898,11 +2032,15 @@ void vtkWindowCube::setCubeRenderModeLocally(bool isosurfaceMode)
         return;
     }
 
+    if (this->isRemoteMode && isosurfaceMode && !this->remoteIsosurfaceReady) {
+        isosurfaceMode = false;
+    }
+
     if (isosurfaceMode) {
         if (this->currentIsosurfaceActor && !renderer->HasViewProp(this->currentIsosurfaceActor)) {
             renderer->AddActor(this->currentIsosurfaceActor);
         }
-        if (renderer->HasViewProp(this->volume)) {
+        if (this->currentIsosurfaceActor && renderer->HasViewProp(this->volume)) {
             renderer->RemoveViewProp(this->volume);
         }
     } else {
@@ -1913,4 +2051,129 @@ void vtkWindowCube::setCubeRenderModeLocally(bool isosurfaceMode)
             renderer->AddViewProp(this->volume);
         }
     }
+}
+
+void vtkWindowCube::applyIsosurfaceResult(const AsyncIsosurfaceResult &result)
+{
+    if (!result.mesh || result.mesh->GetNumberOfPoints() == 0 || result.mesh->GetNumberOfPolys() == 0) {
+        return;
+    }
+
+    vtkSmartPointer<vtkPolyData> displayMesh = result.mesh;
+
+    double meshBounds[6];
+    result.mesh->GetBounds(meshBounds);
+    auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    double cubeBounds[6] = { 0., 0., 0., 0., 0., 0. };
+    if (cubeImage) {
+        cubeImage->GetBounds(cubeBounds);
+    }
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] mesh bounds=%1,%2,%3,%4,%5,%6")
+                       .arg(meshBounds[0], 0, 'g', 12)
+                       .arg(meshBounds[1], 0, 'g', 12)
+                       .arg(meshBounds[2], 0, 'g', 12)
+                       .arg(meshBounds[3], 0, 'g', 12)
+                       .arg(meshBounds[4], 0, 'g', 12)
+                       .arg(meshBounds[5], 0, 'g', 12);
+    qDebug().noquote()
+            << QStringLiteral("[remote-iso] cube bounds=%1,%2,%3,%4,%5,%6")
+                       .arg(cubeBounds[0], 0, 'g', 12)
+                       .arg(cubeBounds[1], 0, 'g', 12)
+                       .arg(cubeBounds[2], 0, 'g', 12)
+                       .arg(cubeBounds[3], 0, 'g', 12)
+                       .arg(cubeBounds[4], 0, 'g', 12)
+                       .arg(cubeBounds[5], 0, 'g', 12);
+
+    const bool degenerateBounds = !std::isfinite(meshBounds[0]) || !std::isfinite(meshBounds[1])
+            || !std::isfinite(meshBounds[2]) || !std::isfinite(meshBounds[3])
+            || !std::isfinite(meshBounds[4]) || !std::isfinite(meshBounds[5])
+            || meshBounds[0] == meshBounds[1] || meshBounds[2] == meshBounds[3]
+            || meshBounds[4] == meshBounds[5];
+    if (degenerateBounds) {
+        qDebug().noquote() << QStringLiteral("[remote-iso] degenerate mesh bounds");
+        this->remoteIsosurfaceReady = false;
+        this->persistentStatusActive = false;
+        this->statusMessageClearTimer.stop();
+        this->statusBar()->showMessage(u"Remote isocontour mesh has invalid bounds."_s);
+        this->setCubeRenderModeLocally(false);
+        ui->actionVolume->setChecked(true);
+        ui->vtkCube->renderWindow()->Render();
+        return;
+    }
+
+    if (this->isRemoteMode && cubeImage && validBounds(cubeBounds)) {
+        const double fullBounds[6] = { 0.0,
+                                       std::max(0, this->remoteDatasetWidth - 1) * 1.0,
+                                       0.0,
+                                       std::max(0, this->remoteDatasetHeight - 1) * 1.0,
+                                       0.0,
+                                       std::max(0, this->remoteDatasetDepth - 1) * 1.0 };
+        const double fullSizeX = std::max(1e-9, fullBounds[1] - fullBounds[0]);
+        const double fullSizeY = std::max(1e-9, fullBounds[3] - fullBounds[2]);
+        const double fullSizeZ = std::max(1e-9, fullBounds[5] - fullBounds[4]);
+        const double displaySizeX = cubeBounds[1] - cubeBounds[0];
+        const double displaySizeY = cubeBounds[3] - cubeBounds[2];
+        const double displaySizeZ = cubeBounds[5] - cubeBounds[4];
+
+        vtkNew<vtkTransform> meshToDisplay;
+        meshToDisplay->Scale(displaySizeX / fullSizeX, displaySizeY / fullSizeY,
+                             displaySizeZ / fullSizeZ);
+        meshToDisplay->Translate(cubeBounds[0], cubeBounds[2], cubeBounds[4]);
+
+        vtkNew<vtkTransformPolyDataFilter> transformFilter;
+        transformFilter->SetTransform(meshToDisplay);
+        transformFilter->SetInputData(result.mesh);
+        transformFilter->Update();
+
+        displayMesh = vtkSmartPointer<vtkPolyData>::New();
+        displayMesh->ShallowCopy(transformFilter->GetOutput());
+
+        double transformedBounds[6];
+        displayMesh->GetBounds(transformedBounds);
+        qDebug().noquote()
+                << QStringLiteral("[remote-iso] transformed mesh bounds=%1,%2,%3,%4,%5,%6")
+                           .arg(transformedBounds[0], 0, 'g', 12)
+                           .arg(transformedBounds[1], 0, 'g', 12)
+                           .arg(transformedBounds[2], 0, 'g', 12)
+                           .arg(transformedBounds[3], 0, 'g', 12)
+                           .arg(transformedBounds[4], 0, 'g', 12)
+                           .arg(transformedBounds[5], 0, 'g', 12);
+    }
+
+    QElapsedTimer actorTimer;
+    actorTimer.start();
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputData(displayMesh);
+    mapper->ScalarVisibilityOff();
+
+    vtkNew<vtkActor> newActor;
+    newActor->SetMapper(mapper);
+    if (this->currentIsosurfaceActor) {
+        newActor->GetProperty()->DeepCopy(this->currentIsosurfaceActor->GetProperty());
+    } else {
+        newActor->GetProperty()->SetColor(1., 0.5, 1.);
+    }
+
+    auto *renderer = ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer();
+    if (this->currentIsosurfaceActor && renderer->HasViewProp(this->currentIsosurfaceActor)) {
+        renderer->RemoveActor(this->currentIsosurfaceActor);
+    }
+
+    this->currentIsosurfaceActor = newActor;
+    this->remoteIsosurfaceReady = true;
+    qDebug().noquote()
+            << QStringLiteral("[perf][isosurface] actor creation+swap: %1 ms")
+                       .arg(actorTimer.elapsed());
+
+    QElapsedTimer renderTimer;
+    renderTimer.start();
+    if (this->isRemoteMode) {
+        ui->actionIsosurface->setChecked(true);
+    }
+    this->setCubeRenderModeLocally(true);
+    ui->vtkCube->renderWindow()->Render();
+    qDebug().noquote()
+            << QStringLiteral("[perf][isosurface] render after apply: %1 ms")
+                       .arg(renderTimer.elapsed());
 }
