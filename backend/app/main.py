@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import uuid
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from astropy.io import fits
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 
 app = FastAPI(title="VisIVO Backend MVP")
 
-_DATASETS: dict[str, dict[str, str]] = {}
+_DATASETS: dict[str, dict[str, Any]] = {}
 _FITS_SUFFIXES = {".fits", ".fit", ".fts"}
 
 
@@ -36,6 +37,11 @@ class OpenDatasetResponse(BaseModel):
     error: str
     dataset_id: str = ""
     kind: str = ""
+    width: int = 0
+    height: int = 0
+    depth: int = 0
+    spacing: list[float] = [1.0, 1.0, 1.0]
+    origin: list[float] = [0.0, 0.0, 0.0]
 
 
 class MomentProductRequest(BaseModel):
@@ -114,12 +120,45 @@ def _load_dataset_array(path: Path) -> tuple[np.ndarray, fits.Header]:
     return array, header
 
 
-def _detect_kind(path: Path) -> str:
-    array, _ = _load_dataset_array(path)
+def _dataset_geometry(array: np.ndarray, header: fits.Header) -> dict[str, Any]:
     if array.ndim == 2:
-        return "image"
+        width = int(array.shape[1])
+        height = int(array.shape[0])
+        depth = 1
+    elif array.ndim == 3:
+        width = int(array.shape[2])
+        height = int(array.shape[1])
+        depth = int(array.shape[0])
+    else:
+        raise ValueError("Unsupported FITS dimensionality.")
+
+    spacing = [
+        float(header.get("CDELT1", 1.0)),
+        float(header.get("CDELT2", 1.0)),
+        float(header.get("CDELT3", 1.0)),
+    ]
+    origin = [
+        float(header.get("CRVAL1", 0.0)) - spacing[0] * (float(header.get("CRPIX1", 1.0)) - 1.0),
+        float(header.get("CRVAL2", 0.0)) - spacing[1] * (float(header.get("CRPIX2", 1.0)) - 1.0),
+        float(header.get("CRVAL3", 0.0)) - spacing[2] * (float(header.get("CRPIX3", 1.0)) - 1.0),
+    ]
+
+    return {
+        "width": width,
+        "height": height,
+        "depth": depth,
+        "spacing": spacing,
+        "origin": origin,
+    }
+
+
+def _detect_kind(path: Path) -> tuple[str, dict[str, Any]]:
+    array, header = _load_dataset_array(path)
+    geometry = _dataset_geometry(array, header)
+    if array.ndim == 2:
+        return "image", geometry
     if array.ndim == 3:
-        return "cube"
+        return "cube", geometry
     raise ValueError("Unsupported FITS dimensionality.")
 
 
@@ -229,13 +268,23 @@ def open_dataset(request: OpenDatasetRequest) -> OpenDatasetResponse:
         return OpenDatasetResponse(valid=False, error="FITS file not found.")
 
     try:
-        kind = _detect_kind(path)
+        kind, geometry = _detect_kind(path)
     except Exception as exc:
         return OpenDatasetResponse(valid=False, error=str(exc))
 
     dataset_id = f"ds_{uuid.uuid4().hex[:12]}"
-    _DATASETS[dataset_id] = {"path": str(path), "kind": kind}
-    return OpenDatasetResponse(valid=True, error="", dataset_id=dataset_id, kind=kind)
+    _DATASETS[dataset_id] = {"path": str(path), "kind": kind, **geometry}
+    return OpenDatasetResponse(
+        valid=True,
+        error="",
+        dataset_id=dataset_id,
+        kind=kind,
+        width=geometry["width"],
+        height=geometry["height"],
+        depth=geometry["depth"],
+        spacing=geometry["spacing"],
+        origin=geometry["origin"],
+    )
 
 
 @app.post("/products/moment", response_model=MomentProductResponse)

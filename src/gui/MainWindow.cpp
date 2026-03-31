@@ -177,7 +177,8 @@ void MainWindow::openRemoteData()
         return;
     }
 
-    auto *win = new vtkWindowCube(remotePath, client.baseUrl(), opened.datasetId, this);
+    auto *win = new vtkWindowCube(remotePath, client.baseUrl(), opened.datasetId, opened.width,
+                                  opened.height, opened.depth, opened.spacing, opened.origin, this);
     win->show();
     win->raise();
     win->activateWindow();

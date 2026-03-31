@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QString>
 
+#include <array>
 #include <vector>
 
 struct BackendFileEntry
@@ -32,6 +33,11 @@ struct BackendOpenDatasetResult
     QString error;
     QString datasetId;
     QString kind;
+    int width{ 0 };
+    int height{ 0 };
+    int depth{ 0 };
+    std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
+    std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
 };
 
 struct BackendMomentResult

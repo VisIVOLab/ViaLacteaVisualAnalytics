@@ -79,7 +79,9 @@ class vtkWindowCube : public QMainWindow
 public:
     vtkWindowCube(const QString &filepath, QWidget *parent = nullptr);
     vtkWindowCube(const QString &filepath, const QString &backendUrl, const QString &datasetId,
-                  QWidget *parent = nullptr);
+                  int remoteWidth, int remoteHeight, int remoteDepth,
+                  const std::array<double, 3> &remoteSpacing,
+                  const std::array<double, 3> &remoteOrigin, QWidget *parent = nullptr);
     ~vtkWindowCube() override;
     void closeEvent(QCloseEvent *event) override;
 
@@ -124,6 +126,11 @@ private:
     const bool isRemoteMode;
     const QString remoteBackendUrl;
     const QString remoteDatasetId;
+    const int remoteDatasetWidth;
+    const int remoteDatasetHeight;
+    const int remoteDatasetDepth;
+    const std::array<double, 3> remoteDatasetSpacing;
+    const std::array<double, 3> remoteDatasetOrigin;
     std::unique_ptr<AstroUtils> astro;
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
@@ -184,6 +191,9 @@ private:
     void setCubeRenderModeLocally(bool isosurfaceMode);
     void updateCube();
     void updateRemoteCuttingPlane(int sliceIndex);
+    int remoteSliceCount() const;
+    int clampRemoteSliceIndex(int sliceIndex) const;
+    double remoteSliceCoordinate(int sliceIndex) const;
 
     // Slice
     vtkNew<vtkImageReslice> slice;

@@ -83,6 +83,19 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path) const
     result.error = object.value("error").toString();
     result.datasetId = object.value("dataset_id").toString();
     result.kind = object.value("kind").toString();
+    result.width = object.value("width").toInt();
+    result.height = object.value("height").toInt();
+    result.depth = object.value("depth").toInt();
+    const QJsonArray spacing = object.value("spacing").toArray();
+    const QJsonArray origin = object.value("origin").toArray();
+    for (int i = 0; i < 3; ++i) {
+        if (i < spacing.size()) {
+            result.spacing[static_cast<std::size_t>(i)] = spacing.at(i).toDouble(1.0);
+        }
+        if (i < origin.size()) {
+            result.origin[static_cast<std::size_t>(i)] = origin.at(i).toDouble(0.0);
+        }
+    }
     return result;
 }
 

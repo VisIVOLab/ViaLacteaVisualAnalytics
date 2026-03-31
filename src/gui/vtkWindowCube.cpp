@@ -279,18 +279,25 @@ RemoteCubeSliceResult fetchRemoteSlice(const QString &backendUrl, const QString 
 }
 
 vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
-    : vtkWindowCube(filepath, {}, {}, parent)
+    : vtkWindowCube(filepath, {}, {}, 0, 0, 0, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, parent)
 {
 }
 
 vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
-                             const QString &datasetId, QWidget *parent)
+                             const QString &datasetId, int remoteWidth, int remoteHeight,
+                             int remoteDepth, const std::array<double, 3> &remoteSpacing,
+                             const std::array<double, 3> &remoteOrigin, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowCube),
       filepath(filepath),
       isRemoteMode(!datasetId.isEmpty()),
       remoteBackendUrl(backendUrl),
       remoteDatasetId(datasetId),
+      remoteDatasetWidth(remoteWidth),
+      remoteDatasetHeight(remoteHeight),
+      remoteDatasetDepth(remoteDepth),
+      remoteDatasetSpacing(remoteSpacing),
+      remoteDatasetOrigin(remoteOrigin),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -619,11 +626,20 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(QString::fromStdString(unit)));
     }
     ui->lineSpectral->setText(this->astro ? QString::number(this->astro->getInitialSpectralValue())
-                                          : QStringLiteral("0"));
+                                          : QString::number(this->remoteSliceCoordinate(0)));
     QObject::connect(ui->sliderSlice, &QSlider::actionTriggered, this,
                      &vtkWindowCube::sliceSliderChanged);
     QObject::connect(ui->spinSlice, &QSpinBox::valueChanged, this,
                      &vtkWindowCube::sliceSpinChanged);
+    if (this->isRemoteMode) {
+        const int maxSliceValue = std::max(1, this->remoteSliceCount());
+        ui->sliderSlice->setMinimum(1);
+        ui->spinSlice->setMinimum(1);
+        ui->sliderSlice->setMaximum(maxSliceValue);
+        ui->spinSlice->setMaximum(maxSliceValue);
+        ui->sliderSlice->setValue(1);
+        ui->spinSlice->setValue(1);
+    }
 
     // Setup Contours UI
     ui->lineLevel->setText(QString::number(this->level));
@@ -1098,15 +1114,15 @@ void vtkWindowCube::updateRemoteCuttingPlane(int sliceIndex)
         return;
     }
 
-    const int clampedSlice = std::clamp(sliceIndex, extent[4], extent[5]);
+    const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
     double bounds[6];
     cubeImage->GetBounds(bounds);
 
     double z = 0.5 * (bounds[4] + bounds[5]);
-    const int zCount = extent[5] - extent[4];
-    if (zCount > 0) {
+    const int realDepth = this->remoteSliceCount();
+    if (realDepth > 1) {
         const double fraction =
-                static_cast<double>(clampedSlice - extent[4]) / static_cast<double>(zCount);
+                static_cast<double>(clampedSlice) / static_cast<double>(realDepth - 1);
         z = bounds[4] + fraction * (bounds[5] - bounds[4]);
     }
 
@@ -1158,8 +1174,9 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         this->currentIsosurfaceActor->GetMapper()->Modified();
     }
 
-    const int clampedSlice = std::clamp(ui->spinSlice->value() - 1, result.dataExtent[4],
-                                        result.dataExtent[5]);
+    const int clampedSlice = this->isRemoteMode
+            ? this->clampRemoteSliceIndex(ui->spinSlice->value() - 1)
+            : std::clamp(ui->spinSlice->value() - 1, result.dataExtent[4], result.dataExtent[5]);
     qDebug().noquote()
             << QStringLiteral("[perf][cube] apply clamp slice index: %1 ms").arg(
                        totalTimer.elapsed());
@@ -1169,8 +1186,10 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     {
         const QSignalBlocker blockSlider(ui->sliderSlice);
         const QSignalBlocker blockSpin(ui->spinSlice);
-        ui->sliderSlice->setMaximum(result.dataExtent[5] + 1);
-        ui->spinSlice->setMaximum(result.dataExtent[5] + 1);
+        const int maxSliceValue = this->isRemoteMode ? std::max(1, this->remoteSliceCount())
+                                                     : (result.dataExtent[5] + 1);
+        ui->sliderSlice->setMaximum(maxSliceValue);
+        ui->spinSlice->setMaximum(maxSliceValue);
         ui->sliderSlice->setValue(clampedSlice + 1);
         ui->spinSlice->setValue(clampedSlice + 1);
     }
@@ -1232,7 +1251,7 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     ui->lineSpectral->setText(this->astro
                                       ? QString::number(this->astro->getInitialSpectralValue()
                                                         + this->astro->getIncrements()[2] * clampedSlice)
-                                      : QString::number(clampedSlice));
+                                      : QString::number(this->remoteSliceCoordinate(clampedSlice)));
     qDebug().noquote()
             << QStringLiteral("[perf][cube] apply cube UI fields: %1 ms").arg(
                        cubeFieldsTimer.elapsed());
@@ -1340,6 +1359,7 @@ void vtkWindowCube::updateSlice()
 
 void vtkWindowCube::requestRemoteSlice(int sliceIndex)
 {
+    sliceIndex = this->clampRemoteSliceIndex(sliceIndex);
     const int requestId = ++this->currentRemoteSliceRequestId;
     ++this->activeRemoteSliceRequests;
     this->statusBar()->showMessage(u"Loading remote slice..."_s);
@@ -1389,7 +1409,7 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     ui->lineSpectral->setText(this->astro
                                       ? QString::number(this->astro->getInitialSpectralValue()
                                                         + this->astro->getIncrements()[2] * result.index)
-                                      : QString::number(result.index));
+                                      : QString::number(this->remoteSliceCoordinate(result.index)));
     this->updateRemoteCuttingPlane(result.index);
     ui->vtkCube->renderWindow()->Render();
     qDebug().noquote() << QStringLiteral("[remote-plane] render triggered");
@@ -1404,6 +1424,23 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     refitParallelSliceCamera(sliceRenderer, result.imageData, this->sliceWin);
     sliceRenderer->ResetCameraClippingRange();
     this->sliceWin->Render();
+}
+
+int vtkWindowCube::remoteSliceCount() const
+{
+    return std::max(1, this->remoteDatasetDepth);
+}
+
+int vtkWindowCube::clampRemoteSliceIndex(int sliceIndex) const
+{
+    return std::clamp(sliceIndex, 0, this->remoteSliceCount() - 1);
+}
+
+double vtkWindowCube::remoteSliceCoordinate(int sliceIndex) const
+{
+    const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
+    return this->remoteDatasetOrigin[2]
+            + this->remoteDatasetSpacing[2] * static_cast<double>(clampedSlice);
 }
 
 void vtkWindowCube::updateContoursVisibility()
