@@ -3,8 +3,11 @@
 
 #include "AboutDialog.h"
 #include "AuthWrapper.h"
+#include "app/BackendClient.h"
 #include "DatasetOpenService.h"
 #include "DatasetWindowFactory.h"
+#include "RemoteFileBrowserDialog.h"
+#include "RemoteMomentWindow.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "WebViewProcess.h"
@@ -15,6 +18,7 @@
 #include <QDir>
 #include <QDoubleValidator>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QWebChannel>
 #include <qstylehints.h>
@@ -102,6 +106,19 @@ void MainWindow::setApplicationTheme()
 
 void MainWindow::openLocalData()
 {
+    bool ok = false;
+    const QString source = QInputDialog::getItem(
+            this, u"Open dataset"_s, u"Source"_s, { u"Local file"_s, u"Remote backend"_s }, 0,
+            false, &ok);
+    if (!ok || source.isEmpty()) {
+        return;
+    }
+
+    if (source == u"Remote backend"_s) {
+        this->openRemoteData();
+        return;
+    }
+
     const QString filepath = QFileDialog::getOpenFileName(
             this, u"Open local FITS file"_s, QString(), u"FITS files (*.fits *.fit)"_s);
     if (filepath.isEmpty()) {
@@ -120,6 +137,47 @@ void MainWindow::openLocalData()
         return;
     }
 
+    win->show();
+    win->raise();
+    win->activateWindow();
+}
+
+void MainWindow::openRemoteData()
+{
+    BackendClient client;
+    const auto health = client.health();
+    if (!health.ok) {
+        QMessageBox::critical(this, u"Backend unavailable"_s,
+                              health.error.isEmpty() ? u"Could not reach backend."_s : health.error);
+        return;
+    }
+
+    RemoteFileBrowserDialog dialog(client.baseUrl(), this);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    const QString remotePath = dialog.selectedFilePath();
+    if (remotePath.isEmpty()) {
+        return;
+    }
+
+    const auto opened = client.openDataset(remotePath);
+    if (!opened.valid) {
+        QMessageBox::critical(this, u"Could not open remote dataset"_s,
+                              opened.error.isEmpty() ? u"Backend rejected dataset open."_s
+                                                     : opened.error);
+        return;
+    }
+
+    if (opened.kind != u"cube"_s) {
+        QMessageBox::information(this, u"Remote dataset"_s,
+                                 QStringLiteral("This MVP currently supports remote cube datasets "
+                                                "for moment products only."));
+        return;
+    }
+
+    auto *win = new RemoteMomentWindow(client.baseUrl(), opened.datasetId, remotePath, this);
     win->show();
     win->raise();
     win->activateWindow();

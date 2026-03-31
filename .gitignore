@@ -347,3 +347,5 @@ xcuserdata/
 
 /Code/build
 /build
+/backend/__pycache__
+/backend/app/__pycache__

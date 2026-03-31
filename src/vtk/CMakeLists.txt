@@ -1,4 +1,6 @@
 add_library(visivo_shared_vtk STATIC
+        ${PROJECT_SOURCE_DIR}/src/app/BackendClient.cpp
+        ${PROJECT_SOURCE_DIR}/src/app/BackendClient.h
         ${PROJECT_SOURCE_DIR}/src/vtk/ColorMaps.cpp
         ${PROJECT_SOURCE_DIR}/src/vtk/ColorMaps.h
         ${PROJECT_SOURCE_DIR}/src/vtk/CubeOpenPreviewTask.cpp
@@ -28,6 +30,7 @@ add_library(visivo_shared_vtk STATIC
 target_link_libraries(visivo_shared_vtk
         PUBLIC
         ${VTK_LIBRARIES}
+        Qt::Network
         PRIVATE
         visivo_shared_core
         wcs

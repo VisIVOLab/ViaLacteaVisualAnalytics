@@ -71,6 +71,10 @@ set(PROJECT_SOURCES
         src/auth/OIDCAuthorizationCodeFlow.h
         src/auth/VisIVOUrlSchemeHandler.cpp
         src/auth/VisIVOUrlSchemeHandler.h
+        src/gui/RemoteFileBrowserDialog.cpp
+        src/gui/RemoteFileBrowserDialog.h
+        src/gui/RemoteMomentWindow.cpp
+        src/gui/RemoteMomentWindow.h
         src/gui/AboutDialog.cpp
         src/gui/AboutDialog.h
         src/gui/CubeViewController.cpp

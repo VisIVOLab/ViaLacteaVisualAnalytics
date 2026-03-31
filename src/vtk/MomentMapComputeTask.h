@@ -12,6 +12,8 @@ class vtkImageData;
 struct MomentMapComputeRequest
 {
     QString filepath;
+    QString datasetId;
+    QString backendUrl;
     int momentOrder;
 };
 

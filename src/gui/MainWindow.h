@@ -38,6 +38,7 @@ private slots:
    * Show a QFileDialog to select and open local files
    */
     void openLocalData();
+    void openRemoteData();
 
     /**
    * Show the Settings Dialog

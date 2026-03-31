@@ -1,22 +1,40 @@
 #include "MomentProcessingService.h"
 
+#include "app/BackendClient.h"
+
+#include <QByteArray>
+
 #include <vtkImageData.h>
 #include <vtkLookupTable.h>
 #include <vtkMomentMapFilter.h>
 
+#include <cstring>
+
 MomentProcessingService::MomentProcessingService(vtkMomentMapFilter *moment,
-                                                 vtkLookupTable *lutMoment)
-    : moment(moment), lutMoment(lutMoment)
+                                                 vtkLookupTable *lutMoment,
+                                                 MomentComputeMode mode)
+    : moment(moment), lutMoment(lutMoment), mode(mode)
 {
 }
 
 MomentResult MomentProcessingService::computeMoment(const MomentRequest &request) const
 {
-    return this->computeMomentLocal(request);
+    switch (this->mode) {
+    case MomentComputeMode::Local:
+        return this->computeMomentLocal(request);
+    case MomentComputeMode::Remote:
+        return this->computeMomentRemote(request);
+    }
+
+    return { nullptr, { 0., 0. }, false, QStringLiteral("Unsupported moment compute mode.") };
 }
 
 MomentResult MomentProcessingService::computeMomentLocal(const MomentRequest &request) const
 {
+    if (!this->moment || !this->lutMoment) {
+        return { nullptr, { 0., 0. }, false, QStringLiteral("Local moment runtime not available.") };
+    }
+
     switch (request.order) {
     case 0:
     case 1:
@@ -45,11 +63,41 @@ MomentResult MomentProcessingService::computeMomentLocal(const MomentRequest &re
 
 MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &request) const
 {
-    return this->computeMomentLocal(request);
+    if (request.datasetId.isEmpty()) {
+        return { nullptr, { 0., 0. }, false, QStringLiteral("Missing remote dataset_id.") };
+    }
+
+    BackendClient client(request.backendUrl);
+    const auto response = client.requestMoment(request.datasetId, request.order);
+    if (!response.valid) {
+        return { nullptr, { 0., 0. }, false,
+                 response.error.isEmpty() ? QStringLiteral("Remote moment request failed.")
+                                          : response.error };
+    }
+
+    if (response.scalarType != QStringLiteral("float32")) {
+        return { nullptr, { 0., 0. }, false, QStringLiteral("Unsupported remote scalar type.") };
+    }
+
+    const qsizetype expectedBytes =
+            static_cast<qsizetype>(response.width) * response.height * static_cast<qsizetype>(sizeof(float));
+    if (response.width <= 0 || response.height <= 0 || response.data.size() != expectedBytes) {
+        return { nullptr, { 0., 0. }, false, QStringLiteral("Invalid remote moment payload.") };
+    }
+
+    MomentResult result;
+    result.valid = true;
+    result.imageRange = { response.rangeMin, response.rangeMax };
+    result.image = vtkSmartPointer<vtkImageData>::New();
+    result.image->SetExtent(0, response.width - 1, 0, response.height - 1, 0, 0);
+    result.image->AllocateScalars(VTK_FLOAT, 1);
+    std::memcpy(result.image->GetScalarPointer(), response.data.constData(),
+                static_cast<std::size_t>(expectedBytes));
+    return result;
 }
 
 MomentMapResult MomentProcessingService::process(const MomentMapRequest &request) const
 {
-    const auto result = this->computeMoment(MomentRequest { {}, request.momentOrder });
+    const auto result = this->computeMoment(MomentRequest { {}, {}, {}, request.momentOrder });
     return { result.valid, result.imageRange };
 }

@@ -11,9 +11,17 @@ class vtkImageData;
 class vtkLookupTable;
 class vtkMomentMapFilter;
 
+enum class MomentComputeMode
+{
+    Local,
+    Remote
+};
+
 struct MomentRequest
 {
     QString datasetPath;
+    QString datasetId;
+    QString backendUrl;
     int order;
 };
 
@@ -41,7 +49,8 @@ class MomentProcessingService
 {
 public:
     // Binds the service to the current local VTK runtime objects used by the cube view.
-    MomentProcessingService(vtkMomentMapFilter *moment, vtkLookupTable *lutMoment);
+    MomentProcessingService(vtkMomentMapFilter *moment, vtkLookupTable *lutMoment,
+                            MomentComputeMode mode = MomentComputeMode::Local);
 
     // Dispatches moment computation. Currently always resolves to the local implementation.
     MomentResult computeMoment(const MomentRequest &request) const;
@@ -58,6 +67,7 @@ public:
 private:
     vtkMomentMapFilter *moment;
     vtkLookupTable *lutMoment;
+    MomentComputeMode mode;
 };
 
 #endif

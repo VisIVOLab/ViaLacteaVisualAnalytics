@@ -17,8 +17,36 @@ MomentMapComputeResult computeMomentMap(const MomentMapComputeRequest &request)
     totalTimer.start();
     MomentMapComputeResult result;
 
-    if (request.filepath.isEmpty()) {
+    const bool remoteMode = !request.datasetId.isEmpty();
+    const auto mode = remoteMode ? MomentComputeMode::Remote : MomentComputeMode::Local;
+
+    if (!remoteMode && request.filepath.isEmpty()) {
         result.errorMessage = "Empty dataset path.";
+        return result;
+    }
+
+    if (remoteMode) {
+        vtkLookupTable *lutMoment = nullptr;
+        vtkMomentMapFilter *moment = nullptr;
+        MomentProcessingService processing(moment, lutMoment, mode);
+        QElapsedTimer computeTimer;
+        computeTimer.start();
+        const auto processed = processing.computeMoment(
+                MomentRequest { request.filepath, request.datasetId, request.backendUrl,
+                                request.momentOrder });
+        qDebug().noquote()
+                << QStringLiteral("[perf][moment] worker compute: %1 ms").arg(computeTimer.elapsed());
+        if (!processed.valid || !processed.image) {
+            result.errorMessage = processed.error.isEmpty() ? QStringLiteral("Remote moment failed.")
+                                                            : processed.error;
+            return result;
+        }
+
+        result.valid = true;
+        result.imageRange = processed.imageRange;
+        result.imageData = processed.image;
+        qDebug().noquote()
+                << QStringLiteral("[perf][moment] worker total: %1 ms").arg(totalTimer.elapsed());
         return result;
     }
 
@@ -35,7 +63,7 @@ MomentMapComputeResult computeMomentMap(const MomentMapComputeRequest &request)
     moment->Init(request.filepath.toStdString());
 
     vtkNew<vtkLookupTable> lutMoment;
-    MomentProcessingService processing(moment, lutMoment);
+    MomentProcessingService processing(moment, lutMoment, mode);
     QElapsedTimer computeTimer;
     computeTimer.start();
     const auto processed = processing.process(MomentMapRequest { request.momentOrder });

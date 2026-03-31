@@ -1057,8 +1057,8 @@ void vtkWindowCube::setMomentOrder(int order)
     this->momentComputeWatcher.setProperty("requestId", requestId);
     this->setMomentActionsEnabled(false);
     this->showPersistentStatusMessage(u"Computing moment..."_s);
-    this->momentComputeWatcher.setFuture(
-            QtConcurrent::run(&computeMomentMap, MomentMapComputeRequest { this->filepath, order }));
+    this->momentComputeWatcher.setFuture(QtConcurrent::run(
+            &computeMomentMap, MomentMapComputeRequest { this->filepath, {}, {}, order }));
 }
 
 void vtkWindowCube::showPersistentStatusMessage(const QString &text, int minDurationMs)
