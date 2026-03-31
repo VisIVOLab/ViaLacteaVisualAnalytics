@@ -3,6 +3,7 @@
 
 #include <QByteArray>
 #include <QString>
+#include <QStringList>
 
 #include <array>
 #include <vector>
@@ -12,6 +13,9 @@ struct BackendFileEntry
     QString name;
     QString path;
     QString type;
+    qint64 size{ 0 };
+    QString modifiedTime;
+    bool isFits{ false };
 };
 
 struct BackendHealthResult
@@ -24,6 +28,7 @@ struct BackendListFilesResult
 {
     bool valid{ false };
     QString error;
+    QString currentPath;
     std::vector<BackendFileEntry> entries;
 };
 
@@ -38,6 +43,13 @@ struct BackendOpenDatasetResult
     int depth{ 0 };
     std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
     std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
+};
+
+struct BackendFileHeaderResult
+{
+    bool valid{ false };
+    QString error;
+    QStringList cards;
 };
 
 struct BackendMomentResult
@@ -120,6 +132,7 @@ public:
 
     BackendHealthResult health() const;
     BackendListFilesResult listFiles(const QString &path) const;
+    BackendFileHeaderResult fileHeader(const QString &path) const;
     BackendOpenDatasetResult openDataset(const QString &path) const;
     BackendCubePreviewResult requestPreview(const QString &datasetId, int downsample) const;
     BackendCubeSliceResult requestSlice(const QString &datasetId, const QString &axis,

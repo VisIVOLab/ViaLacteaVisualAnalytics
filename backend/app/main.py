@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timezone
 import logging
 import uuid
 from pathlib import Path
@@ -22,12 +23,26 @@ class FileEntry(BaseModel):
     name: str
     path: str
     type: str
+    size: int = 0
+    modified_time: str = ""
+    is_fits: bool = False
 
 
 class FilesListResponse(BaseModel):
     valid: bool
     error: str
+    current_path: str = ""
     entries: list[FileEntry]
+
+
+class FileHeaderRequest(BaseModel):
+    path: str
+
+
+class FileHeaderResponse(BaseModel):
+    valid: bool
+    error: str
+    cards: list[str]
 
 
 class OpenDatasetRequest(BaseModel):
@@ -145,7 +160,7 @@ class IsosurfaceProductResponse(BaseModel):
 
 def _normalize_path(raw_path: str) -> Path:
     if not raw_path:
-        return Path("/")
+        return Path.home()
     return Path(raw_path).expanduser().resolve()
 
 
@@ -348,28 +363,70 @@ def health() -> dict[str, bool]:
 
 
 @app.get("/files/list", response_model=FilesListResponse)
-def list_files(path: str = Query("/")) -> FilesListResponse:
+def list_files(path: str = Query("")) -> FilesListResponse:
     try:
         directory = _normalize_path(path)
     except Exception:
-        return FilesListResponse(valid=False, error="Invalid path.", entries=[])
+        return FilesListResponse(valid=False, error="Invalid path.", current_path="", entries=[])
 
     if not directory.exists() or not directory.is_dir():
-        return FilesListResponse(valid=False, error="Directory not found.", entries=[])
+        return FilesListResponse(valid=False, error="Directory not found.", current_path="", entries=[])
 
     entries: list[FileEntry] = []
     try:
         children = sorted(directory.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower()))
     except OSError as exc:
-        return FilesListResponse(valid=False, error=str(exc), entries=[])
+        return FilesListResponse(valid=False, error=str(exc), current_path=str(directory), entries=[])
 
     for child in children:
-        if child.is_dir():
-            entries.append(FileEntry(name=child.name, path=str(child), type="directory"))
-        elif _is_fits_file(child):
-            entries.append(FileEntry(name=child.name, path=str(child), type="file"))
+        try:
+            stat = child.stat()
+            size = int(stat.st_size)
+            modified_time = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+        except OSError:
+            size = 0
+            modified_time = ""
 
-    return FilesListResponse(valid=True, error="", entries=entries)
+        if child.is_dir():
+            entries.append(
+                FileEntry(
+                    name=child.name,
+                    path=str(child),
+                    type="directory",
+                    size=size,
+                    modified_time=modified_time,
+                    is_fits=False,
+                )
+            )
+        elif child.is_file():
+            entries.append(
+                FileEntry(
+                    name=child.name,
+                    path=str(child),
+                    type="file",
+                    size=size,
+                    modified_time=modified_time,
+                    is_fits=_is_fits_file(child),
+                )
+            )
+
+    return FilesListResponse(valid=True, error="", current_path=str(directory), entries=entries)
+
+
+@app.post("/files/header", response_model=FileHeaderResponse)
+def file_header(request: FileHeaderRequest) -> FileHeaderResponse:
+    try:
+        path = _normalize_path(request.path)
+        if not _is_fits_file(path):
+            raise ValueError("FITS file not found.")
+
+        with fits.open(path, memmap=True) as hdul:
+            header = hdul[0].header
+            cards = [str(card) for card in header.cards]
+    except Exception as exc:
+        return FileHeaderResponse(valid=False, error=str(exc), cards=[])
+
+    return FileHeaderResponse(valid=True, error="", cards=cards)
 
 
 @app.post("/datasets/open", response_model=OpenDatasetResponse)

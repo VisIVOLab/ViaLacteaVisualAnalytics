@@ -54,15 +54,42 @@ BackendListFilesResult BackendClient::listFiles(const QString &path) const
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
     result.valid = object.value("valid").toBool(false);
     result.error = object.value("error").toString();
+    result.currentPath = object.value("current_path").toString();
     const QJsonArray entries = object.value("entries").toArray();
     result.entries.reserve(static_cast<std::size_t>(entries.size()));
     for (const QJsonValue &value : entries) {
         const QJsonObject entryObject = value.toObject();
         result.entries.push_back({ entryObject.value("name").toString(),
                                    entryObject.value("path").toString(),
-                                   entryObject.value("type").toString() });
+                                   entryObject.value("type").toString(),
+                                   entryObject.value("size").toInteger(),
+                                   entryObject.value("modified_time").toString(),
+                                   entryObject.value("is_fits").toBool(false) });
     }
 
+    return result;
+}
+
+BackendFileHeaderResult BackendClient::fileHeader(const QString &path) const
+{
+    BackendFileHeaderResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("path"), path } });
+    const QByteArray payload =
+            this->performPost(QUrl(this->m_baseUrl + "/files/header"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    const QJsonArray cards = object.value("cards").toArray();
+    result.cards.reserve(cards.size());
+    for (const QJsonValue &value : cards) {
+        result.cards.push_back(value.toString());
+    }
     return result;
 }
 
