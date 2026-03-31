@@ -130,6 +130,13 @@ private slots:
     void setInteractorStyleProfile();
 
 private:
+    enum class RemoteCubeDisplayState
+    {
+        Preview,
+        LoadingFullResolution,
+        FullResolution,
+    };
+
     struct MomentMapApplyResult
     {
         vtkSmartPointer<vtkImageData> imageData;
@@ -170,6 +177,7 @@ private:
     int statusMessageMinDurationMs{ 0 };
     bool persistentStatusActive{ false };
     bool usingHighResCube{ false };
+    RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
 
     vtkNew<vtkFITSReader> reader;
     float lowerBound;
@@ -255,6 +263,7 @@ private:
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
     void applyMomentMapResult(const MomentMapApplyResult &result);
     bool isBusy() const;
+    void setRemoteCubeDisplayState(RemoteCubeDisplayState state);
     void showPersistentStatusMessage(const QString &text, int minDurationMs = 400);
     void clearPersistentStatusMessage();
     void setCubeOpenStateLabel(const QString &text);

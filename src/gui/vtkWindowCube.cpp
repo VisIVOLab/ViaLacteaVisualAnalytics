@@ -642,9 +642,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                                                      result.dataExtent,
                                                      0.,
                                                      0. });
+                         this->setRemoteCubeDisplayState(RemoteCubeDisplayState::Preview);
                          qDebug().noquote() << QStringLiteral("[remote-plane] preview valid");
                          if (!this->requestHighResCube()) {
-                             this->setCubeOpenStateLabel({ });
+                             this->setRemoteCubeDisplayState(this->usingHighResCube
+                                                                     ? RemoteCubeDisplayState::FullResolution
+                                                                     : RemoteCubeDisplayState::Preview);
                              this->clearPersistentStatusMessage();
                          }
                      });
@@ -654,7 +657,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                          if (!result.valid || !result.cubeImageData) {
                              this->persistentStatusActive = false;
                              this->statusMessageClearTimer.stop();
-                             this->setCubeOpenStateLabel({ });
+                             this->setRemoteCubeDisplayState(RemoteCubeDisplayState::Preview);
                              this->statusBar()->showMessage(result.errorMessage.isEmpty()
                                                                     ? u"Could not load remote high-resolution cube."_s
                                                                     : result.errorMessage);
@@ -671,7 +674,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                                                      result.dataExtent,
                                                      result.cubeMean,
                                                      result.cubeRms });
-                         this->setCubeOpenStateLabel({ });
+                         this->setRemoteCubeDisplayState(RemoteCubeDisplayState::FullResolution);
                          this->clearPersistentStatusMessage();
                      });
     QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
@@ -854,7 +857,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         ui->actionIsosurface->setChecked(false);
         ui->actionVolume->setChecked(true);
         this->setCubeRenderModeLocally(false);
-        this->setCubeOpenStateLabel(u"Remote preview"_s);
+        this->setRemoteCubeDisplayState(RemoteCubeDisplayState::Preview);
         this->showPersistentStatusMessage(u"Loading remote preview..."_s);
         this->remotePreviewWatcher.setFuture(
                 QtConcurrent::run(&fetchRemotePreview, this->remoteBackendUrl, this->remoteDatasetId, 4));
@@ -1309,7 +1312,7 @@ bool vtkWindowCube::requestHighResCube()
     }
 
     const auto roi = this->computeVisibleROI();
-    this->setCubeOpenStateLabel(u"Loading full resolution..."_s);
+    this->setRemoteCubeDisplayState(RemoteCubeDisplayState::LoadingFullResolution);
     this->showPersistentStatusMessage(u"Loading full resolution..."_s);
     this->remoteHighResCubeWatcher.setFuture(
             QtConcurrent::run(&fetchRemoteSubvolume, this->remoteBackendUrl, this->remoteDatasetId, roi));
@@ -2004,6 +2007,26 @@ bool vtkWindowCube::isBusy() const
             || this->remoteHighResCubeWatcher.isRunning()
             || this->momentComputeWatcher.isRunning() || this->activeRemoteSliceRequests > 0
             || this->activeRemoteIsosurfaceRequests > 0 || this->isosurfaceWatcher.isRunning();
+}
+
+void vtkWindowCube::setRemoteCubeDisplayState(RemoteCubeDisplayState state)
+{
+    this->remoteCubeDisplayState = state;
+    if (!this->isRemoteMode) {
+        return;
+    }
+
+    switch (state) {
+    case RemoteCubeDisplayState::Preview:
+        this->setCubeOpenStateLabel(u"Preview"_s);
+        break;
+    case RemoteCubeDisplayState::LoadingFullResolution:
+        this->setCubeOpenStateLabel(u"Loading full resolution..."_s);
+        break;
+    case RemoteCubeDisplayState::FullResolution:
+        this->setCubeOpenStateLabel(u"Full resolution"_s);
+        break;
+    }
 }
 
 void vtkWindowCube::setMomentActionsEnabled(bool enabled)
