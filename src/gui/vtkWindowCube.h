@@ -36,6 +36,7 @@ class vtkLegendScaleActorWCS;
 class vtkLookupTable;
 class vtkMomentMapFilter;
 class vtkOrientationMarkerWidget;
+class vtkPlaneSource;
 class vtkPiecewiseFunction;
 class vtkPolyData;
 class vtkTrivialProducer;
@@ -53,12 +54,32 @@ struct AsyncIsosurfaceResult
     int requestId{ 0 };
 };
 
+struct RemoteCubePreviewResult
+{
+    bool valid{ false };
+    QString errorMessage;
+    vtkSmartPointer<vtkImageData> cubeImageData;
+    std::array<double, 2> cubeRange{ 0., 0. };
+    std::array<int, 6> dataExtent{ 0, -1, 0, -1, 0, -1 };
+};
+
+struct RemoteCubeSliceResult
+{
+    bool valid{ false };
+    QString errorMessage;
+    vtkSmartPointer<vtkImageData> imageData;
+    std::array<double, 2> imageRange{ 0., 0. };
+    int index{ 0 };
+};
+
 class vtkWindowCube : public QMainWindow
 {
     Q_OBJECT
 
 public:
     vtkWindowCube(const QString &filepath, QWidget *parent = nullptr);
+    vtkWindowCube(const QString &filepath, const QString &backendUrl, const QString &datasetId,
+                  QWidget *parent = nullptr);
     ~vtkWindowCube() override;
     void closeEvent(QCloseEvent *event) override;
 
@@ -100,14 +121,20 @@ private:
 
     Ui::vtkWindowCube *ui;
     const QString filepath;
-    AstroUtils astro;
+    const bool isRemoteMode;
+    const QString remoteBackendUrl;
+    const QString remoteDatasetId;
+    std::unique_ptr<AstroUtils> astro;
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QPointer<QLabel> cubeOpenStateLabel;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
+    QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
     QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
+    int currentRemoteSliceRequestId{ 0 };
+    int activeRemoteSliceRequests{ 0 };
     QTimer isosurfaceDebounceTimer;
     int currentMomentRequestId{ 0 };
     int currentIsosurfaceRequestId{ 0 };
@@ -148,20 +175,26 @@ private:
     vtkNew<vtkVolume> volume;
     vtkNew<vtkColorTransferFunction> volumeColorTransferFunction;
     vtkNew<vtkPiecewiseFunction> volumeOpacity;
+    vtkNew<vtkPlaneSource> remoteCuttingPlaneSource;
+    vtkNew<vtkActor> remoteCuttingPlaneActor;
     void applyCubeOpenResult(const CubeOpenStageResult &result);
     void startAsyncIsosurface(double isoValue);
     void scheduleIsosurfaceRecompute();
     void scheduleIsosurfacePrewarm();
     void setCubeRenderModeLocally(bool isosurfaceMode);
     void updateCube();
+    void updateRemoteCuttingPlane(int sliceIndex);
 
     // Slice
     vtkNew<vtkImageReslice> slice;
     vtkNew<vtkLookupTable> lutSlice;
     vtkNew<vtkExtractVOI> sliceOnCube;
     vtkNew<vtkLookupTable> lutSliceOnCube;
+    vtkNew<vtkTrivialProducer> remoteSliceDisplaySource;
     vtkNew<vtkLegendScaleActorWCS> legendSlice;
     void updateSlice();
+    void requestRemoteSlice(int sliceIndex);
+    void applyRemoteSliceResult(const RemoteCubeSliceResult &result);
 
     // Contours
     int level;

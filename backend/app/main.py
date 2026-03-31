@@ -54,6 +54,40 @@ class MomentProductResponse(BaseModel):
     data_base64: str = ""
 
 
+class CubePreviewRequest(BaseModel):
+    dataset_id: str
+    downsample: int = 1
+
+
+class CubePreviewResponse(BaseModel):
+    valid: bool
+    error: str
+    width: int = 0
+    height: int = 0
+    depth: int = 0
+    scalar_type: str = ""
+    range_min: float = 0.0
+    range_max: float = 0.0
+    data_base64: str = ""
+
+
+class CubeSliceRequest(BaseModel):
+    dataset_id: str
+    axis: str
+    index: int
+
+
+class CubeSliceResponse(BaseModel):
+    valid: bool
+    error: str
+    width: int = 0
+    height: int = 0
+    scalar_type: str = ""
+    range_min: float = 0.0
+    range_max: float = 0.0
+    data_base64: str = ""
+
+
 def _normalize_path(raw_path: str) -> Path:
     if not raw_path:
         return Path("/")
@@ -87,6 +121,31 @@ def _detect_kind(path: Path) -> str:
     if array.ndim == 3:
         return "cube"
     raise ValueError("Unsupported FITS dimensionality.")
+
+
+def _dataset_entry(dataset_id: str) -> dict[str, str]:
+    entry = _DATASETS.get(dataset_id)
+    if not entry:
+        raise ValueError("Unknown dataset_id.")
+    return entry
+
+
+def _require_cube(dataset_id: str) -> Path:
+    entry = _dataset_entry(dataset_id)
+    if entry["kind"] != "cube":
+        raise ValueError("Cube endpoint requires a cube dataset.")
+    return Path(entry["path"])
+
+
+def _finite_range(array: np.ndarray) -> tuple[float, float]:
+    finite = np.isfinite(array)
+    if not finite.any():
+        return 0.0, 0.0
+    return float(np.nanmin(array)), float(np.nanmax(array))
+
+
+def _encode_array(array: np.ndarray) -> str:
+    return base64.b64encode(np.ascontiguousarray(array, dtype=np.float32).tobytes()).decode("ascii")
 
 
 def _moment_map(cube: np.ndarray, header: fits.Header, order: int) -> np.ndarray:
@@ -181,28 +240,14 @@ def open_dataset(request: OpenDatasetRequest) -> OpenDatasetResponse:
 
 @app.post("/products/moment", response_model=MomentProductResponse)
 def moment_product(request: MomentProductRequest) -> MomentProductResponse:
-    entry = _DATASETS.get(request.dataset_id)
-    if not entry:
-        return MomentProductResponse(valid=False, error="Unknown dataset_id.")
-
-    if entry["kind"] != "cube":
-        return MomentProductResponse(valid=False, error="Moment products require a cube dataset.")
-
     try:
-        cube, header = _load_dataset_array(Path(entry["path"]))
+        cube_path = _require_cube(request.dataset_id)
+        cube, header = _load_dataset_array(cube_path)
         image = np.asarray(_moment_map(cube, header, request.moment_order), dtype=np.float32)
     except Exception as exc:
         return MomentProductResponse(valid=False, error=str(exc))
 
-    finite = np.isfinite(image)
-    if finite.any():
-        range_min = float(np.nanmin(image))
-        range_max = float(np.nanmax(image))
-    else:
-        range_min = 0.0
-        range_max = 0.0
-
-    payload = base64.b64encode(np.ascontiguousarray(image).tobytes()).decode("ascii")
+    range_min, range_max = _finite_range(image)
     return MomentProductResponse(
         valid=True,
         error="",
@@ -211,5 +256,56 @@ def moment_product(request: MomentProductRequest) -> MomentProductResponse:
         scalar_type="float32",
         range_min=range_min,
         range_max=range_max,
-        data_base64=payload,
+        data_base64=_encode_array(image),
+    )
+
+
+@app.post("/cube/preview", response_model=CubePreviewResponse)
+def cube_preview(request: CubePreviewRequest) -> CubePreviewResponse:
+    try:
+        cube_path = _require_cube(request.dataset_id)
+        cube, _ = _load_dataset_array(cube_path)
+        stride = max(1, int(request.downsample))
+        preview = np.asarray(cube[::stride, ::stride, ::stride], dtype=np.float32)
+    except Exception as exc:
+        return CubePreviewResponse(valid=False, error=str(exc))
+
+    range_min, range_max = _finite_range(preview)
+    return CubePreviewResponse(
+        valid=True,
+        error="",
+        width=int(preview.shape[2]),
+        height=int(preview.shape[1]),
+        depth=int(preview.shape[0]),
+        scalar_type="float32",
+        range_min=range_min,
+        range_max=range_max,
+        data_base64=_encode_array(preview),
+    )
+
+
+@app.post("/cube/slice", response_model=CubeSliceResponse)
+def cube_slice(request: CubeSliceRequest) -> CubeSliceResponse:
+    try:
+        cube_path = _require_cube(request.dataset_id)
+        cube, _ = _load_dataset_array(cube_path)
+        axis = request.axis.lower()
+        if axis != "z":
+            raise ValueError("Only axis='z' is supported in this step.")
+        if request.index < 0 or request.index >= cube.shape[0]:
+            raise ValueError("Slice index out of range.")
+        image = np.asarray(cube[request.index, :, :], dtype=np.float32)
+    except Exception as exc:
+        return CubeSliceResponse(valid=False, error=str(exc))
+
+    range_min, range_max = _finite_range(image)
+    return CubeSliceResponse(
+        valid=True,
+        error="",
+        width=int(image.shape[1]),
+        height=int(image.shape[0]),
+        scalar_type="float32",
+        range_min=range_min,
+        range_max=range_max,
+        data_base64=_encode_array(image),
     )

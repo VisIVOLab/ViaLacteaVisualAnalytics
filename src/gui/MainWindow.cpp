@@ -7,10 +7,10 @@
 #include "DatasetOpenService.h"
 #include "DatasetWindowFactory.h"
 #include "RemoteFileBrowserDialog.h"
-#include "RemoteMomentWindow.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "WebViewProcess.h"
+#include "vtkWindowCube.h"
 
 #include <QButtonGroup>
 #include <QCloseEvent>
@@ -177,7 +177,7 @@ void MainWindow::openRemoteData()
         return;
     }
 
-    auto *win = new RemoteMomentWindow(client.baseUrl(), opened.datasetId, remotePath, this);
+    auto *win = new vtkWindowCube(remotePath, client.baseUrl(), opened.datasetId, this);
     win->show();
     win->raise();
     win->activateWindow();

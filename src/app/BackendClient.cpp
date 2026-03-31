@@ -86,6 +86,57 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path) const
     return result;
 }
 
+BackendCubePreviewResult BackendClient::requestPreview(const QString &datasetId, int downsample) const
+{
+    BackendCubePreviewResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
+                                           { QStringLiteral("downsample"), downsample } });
+    const QByteArray payload = this->performPost(QUrl(this->m_baseUrl + "/cube/preview"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.width = object.value("width").toInt();
+    result.height = object.value("height").toInt();
+    result.depth = object.value("depth").toInt();
+    result.scalarType = object.value("scalar_type").toString();
+    result.rangeMin = object.value("range_min").toDouble();
+    result.rangeMax = object.value("range_max").toDouble();
+    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    return result;
+}
+
+BackendCubeSliceResult BackendClient::requestSlice(const QString &datasetId, const QString &axis,
+                                                   int index) const
+{
+    BackendCubeSliceResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
+                                           { QStringLiteral("axis"), axis },
+                                           { QStringLiteral("index"), index } });
+    const QByteArray payload = this->performPost(QUrl(this->m_baseUrl + "/cube/slice"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.width = object.value("width").toInt();
+    result.height = object.value("height").toInt();
+    result.scalarType = object.value("scalar_type").toString();
+    result.rangeMin = object.value("range_min").toDouble();
+    result.rangeMax = object.value("range_max").toDouble();
+    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    return result;
+}
+
 BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int order) const
 {
     BackendMomentResult result;

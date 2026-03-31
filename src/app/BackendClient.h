@@ -46,6 +46,31 @@ struct BackendMomentResult
     QByteArray data;
 };
 
+struct BackendCubePreviewResult
+{
+    bool valid{ false };
+    QString error;
+    int width{ 0 };
+    int height{ 0 };
+    int depth{ 0 };
+    QString scalarType;
+    double rangeMin{ 0. };
+    double rangeMax{ 0. };
+    QByteArray data;
+};
+
+struct BackendCubeSliceResult
+{
+    bool valid{ false };
+    QString error;
+    int width{ 0 };
+    int height{ 0 };
+    QString scalarType;
+    double rangeMin{ 0. };
+    double rangeMax{ 0. };
+    QByteArray data;
+};
+
 class QJsonDocument;
 class QUrl;
 
@@ -59,6 +84,9 @@ public:
     BackendHealthResult health() const;
     BackendListFilesResult listFiles(const QString &path) const;
     BackendOpenDatasetResult openDataset(const QString &path) const;
+    BackendCubePreviewResult requestPreview(const QString &datasetId, int downsample) const;
+    BackendCubeSliceResult requestSlice(const QString &datasetId, const QString &axis,
+                                        int index) const;
     BackendMomentResult requestMoment(const QString &datasetId, int order) const;
 
 private:
