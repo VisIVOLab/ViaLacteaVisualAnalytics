@@ -96,6 +96,26 @@ class CubeSliceResponse(BaseModel):
     data_base64: str = ""
 
 
+class CubeSubvolumeRequest(BaseModel):
+    dataset_id: str
+    x0: int
+    x1: int
+    y0: int
+    y1: int
+    z0: int
+    z1: int
+
+
+class CubeSubvolumeResponse(BaseModel):
+    valid: bool
+    error: str
+    width: int = 0
+    height: int = 0
+    depth: int = 0
+    scalar_type: str = ""
+    data_base64: str = ""
+
+
 class IsosurfaceProductRequest(BaseModel):
     dataset_id: str
     threshold: float
@@ -455,4 +475,37 @@ def cube_slice(request: CubeSliceRequest) -> CubeSliceResponse:
         range_min=range_min,
         range_max=range_max,
         data_base64=_encode_array(image),
+    )
+
+
+@app.post("/cube/subvolume", response_model=CubeSubvolumeResponse)
+def cube_subvolume(request: CubeSubvolumeRequest) -> CubeSubvolumeResponse:
+    try:
+        cube_path = _require_cube(request.dataset_id)
+        cube, _ = _load_dataset_array(cube_path)
+        if cube.ndim != 3:
+            raise ValueError("Subvolume endpoint requires a cube dataset.")
+
+        depth, height, width = cube.shape
+        x0 = max(0, min(request.x0, width - 1))
+        x1 = max(0, min(request.x1, width - 1))
+        y0 = max(0, min(request.y0, height - 1))
+        y1 = max(0, min(request.y1, height - 1))
+        z0 = max(0, min(request.z0, depth - 1))
+        z1 = max(0, min(request.z1, depth - 1))
+        if x0 > x1 or y0 > y1 or z0 > z1:
+            raise ValueError("Invalid subvolume ROI.")
+
+        subvolume = np.ascontiguousarray(cube[z0 : z1 + 1, y0 : y1 + 1, x0 : x1 + 1], dtype=np.float32)
+    except Exception as exc:
+        return CubeSubvolumeResponse(valid=False, error=str(exc))
+
+    return CubeSubvolumeResponse(
+        valid=True,
+        error="",
+        width=int(subvolume.shape[2]),
+        height=int(subvolume.shape[1]),
+        depth=int(subvolume.shape[0]),
+        scalar_type="float32",
+        data_base64=_encode_array(subvolume),
     )

@@ -74,6 +74,17 @@ struct RemoteCubeSliceResult
     int index{ 0 };
 };
 
+struct RemoteCubeSubvolumeResult
+{
+    bool valid{ false };
+    QString errorMessage;
+    vtkSmartPointer<vtkImageData> cubeImageData;
+    std::array<double, 2> cubeRange{ 0., 0. };
+    std::array<int, 6> dataExtent{ 0, -1, 0, -1, 0, -1 };
+    double cubeMean{ 0. };
+    double cubeRms{ 0. };
+};
+
 class vtkWindowCube : public QMainWindow
 {
     Q_OBJECT
@@ -140,6 +151,7 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
+    QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
     QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
     int currentRemoteSliceRequestId{ 0 };
@@ -154,6 +166,7 @@ private:
     QElapsedTimer statusMessageElapsed;
     int statusMessageMinDurationMs{ 0 };
     bool persistentStatusActive{ false };
+    bool usingHighResCube{ false };
 
     vtkNew<vtkFITSReader> reader;
     float lowerBound;
@@ -195,6 +208,8 @@ private:
     void scheduleIsosurfacePrewarm();
     void setCubeRenderModeLocally(bool isosurfaceMode);
     void updateCube();
+    std::array<int, 6> computeVisibleROI() const;
+    bool requestHighResCube();
     void updateRemoteCuttingPlane(int sliceIndex);
     int remoteSliceCount() const;
     int clampRemoteSliceIndex(int sliceIndex) const;

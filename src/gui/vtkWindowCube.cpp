@@ -212,6 +212,8 @@ vtkSmartPointer<vtkImageData> decodeRemoteVolume(const QByteArray &data, int wid
 
     vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
     image->SetExtent(0, width - 1, 0, height - 1, 0, depth - 1);
+    image->SetOrigin(0., 0., 0.);
+    image->SetSpacing(1., 1., 1.);
     image->AllocateScalars(VTK_FLOAT, 1);
     std::memcpy(image->GetScalarPointer(), data.constData(), static_cast<std::size_t>(expectedBytes));
     return image;
@@ -227,9 +229,55 @@ vtkSmartPointer<vtkImageData> decodeRemoteSlice(const QByteArray &data, int widt
 
     vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
     image->SetExtent(0, width - 1, 0, height - 1, 0, 0);
+    image->SetOrigin(0., 0., 0.);
+    image->SetSpacing(1., 1., 1.);
     image->AllocateScalars(VTK_FLOAT, 1);
     std::memcpy(image->GetScalarPointer(), data.constData(), static_cast<std::size_t>(expectedBytes));
     return image;
+}
+
+void computeVolumeStats(vtkImageData *image, std::array<double, 2> &range, double &mean, double &rms)
+{
+    range = { 0., 0. };
+    mean = 0.;
+    rms = 0.;
+    if (!image) {
+        return;
+    }
+
+    double scalarRange[2];
+    image->GetScalarRange(scalarRange);
+    range = { scalarRange[0], scalarRange[1] };
+
+    int extent[6];
+    image->GetExtent(extent);
+    const auto voxelCount = static_cast<qsizetype>(extent[1] - extent[0] + 1)
+            * static_cast<qsizetype>(extent[3] - extent[2] + 1)
+            * static_cast<qsizetype>(extent[5] - extent[4] + 1);
+    if (voxelCount <= 0) {
+        return;
+    }
+
+    const auto *values = static_cast<const float *>(image->GetScalarPointer());
+    double sum = 0.;
+    double sumSq = 0.;
+    qsizetype finiteCount = 0;
+    for (qsizetype i = 0; i < voxelCount; ++i) {
+        const double value = values[i];
+        if (!std::isfinite(value)) {
+            continue;
+        }
+        sum += value;
+        sumSq += value * value;
+        ++finiteCount;
+    }
+
+    if (finiteCount <= 0) {
+        return;
+    }
+
+    mean = sum / static_cast<double>(finiteCount);
+    rms = std::sqrt(sumSq / static_cast<double>(finiteCount));
 }
 
 vtkSmartPointer<vtkPolyData> decodeRemoteIsosurface(const QByteArray &pointsData,
@@ -332,6 +380,38 @@ RemoteCubeSliceResult fetchRemoteSlice(const QString &backendUrl, const QString 
 
     result.valid = true;
     result.imageRange = { response.rangeMin, response.rangeMax };
+    return result;
+}
+
+RemoteCubeSubvolumeResult fetchRemoteSubvolume(const QString &backendUrl, const QString &datasetId,
+                                               const std::array<int, 6> &roi)
+{
+    RemoteCubeSubvolumeResult result;
+
+    BackendClient client(backendUrl);
+    const auto response = client.requestSubvolume(datasetId, roi[0], roi[1], roi[2], roi[3], roi[4],
+                                                  roi[5]);
+    if (!response.valid) {
+        result.errorMessage =
+                response.error.isEmpty() ? u"Remote subvolume request failed."_s : response.error;
+        return result;
+    }
+
+    if (response.scalarType != u"float32"_s) {
+        result.errorMessage = u"Unsupported remote subvolume scalar type."_s;
+        return result;
+    }
+
+    result.cubeImageData = decodeRemoteVolume(response.data, response.width, response.height,
+                                              response.depth);
+    if (!result.cubeImageData) {
+        result.errorMessage = u"Invalid remote subvolume payload."_s;
+        return result;
+    }
+
+    result.valid = true;
+    result.dataExtent = { 0, response.width - 1, 0, response.height - 1, 0, response.depth - 1 };
+    computeVolumeStats(result.cubeImageData, result.cubeRange, result.cubeMean, result.cubeRms);
     return result;
 }
 
@@ -562,6 +642,34 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                                                      0.,
                                                      0. });
                          qDebug().noquote() << QStringLiteral("[remote-plane] preview valid");
+                         if (!this->requestHighResCube()) {
+                             this->setCubeOpenStateLabel({ });
+                             this->clearPersistentStatusMessage();
+                         }
+                     });
+    QObject::connect(&this->remoteHighResCubeWatcher,
+                     &QFutureWatcher<RemoteCubeSubvolumeResult>::finished, this, [this]() {
+                         const auto result = this->remoteHighResCubeWatcher.result();
+                         if (!result.valid || !result.cubeImageData) {
+                             this->persistentStatusActive = false;
+                             this->statusMessageClearTimer.stop();
+                             this->setCubeOpenStateLabel({ });
+                             this->statusBar()->showMessage(result.errorMessage.isEmpty()
+                                                                    ? u"Could not load remote high-resolution cube."_s
+                                                                    : result.errorMessage);
+                             return;
+                         }
+
+                         this->usingHighResCube = true;
+                         this->applyCubeOpenResult({ true,
+                                                     { },
+                                                     result.cubeImageData,
+                                                     nullptr,
+                                                     result.cubeRange,
+                                                     { 0., 0. },
+                                                     result.dataExtent,
+                                                     result.cubeMean,
+                                                     result.cubeRms });
                          this->setCubeOpenStateLabel({ });
                          this->clearPersistentStatusMessage();
                      });
@@ -774,7 +882,8 @@ vtkWindowCube::~vtkWindowCube()
 void vtkWindowCube::closeEvent(QCloseEvent *event)
 {
     if (this->isBusy()) {
-        if (this->cubeOpenWatcher.isRunning() || this->remotePreviewWatcher.isRunning()) {
+        if (this->cubeOpenWatcher.isRunning() || this->remotePreviewWatcher.isRunning()
+            || this->remoteHighResCubeWatcher.isRunning()) {
             this->showPersistentStatusMessage(this->isRemoteMode ? u"Loading remote preview..."_s
                                                                 : u"Loading full resolution..."_s);
         } else if (this->activeRemoteSliceRequests > 0) {
@@ -1180,6 +1289,30 @@ void vtkWindowCube::updateCube()
         this->scheduleIsosurfaceRecompute();
     }
     ui->vtkCube->renderWindow()->Render();
+}
+
+std::array<int, 6> vtkWindowCube::computeVisibleROI() const
+{
+    return { 0,
+             std::max(0, this->remoteDatasetWidth - 1),
+             0,
+             std::max(0, this->remoteDatasetHeight - 1),
+             0,
+             std::max(0, this->remoteDatasetDepth - 1) };
+}
+
+bool vtkWindowCube::requestHighResCube()
+{
+    if (!this->isRemoteMode || this->usingHighResCube || this->remoteHighResCubeWatcher.isRunning()) {
+        return false;
+    }
+
+    const auto roi = this->computeVisibleROI();
+    this->setCubeOpenStateLabel(u"Loading full resolution..."_s);
+    this->showPersistentStatusMessage(u"Loading full resolution..."_s);
+    this->remoteHighResCubeWatcher.setFuture(
+            QtConcurrent::run(&fetchRemoteSubvolume, this->remoteBackendUrl, this->remoteDatasetId, roi));
+    return true;
 }
 
 void vtkWindowCube::updateRemoteCuttingPlane(int sliceIndex)
@@ -1762,6 +1895,7 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
 bool vtkWindowCube::isBusy() const
 {
     return this->cubeOpenWatcher.isRunning() || this->remotePreviewWatcher.isRunning()
+            || this->remoteHighResCubeWatcher.isRunning()
             || this->momentComputeWatcher.isRunning() || this->activeRemoteSliceRequests > 0
             || this->activeRemoteIsosurfaceRequests > 0 || this->isosurfaceWatcher.isRunning();
 }

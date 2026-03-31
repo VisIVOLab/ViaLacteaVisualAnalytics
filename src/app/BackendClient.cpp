@@ -150,6 +150,36 @@ BackendCubeSliceResult BackendClient::requestSlice(const QString &datasetId, con
     return result;
 }
 
+BackendCubeSubvolumeResult BackendClient::requestSubvolume(const QString &datasetId, int x0, int x1,
+                                                           int y0, int y1, int z0, int z1) const
+{
+    BackendCubeSubvolumeResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
+                                           { QStringLiteral("x0"), x0 },
+                                           { QStringLiteral("x1"), x1 },
+                                           { QStringLiteral("y0"), y0 },
+                                           { QStringLiteral("y1"), y1 },
+                                           { QStringLiteral("z0"), z0 },
+                                           { QStringLiteral("z1"), z1 } });
+    const QByteArray payload =
+            this->performPost(QUrl(this->m_baseUrl + "/cube/subvolume"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.width = object.value("width").toInt();
+    result.height = object.value("height").toInt();
+    result.depth = object.value("depth").toInt();
+    result.scalarType = object.value("scalar_type").toString();
+    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    return result;
+}
+
 BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetId,
                                                          double threshold) const
 {
