@@ -21,8 +21,11 @@
 #include <vtkImageData.h>
 #include <vtkImageStack.h>
 #include <vtkInteractorStyleImage.h>
+#include <vtkLineSource.h>
 #include <vtkLookupTable.h>
 #include <vtkNew.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkProperty.h>
 #include <vtkProperty2D.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
@@ -364,8 +367,14 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->applyDefaultWcsFormatForSelectedFrame();
 
     // Setup Menu Tools
-    QObject::connect(ui->actionProfile, &QAction::triggered, this,
-                     &vtkWindowImage::setInteractorStyleProfile);
+    ui->actionProfile->setCheckable(true);
+    QObject::connect(ui->actionProfile, &QAction::toggled, this, &vtkWindowImage::setProbeModeActive);
+    this->actionExtractSpectrum = ui->menuTools->addAction(u"Extract Spectrum"_s);
+    this->actionExtractSpectrum->setEnabled(false);
+    this->actionExtractSpectrum->setToolTip(
+            u"Spectrum extraction is only available for cube views."_s);
+    this->actionExtractSpectrum->setStatusTip(
+            u"Spectrum extraction is only available for cube views."_s);
 
     // Setup Buttons
     ui->btnSources->setIcon(QIcon(u":/icons/RECT_SELECT.png"_s));
@@ -408,7 +417,6 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
 
     if (this->isRemoteMode) {
         ui->actionAddFITS->setEnabled(false);
-        ui->actionProfile->setEnabled(false);
         this->showPersistentStatusMessage(u"Loading remote image..."_s);
         this->remoteImageWatcher.setFuture(
                 QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl,
@@ -496,6 +504,8 @@ void vtkWindowImage::setupRenderer()
     win->GetInteractor()->SetInteractorStyle(style);
     win->GetInteractor()->AddObserver(vtkCommand::MouseMoveEvent, this,
                                       &vtkWindowImage::mouseCallback);
+    win->GetInteractor()->AddObserver(vtkCommand::LeftButtonPressEvent, this,
+                                      &vtkWindowImage::toggleProbeFreeze);
 
     this->coordinate->SetCoordinateSystemToDisplay();
     this->coordinate->SetViewport(ren);
@@ -525,6 +535,20 @@ void vtkWindowImage::setupRenderer()
     ren->AddViewProp(this->overlayYAxis);
     ren->AddViewProp(this->overlayXTitleActor);
     ren->AddViewProp(this->overlayYTitleActor);
+    vtkNew<vtkPolyDataMapper> probeHorizontalMapper;
+    probeHorizontalMapper->SetInputConnection(this->probeHorizontalLine->GetOutputPort());
+    this->probeHorizontalActor->SetMapper(probeHorizontalMapper);
+    this->probeHorizontalActor->GetProperty()->SetColor(1.0, 0.85, 0.1);
+    this->probeHorizontalActor->GetProperty()->SetLineWidth(1.5);
+    this->probeHorizontalActor->VisibilityOff();
+    ren->AddActor(this->probeHorizontalActor);
+    vtkNew<vtkPolyDataMapper> probeVerticalMapper;
+    probeVerticalMapper->SetInputConnection(this->probeVerticalLine->GetOutputPort());
+    this->probeVerticalActor->SetMapper(probeVerticalMapper);
+    this->probeVerticalActor->GetProperty()->SetColor(1.0, 0.85, 0.1);
+    this->probeVerticalActor->GetProperty()->SetLineWidth(1.5);
+    this->probeVerticalActor->VisibilityOff();
+    ren->AddActor(this->probeVerticalActor);
     this->overlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->overlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->overlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -552,38 +576,217 @@ void vtkWindowImage::mouseCallback()
         return;
     }
 
-    const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
-    this->coordinate->SetValue(position[0], position[1]);
-    const double *worldCoord = this->coordinate->GetComputedWorldValue(nullptr);
-    const long imageCoord[2] = { std::lround(worldCoord[0]), std::lround(worldCoord[1]) };
-
-    std::ostringstream ss;
-    ss << "<value> "
-       << this->layers->getPixelValue(this->layers->getMasterIndex(), imageCoord[0], imageCoord[1]);
-    ss << "  <image> X: " << worldCoord[0] << " Y: " << worldCoord[1];
-
-    if (this->astro && !this->astro->isSimulation()) {
-        double wcs[2];
-        this->astro->xy2sky(worldCoord, wcs, WCS_GALACTIC);
-        ss << "  <galactic> GLON: " << wcs[0] << " GLAT: " << wcs[1];
-
-        this->astro->xy2sky(worldCoord, wcs, WCS_J2000);
-        ss << "  <fk5> RA: " << wcs[0] << " Dec: " << wcs[1];
-
-        this->astro->xy2sky(worldCoord, wcs, WCS_ECLIPTIC);
-        ss << "  <ecliptic> ELON: " << wcs[0] << " ELAT: " << wcs[1];
-    } else if (this->isRemoteMode) {
-        const QString axis1Label = this->remoteDatasetCtype[0].isEmpty() ? u"AXIS1"_s
-                                                                          : this->remoteDatasetCtype[0];
-        const QString axis2Label = this->remoteDatasetCtype[1].isEmpty() ? u"AXIS2"_s
-                                                                          : this->remoteDatasetCtype[1];
-        ss << "  <wcs> " << axis1Label.toStdString() << ": "
-           << this->remoteFormatAxisCoordinate(0, static_cast<double>(imageCoord[0])).toStdString();
-        ss << "  " << axis2Label.toStdString() << ": "
-           << this->remoteFormatAxisCoordinate(1, static_cast<double>(imageCoord[1])).toStdString();
+    if (this->probeModeActive && this->probeFrozen) {
+        return;
     }
 
-    this->statusBar()->showMessage(QString::fromStdString(ss.str()));
+    const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
+    if (!position) {
+        return;
+    }
+    this->updateProbeFromDisplayPosition(position[0], position[1]);
+}
+
+void vtkWindowImage::toggleProbeFreeze()
+{
+    if (this->isBusy() || !this->probeModeActive) {
+        return;
+    }
+
+    const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
+    if (!position) {
+        return;
+    }
+
+    if (!this->probeFrozen) {
+        if (this->updateProbeFromDisplayPosition(position[0], position[1])) {
+            this->probeFrozen = true;
+        }
+    } else {
+        this->probeFrozen = false;
+        this->updateProbeFromDisplayPosition(position[0], position[1]);
+    }
+}
+
+bool vtkWindowImage::updateProbeFromDisplayPosition(int displayX, int displayY)
+{
+    auto *renderer = ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer();
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    if (!renderer || !imageData) {
+        this->clearProbe();
+        return false;
+    }
+
+    this->coordinate->SetValue(displayX, displayY);
+    const double *worldCoord = this->coordinate->GetComputedWorldValue(renderer);
+    if (!worldCoord) {
+        this->clearProbe();
+        return false;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    double origin[3];
+    double spacing[3];
+    imageData->GetOrigin(origin);
+    imageData->GetSpacing(spacing);
+
+    const int voxelX = std::lround(extent[0] + (worldCoord[0] - origin[0]) / spacing[0]);
+    const int voxelY = std::lround(extent[2] + (worldCoord[1] - origin[1]) / spacing[1]);
+    if (voxelX < extent[0] || voxelX > extent[1] || voxelY < extent[2] || voxelY > extent[3]) {
+        if (!this->probeFrozen) {
+            this->clearProbe();
+        }
+        return false;
+    }
+
+    if (this->probeValid && this->probeVoxel[0] == voxelX && this->probeVoxel[1] == voxelY) {
+        return true;
+    }
+
+    this->probeValid = true;
+    this->probeVoxel = { voxelX, voxelY };
+
+    const float value = this->layers->getPixelValue(this->layers->getMasterIndex(), voxelX, voxelY);
+    QString valueText = std::isfinite(value) ? QString::number(value, 'g', 8) : u"NaN"_s;
+    QString message = u"X=%1  Y=%2  Value=%3"_s.arg(voxelX).arg(voxelY).arg(valueText);
+    if (this->astro && !this->astro->isSimulation()) {
+        message += u"  %1=%2  %3=%4"_s.arg(this->selectedFrameAxisTitle(0),
+                                           this->formatLocalProbeCoordinate(0, this->probeVoxel),
+                                           this->selectedFrameAxisTitle(1),
+                                           this->formatLocalProbeCoordinate(1, this->probeVoxel));
+    } else if (this->isRemoteMode) {
+        QString axis0 = this->remoteFormatAxisCoordinate(0, voxelX);
+        QString axis1 = this->remoteFormatAxisCoordinate(1, voxelY);
+        if (this->remoteHasCelestialAxes()) {
+            bool ok0 = false;
+            bool ok1 = false;
+            const double nativeX = this->remoteVoxelToWcs(0, voxelX, &ok0);
+            const double nativeY = this->remoteVoxelToWcs(1, voxelY, &ok1);
+            double frameX = nativeX;
+            double frameY = nativeY;
+            if (ok0 && ok1 && this->convertRemoteCelestialCoordinates(nativeX, nativeY, frameX, frameY)) {
+                axis0 = this->formatRemoteOverlayCoordinate(0, frameX);
+                axis1 = this->formatRemoteOverlayCoordinate(1, frameY);
+            }
+        }
+        message += u"  %1=%2  %3=%4"_s.arg(this->selectedFrameAxisTitle(0),
+                                           axis0,
+                                           this->selectedFrameAxisTitle(1),
+                                           axis1);
+    }
+    if (this->probeFrozen) {
+        message += u"  [Frozen]"_s;
+    }
+    this->statusBar()->showMessage(message);
+    if (this->probeModeActive) {
+        this->refreshProbeOverlay();
+        this->updateProbeProfile();
+        ui->vtk->renderWindow()->Render();
+    }
+    return true;
+}
+
+void vtkWindowImage::refreshProbeOverlay()
+{
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    if (!imageData || !this->probeValid || !this->probeModeActive) {
+        this->probeHorizontalActor->VisibilityOff();
+        this->probeVerticalActor->VisibilityOff();
+        return;
+    }
+
+    double bounds[6];
+    imageData->GetBounds(bounds);
+    this->probeHorizontalLine->SetPoint1(bounds[0], static_cast<double>(this->probeVoxel[1]), 0.0);
+    this->probeHorizontalLine->SetPoint2(bounds[1], static_cast<double>(this->probeVoxel[1]), 0.0);
+    this->probeVerticalLine->SetPoint1(static_cast<double>(this->probeVoxel[0]), bounds[2], 0.0);
+    this->probeVerticalLine->SetPoint2(static_cast<double>(this->probeVoxel[0]), bounds[3], 0.0);
+    this->probeHorizontalActor->VisibilityOn();
+    this->probeVerticalActor->VisibilityOn();
+}
+
+void vtkWindowImage::clearProbe()
+{
+    this->probeValid = false;
+    this->probeHorizontalActor->VisibilityOff();
+    this->probeVerticalActor->VisibilityOff();
+}
+
+void vtkWindowImage::setProbeModeActive(bool active)
+{
+    this->probeModeActive = active;
+    ui->vtk->setCursor(active ? Qt::CrossCursor : Qt::ArrowCursor);
+    this->probeFrozen = false;
+    if (!active) {
+        this->probeHorizontalActor->VisibilityOff();
+        this->probeVerticalActor->VisibilityOff();
+        if (this->profileWidget) {
+            this->profileWidget->close();
+        }
+        this->vtkRender();
+        return;
+    }
+
+    if (!this->profileWidget) {
+        this->profileWidget = new ProfileWidget(this);
+        this->profileWidget->setupImagePlots(u"Pixel"_s, u"Value"_s);
+        QObject::connect(this->profileWidget, &ProfileWidget::destroyed, this, [this]() {
+            this->profileWidget = nullptr;
+            if (ui->actionProfile->isChecked()) {
+                ui->actionProfile->setChecked(false);
+            }
+        });
+    }
+
+    if (!this->probeValid) {
+        auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+        if (imageData) {
+            int extent[6];
+            imageData->GetExtent(extent);
+            this->probeValid = true;
+            this->probeVoxel = { (extent[0] + extent[1]) / 2, (extent[2] + extent[3]) / 2 };
+        }
+    }
+    this->refreshProbeOverlay();
+    this->updateProbeProfile();
+    this->profileWidget->show();
+    this->profileWidget->raise();
+    this->vtkRender();
+}
+
+void vtkWindowImage::updateProbeProfile()
+{
+    if (!this->probeModeActive || !this->probeValid || !this->profileWidget || !this->layers) {
+        return;
+    }
+
+    auto *imageData = this->layers->getImageData(this->layers->getMasterIndex());
+    if (!imageData) {
+        return;
+    }
+    int extent[6];
+    imageData->GetExtent(extent);
+    if (this->probeVoxel[0] < extent[0] || this->probeVoxel[0] > extent[1] || this->probeVoxel[1] < extent[2]
+        || this->probeVoxel[1] > extent[3]) {
+        return;
+    }
+
+    const int width = extent[1] - extent[0] + 1;
+    const int height = extent[3] - extent[2] + 1;
+    QVector<double> keyX(width), valuesX(width), keyY(height), valuesY(height);
+    for (int x = extent[0]; x <= extent[1]; ++x) {
+        const int idx = x - extent[0];
+        keyX[idx] = x;
+        valuesX[idx] = this->layers->getPixelValue(this->layers->getMasterIndex(), x, this->probeVoxel[1]);
+    }
+    for (int y = extent[2]; y <= extent[3]; ++y) {
+        const int idx = y - extent[2];
+        keyY[idx] = y;
+        valuesY[idx] = this->layers->getPixelValue(this->layers->getMasterIndex(), this->probeVoxel[0], y);
+    }
+    this->profileWidget->updateImageProfiles(keyX, valuesX, keyY, valuesY, this->probeVoxel[0],
+                                             this->probeVoxel[1], !this->probeFrozen);
 }
 
 void vtkWindowImage::setInteractorStyleImage()
@@ -627,6 +830,9 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
     QElapsedTimer timer;
     timer.start();
     this->stack->AddImage(this->layers->addLayer(result));
+    if (this->probeValid) {
+        this->refreshProbeOverlay();
+    }
     this->vtkRender();
     qDebug().noquote()
             << QStringLiteral("[perf][layer] render after apply: %1 ms").arg(timer.elapsed());
@@ -649,6 +855,9 @@ void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
     auto *renderer = ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer();
     if (renderer) {
         renderer->ResetCamera();
+    }
+    if (this->probeValid) {
+        this->refreshProbeOverlay();
     }
     this->vtkRender();
 }
@@ -874,6 +1083,9 @@ void vtkWindowImage::requestWcsOverlayRender()
                     return;
                 }
                 this->updateWcsOverlay();
+                if (this->probeValid) {
+                    this->refreshProbeOverlay();
+                }
                 ui->vtk->renderWindow()->Render();
                 ui->vtk->update();
             },
@@ -988,6 +1200,38 @@ QString vtkWindowImage::remoteOverlayAxisTitle(int axis) const
 QString vtkWindowImage::formatDegreeCoordinate(double value) const
 {
     return QString::number(value, 'f', 2);
+}
+
+QString vtkWindowImage::selectedFrameAxisTitle(int axis) const
+{
+    if (this->astro && !this->astro->isSimulation()) {
+        const int frame = this->selectedWcsFrame();
+        if (frame == WCS_J2000) {
+            return axis == 0 ? u"Right Ascension"_s : u"Declination"_s;
+        }
+        if (frame == WCS_GALACTIC) {
+            return axis == 0 ? u"Galactic Longitude"_s : u"Galactic Latitude"_s;
+        }
+        if (frame == WCS_ECLIPTIC) {
+            return axis == 0 ? u"Ecliptic Longitude"_s : u"Ecliptic Latitude"_s;
+        }
+    }
+    return this->remoteOverlayAxisTitle(axis);
+}
+
+QString vtkWindowImage::formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const
+{
+    if (!this->astro || this->astro->isSimulation()) {
+        return QString::number(axis == 0 ? voxel[0] : voxel[1]);
+    }
+
+    const double pix[2] = { static_cast<double>(voxel[0]), static_cast<double>(voxel[1]) };
+    double pos[2] = { 0., 0. };
+    this->astro->xy2sky(pix, pos, this->selectedWcsFrame());
+    if (!this->useSexagesimalWcsFormat) {
+        return this->formatDegreeCoordinate(pos[axis]);
+    }
+    return formatCelestialCoordinate(this->selectedWcsFrame(), axis, pos[axis]);
 }
 
 void vtkWindowImage::vtkRender()

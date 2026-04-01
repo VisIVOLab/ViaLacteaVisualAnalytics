@@ -41,6 +41,7 @@ class vtkImageData;
 class vtkImageMapToColors;
 class vtkImageReslice;
 class vtkLegendScaleActorWCS;
+class vtkLineSource;
 class vtkLookupTable;
 class vtkMomentMapFilter;
 class vtkOrientationMarkerWidget;
@@ -140,6 +141,9 @@ private slots:
 
     void setInteractorStyleImage();
     void setInteractorStyleProfile();
+    void toggleProbeFreeze();
+    void extractSpectrumAtCurrentProbe();
+    void setProbeModeActive(bool active);
 
 private:
     enum class RemoteCubeDisplayState
@@ -174,6 +178,7 @@ private:
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    QPointer<ProfileWidget> probePlotWidget;
     QPointer<QLabel> cubeOpenStateLabel;
     QPointer<QCheckBox> remoteRoiRefinementCheck;
     QPointer<QCheckBox> wcsAxesCheck;
@@ -206,8 +211,12 @@ private:
     bool usingHighResCube{ false };
     bool useCameraRoiRefinement{ false };
     bool pendingRemoteRefinementReload{ false };
+    bool probeModeActive{ false };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
+    bool probeFrozen{ false };
+    bool probeValid{ false };
+    std::array<int, 3> probeVoxel{ -1, -1, -1 };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
     static constexpr int remoteSliceDebounceDelayMs = 100;
@@ -235,6 +244,13 @@ private:
     void setCameraAzimuth(double az);
     void setCameraElevation(double el);
     void mouseCallback();
+    bool updateProbeFromDisplayPosition(int displayX, int displayY);
+    void refreshProbeOverlay();
+    void clearProbe();
+    void updateProbeReadout(vtkImageData *imageData);
+    void updateProbePlot();
+    QString formatLocalProbeCoordinate(int axis, const std::array<int, 3> &voxel) const;
+    QString selectedFrameAxisTitle(int axis) const;
     bool viewingIsosurface() const;
     bool viewingSlice() const;
 
@@ -296,6 +312,10 @@ private:
     vtkNew<vtkAxisActor2D> sliceOverlayYAxis;
     vtkNew<vtkTextActor> sliceOverlayXTitleActor;
     vtkNew<vtkTextActor> sliceOverlayYTitleActor;
+    vtkNew<vtkLineSource> sliceProbeHorizontalLine;
+    vtkNew<vtkLineSource> sliceProbeVerticalLine;
+    vtkNew<vtkActor> sliceProbeHorizontalActor;
+    vtkNew<vtkActor> sliceProbeVerticalActor;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
     std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
@@ -335,6 +355,10 @@ private:
     vtkNew<vtkAxisActor2D> momentOverlayYAxis;
     vtkNew<vtkTextActor> momentOverlayXTitleActor;
     vtkNew<vtkTextActor> momentOverlayYTitleActor;
+    vtkNew<vtkLineSource> momentProbeHorizontalLine;
+    vtkNew<vtkLineSource> momentProbeVerticalLine;
+    vtkNew<vtkActor> momentProbeHorizontalActor;
+    vtkNew<vtkActor> momentProbeVerticalActor;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;
     std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),

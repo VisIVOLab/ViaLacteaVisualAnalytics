@@ -34,6 +34,7 @@
 #include <vtkImageSlice.h>
 #include <vtkImageSliceMapper.h>
 #include <vtkInteractorStyleImage.h>
+#include <vtkLineSource.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutlineFilter.h>
@@ -1262,8 +1263,9 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->applyDefaultWcsFormatForSelectedFrame();
 
     // Setup menu Tools
-    QObject::connect(ui->actionExtractSpectrum, &QAction::triggered, this,
-                     &vtkWindowCube::setInteractorStyleProfile);
+    ui->actionExtractSpectrum->setCheckable(true);
+    QObject::connect(ui->actionExtractSpectrum, &QAction::toggled, this,
+                     &vtkWindowCube::setProbeModeActive);
 
     // Setup Threshold UI
     const std::string bunit = this->astro ? this->astro->getPhysicalUnit() : std::string {};
@@ -1507,6 +1509,8 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceWin->GetInteractor()->SetInteractorStyle(style);
     this->sliceWin->GetInteractor()->AddObserver(vtkCommand::MouseMoveEvent, this,
                                                  &vtkWindowCube::mouseCallback);
+    this->sliceWin->GetInteractor()->AddObserver(vtkCommand::LeftButtonPressEvent, this,
+                                                 &vtkWindowCube::toggleProbeFreeze);
     this->coordinate->SetCoordinateSystemToDisplay();
     this->coordinate->SetViewport(ren);
 
@@ -1574,6 +1578,20 @@ void vtkWindowCube::setupSliceRenderer()
     ren->AddViewProp(this->sliceOverlayYAxis);
     ren->AddViewProp(this->sliceOverlayXTitleActor);
     ren->AddViewProp(this->sliceOverlayYTitleActor);
+    vtkNew<vtkPolyDataMapper> sliceProbeHorizontalMapper;
+    sliceProbeHorizontalMapper->SetInputConnection(this->sliceProbeHorizontalLine->GetOutputPort());
+    this->sliceProbeHorizontalActor->SetMapper(sliceProbeHorizontalMapper);
+    this->sliceProbeHorizontalActor->GetProperty()->SetColor(1.0, 0.85, 0.1);
+    this->sliceProbeHorizontalActor->GetProperty()->SetLineWidth(1.5);
+    this->sliceProbeHorizontalActor->VisibilityOff();
+    ren->AddActor(this->sliceProbeHorizontalActor);
+    vtkNew<vtkPolyDataMapper> sliceProbeVerticalMapper;
+    sliceProbeVerticalMapper->SetInputConnection(this->sliceProbeVerticalLine->GetOutputPort());
+    this->sliceProbeVerticalActor->SetMapper(sliceProbeVerticalMapper);
+    this->sliceProbeVerticalActor->GetProperty()->SetColor(1.0, 0.85, 0.1);
+    this->sliceProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
+    this->sliceProbeVerticalActor->VisibilityOff();
+    ren->AddActor(this->sliceProbeVerticalActor);
     this->sliceOverlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->sliceOverlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->sliceOverlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -1606,6 +1624,7 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentWin->SetInteractor(iren);
     iren->Initialize();
     iren->AddObserver(vtkCommand::MouseMoveEvent, this, &vtkWindowCube::mouseCallback);
+    iren->AddObserver(vtkCommand::LeftButtonPressEvent, this, &vtkWindowCube::toggleProbeFreeze);
 
     vtkNew<vtkInteractorStyleImage> style;
     iren->SetInteractorStyle(style);
@@ -1659,6 +1678,20 @@ void vtkWindowCube::setupMomentRenderer()
     ren->AddViewProp(this->momentOverlayYAxis);
     ren->AddViewProp(this->momentOverlayXTitleActor);
     ren->AddViewProp(this->momentOverlayYTitleActor);
+    vtkNew<vtkPolyDataMapper> momentProbeHorizontalMapper;
+    momentProbeHorizontalMapper->SetInputConnection(this->momentProbeHorizontalLine->GetOutputPort());
+    this->momentProbeHorizontalActor->SetMapper(momentProbeHorizontalMapper);
+    this->momentProbeHorizontalActor->GetProperty()->SetColor(1.0, 0.85, 0.1);
+    this->momentProbeHorizontalActor->GetProperty()->SetLineWidth(1.5);
+    this->momentProbeHorizontalActor->VisibilityOff();
+    ren->AddActor(this->momentProbeHorizontalActor);
+    vtkNew<vtkPolyDataMapper> momentProbeVerticalMapper;
+    momentProbeVerticalMapper->SetInputConnection(this->momentProbeVerticalLine->GetOutputPort());
+    this->momentProbeVerticalActor->SetMapper(momentProbeVerticalMapper);
+    this->momentProbeVerticalActor->GetProperty()->SetColor(1.0, 0.85, 0.1);
+    this->momentProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
+    this->momentProbeVerticalActor->VisibilityOff();
+    ren->AddActor(this->momentProbeVerticalActor);
     this->momentOverlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->momentOverlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->momentOverlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -1709,70 +1742,243 @@ void vtkWindowCube::mouseCallback()
         return;
     }
 
-    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
-    this->coordinate->SetValue(position[0], position[1]);
-    const double *worldCoord = this->coordinate->GetComputedWorldValue(nullptr);
-    const long imageCoord[2] = { std::lround(worldCoord[0]), std::lround(worldCoord[1]) };
+    if (this->probeModeActive && this->probeFrozen) {
+        return;
+    }
 
-    const auto imageData = this->viewingSlice()
+    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
+    if (!position) {
+        return;
+    }
+    this->updateProbeFromDisplayPosition(position[0], position[1]);
+}
+
+void vtkWindowCube::toggleProbeFreeze()
+{
+    if (this->isBusy() || !this->probeModeActive) {
+        return;
+    }
+
+    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
+    if (!position) {
+        return;
+    }
+
+    if (!this->probeFrozen) {
+        if (this->updateProbeFromDisplayPosition(position[0], position[1])) {
+            this->probeFrozen = true;
+        }
+    } else {
+        this->probeFrozen = false;
+        this->updateProbeFromDisplayPosition(position[0], position[1]);
+    }
+}
+
+bool vtkWindowCube::updateProbeFromDisplayPosition(int displayX, int displayY)
+{
+    auto *renderer = ui->vtkImage->renderWindow() ? ui->vtkImage->renderWindow()->GetRenderers()->GetFirstRenderer()
+                                                  : nullptr;
+    auto *imageData = this->viewingSlice()
             ? (this->isRemoteMode
                        ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
                        : this->slice->GetOutput())
             : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
-    if (!imageData) {
-        this->clearPersistentStatusMessage();
-        return;
+    if (!renderer || !imageData) {
+        this->clearProbe();
+        return false;
+    }
+
+    this->coordinate->SetValue(displayX, displayY);
+    const double *worldCoord = this->coordinate->GetComputedWorldValue(renderer);
+    if (!worldCoord) {
+        this->clearProbe();
+        return false;
     }
 
     int extent[6];
     imageData->GetExtent(extent);
-    if (imageCoord[0] < extent[0] || imageCoord[0] > extent[1] || imageCoord[1] < extent[2]
-        || imageCoord[1] > extent[3]) {
-        this->clearPersistentStatusMessage();
+    double origin[3];
+    double spacing[3];
+    imageData->GetOrigin(origin);
+    imageData->GetSpacing(spacing);
+    const int voxelX = std::lround(extent[0] + (worldCoord[0] - origin[0]) / spacing[0]);
+    const int voxelY = std::lround(extent[2] + (worldCoord[1] - origin[1]) / spacing[1]);
+    const int voxelZ = this->isRemoteMode ? this->clampRemoteSliceIndex(ui->spinSlice->value() - 1)
+                                          : std::max(0, ui->spinSlice->value() - 1);
+    if (voxelX < extent[0] || voxelX > extent[1] || voxelY < extent[2] || voxelY > extent[3]) {
+        if (!this->probeFrozen) {
+            this->clearProbe();
+        }
+        return false;
+    }
+
+    if (this->probeValid && this->probeVoxel[0] == voxelX && this->probeVoxel[1] == voxelY
+        && this->probeVoxel[2] == voxelZ) {
+        return true;
+    }
+
+    this->probeValid = true;
+    this->probeVoxel = { voxelX, voxelY, voxelZ };
+    this->updateProbeReadout(imageData);
+    if (this->probeModeActive) {
+        this->refreshProbeOverlay();
+        this->updateProbePlot();
+        ui->vtkImage->renderWindow()->Render();
+    }
+    return true;
+}
+
+void vtkWindowCube::refreshProbeOverlay()
+{
+    const auto updateActors = [this](vtkImageData *imageData, vtkLineSource *horizontal,
+                                     vtkLineSource *vertical, vtkActor *horizontalActor,
+                                     vtkActor *verticalActor) {
+        if (!imageData || !this->probeValid || !this->probeModeActive) {
+            horizontalActor->VisibilityOff();
+            verticalActor->VisibilityOff();
+            return;
+        }
+        double bounds[6];
+        imageData->GetBounds(bounds);
+        horizontal->SetPoint1(bounds[0], static_cast<double>(this->probeVoxel[1]), 0.0);
+        horizontal->SetPoint2(bounds[1], static_cast<double>(this->probeVoxel[1]), 0.0);
+        vertical->SetPoint1(static_cast<double>(this->probeVoxel[0]), bounds[2], 0.0);
+        vertical->SetPoint2(static_cast<double>(this->probeVoxel[0]), bounds[3], 0.0);
+        horizontalActor->VisibilityOn();
+        verticalActor->VisibilityOn();
+    };
+
+    updateActors(this->isRemoteMode
+                         ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                         : this->slice->GetOutput(),
+                 this->sliceProbeHorizontalLine, this->sliceProbeVerticalLine,
+                 this->sliceProbeHorizontalActor, this->sliceProbeVerticalActor);
+    updateActors(vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0)),
+                 this->momentProbeHorizontalLine, this->momentProbeVerticalLine,
+                 this->momentProbeHorizontalActor, this->momentProbeVerticalActor);
+}
+
+void vtkWindowCube::clearProbe()
+{
+    this->probeValid = false;
+    this->sliceProbeHorizontalActor->VisibilityOff();
+    this->sliceProbeVerticalActor->VisibilityOff();
+    this->momentProbeHorizontalActor->VisibilityOff();
+    this->momentProbeVerticalActor->VisibilityOff();
+}
+
+void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
+{
+    if (!imageData || !this->probeValid) {
         return;
     }
 
-    std::ostringstream ss;
-    ss << "<value> ";
-    if (this->viewingSlice()) {
-        const float val = imageData->GetScalarComponentAsFloat(imageCoord[0], imageCoord[1], 0, 0);
-        ss << val;
-    } else {
-        const float val = imageData->GetScalarComponentAsFloat(imageCoord[0], imageCoord[1], 0, 0);
-        ss << val;
-    }
-
-    ss << "  <image> X: " << worldCoord[0] << " Y: " << worldCoord[1];
-
+    const float value = imageData->GetScalarComponentAsFloat(this->probeVoxel[0], this->probeVoxel[1], 0, 0);
+    QString valueText = std::isfinite(value) ? QString::number(value, 'g', 8) : u"NaN"_s;
+    QString message = u"X=%1  Y=%2  Z=%3  Value=%4"_s.arg(this->probeVoxel[0])
+                              .arg(this->probeVoxel[1])
+                              .arg(this->probeVoxel[2])
+                              .arg(valueText);
     if (this->astro && !this->astro->isSimulation()) {
-        double wcs[2];
-        this->astro->xy2sky(worldCoord, wcs, WCS_GALACTIC);
-        ss << "  <galactic> GLON: " << wcs[0] << " GLAT: " << wcs[1];
-
-        this->astro->xy2sky(worldCoord, wcs, WCS_J2000);
-        ss << "  <fk5> RA: " << wcs[0] << " Dec: " << wcs[1];
-
-        this->astro->xy2sky(worldCoord, wcs, WCS_ECLIPTIC);
-        ss << "  <ecliptic> ELON: " << wcs[0] << " ELAT: " << wcs[1];
+        message += u"  %1=%2  %3=%4  %5=%6"_s.arg(this->selectedFrameAxisTitle(0),
+                                                  this->formatLocalProbeCoordinate(0, this->probeVoxel),
+                                                  this->selectedFrameAxisTitle(1),
+                                                  this->formatLocalProbeCoordinate(1, this->probeVoxel),
+                                                  this->remoteAxisTitle(2),
+                                                  this->formatLocalProbeCoordinate(2, this->probeVoxel));
     } else if (this->isRemoteMode) {
-        const QString axis1Label = this->remoteDatasetCtype[0].isEmpty() ? u"AXIS1"_s
-                                                                          : this->remoteDatasetCtype[0];
-        const QString axis2Label = this->remoteDatasetCtype[1].isEmpty() ? u"AXIS2"_s
-                                                                          : this->remoteDatasetCtype[1];
-        ss << "  <wcs> " << axis1Label.toStdString() << ": "
-           << this->remoteFormatAxisCoordinate(0, static_cast<double>(imageCoord[0])).toStdString();
-        ss << "  " << axis2Label.toStdString() << ": "
-           << this->remoteFormatAxisCoordinate(1, static_cast<double>(imageCoord[1])).toStdString();
-        if (this->viewingSlice()) {
-            const QString axis3Label = this->remoteDatasetCtype[2].isEmpty() ? u"AXIS3"_s
-                                                                              : this->remoteDatasetCtype[2];
-            ss << "  " << axis3Label.toStdString() << ": "
-               << this->remoteFormatAxisCoordinate(2, static_cast<double>(ui->spinSlice->value() - 1))
-                          .toStdString();
+        QString axis0 = this->remoteFormatAxisCoordinate(0, this->probeVoxel[0]);
+        QString axis1 = this->remoteFormatAxisCoordinate(1, this->probeVoxel[1]);
+        if (this->remoteHasCelestialAxes()) {
+            bool ok0 = false;
+            bool ok1 = false;
+            const double nativeX = this->remoteVoxelToWcs(0, this->probeVoxel[0], &ok0);
+            const double nativeY = this->remoteVoxelToWcs(1, this->probeVoxel[1], &ok1);
+            double frameX = nativeX;
+            double frameY = nativeY;
+            if (ok0 && ok1 && this->convertRemoteCelestialCoordinates(nativeX, nativeY, frameX, frameY)) {
+                axis0 = this->formatRemoteOverlayCoordinate(0, frameX);
+                axis1 = this->formatRemoteOverlayCoordinate(1, frameY);
+            }
         }
+        message += u"  %1=%2  %3=%4  %5=%6"_s.arg(this->selectedFrameAxisTitle(0),
+                                                  axis0,
+                                                  this->selectedFrameAxisTitle(1),
+                                                  axis1,
+                                                  this->remoteAxisTitle(2),
+                                                  this->remoteFormatAxisCoordinate(2, this->probeVoxel[2]));
+    }
+    if (this->probeFrozen) {
+        message += u"  [Frozen]"_s;
+    }
+    this->statusBar()->showMessage(message);
+}
+
+void vtkWindowCube::updateProbePlot()
+{
+    if (!this->probeValid || !this->probeModeActive) {
+        return;
     }
 
-    this->statusBar()->showMessage(QString::fromStdString(ss.str()));
+    auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    if (!cubeImage) {
+        return;
+    }
+
+    int extent[6];
+    cubeImage->GetExtent(extent);
+    double origin[3];
+    double spacing[3];
+    cubeImage->GetOrigin(origin);
+    cubeImage->GetSpacing(spacing);
+
+    const int localX = std::lround(extent[0] + (this->probeVoxel[0] - origin[0]) / spacing[0]);
+    const int localY = std::lround(extent[2] + (this->probeVoxel[1] - origin[1]) / spacing[1]);
+    if (localX < extent[0] || localX > extent[1] || localY < extent[2] || localY > extent[3]) {
+        return;
+    }
+
+    const int zCount = extent[5] - extent[4] + 1;
+    QVector<double> spectral(zCount);
+    QVector<double> values(zCount);
+    for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
+        const int idx = localZ - extent[4];
+        const double datasetZ = origin[2] + (localZ - extent[4]) * spacing[2];
+        bool ok = false;
+        spectral[idx] = this->isRemoteMode ? this->remoteVoxelToWcs(2, datasetZ, &ok) : 0.0;
+        if (!this->isRemoteMode) {
+            spectral[idx] = this->astro ? (this->astro->getInitialSpectralValue()
+                                           + this->astro->getIncrements()[2] * datasetZ)
+                                         : datasetZ;
+        } else if (!ok) {
+            spectral[idx] = datasetZ;
+        }
+        values[idx] = cubeImage->GetScalarComponentAsFloat(localX, localY, localZ, 0);
+    }
+
+    if (!this->probePlotWidget) {
+        this->probePlotWidget = new ProfileWidget(this);
+        const QString xLabel = this->isRemoteMode ? this->remoteAxisTitle(2)
+                                                  : (this->astro
+                                                             ? QString::fromStdString(this->astro->getAxisUnit(2))
+                                                             : u"Z"_s);
+        const QString yLabel = this->astro ? QString::fromStdString(this->astro->getPhysicalUnit())
+                                           : u"Value"_s;
+        this->probePlotWidget->setupSpectrumPlot(xLabel.isEmpty() ? u"Z"_s : xLabel,
+                                                 yLabel.isEmpty() ? u"Value"_s : yLabel);
+        QObject::connect(this->probePlotWidget, &ProfileWidget::destroyed, this,
+                         [this]() {
+                             this->probePlotWidget = nullptr;
+                             if (ui->actionExtractSpectrum->isChecked()) {
+                                 ui->actionExtractSpectrum->setChecked(false);
+                             }
+                         });
+    }
+
+    this->probePlotWidget->updateSpectrumPlot(
+            spectral, values,
+            u"Z Profile (%1, %2)"_s.arg(this->probeVoxel[0]).arg(this->probeVoxel[1]),
+            !this->probeFrozen);
 }
 
 bool vtkWindowCube::viewingIsosurface() const
@@ -2271,6 +2477,15 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
         ui->lineImgMax->setText(QString::number(result.momentRange[1]));
         this->updateLUTCustomizer();
     }
+    if (this->probeModeActive && this->probeValid) {
+        this->refreshProbeOverlay();
+        auto *currentImage = this->viewingSlice()
+                ? (this->isRemoteMode
+                           ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                           : this->slice->GetOutput())
+                : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+        this->updateProbeReadout(currentImage);
+    }
     qDebug().noquote()
             << QStringLiteral("[perf][cube] apply image UI fields: %1 ms").arg(
                        imgFieldsTimer.elapsed());
@@ -2378,6 +2593,10 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     auto *sliceRenderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
     refitParallelSliceCamera(sliceRenderer, result.imageData, this->sliceWin);
     sliceRenderer->ResetCameraClippingRange();
+    if (this->probeModeActive && this->probeValid) {
+        this->refreshProbeOverlay();
+        this->updateProbeReadout(result.imageData);
+    }
     this->sliceWin->Render();
     this->prefetchNeighborRemoteSlices(result.index);
 }
@@ -2522,6 +2741,45 @@ QString vtkWindowCube::formatDegreeCoordinate(double value) const
     return QString::number(value, 'f', 2);
 }
 
+QString vtkWindowCube::selectedFrameAxisTitle(int axis) const
+{
+    if (this->astro && !this->astro->isSimulation()) {
+        const int frame = this->selectedWcsFrame();
+        if (frame == WCS_J2000) {
+            return axis == 0 ? u"Right Ascension"_s : u"Declination"_s;
+        }
+        if (frame == WCS_GALACTIC) {
+            return axis == 0 ? u"Galactic Longitude"_s : u"Galactic Latitude"_s;
+        }
+        if (frame == WCS_ECLIPTIC) {
+            return axis == 0 ? u"Ecliptic Longitude"_s : u"Ecliptic Latitude"_s;
+        }
+    }
+    return this->remoteOverlayAxisTitle(axis);
+}
+
+QString vtkWindowCube::formatLocalProbeCoordinate(int axis, const std::array<int, 3> &voxel) const
+{
+    if (axis == 2) {
+        if (!this->astro) {
+            return QString::number(voxel[2]);
+        }
+        return QString::number(this->astro->getInitialSpectralValue()
+                               + this->astro->getIncrements()[2] * voxel[2]);
+    }
+    if (!this->astro || this->astro->isSimulation()) {
+        return QString::number(voxel[axis]);
+    }
+
+    const double pix[2] = { static_cast<double>(voxel[0]), static_cast<double>(voxel[1]) };
+    double pos[2] = { 0., 0. };
+    this->astro->xy2sky(pix, pos, this->selectedWcsFrame());
+    if (!this->useSexagesimalWcsFormat) {
+        return this->formatDegreeCoordinate(pos[axis]);
+    }
+    return formatCelestialCoordinate(this->selectedWcsFrame(), axis, pos[axis]);
+}
+
 void vtkWindowCube::set2dWcsOverlayVisible(bool visible)
 {
     const bool useLegend = this->astro && !this->astro->isSimulation();
@@ -2618,6 +2876,15 @@ void vtkWindowCube::requestWcsOverlayRender()
             [this]() {
                 this->updateSliceWcsOverlay();
                 this->updateMomentWcsOverlay();
+                if (this->probeValid) {
+                    this->refreshProbeOverlay();
+                    auto *currentImage = this->viewingSlice()
+                            ? (this->isRemoteMode
+                                       ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                                       : this->slice->GetOutput())
+                            : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+                    this->updateProbeReadout(currentImage);
+                }
                 if (!ui || !ui->vtkImage) {
                     return;
                 }
@@ -3194,6 +3461,10 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     }
 
     this->updateLUTCustomizer();
+    if (this->probeModeActive && this->probeValid) {
+        this->refreshProbeOverlay();
+        this->updateProbeReadout(result.imageData);
+    }
     qDebug().noquote()
             << QStringLiteral("[perf][moment] apply data+ui sync: %1 ms").arg(totalTimer.elapsed());
     QElapsedTimer renderTimer;
@@ -3248,7 +3519,7 @@ void vtkWindowCube::setMomentActionsEnabled(bool enabled)
 void vtkWindowCube::setCubeOpenActionsEnabled(bool enabled)
 {
     this->setMomentActionsEnabled(enabled);
-    ui->actionExtractSpectrum->setEnabled(enabled && !this->isRemoteMode);
+    ui->actionExtractSpectrum->setEnabled(enabled);
 }
 
 void vtkWindowCube::setCubeOpenStateLabel(const QString &text)
@@ -3294,6 +3565,66 @@ void vtkWindowCube::setInteractorStyleProfile()
     }
 }
 
+void vtkWindowCube::extractSpectrumAtCurrentProbe()
+{
+    if (this->isBusy()) {
+        return;
+    }
+
+    if (!this->probeValid) {
+        this->statusBar()->showMessage(u"Probe a point in the 2D view first."_s, 2000);
+        return;
+    }
+
+    this->updateProbePlot();
+}
+
+void vtkWindowCube::setProbeModeActive(bool active)
+{
+    this->probeModeActive = active;
+    ui->vtkImage->setCursor(active ? Qt::CrossCursor : Qt::ArrowCursor);
+    this->probeFrozen = false;
+
+    if (!active) {
+        this->sliceProbeHorizontalActor->VisibilityOff();
+        this->sliceProbeVerticalActor->VisibilityOff();
+        this->momentProbeHorizontalActor->VisibilityOff();
+        this->momentProbeVerticalActor->VisibilityOff();
+        if (this->probePlotWidget) {
+            this->probePlotWidget->close();
+        }
+        if (ui->vtkImage->renderWindow()) {
+            ui->vtkImage->renderWindow()->Render();
+        }
+        return;
+    }
+
+    if (!this->probeValid) {
+        auto *imageData = this->viewingSlice()
+                ? (this->isRemoteMode
+                           ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                           : this->slice->GetOutput())
+                : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+        if (imageData) {
+            int extent[6];
+            imageData->GetExtent(extent);
+            this->probeValid = true;
+            this->probeVoxel = { (extent[0] + extent[1]) / 2, (extent[2] + extent[3]) / 2,
+                                 this->isRemoteMode ? this->clampRemoteSliceIndex(ui->spinSlice->value() - 1)
+                                                    : std::max(0, ui->spinSlice->value() - 1) };
+        }
+    }
+
+    this->refreshProbeOverlay();
+    auto *currentImage = this->viewingSlice()
+            ? (this->isRemoteMode
+                       ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                       : this->slice->GetOutput())
+            : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    this->updateProbeReadout(currentImage);
+    this->updateProbePlot();
+}
+
 void vtkWindowCube::changeImageRenderer()
 {
     double imgRange[2];
@@ -3325,6 +3656,15 @@ void vtkWindowCube::changeImageRenderer()
     ui->lineImgMin->setText(QString::number(imgRange[0]));
     ui->lineImgMax->setText(QString::number(imgRange[1]));
     this->coordinate->SetViewport(ui->vtkImage->renderWindow()->GetRenderers()->GetFirstRenderer());
+    if (this->probeModeActive && this->probeValid) {
+        this->refreshProbeOverlay();
+        auto *currentImage = this->viewingSlice()
+                ? (this->isRemoteMode
+                           ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                           : this->slice->GetOutput())
+                : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+        this->updateProbeReadout(currentImage);
+    }
     ui->vtkImage->renderWindow()->Render();
 }
 

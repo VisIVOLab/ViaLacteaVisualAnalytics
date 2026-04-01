@@ -26,10 +26,12 @@ class ProfileWidget;
 class AstroUtils;
 class QAction;
 class QCheckBox;
+class vtkActor;
 class vtkAxisActor2D;
 class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
+class vtkLineSource;
 class vtkRenderer;
 class vtkScalarBarActor;
 class vtkTextActor;
@@ -72,6 +74,8 @@ private slots:
     // Interactors
     void setInteractorStyleImage();
     void setInteractorStyleProfile();
+    void toggleProbeFreeze();
+    void setProbeModeActive(bool active);
 
 private:
     Ui::vtkWindowImage *ui;
@@ -90,6 +94,7 @@ private:
     QPointer<QCheckBox> wcsAxesCheck;
     QPointer<QAction> actionWcsSexagesimal;
     QPointer<QAction> actionWcsDecimal;
+    QPointer<QAction> actionExtractSpectrum;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
@@ -109,21 +114,35 @@ private:
     vtkNew<vtkScalarBarActor> colorbar;
     vtkNew<vtkCoordinate> coordinate;
     bool showWcsAxes{ true };
+    bool probeModeActive{ false };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
+    bool probeFrozen{ false };
+    bool probeValid{ false };
+    std::array<int, 2> probeVoxel{ -1, -1 };
     std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN() };
     std::array<int, 2> lastOverlayViewportSize{ -1, -1 };
+    vtkNew<vtkLineSource> probeHorizontalLine;
+    vtkNew<vtkLineSource> probeVerticalLine;
+    vtkNew<vtkActor> probeHorizontalActor;
+    vtkNew<vtkActor> probeVerticalActor;
     void setupRenderer();
     void mouseCallback();
+    bool updateProbeFromDisplayPosition(int displayX, int displayY);
+    void refreshProbeOverlay();
+    void clearProbe();
+    void updateProbeProfile();
     void updateWcsOverlay();
     void setWcsOverlayVisible(bool visible);
     void ensureOverlayTickActors(vtkRenderer *renderer);
     void invalidateWcsOverlayCache();
     void applyDefaultWcsFormatForSelectedFrame();
     void requestWcsOverlayRender();
+    QString formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const;
+    QString selectedFrameAxisTitle(int axis) const;
 
     // Stack
     vtkNew<vtkImageStack> stack;

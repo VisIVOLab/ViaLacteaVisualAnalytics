@@ -12,7 +12,7 @@ ProfileWidget::ProfileWidget(vtkInteractorStyleProfile *style, vtkImageData *dat
     : QWidget(parent),
       ui(new Ui::ProfileWidget),
       dataset(dataset),
-      astro(filepath),
+      astro(std::make_unique<AstroUtils>(filepath)),
       interactor(style)
 {
     ui->setupUi(this);
@@ -29,6 +29,23 @@ ProfileWidget::ProfileWidget(vtkInteractorStyleProfile *style, vtkImageData *dat
     QObject::connect(ui->checkLive, &QCheckBox::toggled, this, &ProfileWidget::setLiveMode);
 }
 
+ProfileWidget::ProfileWidget(QWidget *parent)
+    : QWidget(parent),
+      ui(new Ui::ProfileWidget),
+      dataset(nullptr),
+      astro(nullptr),
+      ScalarPointer(nullptr),
+      Dimensions{ 0, 0, 0 },
+      Increments{ 0, 0, 0 },
+      interactor(nullptr),
+      refLineX(nullptr),
+      refLineY(nullptr)
+{
+    ui->setupUi(this);
+    this->setAttribute(Qt::WA_DeleteOnClose);
+    this->setWindowFlag(Qt::Window);
+}
+
 ProfileWidget::~ProfileWidget()
 {
     delete ui;
@@ -36,11 +53,14 @@ ProfileWidget::~ProfileWidget()
 
 void ProfileWidget::setupImagePlots()
 {
+    if (!this->interactor || !this->astro) {
+        return;
+    }
     this->interactor->SetCallback(
             [this](double x, double y, bool live) { this->plotProfile(x, y, live); });
 
     // Setup plots
-    const std::string unit = this->astro.getPhysicalUnit();
+    const std::string unit = this->astro->getPhysicalUnit();
     const QString yLabel = unit.empty() ? u"Value"_s : QString::fromStdString(unit);
 
     ui->plot1->addGraph();
@@ -64,17 +84,53 @@ void ProfileWidget::setupImagePlots()
     ui->plot2->yAxis->setLabel(yLabel);
 }
 
+void ProfileWidget::setupImagePlots(const QString &xLabel, const QString &yLabel)
+{
+    ui->plot1->clearGraphs();
+    ui->plot2->clearGraphs();
+    ui->plot1->addGraph();
+    ui->plot2->addGraph();
+    ui->plot1->setInteractions(QCP::iRangeDrag);
+    ui->plot1->axisRect()->setRangeDrag(Qt::Horizontal);
+    ui->plot2->setInteractions(QCP::iRangeDrag);
+    ui->plot2->axisRect()->setRangeDrag(Qt::Horizontal);
+    if (!ui->plot1->plotLayout()->element(0, 0)) {
+        ui->plot1->plotLayout()->insertRow(0);
+        ui->plot1->plotLayout()->addElement(0, 0, new QCPTextElement(ui->plot1, u"X Profile"_s));
+    }
+    if (!ui->plot2->plotLayout()->element(0, 0)) {
+        ui->plot2->plotLayout()->insertRow(0);
+        ui->plot2->plotLayout()->addElement(0, 0, new QCPTextElement(ui->plot2, u"Y Profile"_s));
+    }
+    ui->plot1->xAxis->setLabel(u"X Coordinate"_s);
+    ui->plot1->yAxis->setLabel(yLabel);
+    ui->plot2->xAxis->setLabel(u"Y Coordinate"_s);
+    ui->plot2->yAxis->setLabel(yLabel);
+    if (!this->refLineX) {
+        this->refLineX = new QCPItemLine(ui->plot1);
+        this->refLineX->setPen({ Qt::red });
+    }
+    if (!this->refLineY) {
+        this->refLineY = new QCPItemLine(ui->plot2);
+        this->refLineY->setPen({ Qt::red });
+    }
+    Q_UNUSED(xLabel);
+}
+
 void ProfileWidget::setupSpectrumPlot()
 {
+    if (!this->astro || !this->interactor) {
+        return;
+    }
     ui->plot2->hide();
 
     this->interactor->SetCallback(
             [this](double x, double y, bool live) { this->plotSpectrum(x, y, live); });
 
-    const std::string unit = this->astro.getPhysicalUnit();
+    const std::string unit = this->astro->getPhysicalUnit();
     const QString yLabel = unit.empty() ? u"Value"_s : QString::fromStdString(unit);
 
-    const std::string spectralUnit = this->astro.getAxisUnit(2);
+    const std::string spectralUnit = this->astro->getAxisUnit(2);
     const QString xLabel = spectralUnit.empty() ? u"Value"_s : QString::fromStdString(spectralUnit);
 
     ui->plot1->addGraph();
@@ -86,9 +142,24 @@ void ProfileWidget::setupSpectrumPlot()
     ui->plot1->yAxis->setLabel(yLabel);
 }
 
+void ProfileWidget::setupSpectrumPlot(const QString &xLabel, const QString &yLabel)
+{
+    ui->plot2->hide();
+    ui->plot1->clearGraphs();
+    ui->plot1->addGraph();
+    ui->plot1->setInteractions(QCP::iRangeDrag);
+    ui->plot1->axisRect()->setRangeDrag(Qt::Horizontal);
+    ui->plot1->plotLayout()->insertRow(0);
+    ui->plot1->plotLayout()->addElement(0, 0, new QCPTextElement(ui->plot1, u"Z Profile"_s));
+    ui->plot1->xAxis->setLabel(xLabel);
+    ui->plot1->yAxis->setLabel(yLabel);
+}
+
 void ProfileWidget::setLiveMode(bool live)
 {
-    this->interactor->SetLiveMode(live);
+    if (this->interactor) {
+        this->interactor->SetLiveMode(live);
+    }
 }
 
 void ProfileWidget::plotProfile(double x, double y, bool live)
@@ -135,8 +206,12 @@ void ProfileWidget::plotSpectrum(double x, double y, bool live)
     const long pixX = std::lround(x);
     const long pixY = std::lround(y);
 
-    const double initSpectral = this->astro.getInitialSpectralValue();
-    const double *axesInc = this->astro.getIncrements();
+    if (!this->astro) {
+        return;
+    }
+
+    const double initSpectral = this->astro->getInitialSpectralValue();
+    const double *axesInc = this->astro->getIncrements();
 
     QVector<double> key(this->Dimensions[2]), values(this->Dimensions[2]);
     for (vtkIdType k = 0; k < this->Dimensions[2]; ++k) {
@@ -150,6 +225,61 @@ void ProfileWidget::plotSpectrum(double x, double y, bool live)
     qobject_cast<QCPTextElement *>(ui->plot1->plotLayout()->element(0, 0))
             ->setText(u"Z Profile (%1, %2)"_s.arg(pixX).arg(pixY));
     ui->plot1->replot();
+
+    this->show();
+    this->raise();
+}
+
+void ProfileWidget::updateSpectrumPlot(const QVector<double> &key, const QVector<double> &values,
+                                       const QString &title, bool live)
+{
+    if (ui->plot1->graphCount() == 0) {
+        ui->plot1->addGraph();
+    }
+
+    ui->checkLive->setChecked(live);
+    ui->plot1->graph()->setData(key, values);
+    ui->plot1->rescaleAxes();
+    if (auto *titleElement = qobject_cast<QCPTextElement *>(ui->plot1->plotLayout()->element(0, 0))) {
+        titleElement->setText(title);
+    }
+    ui->plot1->replot();
+    this->show();
+    this->raise();
+}
+
+void ProfileWidget::updateImageProfiles(const QVector<double> &keyX, const QVector<double> &valuesX,
+                                        const QVector<double> &keyY, const QVector<double> &valuesY,
+                                        double probeX, double probeY, bool live)
+{
+    if (ui->plot1->graphCount() == 0 || ui->plot2->graphCount() == 0) {
+        this->setupImagePlots(u"X"_s, u"Value"_s);
+    }
+
+    ui->checkLive->setChecked(live);
+    ui->plot1->graph()->setData(keyX, valuesX);
+    ui->plot1->rescaleAxes();
+    ui->plot1->xAxis->setRange(-1., keyX.size() + 1.);
+    if (this->refLineX) {
+        this->refLineX->start->setCoords(probeX, ui->plot1->yAxis->range().lower);
+        this->refLineX->end->setCoords(probeX, ui->plot1->yAxis->range().upper);
+    }
+    if (auto *titleX = qobject_cast<QCPTextElement *>(ui->plot1->plotLayout()->element(0, 0))) {
+        titleX->setText(u"X Profile"_s);
+    }
+    ui->plot1->replot();
+
+    ui->plot2->graph()->setData(keyY, valuesY);
+    ui->plot2->rescaleAxes();
+    ui->plot2->xAxis->setRange(-1., keyY.size() + 1.);
+    if (this->refLineY) {
+        this->refLineY->start->setCoords(probeY, ui->plot2->yAxis->range().lower);
+        this->refLineY->end->setCoords(probeY, ui->plot2->yAxis->range().upper);
+    }
+    if (auto *titleY = qobject_cast<QCPTextElement *>(ui->plot2->plotLayout()->element(0, 0))) {
+        titleY->setText(u"Y Profile"_s);
+    }
+    ui->plot2->replot();
 
     this->show();
     this->raise();
