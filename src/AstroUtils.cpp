@@ -105,6 +105,15 @@ std::string AstroUtils::getAxisUnit(int axis) const
     return { };
 }
 
+std::string AstroUtils::getAxisType(int axis) const
+{
+    if (axis < this->naxis) {
+        return this->ctype[axis];
+    }
+
+    return { };
+}
+
 const int *AstroUtils::getDimensions() const
 {
     return this->naxes;

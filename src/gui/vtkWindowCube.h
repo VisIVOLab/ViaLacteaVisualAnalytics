@@ -145,13 +145,36 @@ private slots:
     void extractSpectrumAtCurrentProbe();
     void setProbeModeActive(bool active);
 
-private:
+public:
     enum class RemoteCubeDisplayState
     {
         Preview,
         LoadingFullResolution,
         FullResolution,
     };
+
+    enum class SpectralAxisKind
+    {
+        Channel,
+        Frequency,
+        RadioVelocity,
+        OpticalVelocity,
+        GenericVelocity,
+        GenericSpectral,
+    };
+
+    struct SpectralAxisDescriptor
+    {
+        SpectralAxisKind kind{ SpectralAxisKind::Channel };
+        QString unit;
+        QString label;
+        QString sourceLabel;
+        bool trusted{ false };
+        bool inferred{ false };
+        bool physical{ false };
+    };
+
+private:
 
     struct MomentMapApplyResult
     {
@@ -280,6 +303,12 @@ private:
     int remoteSliceCount() const;
     int clampRemoteSliceIndex(int sliceIndex) const;
     double remoteSliceCoordinate(int sliceIndex) const;
+    SpectralAxisDescriptor spectralAxisDescriptor() const;
+    double spectralAxisValue(double datasetVoxelIndex, bool *ok = nullptr) const;
+    QString formatSpectralAxisValue(double datasetVoxelIndex) const;
+    QString spectralAxisTitle() const;
+    QString spectralAxisTooltip() const;
+    void refreshSpectralAxisUi();
     bool remoteHasWcsAxis(int axis) const;
     double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
     QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;

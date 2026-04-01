@@ -53,6 +53,12 @@ public:
     std::string getAxisUnit(int axis) const;
 
     /**
+   * @param axis (0-index)
+   * @return CTYPE value or empty string
+   */
+    std::string getAxisType(int axis) const;
+
+    /**
    * @return NAXIS values
    */
     const int *getDimensions() const;

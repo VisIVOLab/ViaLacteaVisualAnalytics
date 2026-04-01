@@ -158,6 +158,80 @@ QString upperCtype(const QString &value)
     return value.trimmed().toUpper();
 }
 
+QString cleanAxisUnit(const QString &value)
+{
+    return value.trimmed();
+}
+
+QString spectralAxisKindLabel(vtkWindowCube::SpectralAxisKind kind)
+{
+    switch (kind) {
+    case vtkWindowCube::SpectralAxisKind::Frequency:
+        return u"Frequency"_s;
+    case vtkWindowCube::SpectralAxisKind::RadioVelocity:
+        return u"Radio Velocity"_s;
+    case vtkWindowCube::SpectralAxisKind::OpticalVelocity:
+        return u"Optical Velocity"_s;
+    case vtkWindowCube::SpectralAxisKind::GenericVelocity:
+        return u"Velocity"_s;
+    case vtkWindowCube::SpectralAxisKind::GenericSpectral:
+        return u"Spectral Axis"_s;
+    case vtkWindowCube::SpectralAxisKind::Channel:
+    default:
+        return u"Channel"_s;
+    }
+}
+
+vtkWindowCube::SpectralAxisDescriptor inferSpectralAxisDescriptor(const QString &ctypeRaw,
+                                                                  const QString &unitRaw,
+                                                                  bool hasPhysicalCoordinates)
+{
+    vtkWindowCube::SpectralAxisDescriptor descriptor;
+    const QString ctype = upperCtype(ctypeRaw);
+    descriptor.unit = cleanAxisUnit(unitRaw);
+    descriptor.sourceLabel = ctypeRaw.trimmed();
+
+    if (!hasPhysicalCoordinates) {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::Channel;
+        descriptor.label = u"Channel"_s;
+        descriptor.sourceLabel = u"Channel"_s;
+        return descriptor;
+    }
+
+    descriptor.physical = true;
+    if (ctype.startsWith(u"FREQ"_s)) {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::Frequency;
+        descriptor.label = u"Frequency"_s;
+        descriptor.trusted = true;
+    } else if (ctype.startsWith(u"VRAD"_s)) {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::RadioVelocity;
+        descriptor.label = u"Radio Velocity"_s;
+        descriptor.trusted = true;
+    } else if (ctype.startsWith(u"VOPT"_s) || ctype.startsWith(u"FELO"_s)) {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::OpticalVelocity;
+        descriptor.label = u"Optical Velocity"_s;
+        descriptor.trusted = true;
+    } else if (ctype.startsWith(u"VELO"_s) || ctype.contains(u"VELO"_s)) {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::GenericVelocity;
+        descriptor.label = u"Velocity"_s;
+        descriptor.inferred = true;
+    } else if (ctype.contains(u"CHAN"_s) || ctype == u"CHANNEL"_s) {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::Channel;
+        descriptor.label = u"Channel"_s;
+        descriptor.sourceLabel = u"Channel"_s;
+        descriptor.physical = false;
+    } else {
+        descriptor.kind = vtkWindowCube::SpectralAxisKind::GenericSpectral;
+        descriptor.label = ctypeRaw.trimmed().isEmpty() ? u"Spectral Axis"_s : ctypeRaw.trimmed();
+        descriptor.inferred = !ctypeRaw.trimmed().isEmpty();
+    }
+
+    if (descriptor.sourceLabel.isEmpty()) {
+        descriptor.sourceLabel = spectralAxisKindLabel(descriptor.kind);
+    }
+    return descriptor;
+}
+
 int inferCelestialFrameFromCtypePair(const std::array<QString, 3> &ctype)
 {
     const QString c1 = upperCtype(ctype[0]);
@@ -1283,12 +1357,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                      &vtkWindowCube::changeCubeColor);
 
     // Setup Slice UI
-    const std::string unit = this->astro ? this->astro->getAxisUnit(2) : std::string {};
-    if (!unit.empty()) {
-        ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(QString::fromStdString(unit)));
-    }
-    ui->lineSpectral->setText(this->astro ? QString::number(this->astro->getInitialSpectralValue())
-                                          : this->remoteFormatAxisCoordinate(2, 0.0));
+    this->refreshSpectralAxisUi();
+    ui->lineSpectral->setText(this->formatSpectralAxisValue(0.0));
     QObject::connect(ui->sliderSlice, &QSlider::actionTriggered, this,
                      &vtkWindowCube::sliceSliderChanged);
     QObject::connect(ui->spinSlice, &QSpinBox::valueChanged, this,
@@ -1890,8 +1960,8 @@ void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
                                                   this->formatLocalProbeCoordinate(0, this->probeVoxel),
                                                   this->selectedFrameAxisTitle(1),
                                                   this->formatLocalProbeCoordinate(1, this->probeVoxel),
-                                                  this->remoteAxisTitle(2),
-                                                  this->formatLocalProbeCoordinate(2, this->probeVoxel));
+                                                  this->spectralAxisTitle(),
+                                                  this->formatSpectralAxisValue(this->probeVoxel[2]));
     } else if (this->isRemoteMode) {
         QString axis0 = this->remoteFormatAxisCoordinate(0, this->probeVoxel[0]);
         QString axis1 = this->remoteFormatAxisCoordinate(1, this->probeVoxel[1]);
@@ -1911,8 +1981,8 @@ void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
                                                   axis0,
                                                   this->selectedFrameAxisTitle(1),
                                                   axis1,
-                                                  this->remoteAxisTitle(2),
-                                                  this->remoteFormatAxisCoordinate(2, this->probeVoxel[2]));
+                                                  this->spectralAxisTitle(),
+                                                  this->formatSpectralAxisValue(this->probeVoxel[2]));
     }
     if (this->probeFrozen) {
         message += u"  [Frozen]"_s;
@@ -1951,12 +2021,8 @@ void vtkWindowCube::updateProbePlot()
         const int idx = localZ - extent[4];
         const double datasetZ = origin[2] + (localZ - extent[4]) * spacing[2];
         bool ok = false;
-        spectral[idx] = this->isRemoteMode ? this->remoteVoxelToWcs(2, datasetZ, &ok) : 0.0;
-        if (!this->isRemoteMode) {
-            spectral[idx] = this->astro ? (this->astro->getInitialSpectralValue()
-                                           + this->astro->getIncrements()[2] * datasetZ)
-                                         : datasetZ;
-        } else if (!ok) {
+        spectral[idx] = this->spectralAxisValue(datasetZ, &ok);
+        if (!ok) {
             spectral[idx] = datasetZ;
         }
         values[idx] = cubeImage->GetScalarComponentAsFloat(localX, localY, localZ, 0);
@@ -1964,10 +2030,7 @@ void vtkWindowCube::updateProbePlot()
 
     if (!this->probePlotWidget) {
         this->probePlotWidget = new ProfileWidget(this);
-        const QString xLabel = this->isRemoteMode ? this->remoteAxisTitle(2)
-                                                  : (this->astro
-                                                             ? QString::fromStdString(this->astro->getAxisUnit(2))
-                                                             : u"Z"_s);
+        const QString xLabel = this->spectralAxisTitle();
         const QString yLabel = this->astro ? QString::fromStdString(this->astro->getPhysicalUnit())
                                            : u"Value"_s;
         this->probePlotWidget->setupSpectrumPlot(xLabel.isEmpty() ? u"Z"_s : xLabel,
@@ -2425,10 +2488,8 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     ui->lineCubeMax->setText(QString::number(this->currentCubeVisibleRange[1]));
     ui->lineCubeMean->setText(QString::number(result.cubeMean));
     ui->lineCubeRms->setText(QString::number(result.cubeRms));
-    ui->lineSpectral->setText(this->astro
-                                      ? QString::number(this->astro->getInitialSpectralValue()
-                                                        + this->astro->getIncrements()[2] * clampedSlice)
-                                      : this->remoteFormatAxisCoordinate(2, clampedSlice));
+    ui->lineSpectral->setText(this->formatSpectralAxisValue(clampedSlice));
+    this->refreshSpectralAxisUi();
     qDebug().noquote()
             << QStringLiteral("[perf][cube] apply cube UI fields: %1 ms").arg(
                        cubeFieldsTimer.elapsed());
@@ -2531,7 +2592,8 @@ void vtkWindowCube::updateSlice()
         return;
     }
 
-    ui->lineSpectral->setText(QString::number(result.spectralValue));
+    ui->lineSpectral->setText(this->formatSpectralAxisValue(slice));
+    this->refreshSpectralAxisUi();
 
     ui->vtkCube->renderWindow()->Render();
     this->sliceWin->GetRenderers()->GetFirstRenderer()->ResetCamera();
@@ -2582,10 +2644,8 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     const QSignalBlocker blockSpin(ui->spinSlice);
     ui->sliderSlice->setValue(result.index + 1);
     ui->spinSlice->setValue(result.index + 1);
-    ui->lineSpectral->setText(this->astro
-                                      ? QString::number(this->astro->getInitialSpectralValue()
-                                                        + this->astro->getIncrements()[2] * result.index)
-                                      : this->remoteFormatAxisCoordinate(2, result.index));
+    ui->lineSpectral->setText(this->formatSpectralAxisValue(result.index));
+    this->refreshSpectralAxisUi();
     this->updateRemoteCuttingPlane(result.index);
     ui->vtkCube->renderWindow()->Render();
     qDebug().noquote() << QStringLiteral("[remote-plane] render triggered");
@@ -2611,10 +2671,7 @@ void vtkWindowCube::updateRemoteSliceDragFeedback(int sliceIndex)
 {
     const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
     this->currentRequestedRemoteSliceIndex = clampedSlice;
-    ui->lineSpectral->setText(this->astro
-                                      ? QString::number(this->astro->getInitialSpectralValue()
-                                                        + this->astro->getIncrements()[2] * clampedSlice)
-                                      : this->remoteFormatAxisCoordinate(2, clampedSlice));
+    ui->lineSpectral->setText(this->formatSpectralAxisValue(clampedSlice));
     this->updateRemoteCuttingPlane(clampedSlice);
     ui->vtkCube->renderWindow()->Render();
 }
@@ -2633,8 +2690,107 @@ double vtkWindowCube::remoteSliceCoordinate(int sliceIndex) const
 {
     const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
     bool ok = false;
-    const double wcsValue = this->remoteVoxelToWcs(2, static_cast<double>(clampedSlice), &ok);
-    return ok ? wcsValue : static_cast<double>(clampedSlice);
+    const double axisValue = this->spectralAxisValue(static_cast<double>(clampedSlice), &ok);
+    return ok ? axisValue : static_cast<double>(clampedSlice);
+}
+
+vtkWindowCube::SpectralAxisDescriptor vtkWindowCube::spectralAxisDescriptor() const
+{
+    if (this->isRemoteMode) {
+        return inferSpectralAxisDescriptor(this->remoteDatasetCtype[2], this->remoteDatasetCunit[2],
+                                           this->remoteHasWcsAxis(2));
+    }
+
+    if (!this->astro) {
+        return inferSpectralAxisDescriptor({}, {}, false);
+    }
+
+    const QString axisType = QString::fromStdString(this->astro->getAxisType(2));
+    const QString axisUnit = QString::fromStdString(this->astro->getAxisUnit(2));
+    const bool hasPhysicalMetadata = !axisType.trimmed().isEmpty() || !axisUnit.trimmed().isEmpty();
+    return inferSpectralAxisDescriptor(axisType, axisUnit, hasPhysicalMetadata);
+}
+
+double vtkWindowCube::spectralAxisValue(double datasetVoxelIndex, bool *ok) const
+{
+    const auto descriptor = this->spectralAxisDescriptor();
+    if (descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
+        if (ok) {
+            *ok = false;
+        }
+        return datasetVoxelIndex;
+    }
+
+    if (this->isRemoteMode) {
+        return this->remoteVoxelToWcs(2, datasetVoxelIndex, ok);
+    }
+
+    if (this->astro) {
+        if (ok) {
+            *ok = true;
+        }
+        return this->astro->getInitialSpectralValue() + this->astro->getIncrements()[2] * datasetVoxelIndex;
+    }
+
+    if (ok) {
+        *ok = false;
+    }
+    return datasetVoxelIndex;
+}
+
+QString vtkWindowCube::formatSpectralAxisValue(double datasetVoxelIndex) const
+{
+    const auto descriptor = this->spectralAxisDescriptor();
+    bool ok = false;
+    const double value = this->spectralAxisValue(datasetVoxelIndex, &ok);
+    if (descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical || !ok) {
+        return QString::number(std::lround(datasetVoxelIndex));
+    }
+
+    if (descriptor.unit.isEmpty()) {
+        return QString::number(value, 'g', 12);
+    }
+    return u"%1 %2"_s.arg(QString::number(value, 'g', 12), descriptor.unit);
+}
+
+QString vtkWindowCube::spectralAxisTitle() const
+{
+    const auto descriptor = this->spectralAxisDescriptor();
+    if (descriptor.unit.isEmpty() || descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
+        return descriptor.label;
+    }
+    return u"%1 [%2]"_s.arg(descriptor.label, descriptor.unit);
+}
+
+QString vtkWindowCube::spectralAxisTooltip() const
+{
+    const auto descriptor = this->spectralAxisDescriptor();
+    QString trust;
+    if (descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
+        trust = u"Fallback to channel index."_s;
+    } else if (descriptor.trusted) {
+        trust = u"Trusted from FITS spectral metadata."_s;
+    } else if (descriptor.inferred) {
+        trust = u"Inferred from FITS CTYPE3."_s;
+    } else {
+        trust = u"Generic spectral-axis interpretation."_s;
+    }
+
+    const QString source = descriptor.sourceLabel.isEmpty() ? descriptor.label : descriptor.sourceLabel;
+    const QString unit = descriptor.unit.isEmpty() ? u"unknown units"_s : descriptor.unit;
+    return u"%1 Native axis: %2. Units: %3"_s.arg(trust, source, unit);
+}
+
+void vtkWindowCube::refreshSpectralAxisUi()
+{
+    const QString title = this->spectralAxisTitle();
+    const QString tooltip = this->spectralAxisTooltip();
+    ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(title));
+    ui->groupSlice->setToolTip(tooltip);
+    ui->lineSpectral->setToolTip(tooltip);
+    ui->lineSpectral->setStatusTip(tooltip);
+    qDebug().noquote()
+            << QStringLiteral("[spectral] axis3 title=%1 tooltip=%2").arg(title, tooltip);
 }
 
 bool vtkWindowCube::remoteHasWcsAxis(int axis) const
@@ -2767,11 +2923,7 @@ QString vtkWindowCube::selectedFrameAxisTitle(int axis) const
 QString vtkWindowCube::formatLocalProbeCoordinate(int axis, const std::array<int, 3> &voxel) const
 {
     if (axis == 2) {
-        if (!this->astro) {
-            return QString::number(voxel[2]);
-        }
-        return QString::number(this->astro->getInitialSpectralValue()
-                               + this->astro->getIncrements()[2] * voxel[2]);
+        return this->formatSpectralAxisValue(voxel[2]);
     }
     if (!this->astro || this->astro->isSimulation()) {
         return QString::number(voxel[axis]);
@@ -3625,7 +3777,10 @@ void vtkWindowCube::setInteractorStyleProfile()
         this->profileWidget = new ProfileWidget(
                 style, vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0)),
                                                 this->filepath.toStdString(), this);
-        this->profileWidget->setupSpectrumPlot();
+        const QString yLabel = this->astro ? QString::fromStdString(this->astro->getPhysicalUnit())
+                                           : u"Value"_s;
+        this->profileWidget->setupSpectrumPlot(this->spectralAxisTitle(),
+                                               yLabel.isEmpty() ? u"Value"_s : yLabel);
         QObject::connect(this->profileWidget, &ProfileWidget::destroyed, this,
                          &vtkWindowCube::setInteractorStyleImage, Qt::QueuedConnection);
     }
