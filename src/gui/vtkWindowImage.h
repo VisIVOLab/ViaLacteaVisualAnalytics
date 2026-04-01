@@ -123,6 +123,7 @@ private:
     void ensureOverlayTickActors(vtkRenderer *renderer);
     void invalidateWcsOverlayCache();
     void applyDefaultWcsFormatForSelectedFrame();
+    void requestWcsOverlayRender();
 
     // Stack
     vtkNew<vtkImageStack> stack;

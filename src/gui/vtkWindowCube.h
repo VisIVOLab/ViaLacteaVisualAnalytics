@@ -282,6 +282,7 @@ private:
                                  std::vector<vtkSmartPointer<vtkTextActor>> &yActors);
     void invalidateWcsOverlayCache();
     void applyDefaultWcsFormatForSelectedFrame();
+    void requestWcsOverlayRender();
 
     // Slice
     vtkNew<vtkImageReslice> slice;

@@ -37,6 +37,7 @@
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFileDialog>
+#include <QMetaObject>
 #include <QMessageBox>
 #include <QtConcurrentRun>
 
@@ -284,8 +285,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                                            std::numeric_limits<double>::quiet_NaN() };
         this->lastOverlayViewportSize = { -1, -1 };
         this->setWcsOverlayVisible(checked);
-        this->updateWcsOverlay();
-        this->vtkRender();
+        this->requestWcsOverlayRender();
     });
     this->statusMessageClearTimer.setSingleShot(true);
     QObject::connect(&this->statusMessageClearTimer, &QTimer::timeout, this, [this]() {
@@ -359,7 +359,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
         this->wcsFormatExplicitlyChosen = true;
         this->useSexagesimalWcsFormat = action == this->actionWcsSexagesimal;
         this->invalidateWcsOverlayCache();
-        ui->vtk->renderWindow()->Render();
+        this->requestWcsOverlayRender();
     });
     this->applyDefaultWcsFormatForSelectedFrame();
 
@@ -865,6 +865,21 @@ void vtkWindowImage::applyDefaultWcsFormatForSelectedFrame()
     }
 }
 
+void vtkWindowImage::requestWcsOverlayRender()
+{
+    QMetaObject::invokeMethod(
+            this,
+            [this]() {
+                if (!ui || !ui->vtk || !ui->vtk->renderWindow()) {
+                    return;
+                }
+                this->updateWcsOverlay();
+                ui->vtk->renderWindow()->Render();
+                ui->vtk->update();
+            },
+            Qt::QueuedConnection);
+}
+
 bool vtkWindowImage::remoteHasWcsAxis(int axis) const
 {
     return axis >= 0 && axis < 3 && std::isfinite(this->remoteDatasetCrval[axis])
@@ -994,7 +1009,7 @@ void vtkWindowImage::changeLegendWCS()
             << QStringLiteral("[wcs] overlay using selected frame %1")
                        .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
                                                 : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
-    ui->vtk->renderWindow()->Render();
+    this->requestWcsOverlayRender();
 }
 
 void vtkWindowImage::changeCurrentColorMap()

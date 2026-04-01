@@ -68,6 +68,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QList>
+#include <QMetaObject>
 #include <QSignalBlocker>
 #include <QtConcurrentRun>
 
@@ -840,9 +841,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         this->lastSliceOverlayViewportSize = { -1, -1 };
         this->lastMomentOverlayViewportSize = { -1, -1 };
         this->set2dWcsOverlayVisible(checked);
-        this->updateSliceWcsOverlay();
-        this->updateMomentWcsOverlay();
-        ui->vtkImage->renderWindow()->Render();
+        this->requestWcsOverlayRender();
     });
     this->remoteRoiRefinementCheck = new QCheckBox(u"Use Camera ROI"_s, this);
     this->remoteRoiRefinementCheck->setChecked(this->useCameraRoiRefinement);
@@ -1258,7 +1257,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         this->wcsFormatExplicitlyChosen = true;
         this->useSexagesimalWcsFormat = action == this->actionWcsSexagesimal;
         this->invalidateWcsOverlayCache();
-        ui->vtkImage->renderWindow()->Render();
+        this->requestWcsOverlayRender();
     });
     this->applyDefaultWcsFormatForSelectedFrame();
 
@@ -2612,6 +2611,28 @@ void vtkWindowCube::applyDefaultWcsFormatForSelectedFrame()
     }
 }
 
+void vtkWindowCube::requestWcsOverlayRender()
+{
+    QMetaObject::invokeMethod(
+            this,
+            [this]() {
+                this->updateSliceWcsOverlay();
+                this->updateMomentWcsOverlay();
+                if (!ui || !ui->vtkImage) {
+                    return;
+                }
+                if (this->viewingSlice() && this->sliceWin) {
+                    this->sliceWin->Render();
+                } else if (!this->viewingSlice() && this->momentWin) {
+                    this->momentWin->Render();
+                } else if (ui->vtkImage->renderWindow()) {
+                    ui->vtkImage->renderWindow()->Render();
+                }
+                ui->vtkImage->update();
+            },
+            Qt::QueuedConnection);
+}
+
 void vtkWindowCube::updateSliceWcsOverlay()
 {
     auto *renderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
@@ -3092,7 +3113,7 @@ void vtkWindowCube::changeLegendWCS()
             << QStringLiteral("[wcs] overlay using selected frame %1")
                        .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
                                                 : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
-    ui->vtkImage->renderWindow()->Render();
+    this->requestWcsOverlayRender();
 }
 
 void vtkWindowCube::showLUTCustomizer()
