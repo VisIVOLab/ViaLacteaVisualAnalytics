@@ -5,6 +5,8 @@
 
 #include <vtkImageData.h>
 
+#include <QColor>
+
 using namespace Qt::StringLiterals;
 
 ProfileWidget::ProfileWidget(vtkInteractorStyleProfile *style, vtkImageData *dataset,
@@ -176,6 +178,7 @@ void ProfileWidget::setupSpectrumPlot(const QString &xLabel, const QString &yLab
     ui->plot2->hide();
     ui->plot1->clearGraphs();
     ui->plot1->addGraph();
+    ui->plot1->legend->setVisible(false);
     ui->plot1->setInteractions(QCP::iRangeDrag);
     ui->plot1->axisRect()->setRangeDrag(Qt::Horizontal);
     ui->plot1->plotLayout()->insertRow(0);
@@ -269,11 +272,49 @@ void ProfileWidget::updateSpectrumPlot(const QVector<double> &key, const QVector
     if (ui->plot1->graphCount() == 0) {
         ui->plot1->addGraph();
     }
+    while (ui->plot1->graphCount() > 1) {
+        ui->plot1->removeGraph(ui->plot1->graphCount() - 1);
+    }
+    ui->plot1->legend->setVisible(false);
 
     if (this->usageMode == UsageMode::ProbeLive) {
         ui->checkLive->setChecked(live);
     }
     ui->plot1->graph()->setData(key, values);
+    ui->plot1->rescaleAxes();
+    if (auto *titleElement = qobject_cast<QCPTextElement *>(ui->plot1->plotLayout()->element(0, 0))) {
+        titleElement->setText(title);
+    }
+    ui->plot1->replot();
+    this->show();
+    this->raise();
+}
+
+void ProfileWidget::updateSpectrumPlotSeries(const QVector<double> &key,
+                                             const QVector<double> &primaryValues,
+                                             const QString &primaryLabel,
+                                             const QVector<double> &secondaryValues,
+                                             const QString &secondaryLabel,
+                                             const QString &title, bool live)
+{
+    while (ui->plot1->graphCount() < 2) {
+        ui->plot1->addGraph();
+    }
+    while (ui->plot1->graphCount() > 2) {
+        ui->plot1->removeGraph(ui->plot1->graphCount() - 1);
+    }
+
+    if (this->usageMode == UsageMode::ProbeLive) {
+        ui->checkLive->setChecked(live);
+    }
+
+    ui->plot1->graph(0)->setData(key, primaryValues);
+    ui->plot1->graph(0)->setName(primaryLabel);
+    ui->plot1->graph(0)->setPen(QPen(QColor(0, 170, 255), 2.0));
+    ui->plot1->graph(1)->setData(key, secondaryValues);
+    ui->plot1->graph(1)->setName(secondaryLabel);
+    ui->plot1->graph(1)->setPen(QPen(QColor(255, 170, 0), 2.0));
+    ui->plot1->legend->setVisible(true);
     ui->plot1->rescaleAxes();
     if (auto *titleElement = qobject_cast<QCPTextElement *>(ui->plot1->plotLayout()->element(0, 0))) {
         titleElement->setText(title);

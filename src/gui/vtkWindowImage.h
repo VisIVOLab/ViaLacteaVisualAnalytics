@@ -32,7 +32,11 @@ class vtkAxisActor2D;
 class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
+class vtkCellArray;
+class vtkContourTriangulator;
 class vtkLineSource;
+class vtkPoints;
+class vtkPolyData;
 class vtkRegularPolygonSource;
 class vtkRenderer;
 class vtkScalarBarActor;
@@ -81,14 +85,17 @@ private slots:
     void finishRegionInteraction();
     void setProbeModeActive(bool active);
 
-private:
+public:
     enum class RegionMode
     {
         None,
         Box,
         Circle,
+        Polygon,
+        Annulus,
     };
 
+private:
     Ui::vtkWindowImage *ui;
     const QString filepath;
     const bool isRemoteMode;
@@ -111,6 +118,8 @@ private:
     QPointer<QAction> actionExtractSpectrum;
     QPointer<QAction> actionBoxRegion;
     QPointer<QAction> actionCircleRegion;
+    QPointer<QAction> actionPolygonRegion;
+    QPointer<QAction> actionAnnulusRegion;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
@@ -139,9 +148,12 @@ private:
     bool probeValid{ false };
     bool regionDragging{ false };
     bool regionValid{ false };
+    bool ignoreNextPolygonRelease{ false };
     std::array<int, 2> probeVoxel{ -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
+    std::vector<std::array<int, 2>> regionPolygonVertices;
+    double regionAnnulusInnerRadius{ 0.0 };
     std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
@@ -161,6 +173,21 @@ private:
     vtkNew<vtkActor> regionRightActor;
     vtkNew<vtkRegularPolygonSource> regionCircleSource;
     vtkNew<vtkActor> regionCircleActor;
+    vtkNew<vtkRegularPolygonSource> regionAnnulusOuterSource;
+    vtkNew<vtkRegularPolygonSource> regionAnnulusInnerSource;
+    vtkNew<vtkActor> regionAnnulusOuterActor;
+    vtkNew<vtkActor> regionAnnulusInnerActor;
+    vtkNew<vtkPoints> regionAnnulusFillPoints;
+    vtkNew<vtkCellArray> regionAnnulusFillCells;
+    vtkNew<vtkPolyData> regionAnnulusFillData;
+    vtkNew<vtkActor> regionAnnulusFillActor;
+    vtkNew<vtkPoints> regionPolygonPoints;
+    vtkNew<vtkCellArray> regionPolygonCells;
+    vtkNew<vtkPolyData> regionPolygonData;
+    vtkNew<vtkActor> regionPolygonActor;
+    vtkNew<vtkPolyData> regionPolygonFillData;
+    vtkNew<vtkContourTriangulator> regionPolygonTriangulator;
+    vtkNew<vtkActor> regionPolygonFillActor;
     void setupRenderer();
     void mouseCallback();
     bool updateProbeFromDisplayPosition(int displayX, int displayY);
@@ -181,6 +208,7 @@ private:
     void refreshRegionOverlay();
     void clearRegion();
     void analyzeCurrentRegion();
+    bool finalizePolygonRegion();
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;
 

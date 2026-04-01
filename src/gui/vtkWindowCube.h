@@ -32,6 +32,7 @@ class PvDiagramWidget;
 class vtkAxisActor2D;
 class vtkActor;
 class vtkColorTransferFunction;
+class vtkContourTriangulator;
 class vtkCoordinate;
 class vtkExtractVOI;
 class vtkFITSReader;
@@ -183,14 +184,17 @@ public:
         bool physical{ false };
     };
 
-private:
+public:
     enum class RegionMode
     {
         None,
         Box,
         Circle,
+        Polygon,
+        Annulus,
     };
 
+private:
     struct MomentMapApplyResult
     {
         vtkSmartPointer<vtkImageData> imageData;
@@ -245,6 +249,8 @@ private:
     QPointer<QAction> actionWcsDecimal;
     QPointer<QAction> actionBoxRegion;
     QPointer<QAction> actionCircleRegion;
+    QPointer<QAction> actionPolygonRegion;
+    QPointer<QAction> actionAnnulusRegion;
     QPointer<QAction> actionExtractPvDiagram;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
@@ -290,11 +296,14 @@ private:
     bool probeValid{ false };
     bool regionDragging{ false };
     bool regionValid{ false };
+    bool ignoreNextPolygonRelease{ false };
     MomentGenerationConfig currentMomentConfig;
     MomentProvenanceState momentProvenanceState;
     std::array<int, 3> probeVoxel{ -1, -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
+    std::vector<std::array<int, 2>> regionPolygonVertices;
+    double regionAnnulusInnerRadius{ 0.0 };
     std::array<int, 2> pvCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> pvPolylineVertices;
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
@@ -334,6 +343,7 @@ private:
     void clearRegion();
     void clearPv();
     void analyzeCurrentRegion();
+    bool finalizePolygonRegion();
     void extractCurrentPvDiagram();
     void updateProbeReadout(vtkImageData *imageData);
     void updateProbePlot();
@@ -434,6 +444,21 @@ private:
     vtkNew<vtkActor> sliceRegionRightActor;
     vtkNew<vtkRegularPolygonSource> sliceRegionCircleSource;
     vtkNew<vtkActor> sliceRegionCircleActor;
+    vtkNew<vtkRegularPolygonSource> sliceRegionAnnulusOuterSource;
+    vtkNew<vtkRegularPolygonSource> sliceRegionAnnulusInnerSource;
+    vtkNew<vtkActor> sliceRegionAnnulusOuterActor;
+    vtkNew<vtkActor> sliceRegionAnnulusInnerActor;
+    vtkNew<vtkPoints> sliceRegionAnnulusFillPoints;
+    vtkNew<vtkCellArray> sliceRegionAnnulusFillCells;
+    vtkNew<vtkPolyData> sliceRegionAnnulusFillData;
+    vtkNew<vtkActor> sliceRegionAnnulusFillActor;
+    vtkNew<vtkPoints> sliceRegionPolygonPoints;
+    vtkNew<vtkCellArray> sliceRegionPolygonCells;
+    vtkNew<vtkPolyData> sliceRegionPolygonData;
+    vtkNew<vtkActor> sliceRegionPolygonActor;
+    vtkNew<vtkPolyData> sliceRegionPolygonFillData;
+    vtkNew<vtkContourTriangulator> sliceRegionPolygonTriangulator;
+    vtkNew<vtkActor> sliceRegionPolygonFillActor;
     vtkNew<vtkPoints> slicePvPoints;
     vtkNew<vtkCellArray> slicePvCells;
     vtkNew<vtkPolyData> slicePvData;
@@ -499,6 +524,21 @@ private:
     vtkNew<vtkActor> momentRegionRightActor;
     vtkNew<vtkRegularPolygonSource> momentRegionCircleSource;
     vtkNew<vtkActor> momentRegionCircleActor;
+    vtkNew<vtkRegularPolygonSource> momentRegionAnnulusOuterSource;
+    vtkNew<vtkRegularPolygonSource> momentRegionAnnulusInnerSource;
+    vtkNew<vtkActor> momentRegionAnnulusOuterActor;
+    vtkNew<vtkActor> momentRegionAnnulusInnerActor;
+    vtkNew<vtkPoints> momentRegionAnnulusFillPoints;
+    vtkNew<vtkCellArray> momentRegionAnnulusFillCells;
+    vtkNew<vtkPolyData> momentRegionAnnulusFillData;
+    vtkNew<vtkActor> momentRegionAnnulusFillActor;
+    vtkNew<vtkPoints> momentRegionPolygonPoints;
+    vtkNew<vtkCellArray> momentRegionPolygonCells;
+    vtkNew<vtkPolyData> momentRegionPolygonData;
+    vtkNew<vtkActor> momentRegionPolygonActor;
+    vtkNew<vtkPolyData> momentRegionPolygonFillData;
+    vtkNew<vtkContourTriangulator> momentRegionPolygonTriangulator;
+    vtkNew<vtkActor> momentRegionPolygonFillActor;
     vtkNew<vtkPoints> momentPvPoints;
     vtkNew<vtkCellArray> momentPvCells;
     vtkNew<vtkPolyData> momentPvData;

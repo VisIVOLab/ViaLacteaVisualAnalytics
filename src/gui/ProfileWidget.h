@@ -43,6 +43,12 @@ public:
     void setupSpectrumPlot(const QString &xLabel, const QString &yLabel);
     void updateSpectrumPlot(const QVector<double> &key, const QVector<double> &values,
                             const QString &title, bool live);
+    void updateSpectrumPlotSeries(const QVector<double> &key,
+                                  const QVector<double> &primaryValues,
+                                  const QString &primaryLabel,
+                                  const QVector<double> &secondaryValues,
+                                  const QString &secondaryLabel,
+                                  const QString &title, bool live);
     void updateImageProfiles(const QVector<double> &keyX, const QVector<double> &valuesX,
                              const QVector<double> &keyY, const QVector<double> &valuesY,
                              double probeX, double probeY, bool live);

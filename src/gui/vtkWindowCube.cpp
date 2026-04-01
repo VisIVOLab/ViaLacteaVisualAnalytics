@@ -21,6 +21,7 @@
 #include <vtkCamera.h>
 #include <vtkCellArray.h>
 #include <vtkColorTransferFunction.h>
+#include <vtkContourTriangulator.h>
 #include <vtkCoordinate.h>
 #include <vtkExtractVOI.h>
 #include <vtkFloatArray.h>
@@ -96,6 +97,7 @@ using namespace Qt::StringLiterals;
 namespace {
 constexpr double pi = 3.14159265358979323846;
 constexpr int overlayTickCount = 5;
+constexpr double polygonClosureTolerance = 3.0;
 
 struct VisibleImageBounds2D
 {
@@ -147,6 +149,53 @@ struct RegionStatistics
     double stddev{ 0. };
     bool valid{ false };
 };
+
+double distance2d(const std::array<int, 2> &a, const std::array<int, 2> &b)
+{
+    const double dx = static_cast<double>(a[0] - b[0]);
+    const double dy = static_cast<double>(a[1] - b[1]);
+    return std::sqrt(dx * dx + dy * dy);
+}
+
+void buildAnnulusFill(vtkPoints *points, vtkCellArray *cells, vtkPolyData *polyData,
+                      const std::array<int, 2> &center, double innerRadius, double outerRadius,
+                      int sides = 96)
+{
+    points->Reset();
+    cells->Reset();
+    if (!polyData || !points || !cells || outerRadius <= 0.0 || innerRadius < 0.0
+        || innerRadius >= outerRadius) {
+        if (polyData) {
+            polyData->Modified();
+        }
+        return;
+    }
+
+    const double cx = static_cast<double>(center[0]);
+    const double cy = static_cast<double>(center[1]);
+    const double twoPi = 2.0 * std::acos(-1.0);
+    for (int i = 0; i < sides; ++i) {
+        const double theta = twoPi * static_cast<double>(i) / static_cast<double>(sides);
+        const double cosTheta = std::cos(theta);
+        const double sinTheta = std::sin(theta);
+        points->InsertNextPoint(cx + outerRadius * cosTheta, cy + outerRadius * sinTheta, 0.0);
+        points->InsertNextPoint(cx + innerRadius * cosTheta, cy + innerRadius * sinTheta, 0.0);
+    }
+
+    cells->InsertNextCell(static_cast<vtkIdType>(2 * (sides + 1)));
+    for (int i = 0; i <= sides; ++i) {
+        const int wrapped = i % sides;
+        const vtkIdType outer = static_cast<vtkIdType>(2 * wrapped);
+        const vtkIdType inner = outer + 1;
+        cells->InsertCellPoint(outer);
+        cells->InsertCellPoint(inner);
+    }
+
+    polyData->SetPoints(points);
+    polyData->SetPolys(nullptr);
+    polyData->SetStrips(cells);
+    polyData->Modified();
+}
 
 double computeBlankFraction(vtkImageData *imageData)
 {
@@ -216,8 +265,116 @@ bool pointInCircle(const std::array<int, 2> &anchor, const std::array<int, 2> &c
     return (px * px + py * py) <= radius * radius;
 }
 
-RegionStatistics computeRegionStatistics2D(vtkImageData *imageData, const std::array<int, 2> &anchor,
-                                           const std::array<int, 2> &current, bool circular)
+bool pointInPolygon(const std::vector<std::array<int, 2>> &vertices, int x, int y)
+{
+    if (vertices.size() < 3) {
+        return false;
+    }
+
+    bool inside = false;
+    const double px = static_cast<double>(x) + 0.5;
+    const double py = static_cast<double>(y) + 0.5;
+    for (std::size_t i = 0, j = vertices.size() - 1; i < vertices.size(); j = i++) {
+        const double xi = static_cast<double>(vertices[i][0]) + 0.5;
+        const double yi = static_cast<double>(vertices[i][1]) + 0.5;
+        const double xj = static_cast<double>(vertices[j][0]) + 0.5;
+        const double yj = static_cast<double>(vertices[j][1]) + 0.5;
+        const bool intersects = ((yi > py) != (yj > py))
+                && (px < (xj - xi) * (py - yi) / ((yj - yi) == 0.0 ? 1e-12 : (yj - yi)) + xi);
+        if (intersects) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+bool pointInAnnulus(const std::array<int, 2> &center, const std::array<int, 2> &outerPoint,
+                    double innerRadius, int x, int y)
+{
+    const double outerDx = static_cast<double>(outerPoint[0] - center[0]);
+    const double outerDy = static_cast<double>(outerPoint[1] - center[1]);
+    const double outerRadius = std::sqrt(outerDx * outerDx + outerDy * outerDy);
+    if (outerRadius <= 0.0) {
+        return false;
+    }
+
+    const double px = static_cast<double>(x - center[0]);
+    const double py = static_cast<double>(y - center[1]);
+    const double radius = std::sqrt(px * px + py * py);
+    return radius >= std::max(0.0, innerRadius) && radius <= outerRadius;
+}
+
+std::array<int, 4> regionBounds2D(vtkWindowCube::RegionMode mode, const std::array<int, 2> &anchor,
+                                  const std::array<int, 2> &current,
+                                  const std::vector<std::array<int, 2>> &polygonVertices)
+{
+    if (mode == vtkWindowCube::RegionMode::Polygon && !polygonVertices.empty()) {
+        int xmin = polygonVertices.front()[0];
+        int xmax = polygonVertices.front()[0];
+        int ymin = polygonVertices.front()[1];
+        int ymax = polygonVertices.front()[1];
+        for (const auto &vertex : polygonVertices) {
+            xmin = std::min(xmin, vertex[0]);
+            xmax = std::max(xmax, vertex[0]);
+            ymin = std::min(ymin, vertex[1]);
+            ymax = std::max(ymax, vertex[1]);
+        }
+        xmin = std::min(xmin, current[0]);
+        xmax = std::max(xmax, current[0]);
+        ymin = std::min(ymin, current[1]);
+        ymax = std::max(ymax, current[1]);
+        return { xmin, xmax, ymin, ymax };
+    }
+
+    const int xmin = std::min(anchor[0], current[0]);
+    const int xmax = std::max(anchor[0], current[0]);
+    const int ymin = std::min(anchor[1], current[1]);
+    const int ymax = std::max(anchor[1], current[1]);
+    return { xmin, xmax, ymin, ymax };
+}
+
+bool pointInRegion(vtkWindowCube::RegionMode mode, const std::array<int, 2> &anchor,
+                   const std::array<int, 2> &current,
+                   const std::vector<std::array<int, 2>> &polygonVertices, double annulusInnerRadius,
+                   int x, int y)
+{
+    switch (mode) {
+    case vtkWindowCube::RegionMode::Box:
+        return pointInBox(anchor, current, x, y);
+    case vtkWindowCube::RegionMode::Circle:
+        return pointInCircle(anchor, current, x, y);
+    case vtkWindowCube::RegionMode::Polygon:
+        return pointInPolygon(polygonVertices, x, y);
+    case vtkWindowCube::RegionMode::Annulus:
+        return pointInAnnulus(anchor, current, annulusInnerRadius, x, y);
+    case vtkWindowCube::RegionMode::None:
+    default:
+        return false;
+    }
+}
+
+QString regionModeLabel(vtkWindowCube::RegionMode mode)
+{
+    switch (mode) {
+    case vtkWindowCube::RegionMode::Box:
+        return u"Box"_s;
+    case vtkWindowCube::RegionMode::Circle:
+        return u"Circle"_s;
+    case vtkWindowCube::RegionMode::Polygon:
+        return u"Polygon"_s;
+    case vtkWindowCube::RegionMode::Annulus:
+        return u"Annulus"_s;
+    case vtkWindowCube::RegionMode::None:
+    default:
+        return u"Region"_s;
+    }
+}
+
+RegionStatistics computeRegionStatistics2D(vtkImageData *imageData, vtkWindowCube::RegionMode mode,
+                                           const std::array<int, 2> &anchor,
+                                           const std::array<int, 2> &current,
+                                           const std::vector<std::array<int, 2>> &polygonVertices,
+                                           double annulusInnerRadius)
 {
     RegionStatistics stats;
     if (!imageData) {
@@ -226,16 +383,17 @@ RegionStatistics computeRegionStatistics2D(vtkImageData *imageData, const std::a
 
     int extent[6];
     imageData->GetExtent(extent);
+    const auto bounds = regionBounds2D(mode, anchor, current, polygonVertices);
     std::vector<double> values;
     double sum = 0.0;
     double sumSq = 0.0;
     stats.minValue = std::numeric_limits<double>::infinity();
     stats.maxValue = -std::numeric_limits<double>::infinity();
 
-    for (int y = extent[2]; y <= extent[3]; ++y) {
-        for (int x = extent[0]; x <= extent[1]; ++x) {
-            const bool inside = circular ? pointInCircle(anchor, current, x, y)
-                                         : pointInBox(anchor, current, x, y);
+    for (int y = std::max(extent[2], bounds[2]); y <= std::min(extent[3], bounds[3]); ++y) {
+        for (int x = std::max(extent[0], bounds[0]); x <= std::min(extent[1], bounds[1]); ++x) {
+            const bool inside =
+                    pointInRegion(mode, anchor, current, polygonVertices, annulusInnerRadius, x, y);
             if (!inside) {
                 continue;
             }
@@ -1731,16 +1889,26 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                      &vtkWindowCube::setPvModeActive);
     this->actionBoxRegion = ui->menuTools->addAction(u"Box Region Analysis"_s);
     this->actionCircleRegion = ui->menuTools->addAction(u"Circle Region Analysis"_s);
+    this->actionPolygonRegion = ui->menuTools->addAction(u"Polygon Region Analysis"_s);
+    this->actionAnnulusRegion = ui->menuTools->addAction(u"Annulus Region Analysis"_s);
     this->actionBoxRegion->setCheckable(true);
     this->actionCircleRegion->setCheckable(true);
+    this->actionPolygonRegion->setCheckable(true);
+    this->actionAnnulusRegion->setCheckable(true);
     auto *regionGroup = new QActionGroup(this);
     regionGroup->setExclusive(false);
     regionGroup->addAction(this->actionBoxRegion);
     regionGroup->addAction(this->actionCircleRegion);
+    regionGroup->addAction(this->actionPolygonRegion);
+    regionGroup->addAction(this->actionAnnulusRegion);
     QObject::connect(this->actionBoxRegion, &QAction::toggled, this,
                      [this](bool checked) { this->setRegionMode(RegionMode::Box, checked); });
     QObject::connect(this->actionCircleRegion, &QAction::toggled, this,
                      [this](bool checked) { this->setRegionMode(RegionMode::Circle, checked); });
+    QObject::connect(this->actionPolygonRegion, &QAction::toggled, this,
+                     [this](bool checked) { this->setRegionMode(RegionMode::Polygon, checked); });
+    QObject::connect(this->actionAnnulusRegion, &QAction::toggled, this,
+                     [this](bool checked) { this->setRegionMode(RegionMode::Annulus, checked); });
 
     // Setup Threshold UI
     const std::string bunit = this->astro ? this->astro->getPhysicalUnit() : std::string {};
@@ -2119,6 +2287,49 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceRegionCircleActor->GetProperty()->SetLineWidth(2.0);
     this->sliceRegionCircleActor->VisibilityOff();
     ren->AddActor(this->sliceRegionCircleActor);
+    this->sliceRegionAnnulusOuterSource->SetNumberOfSides(96);
+    this->sliceRegionAnnulusOuterSource->GeneratePolygonOff();
+    vtkNew<vtkPolyDataMapper> sliceRegionAnnulusOuterMapper;
+    sliceRegionAnnulusOuterMapper->SetInputConnection(this->sliceRegionAnnulusOuterSource->GetOutputPort());
+    this->sliceRegionAnnulusOuterActor->SetMapper(sliceRegionAnnulusOuterMapper);
+    this->sliceRegionAnnulusOuterActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->sliceRegionAnnulusOuterActor->GetProperty()->SetLineWidth(2.0);
+    this->sliceRegionAnnulusOuterActor->GetProperty()->SetRepresentationToWireframe();
+    this->sliceRegionAnnulusOuterActor->VisibilityOff();
+    ren->AddActor(this->sliceRegionAnnulusOuterActor);
+    this->sliceRegionAnnulusInnerSource->SetNumberOfSides(96);
+    this->sliceRegionAnnulusInnerSource->GeneratePolygonOff();
+    vtkNew<vtkPolyDataMapper> sliceRegionAnnulusInnerMapper;
+    sliceRegionAnnulusInnerMapper->SetInputConnection(this->sliceRegionAnnulusInnerSource->GetOutputPort());
+    this->sliceRegionAnnulusInnerActor->SetMapper(sliceRegionAnnulusInnerMapper);
+    this->sliceRegionAnnulusInnerActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->sliceRegionAnnulusInnerActor->GetProperty()->SetLineWidth(1.5);
+    this->sliceRegionAnnulusInnerActor->GetProperty()->SetRepresentationToWireframe();
+    this->sliceRegionAnnulusInnerActor->VisibilityOff();
+    ren->AddActor(this->sliceRegionAnnulusInnerActor);
+    vtkNew<vtkPolyDataMapper> sliceRegionAnnulusFillMapper;
+    sliceRegionAnnulusFillMapper->SetInputData(this->sliceRegionAnnulusFillData);
+    this->sliceRegionAnnulusFillActor->SetMapper(sliceRegionAnnulusFillMapper);
+    this->sliceRegionAnnulusFillActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->sliceRegionAnnulusFillActor->GetProperty()->SetOpacity(0.18);
+    this->sliceRegionAnnulusFillActor->GetProperty()->SetRepresentationToSurface();
+    this->sliceRegionAnnulusFillActor->VisibilityOff();
+    ren->AddActor(this->sliceRegionAnnulusFillActor);
+    this->sliceRegionPolygonTriangulator->SetInputData(this->sliceRegionPolygonFillData);
+    vtkNew<vtkPolyDataMapper> sliceRegionPolygonMapper;
+    sliceRegionPolygonMapper->SetInputData(this->sliceRegionPolygonData);
+    this->sliceRegionPolygonActor->SetMapper(sliceRegionPolygonMapper);
+    this->sliceRegionPolygonActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->sliceRegionPolygonActor->GetProperty()->SetLineWidth(2.0);
+    this->sliceRegionPolygonActor->VisibilityOff();
+    ren->AddActor(this->sliceRegionPolygonActor);
+    vtkNew<vtkPolyDataMapper> sliceRegionPolygonFillMapper;
+    sliceRegionPolygonFillMapper->SetInputConnection(this->sliceRegionPolygonTriangulator->GetOutputPort());
+    this->sliceRegionPolygonFillActor->SetMapper(sliceRegionPolygonFillMapper);
+    this->sliceRegionPolygonFillActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->sliceRegionPolygonFillActor->GetProperty()->SetOpacity(0.18);
+    this->sliceRegionPolygonFillActor->VisibilityOff();
+    ren->AddActor(this->sliceRegionPolygonFillActor);
     this->sliceOverlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->sliceOverlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->sliceOverlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -2157,6 +2368,7 @@ void vtkWindowCube::setupMomentRenderer()
     iren->AddObserver(vtkCommand::LeftButtonPressEvent, this, &vtkWindowCube::toggleProbeFreeze);
     iren->AddObserver(vtkCommand::LeftButtonReleaseEvent, this, &vtkWindowCube::finishRegionInteraction);
     iren->AddObserver(vtkCommand::RightButtonPressEvent, this, &vtkWindowCube::finalizePvInteraction);
+    iren->AddObserver(vtkCommand::LeftButtonDoubleClickEvent, this, &vtkWindowCube::finalizePvInteraction);
     iren->AddObserver(vtkCommand::LeftButtonDoubleClickEvent, this, &vtkWindowCube::finalizePvInteraction);
 
     vtkNew<vtkInteractorStyleImage> style;
@@ -2275,6 +2487,49 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentRegionCircleActor->GetProperty()->SetLineWidth(2.0);
     this->momentRegionCircleActor->VisibilityOff();
     ren->AddActor(this->momentRegionCircleActor);
+    this->momentRegionAnnulusOuterSource->SetNumberOfSides(96);
+    this->momentRegionAnnulusOuterSource->GeneratePolygonOff();
+    vtkNew<vtkPolyDataMapper> momentRegionAnnulusOuterMapper;
+    momentRegionAnnulusOuterMapper->SetInputConnection(this->momentRegionAnnulusOuterSource->GetOutputPort());
+    this->momentRegionAnnulusOuterActor->SetMapper(momentRegionAnnulusOuterMapper);
+    this->momentRegionAnnulusOuterActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->momentRegionAnnulusOuterActor->GetProperty()->SetLineWidth(2.0);
+    this->momentRegionAnnulusOuterActor->GetProperty()->SetRepresentationToWireframe();
+    this->momentRegionAnnulusOuterActor->VisibilityOff();
+    ren->AddActor(this->momentRegionAnnulusOuterActor);
+    this->momentRegionAnnulusInnerSource->SetNumberOfSides(96);
+    this->momentRegionAnnulusInnerSource->GeneratePolygonOff();
+    vtkNew<vtkPolyDataMapper> momentRegionAnnulusInnerMapper;
+    momentRegionAnnulusInnerMapper->SetInputConnection(this->momentRegionAnnulusInnerSource->GetOutputPort());
+    this->momentRegionAnnulusInnerActor->SetMapper(momentRegionAnnulusInnerMapper);
+    this->momentRegionAnnulusInnerActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->momentRegionAnnulusInnerActor->GetProperty()->SetLineWidth(1.5);
+    this->momentRegionAnnulusInnerActor->GetProperty()->SetRepresentationToWireframe();
+    this->momentRegionAnnulusInnerActor->VisibilityOff();
+    ren->AddActor(this->momentRegionAnnulusInnerActor);
+    vtkNew<vtkPolyDataMapper> momentRegionAnnulusFillMapper;
+    momentRegionAnnulusFillMapper->SetInputData(this->momentRegionAnnulusFillData);
+    this->momentRegionAnnulusFillActor->SetMapper(momentRegionAnnulusFillMapper);
+    this->momentRegionAnnulusFillActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->momentRegionAnnulusFillActor->GetProperty()->SetOpacity(0.18);
+    this->momentRegionAnnulusFillActor->GetProperty()->SetRepresentationToSurface();
+    this->momentRegionAnnulusFillActor->VisibilityOff();
+    ren->AddActor(this->momentRegionAnnulusFillActor);
+    this->momentRegionPolygonTriangulator->SetInputData(this->momentRegionPolygonFillData);
+    vtkNew<vtkPolyDataMapper> momentRegionPolygonMapper;
+    momentRegionPolygonMapper->SetInputData(this->momentRegionPolygonData);
+    this->momentRegionPolygonActor->SetMapper(momentRegionPolygonMapper);
+    this->momentRegionPolygonActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->momentRegionPolygonActor->GetProperty()->SetLineWidth(2.0);
+    this->momentRegionPolygonActor->VisibilityOff();
+    ren->AddActor(this->momentRegionPolygonActor);
+    vtkNew<vtkPolyDataMapper> momentRegionPolygonFillMapper;
+    momentRegionPolygonFillMapper->SetInputConnection(this->momentRegionPolygonTriangulator->GetOutputPort());
+    this->momentRegionPolygonFillActor->SetMapper(momentRegionPolygonFillMapper);
+    this->momentRegionPolygonFillActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->momentRegionPolygonFillActor->GetProperty()->SetOpacity(0.18);
+    this->momentRegionPolygonFillActor->VisibilityOff();
+    ren->AddActor(this->momentRegionPolygonFillActor);
     this->momentOverlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->momentOverlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->momentOverlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -2383,9 +2638,32 @@ void vtkWindowCube::toggleProbeFreeze()
 
     if (this->regionMode != RegionMode::None) {
         if (this->updateRegionFromDisplayPosition(position[0], position[1])) {
-            this->regionAnchorVoxel = this->regionCurrentVoxel;
-            this->regionDragging = true;
-            this->regionValid = true;
+            if (this->regionMode == RegionMode::Polygon) {
+                if (!this->regionDragging) {
+                    this->regionPolygonVertices.clear();
+                    this->regionPolygonVertices.push_back(this->regionCurrentVoxel);
+                    this->regionDragging = true;
+                    this->ignoreNextPolygonRelease = true;
+                } else if (this->regionPolygonVertices.size() >= 3
+                           && distance2d(this->regionCurrentVoxel, this->regionPolygonVertices.front())
+                                   <= polygonClosureTolerance) {
+                    this->regionCurrentVoxel = this->regionPolygonVertices.front();
+                    this->ignoreNextPolygonRelease = false;
+                    if (this->finalizePolygonRegion()) {
+                        ui->vtkImage->renderWindow()->Render();
+                    }
+                    return;
+                } else if (this->regionPolygonVertices.empty()
+                           || this->regionPolygonVertices.back() != this->regionCurrentVoxel) {
+                    this->regionPolygonVertices.push_back(this->regionCurrentVoxel);
+                    this->ignoreNextPolygonRelease = true;
+                }
+                this->regionValid = !this->regionPolygonVertices.empty();
+            } else {
+                this->regionAnchorVoxel = this->regionCurrentVoxel;
+                this->regionDragging = true;
+                this->regionValid = true;
+            }
             this->refreshRegionOverlay();
             ui->vtkImage->renderWindow()->Render();
         }
@@ -2416,9 +2694,49 @@ void vtkWindowCube::finishRegionInteraction()
         return;
     }
 
+    if (this->regionMode == RegionMode::Polygon) {
+        if (this->ignoreNextPolygonRelease) {
+            this->ignoreNextPolygonRelease = false;
+            return;
+        }
+        if (this->finalizePolygonRegion()) {
+            ui->vtkImage->renderWindow()->Render();
+        }
+        return;
+    }
+
     const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
     if (position) {
         this->updateRegionFromDisplayPosition(position[0], position[1]);
+    }
+    if (this->regionMode == RegionMode::Annulus) {
+        const double dx = static_cast<double>(this->regionCurrentVoxel[0] - this->regionAnchorVoxel[0]);
+        const double dy = static_cast<double>(this->regionCurrentVoxel[1] - this->regionAnchorVoxel[1]);
+        const double outerRadius = std::sqrt(dx * dx + dy * dy);
+        bool accepted = false;
+        const double innerRadius = QInputDialog::getDouble(
+                this, u"Annulus Inner Radius"_s, u"Inner radius (pixels):"_s, 0.0, 0.0,
+                std::max(0.0, outerRadius), 1, &accepted);
+        if (!accepted) {
+            if (this->actionAnnulusRegion && this->actionAnnulusRegion->isChecked()) {
+                this->actionAnnulusRegion->setChecked(false);
+            }
+            return;
+        }
+        if (innerRadius < 0.0 || innerRadius >= outerRadius) {
+            this->statusBar()->showMessage(
+                    u"Inner radius must be >= 0 and smaller than the outer radius."_s, 3000);
+            this->regionAnnulusInnerRadius = 0.0;
+            this->regionValid = true;
+            this->refreshRegionOverlay();
+            ui->vtkImage->renderWindow()->Render();
+            return;
+        }
+        this->regionAnnulusInnerRadius = innerRadius;
+        this->regionDragging = false;
+        this->regionValid = true;
+        this->refreshRegionOverlay();
+        ui->vtkImage->renderWindow()->Render();
     }
     this->regionDragging = false;
     this->regionValid = true;
@@ -2430,12 +2748,29 @@ void vtkWindowCube::finishRegionInteraction()
     } else if (this->regionMode == RegionMode::Circle && this->actionCircleRegion
                && this->actionCircleRegion->isChecked()) {
         this->actionCircleRegion->setChecked(false);
+    } else if (this->regionMode == RegionMode::Annulus && this->actionAnnulusRegion
+               && this->actionAnnulusRegion->isChecked()) {
+        this->actionAnnulusRegion->setChecked(false);
+    } else if (this->regionMode == RegionMode::Polygon && this->actionPolygonRegion
+               && this->actionPolygonRegion->isChecked()) {
+        this->actionPolygonRegion->setChecked(false);
     }
 }
 
 void vtkWindowCube::finalizePvInteraction()
 {
-    if (this->isBusy() || !this->pvModeActive) {
+    if (this->isBusy()) {
+        return;
+    }
+
+    if (this->regionMode == RegionMode::Polygon && this->regionDragging) {
+        if (this->finalizePolygonRegion()) {
+            ui->vtkImage->renderWindow()->Render();
+        }
+        return;
+    }
+
+    if (!this->pvModeActive) {
         return;
     }
 
@@ -2597,12 +2932,22 @@ void vtkWindowCube::setRegionMode(RegionMode mode, bool active)
     }
     if (mode == RegionMode::Box && this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
         this->actionCircleRegion->setChecked(false);
-    } else if (mode == RegionMode::Circle && this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
+    }
+    if (mode == RegionMode::Circle && this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
         this->actionBoxRegion->setChecked(false);
+    }
+    if (mode != RegionMode::Polygon && this->actionPolygonRegion && this->actionPolygonRegion->isChecked()) {
+        this->actionPolygonRegion->setChecked(false);
+    }
+    if (mode != RegionMode::Annulus && this->actionAnnulusRegion && this->actionAnnulusRegion->isChecked()) {
+        this->actionAnnulusRegion->setChecked(false);
     }
     this->regionMode = mode;
     this->regionDragging = false;
     this->regionValid = false;
+    this->ignoreNextPolygonRelease = false;
+    this->regionPolygonVertices.clear();
+    this->regionAnnulusInnerRadius = 0.0;
     this->clearRegion();
     this->setInteractorStyleRegion();
     ui->vtkImage->setCursor(Qt::CrossCursor);
@@ -2643,6 +2988,12 @@ void vtkWindowCube::setPvModeActive(bool active)
     }
     if (this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
         this->actionCircleRegion->setChecked(false);
+    }
+    if (this->actionPolygonRegion && this->actionPolygonRegion->isChecked()) {
+        this->actionPolygonRegion->setChecked(false);
+    }
+    if (this->actionAnnulusRegion && this->actionAnnulusRegion->isChecked()) {
+        this->actionAnnulusRegion->setChecked(false);
     }
     this->pvDragging = false;
     this->pvValid = false;
@@ -2735,13 +3086,27 @@ void vtkWindowCube::refreshRegionOverlay()
     const auto updateOverlay = [this](vtkImageData *imageData, vtkLineSource *top, vtkLineSource *bottom,
                                       vtkLineSource *left, vtkLineSource *right, vtkActor *topActor,
                                       vtkActor *bottomActor, vtkActor *leftActor, vtkActor *rightActor,
-                                      vtkRegularPolygonSource *circleSource, vtkActor *circleActor) {
+                                      vtkRegularPolygonSource *circleSource, vtkActor *circleActor,
+                                      vtkRegularPolygonSource *annulusOuterSource,
+                                      vtkRegularPolygonSource *annulusInnerSource,
+                                      vtkActor *annulusOuterActor, vtkActor *annulusInnerActor,
+                                      vtkPoints *annulusFillPoints, vtkCellArray *annulusFillCells,
+                                      vtkPolyData *annulusFillData, vtkActor *annulusFillActor,
+                                      vtkPoints *polygonPoints, vtkCellArray *polygonCells,
+                                      vtkPolyData *polygonData, vtkActor *polygonActor,
+                                      vtkPolyData *polygonFillData, vtkContourTriangulator *polygonTriangulator,
+                                      vtkActor *polygonFillActor) {
         if (!imageData || this->regionMode == RegionMode::None || !this->regionValid) {
             topActor->VisibilityOff();
             bottomActor->VisibilityOff();
             leftActor->VisibilityOff();
             rightActor->VisibilityOff();
             circleActor->VisibilityOff();
+            annulusOuterActor->VisibilityOff();
+            annulusInnerActor->VisibilityOff();
+            annulusFillActor->VisibilityOff();
+            polygonActor->VisibilityOff();
+            polygonFillActor->VisibilityOff();
             return;
         }
 
@@ -2750,11 +3115,19 @@ void vtkWindowCube::refreshRegionOverlay()
         const int ymin = std::min(this->regionAnchorVoxel[1], this->regionCurrentVoxel[1]);
         const int ymax = std::max(this->regionAnchorVoxel[1], this->regionCurrentVoxel[1]);
         const bool showBox = this->regionMode == RegionMode::Box;
+        const bool showCircle = this->regionMode == RegionMode::Circle;
+        const bool showAnnulus = this->regionMode == RegionMode::Annulus;
+        const bool showPolygon = this->regionMode == RegionMode::Polygon;
         topActor->SetVisibility(showBox);
         bottomActor->SetVisibility(showBox);
         leftActor->SetVisibility(showBox);
         rightActor->SetVisibility(showBox);
-        circleActor->SetVisibility(!showBox);
+        circleActor->SetVisibility(showCircle);
+        annulusOuterActor->SetVisibility(showAnnulus);
+        annulusInnerActor->SetVisibility(showAnnulus && !this->regionDragging);
+        annulusFillActor->SetVisibility(showAnnulus && !this->regionDragging);
+        polygonActor->SetVisibility(showPolygon);
+        polygonFillActor->SetVisibility(showPolygon);
 
         if (showBox) {
             top->SetPoint1(xmin, ymax, 0.0);
@@ -2765,11 +3138,75 @@ void vtkWindowCube::refreshRegionOverlay()
             left->SetPoint2(xmin, ymax, 0.0);
             right->SetPoint1(xmax, ymin, 0.0);
             right->SetPoint2(xmax, ymax, 0.0);
-        } else {
+        } else if (showCircle || showAnnulus) {
             const double dx = static_cast<double>(this->regionCurrentVoxel[0] - this->regionAnchorVoxel[0]);
             const double dy = static_cast<double>(this->regionCurrentVoxel[1] - this->regionAnchorVoxel[1]);
-            circleSource->SetCenter(this->regionAnchorVoxel[0], this->regionAnchorVoxel[1], 0.0);
-            circleSource->SetRadius(std::sqrt(dx * dx + dy * dy));
+            const double outerRadius = std::sqrt(dx * dx + dy * dy);
+            if (showCircle) {
+                circleSource->SetCenter(this->regionAnchorVoxel[0], this->regionAnchorVoxel[1], 0.0);
+                circleSource->SetRadius(outerRadius);
+            } else {
+                annulusOuterSource->SetCenter(this->regionAnchorVoxel[0], this->regionAnchorVoxel[1], 0.0);
+                annulusOuterSource->SetRadius(outerRadius);
+                if (!this->regionDragging) {
+                    annulusInnerSource->SetCenter(this->regionAnchorVoxel[0], this->regionAnchorVoxel[1], 0.0);
+                    const double innerRadius = std::max(0.0, std::min(this->regionAnnulusInnerRadius, outerRadius));
+                    annulusInnerSource->SetRadius(innerRadius);
+                    buildAnnulusFill(annulusFillPoints, annulusFillCells, annulusFillData,
+                                     this->regionAnchorVoxel, innerRadius, outerRadius, 96);
+                    annulusFillActor->SetVisibility(innerRadius < outerRadius);
+                } else {
+                    annulusFillData->Initialize();
+                    annulusInnerActor->SetVisibility(false);
+                    annulusFillActor->SetVisibility(false);
+                }
+            }
+        } else if (showPolygon) {
+            std::vector<std::array<int, 2>> drawVertices = this->regionPolygonVertices;
+            if (this->regionDragging && (drawVertices.empty() || drawVertices.back() != this->regionCurrentVoxel)) {
+                drawVertices.push_back(this->regionCurrentVoxel);
+            }
+            const bool previewClosure = this->regionDragging && drawVertices.size() >= 3
+                    && distance2d(this->regionCurrentVoxel, drawVertices.front()) <= polygonClosureTolerance;
+            polygonPoints->Reset();
+            polygonCells->Reset();
+            polygonFillData->Initialize();
+            if (drawVertices.size() >= 2) {
+                const bool closed = !this->regionDragging || previewClosure;
+                const vtkIdType count =
+                        static_cast<vtkIdType>(drawVertices.size() + (closed ? 1 : 0));
+                polygonCells->InsertNextCell(count);
+                for (vtkIdType i = 0; i < static_cast<vtkIdType>(drawVertices.size()); ++i) {
+                    polygonPoints->InsertNextPoint(drawVertices[static_cast<std::size_t>(i)][0],
+                                                   drawVertices[static_cast<std::size_t>(i)][1], 0.0);
+                    polygonCells->InsertCellPoint(i);
+                }
+                if (closed) {
+                    polygonPoints->InsertNextPoint(drawVertices.front()[0], drawVertices.front()[1], 0.0);
+                    polygonCells->InsertCellPoint(static_cast<vtkIdType>(drawVertices.size()));
+                }
+                polygonData->SetPoints(polygonPoints);
+                polygonData->SetLines(polygonCells);
+                polygonData->Modified();
+                if (drawVertices.size() >= 3) {
+                    polygonFillData->SetPoints(polygonPoints);
+                    polygonFillData->SetLines(polygonCells);
+                    polygonFillData->Modified();
+                    if (closed) {
+                        polygonTriangulator->Update();
+                        polygonFillActor->SetVisibility(true);
+                    } else {
+                        polygonFillActor->SetVisibility(false);
+                    }
+                } else {
+                    polygonFillActor->SetVisibility(false);
+                }
+            } else {
+                polygonFillActor->SetVisibility(false);
+            }
+        } else {
+            annulusFillActor->SetVisibility(false);
+            polygonFillActor->SetVisibility(false);
         }
     };
 
@@ -2779,27 +3216,55 @@ void vtkWindowCube::refreshRegionOverlay()
                   this->sliceRegionTopLine, this->sliceRegionBottomLine, this->sliceRegionLeftLine,
                   this->sliceRegionRightLine, this->sliceRegionTopActor, this->sliceRegionBottomActor,
                   this->sliceRegionLeftActor, this->sliceRegionRightActor, this->sliceRegionCircleSource,
-                  this->sliceRegionCircleActor);
+                  this->sliceRegionCircleActor, this->sliceRegionAnnulusOuterSource,
+                  this->sliceRegionAnnulusInnerSource, this->sliceRegionAnnulusOuterActor,
+                  this->sliceRegionAnnulusInnerActor, this->sliceRegionAnnulusFillPoints,
+                  this->sliceRegionAnnulusFillCells, this->sliceRegionAnnulusFillData,
+                  this->sliceRegionAnnulusFillActor, this->sliceRegionPolygonPoints,
+                  this->sliceRegionPolygonCells, this->sliceRegionPolygonData, this->sliceRegionPolygonActor,
+                  this->sliceRegionPolygonFillData, this->sliceRegionPolygonTriangulator,
+                  this->sliceRegionPolygonFillActor);
     updateOverlay(vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0)),
                   this->momentRegionTopLine, this->momentRegionBottomLine, this->momentRegionLeftLine,
                   this->momentRegionRightLine, this->momentRegionTopActor, this->momentRegionBottomActor,
                   this->momentRegionLeftActor, this->momentRegionRightActor, this->momentRegionCircleSource,
-                  this->momentRegionCircleActor);
+                  this->momentRegionCircleActor, this->momentRegionAnnulusOuterSource,
+                  this->momentRegionAnnulusInnerSource, this->momentRegionAnnulusOuterActor,
+                  this->momentRegionAnnulusInnerActor, this->momentRegionAnnulusFillPoints,
+                  this->momentRegionAnnulusFillCells, this->momentRegionAnnulusFillData,
+                  this->momentRegionAnnulusFillActor, this->momentRegionPolygonPoints,
+                  this->momentRegionPolygonCells, this->momentRegionPolygonData,
+                  this->momentRegionPolygonActor, this->momentRegionPolygonFillData,
+                  this->momentRegionPolygonTriangulator, this->momentRegionPolygonFillActor);
 }
 
 void vtkWindowCube::clearRegion()
 {
     this->regionValid = false;
+    this->regionDragging = false;
+    this->ignoreNextPolygonRelease = false;
+    this->regionPolygonVertices.clear();
+    this->regionAnnulusInnerRadius = 0.0;
     this->sliceRegionTopActor->VisibilityOff();
     this->sliceRegionBottomActor->VisibilityOff();
     this->sliceRegionLeftActor->VisibilityOff();
     this->sliceRegionRightActor->VisibilityOff();
     this->sliceRegionCircleActor->VisibilityOff();
+    this->sliceRegionAnnulusOuterActor->VisibilityOff();
+    this->sliceRegionAnnulusInnerActor->VisibilityOff();
+    this->sliceRegionAnnulusFillActor->VisibilityOff();
+    this->sliceRegionPolygonActor->VisibilityOff();
+    this->sliceRegionPolygonFillActor->VisibilityOff();
     this->momentRegionTopActor->VisibilityOff();
     this->momentRegionBottomActor->VisibilityOff();
     this->momentRegionLeftActor->VisibilityOff();
     this->momentRegionRightActor->VisibilityOff();
     this->momentRegionCircleActor->VisibilityOff();
+    this->momentRegionAnnulusOuterActor->VisibilityOff();
+    this->momentRegionAnnulusInnerActor->VisibilityOff();
+    this->momentRegionAnnulusFillActor->VisibilityOff();
+    this->momentRegionPolygonActor->VisibilityOff();
+    this->momentRegionPolygonFillActor->VisibilityOff();
 }
 
 void vtkWindowCube::refreshPvOverlay()
@@ -2918,16 +3383,16 @@ void vtkWindowCube::analyzeCurrentRegion()
                        ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
                        : this->slice->GetOutput())
             : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
-    const bool circular = this->regionMode == RegionMode::Circle;
-    const auto stats = computeRegionStatistics2D(imageData, this->regionAnchorVoxel, this->regionCurrentVoxel,
-                                                 circular);
+    const auto stats = computeRegionStatistics2D(imageData, this->regionMode, this->regionAnchorVoxel,
+                                                 this->regionCurrentVoxel, this->regionPolygonVertices,
+                                                 this->regionAnnulusInnerRadius);
 
     QString text;
     if (!stats.valid) {
         text = u"No valid pixels in the selected region.\nBlanked/NaN voxels are ignored."_s;
     } else {
         text = u"Shape: %1\nValid pixels: %2 / %3\nBlanked/NaN: %4\nMin: %5\nMax: %6\nMean: %7\nMedian: %8\nStddev: %9\n\nComputed on valid pixels only."_s
-                       .arg(circular ? u"Circle"_s : u"Box"_s)
+                       .arg(regionModeLabel(this->regionMode))
                        .arg(stats.validCount)
                        .arg(stats.totalCount)
                        .arg(stats.blankedCount)
@@ -2947,15 +3412,18 @@ void vtkWindowCube::analyzeCurrentRegion()
         cubeImage->GetOrigin(origin);
         cubeImage->GetSpacing(spacing);
         const int zCount = extent[5] - extent[4] + 1;
+        const auto regionBounds =
+                regionBounds2D(this->regionMode, this->regionAnchorVoxel, this->regionCurrentVoxel,
+                               this->regionPolygonVertices);
         QVector<double> spectral(zCount);
-        QVector<double> values(zCount, 0.0);
+        QVector<double> meanValues(zCount, 0.0);
+        QVector<double> sumValues(zCount, 0.0);
         QVector<int> counts(zCount, 0);
-        for (int y = std::min(this->regionAnchorVoxel[1], this->regionCurrentVoxel[1]);
-             y <= std::max(this->regionAnchorVoxel[1], this->regionCurrentVoxel[1]); ++y) {
-            for (int x = std::min(this->regionAnchorVoxel[0], this->regionCurrentVoxel[0]);
-                 x <= std::max(this->regionAnchorVoxel[0], this->regionCurrentVoxel[0]); ++x) {
-                const bool inside = circular ? pointInCircle(this->regionAnchorVoxel, this->regionCurrentVoxel, x, y)
-                                             : pointInBox(this->regionAnchorVoxel, this->regionCurrentVoxel, x, y);
+        for (int y = regionBounds[2]; y <= regionBounds[3]; ++y) {
+            for (int x = regionBounds[0]; x <= regionBounds[1]; ++x) {
+                const bool inside = pointInRegion(this->regionMode, this->regionAnchorVoxel,
+                                                  this->regionCurrentVoxel, this->regionPolygonVertices,
+                                                  this->regionAnnulusInnerRadius, x, y);
                 if (!inside) {
                     continue;
                 }
@@ -2976,7 +3444,7 @@ void vtkWindowCube::analyzeCurrentRegion()
                     if (!ok) {
                         spectral[idx] = datasetZ;
                     }
-                    values[idx] += value;
+                    sumValues[idx] += value;
                     counts[idx] += 1;
                 }
             }
@@ -2985,10 +3453,11 @@ void vtkWindowCube::analyzeCurrentRegion()
         bool haveSpectrum = false;
         for (int i = 0; i < zCount; ++i) {
             if (counts[i] > 0) {
-                values[i] /= static_cast<double>(counts[i]);
+                meanValues[i] = sumValues[i] / static_cast<double>(counts[i]);
                 haveSpectrum = true;
             } else {
-                values[i] = std::numeric_limits<double>::quiet_NaN();
+                meanValues[i] = std::numeric_limits<double>::quiet_NaN();
+                sumValues[i] = std::numeric_limits<double>::quiet_NaN();
             }
         }
 
@@ -3005,10 +3474,12 @@ void vtkWindowCube::analyzeCurrentRegion()
                 this->probePlotWidget->setUsageMode(ProfileWidget::UsageMode::RegionStatic,
                                                     u"Region Spectrum"_s);
             }
-            this->probePlotWidget->updateSpectrumPlot(
-                    spectral, values,
-                    u"Mean Spectrum (%1 region)"_s.arg(circular ? u"Circle"_s : u"Box"_s), false);
-            text += u"\n\nMean spectrum updated from the selected region."_s;
+            this->probePlotWidget->setUsageMode(ProfileWidget::UsageMode::RegionStatic,
+                                                u"Region Spectrum (%1)"_s.arg(regionModeLabel(this->regionMode)));
+            this->probePlotWidget->updateSpectrumPlotSeries(
+                    spectral, meanValues, u"Mean"_s, sumValues, u"Sum"_s,
+                    u"Region Spectrum (%1)"_s.arg(regionModeLabel(this->regionMode)), false);
+            text += u"\n\nMean and sum spectra updated from the selected region."_s;
         }
     }
 
@@ -3016,6 +3487,42 @@ void vtkWindowCube::analyzeCurrentRegion()
         text += u"\n\nComputed on the currently loaded data block."_s;
     }
     QMessageBox::information(this, u"Region Analysis"_s, text);
+}
+
+bool vtkWindowCube::finalizePolygonRegion()
+{
+    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
+    if (position) {
+        this->updateRegionFromDisplayPosition(position[0], position[1]);
+        const bool closesToFirst = this->regionPolygonVertices.size() >= 3
+                && this->regionCurrentVoxel == this->regionPolygonVertices.front();
+        if (!closesToFirst && (this->regionPolygonVertices.empty()
+                               || this->regionPolygonVertices.back() != this->regionCurrentVoxel)) {
+            this->regionPolygonVertices.push_back(this->regionCurrentVoxel);
+        }
+    }
+
+    std::vector<std::array<int, 2>> cleaned;
+    cleaned.reserve(this->regionPolygonVertices.size());
+    for (const auto &vertex : this->regionPolygonVertices) {
+        if (cleaned.empty() || cleaned.back() != vertex) {
+            cleaned.push_back(vertex);
+        }
+    }
+    this->regionPolygonVertices = std::move(cleaned);
+    if (this->regionPolygonVertices.size() < 3) {
+        this->statusBar()->showMessage(u"Define at least three points for a polygon region."_s, 2500);
+        return false;
+    }
+
+    this->regionDragging = false;
+    this->regionValid = true;
+    this->refreshRegionOverlay();
+    this->analyzeCurrentRegion();
+    if (this->actionPolygonRegion && this->actionPolygonRegion->isChecked()) {
+        this->actionPolygonRegion->setChecked(false);
+    }
+    return true;
 }
 
 QString vtkWindowCube::formatSpatialPointSummary(const std::array<int, 2> &voxel) const
@@ -5659,6 +6166,12 @@ void vtkWindowCube::setProbeModeActive(bool active)
         }
         if (this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
             this->actionCircleRegion->setChecked(false);
+        }
+        if (this->actionPolygonRegion && this->actionPolygonRegion->isChecked()) {
+            this->actionPolygonRegion->setChecked(false);
+        }
+        if (this->actionAnnulusRegion && this->actionAnnulusRegion->isChecked()) {
+            this->actionAnnulusRegion->setChecked(false);
         }
     }
     ui->vtkImage->setCursor(active ? Qt::CrossCursor : Qt::ArrowCursor);
