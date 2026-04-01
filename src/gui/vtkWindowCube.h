@@ -22,6 +22,7 @@
 #include <memory>
 
 class CubeViewController;
+class QCheckBox;
 class QLabel;
 class LUTCustomizerDialog;
 class ProfileWidget;
@@ -159,6 +160,7 @@ private:
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QPointer<QLabel> cubeOpenStateLabel;
+    QPointer<QCheckBox> remoteRoiRefinementCheck;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
@@ -184,6 +186,8 @@ private:
     int statusMessageMinDurationMs{ 0 };
     bool persistentStatusActive{ false };
     bool usingHighResCube{ false };
+    bool useCentralRoiRefinement{ true };
+    bool pendingRemoteRefinementReload{ false };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
     static constexpr int remoteSliceDebounceDelayMs = 100;

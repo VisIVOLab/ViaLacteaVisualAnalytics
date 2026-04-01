@@ -56,6 +56,7 @@
 
 #include <QActionGroup>
 #include <QApplication>
+#include <QCheckBox>
 #include <QColorDialog>
 #include <QDebug>
 #include <QDoubleValidator>
@@ -491,6 +492,33 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
     this->cubeOpenStateLabel->hide();
     this->statusBar()->addPermanentWidget(this->cubeOpenStateLabel);
+    this->remoteRoiRefinementCheck = new QCheckBox(u"Central ROI"_s, this);
+    this->remoteRoiRefinementCheck->setChecked(this->useCentralRoiRefinement);
+    this->remoteRoiRefinementCheck->setVisible(this->isRemoteMode);
+    this->remoteRoiRefinementCheck->setEnabled(this->isRemoteMode);
+    this->statusBar()->addPermanentWidget(this->remoteRoiRefinementCheck);
+    QObject::connect(this->remoteRoiRefinementCheck, &QCheckBox::toggled, this,
+                     [this](bool checked) {
+                         this->useCentralRoiRefinement = checked;
+                         qDebug().noquote()
+                                 << QStringLiteral("[remote-roi] mode toggled to %1")
+                                            .arg(checked ? u"Central ROI"_s : u"Full"_s);
+                         if (!this->isRemoteMode) {
+                             return;
+                         }
+
+                         if (this->remoteHighResCubeWatcher.isRunning()) {
+                             this->pendingRemoteRefinementReload = true;
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-roi] scheduling refinement reload");
+                             return;
+                         }
+
+                         this->usingHighResCube = false;
+                         qDebug().noquote()
+                                 << QStringLiteral("[remote-roi] starting refinement reload");
+                         this->requestHighResCube();
+                     });
     this->statusMessageClearTimer.setSingleShot(true);
     QObject::connect(&this->statusMessageClearTimer, &QTimer::timeout, this, [this]() {
         this->persistentStatusActive = false;
@@ -695,6 +723,13 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              this->statusBar()->showMessage(result.errorMessage.isEmpty()
                                                                     ? u"Could not load remote high-resolution cube."_s
                                                                     : result.errorMessage);
+                             if (this->pendingRemoteRefinementReload) {
+                                 this->pendingRemoteRefinementReload = false;
+                                 this->usingHighResCube = false;
+                                 qDebug().noquote()
+                                         << QStringLiteral("[remote-roi] starting refinement reload");
+                                 this->requestHighResCube();
+                             }
                              return;
                          }
 
@@ -729,6 +764,13 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                          }
                          this->setRemoteCubeDisplayState(RemoteCubeDisplayState::FullResolution);
                          this->clearPersistentStatusMessage();
+                         if (this->pendingRemoteRefinementReload) {
+                             this->pendingRemoteRefinementReload = false;
+                             this->usingHighResCube = false;
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-roi] starting refinement reload");
+                             this->requestHighResCube();
+                         }
                      });
     QObject::connect(&this->momentComputeWatcher, &QFutureWatcher<MomentMapComputeResult>::finished,
                      this, [this]() {
@@ -1351,6 +1393,15 @@ void vtkWindowCube::updateCube()
 
 std::array<int, 6> vtkWindowCube::computeVisibleROI() const
 {
+    if (!this->useCentralRoiRefinement) {
+        return { 0,
+                 std::max(0, this->remoteDatasetWidth - 1),
+                 0,
+                 std::max(0, this->remoteDatasetHeight - 1),
+                 0,
+                 std::max(0, this->remoteDatasetDepth - 1) };
+    }
+
     const auto computeAxisRoi = [](int size) -> std::array<int, 2> {
         const int maxIndex = std::max(0, size - 1);
         if (size <= 1) {
@@ -1379,7 +1430,8 @@ bool vtkWindowCube::requestHighResCube()
     const auto roi = this->computeVisibleROI();
     this->currentRemoteRoi = roi;
     qDebug().noquote()
-            << QStringLiteral("[remote-roi] request x=%1..%2 y=%3..%4 z=%5..%6")
+            << QStringLiteral("[remote-roi] mode=%1 request x=%2..%3 y=%4..%5 z=%6..%7")
+                       .arg(this->useCentralRoiRefinement ? u"Central ROI"_s : u"Full"_s)
                        .arg(roi[0])
                        .arg(roi[1])
                        .arg(roi[2])
