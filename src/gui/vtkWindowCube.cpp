@@ -1496,12 +1496,12 @@ void vtkWindowCube::setupCubeRenderer()
 
 void vtkWindowCube::setupSliceRenderer()
 {
+    this->sliceWcsOverlayInitialized = false;
     vtkNew<vtkRenderer> ren;
     ren->SetBackground(0.21, 0.23, 0.25);
     ren->GetActiveCamera()->ParallelProjectionOn();
 
     this->sliceWin->AddRenderer(ren);
-    this->sliceWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateSliceWcsOverlay);
     ui->vtkImage->setRenderWindow(this->sliceWin);
     ui->vtkImage->setEnableTouchEventProcessing(false);
 
@@ -1606,7 +1606,10 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceOverlayYTitleActor->GetTextProperty()->SetOrientation(90.);
     this->sliceOverlayYTitleActor->GetTextProperty()->SetJustificationToCentered();
     this->sliceOverlayYTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->ensureOverlayTickActors(ren, this->sliceOverlayXTickActors, this->sliceOverlayYTickActors);
+    this->sliceWcsOverlayInitialized = true;
     this->set2dWcsOverlayVisible(this->showWcsAxes);
+    this->sliceWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateSliceWcsOverlay);
 
     ren->ResetCamera();
     this->sliceWin->Render();
@@ -1614,11 +1617,11 @@ void vtkWindowCube::setupSliceRenderer()
 
 void vtkWindowCube::setupMomentRenderer()
 {
+    this->momentWcsOverlayInitialized = false;
     vtkNew<vtkRenderer> ren;
     ren->SetBackground(0.21, 0.23, 0.25);
     ren->GetActiveCamera()->ParallelProjectionOn();
     this->momentWin->AddRenderer(ren);
-    this->momentWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateMomentWcsOverlay);
 
     vtkNew<QVTKInteractor> iren;
     this->momentWin->SetInteractor(iren);
@@ -1706,7 +1709,10 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentOverlayYTitleActor->GetTextProperty()->SetOrientation(90.);
     this->momentOverlayYTitleActor->GetTextProperty()->SetJustificationToCentered();
     this->momentOverlayYTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->ensureOverlayTickActors(ren, this->momentOverlayXTickActors, this->momentOverlayYTickActors);
+    this->momentWcsOverlayInitialized = true;
     this->set2dWcsOverlayVisible(this->showWcsAxes);
+    this->momentWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateMomentWcsOverlay);
 
     ren->ResetCamera();
 }
@@ -2902,23 +2908,53 @@ void vtkWindowCube::requestWcsOverlayRender()
 
 void vtkWindowCube::updateSliceWcsOverlay()
 {
-    auto *renderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
+    if (!this->sliceWcsOverlayInitialized || !this->sliceWin) {
+        qDebug().noquote() << QStringLiteral("[wcs-overlay] slice overlay not initialized win=%1")
+                                      .arg(reinterpret_cast<quintptr>(this->sliceWin.GetPointer()), 0, 16);
+        return;
+    }
+
+    auto *rendererCollection = this->sliceWin->GetRenderers();
+    auto *renderer = rendererCollection ? rendererCollection->GetFirstRenderer() : nullptr;
     auto *imageData = this->viewingSlice()
             ? (this->isRemoteMode
                        ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
                        : this->slice->GetOutput())
             : nullptr;
+    if (!renderer || !this->sliceOverlayXAxis.GetPointer() || !this->sliceOverlayYAxis.GetPointer()
+        || !this->sliceOverlayXTitleActor.GetPointer() || !this->sliceOverlayYTitleActor.GetPointer()) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] slice missing objects renderer=%1 win=%2 xAxis=%3 yAxis=%4 xTitle=%5 yTitle=%6 image=%7")
+                           .arg(reinterpret_cast<quintptr>(renderer), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->sliceWin.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->sliceOverlayXAxis.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->sliceOverlayYAxis.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->sliceOverlayXTitleActor.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->sliceOverlayYTitleActor.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(imageData), 0, 16);
+        return;
+    }
     const bool useLegend = this->astro && !this->astro->isSimulation();
     this->set2dWcsOverlayVisible(this->showWcsAxes);
     if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
         return;
     }
     this->ensureOverlayTickActors(renderer, this->sliceOverlayXTickActors, this->sliceOverlayYTickActors);
+    if (this->sliceOverlayXTickActors.size() < overlayTickCount
+        || this->sliceOverlayYTickActors.size() < overlayTickCount) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] slice tick actors incomplete x=%1 y=%2")
+                           .arg(this->sliceOverlayXTickActors.size())
+                           .arg(this->sliceOverlayYTickActors.size());
+        return;
+    }
 
     const auto visible = computeVisibleImageBounds2D(renderer, imageData);
     if (!visible.valid) {
         this->sliceOverlayXAxis->VisibilityOff();
         this->sliceOverlayYAxis->VisibilityOff();
+        this->sliceOverlayXTitleActor->VisibilityOff();
+        this->sliceOverlayYTitleActor->VisibilityOff();
         return;
     }
 
@@ -3012,19 +3048,49 @@ void vtkWindowCube::updateSliceWcsOverlay()
 
 void vtkWindowCube::updateMomentWcsOverlay()
 {
-    auto *renderer = this->momentWin->GetRenderers()->GetFirstRenderer();
+    if (!this->momentWcsOverlayInitialized || !this->momentWin) {
+        qDebug().noquote() << QStringLiteral("[wcs-overlay] moment overlay not initialized win=%1")
+                                      .arg(reinterpret_cast<quintptr>(this->momentWin.GetPointer()), 0, 16);
+        return;
+    }
+
+    auto *rendererCollection = this->momentWin->GetRenderers();
+    auto *renderer = rendererCollection ? rendererCollection->GetFirstRenderer() : nullptr;
     auto *imageData = vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    if (!renderer || !this->momentOverlayXAxis.GetPointer() || !this->momentOverlayYAxis.GetPointer()
+        || !this->momentOverlayXTitleActor.GetPointer() || !this->momentOverlayYTitleActor.GetPointer()) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] moment missing objects renderer=%1 win=%2 xAxis=%3 yAxis=%4 xTitle=%5 yTitle=%6 image=%7")
+                           .arg(reinterpret_cast<quintptr>(renderer), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->momentWin.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->momentOverlayXAxis.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->momentOverlayYAxis.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->momentOverlayXTitleActor.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->momentOverlayYTitleActor.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(imageData), 0, 16);
+        return;
+    }
     const bool useLegend = this->astro && !this->astro->isSimulation();
     this->set2dWcsOverlayVisible(this->showWcsAxes);
     if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
         return;
     }
     this->ensureOverlayTickActors(renderer, this->momentOverlayXTickActors, this->momentOverlayYTickActors);
+    if (this->momentOverlayXTickActors.size() < overlayTickCount
+        || this->momentOverlayYTickActors.size() < overlayTickCount) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] moment tick actors incomplete x=%1 y=%2")
+                           .arg(this->momentOverlayXTickActors.size())
+                           .arg(this->momentOverlayYTickActors.size());
+        return;
+    }
 
     const auto visible = computeVisibleImageBounds2D(renderer, imageData);
     if (!visible.valid) {
         this->momentOverlayXAxis->VisibilityOff();
         this->momentOverlayYAxis->VisibilityOff();
+        this->momentOverlayXTitleActor->VisibilityOff();
+        this->momentOverlayYTitleActor->VisibilityOff();
         return;
     }
 

@@ -490,13 +490,13 @@ void vtkWindowImage::addLocalFile()
 
 void vtkWindowImage::setupRenderer()
 {
+    this->wcsOverlayInitialized = false;
     vtkNew<vtkRenderer> ren;
     ren->SetBackground(0.21, 0.23, 0.25);
     ren->GetActiveCamera()->ParallelProjectionOn();
 
     vtkNew<vtkGenericOpenGLRenderWindow> win;
     win->AddRenderer(ren);
-    win->AddObserver(vtkCommand::EndEvent, this, &vtkWindowImage::updateWcsOverlay);
     ui->vtk->setRenderWindow(win);
     ui->vtk->setEnableTouchEventProcessing(false);
 
@@ -511,7 +511,6 @@ void vtkWindowImage::setupRenderer()
     this->coordinate->SetViewport(ren);
 
     // Stack
-    this->layers = new LayerListModel(this->filepath.toStdString(), this);
     this->stack->AddImage(this->layers->getMasterLayerActor());
     this->stack->SetActiveLayer(0);
     ren->AddViewProp(this->stack);
@@ -564,7 +563,9 @@ void vtkWindowImage::setupRenderer()
     this->overlayYTitleActor->GetTextProperty()->SetJustificationToCentered();
     this->overlayYTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
     this->ensureOverlayTickActors(ren);
+    this->wcsOverlayInitialized = true;
     this->setWcsOverlayVisible(this->showWcsAxes);
+    win->AddObserver(vtkCommand::EndEvent, this, &vtkWindowImage::updateWcsOverlay);
 
     ren->ResetCamera();
     win->Render();
@@ -900,20 +901,56 @@ void vtkWindowImage::setLayerImportEnabled(bool enabled)
 
 void vtkWindowImage::updateWcsOverlay()
 {
-    auto *renderer = ui->vtk->renderWindow() ? ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer()
-                                             : nullptr;
+    if (!this->wcsOverlayInitialized) {
+        qDebug().noquote() << QStringLiteral("[wcs-overlay] vtkWindowImage not initialized yet");
+        return;
+    }
+
+    if (!ui || !ui->vtk) {
+        qDebug().noquote() << QStringLiteral("[wcs-overlay] vtkWindowImage missing ui/ui->vtk ui=%1 vtk=%2")
+                                      .arg(reinterpret_cast<quintptr>(ui), 0, 16)
+                                      .arg(reinterpret_cast<quintptr>(ui ? ui->vtk : nullptr), 0, 16);
+        return;
+    }
+
+    auto *renderWindow = ui->vtk->renderWindow();
+    auto *rendererCollection = renderWindow ? renderWindow->GetRenderers() : nullptr;
+    auto *renderer = rendererCollection ? rendererCollection->GetFirstRenderer() : nullptr;
     auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    if (!renderWindow || !renderer || !this->overlayXAxis.GetPointer() || !this->overlayYAxis.GetPointer()
+        || !this->overlayXTitleActor.GetPointer() || !this->overlayYTitleActor.GetPointer()) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] vtkWindowImage missing objects renderer=%1 renderWindow=%2 xAxis=%3 yAxis=%4 xTitle=%5 yTitle=%6 image=%7")
+                           .arg(reinterpret_cast<quintptr>(renderer), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(renderWindow), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->overlayXAxis.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->overlayYAxis.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->overlayXTitleActor.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->overlayYTitleActor.GetPointer()), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(imageData), 0, 16);
+        return;
+    }
     const bool useLegend = this->astro && !this->astro->isSimulation();
     this->setWcsOverlayVisible(this->showWcsAxes);
     if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
         return;
     }
     this->ensureOverlayTickActors(renderer);
+    if (this->overlayXTickActors.size() < overlayTickCount
+        || this->overlayYTickActors.size() < overlayTickCount) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] vtkWindowImage tick actors incomplete x=%1 y=%2")
+                           .arg(this->overlayXTickActors.size())
+                           .arg(this->overlayYTickActors.size());
+        return;
+    }
 
     const auto visible = computeVisibleImageBounds2D(renderer, imageData);
     if (!visible.valid) {
         this->overlayXAxis->VisibilityOff();
         this->overlayYAxis->VisibilityOff();
+        this->overlayXTitleActor->VisibilityOff();
+        this->overlayYTitleActor->VisibilityOff();
         return;
     }
 
@@ -990,14 +1027,19 @@ void vtkWindowImage::updateWcsOverlay()
         this->overlayYTickActors[static_cast<std::size_t>(i)]->VisibilityOn();
     }
     qDebug().noquote()
-            << QStringLiteral("[wcs-overlay] updated ticks x=%1..%2 y=%3..%4 size=%5x%6 actor=%7 endpoints=(%8,%9)->(%10,%11) outer=%12")
+            << QStringLiteral("[wcs-overlay] updated ticks x=%1..%2 y=%3..%4 size=%5x%6 renderer=%7 renderWindow=%8 xAxis=%9 yAxis=%10 xTitle=%11 yTitle=%12 endpoints=(%13,%14)->(%15,%16) outer=%17")
                        .arg(visible.xmin, 0, 'g', 12)
                        .arg(visible.xmax, 0, 'g', 12)
                        .arg(visible.ymin, 0, 'g', 12)
                        .arg(visible.ymax, 0, 'g', 12)
                        .arg(size[0])
                        .arg(size[1])
-                       .arg(this->overlayXAxis->GetVisibility())
+                       .arg(reinterpret_cast<quintptr>(renderer), 0, 16)
+                       .arg(reinterpret_cast<quintptr>(renderWindow), 0, 16)
+                       .arg(reinterpret_cast<quintptr>(this->overlayXAxis.GetPointer()), 0, 16)
+                       .arg(reinterpret_cast<quintptr>(this->overlayYAxis.GetPointer()), 0, 16)
+                       .arg(reinterpret_cast<quintptr>(this->overlayXTitleActor.GetPointer()), 0, 16)
+                       .arg(reinterpret_cast<quintptr>(this->overlayYTitleActor.GetPointer()), 0, 16)
                        .arg(axisX, 0, 'g', 12)
                        .arg(size[1] - topMargin, 0, 'g', 12)
                        .arg(axisX, 0, 'g', 12)
@@ -1007,6 +1049,9 @@ void vtkWindowImage::updateWcsOverlay()
 
 void vtkWindowImage::setWcsOverlayVisible(bool visible)
 {
+    if (!this->wcsOverlayInitialized) {
+        return;
+    }
     const bool useLegend = this->astro && !this->astro->isSimulation();
     if (this->legendWCS) {
         this->legendWCS->SetVisibility(visible && useLegend);

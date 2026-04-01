@@ -117,6 +117,7 @@ private:
     bool probeModeActive{ false };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
+    bool wcsOverlayInitialized{ false };
     bool probeFrozen{ false };
     bool probeValid{ false };
     std::array<int, 2> probeVoxel{ -1, -1 };
