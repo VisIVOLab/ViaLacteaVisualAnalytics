@@ -703,6 +703,19 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                                                      result.dataExtent,
                                                      result.cubeMean,
                                                      result.cubeRms });
+                         if (auto *cubeImage = vtkImageData::SafeDownCast(
+                                     this->cubeDisplaySource->GetOutputDataObject(0))) {
+                             double bounds[6];
+                             cubeImage->GetBounds(bounds);
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-roi] applied bounds=%1,%2,%3,%4,%5,%6")
+                                                .arg(bounds[0], 0, 'g', 12)
+                                                .arg(bounds[1], 0, 'g', 12)
+                                                .arg(bounds[2], 0, 'g', 12)
+                                                .arg(bounds[3], 0, 'g', 12)
+                                                .arg(bounds[4], 0, 'g', 12)
+                                                .arg(bounds[5], 0, 'g', 12);
+                         }
                          this->setRemoteCubeDisplayState(RemoteCubeDisplayState::FullResolution);
                          this->clearPersistentStatusMessage();
                      });
@@ -1327,12 +1340,23 @@ void vtkWindowCube::updateCube()
 
 std::array<int, 6> vtkWindowCube::computeVisibleROI() const
 {
-    return { 0,
-             std::max(0, this->remoteDatasetWidth - 1),
-             0,
-             std::max(0, this->remoteDatasetHeight - 1),
-             0,
-             std::max(0, this->remoteDatasetDepth - 1) };
+    const auto computeAxisRoi = [](int size) -> std::array<int, 2> {
+        const int maxIndex = std::max(0, size - 1);
+        if (size <= 1) {
+            return { 0, maxIndex };
+        }
+
+        const int minKeep = std::min(size, std::max(8, size / 2));
+        const int keep = std::clamp(static_cast<int>(std::lround(size * 0.6)), minKeep, size);
+        const int start = std::max(0, (size - keep) / 2);
+        const int end = std::min(maxIndex, start + keep - 1);
+        return { start, end };
+    };
+
+    const auto x = computeAxisRoi(this->remoteDatasetWidth);
+    const auto y = computeAxisRoi(this->remoteDatasetHeight);
+    const auto z = computeAxisRoi(this->remoteDatasetDepth);
+    return { x[0], x[1], y[0], y[1], z[0], z[1] };
 }
 
 bool vtkWindowCube::requestHighResCube()
@@ -1342,6 +1366,14 @@ bool vtkWindowCube::requestHighResCube()
     }
 
     const auto roi = this->computeVisibleROI();
+    qDebug().noquote()
+            << QStringLiteral("[remote-roi] request x=%1..%2 y=%3..%4 z=%5..%6")
+                       .arg(roi[0])
+                       .arg(roi[1])
+                       .arg(roi[2])
+                       .arg(roi[3])
+                       .arg(roi[4])
+                       .arg(roi[5]);
     this->setRemoteCubeDisplayState(RemoteCubeDisplayState::LoadingFullResolution);
     this->showPersistentStatusMessage(u"Loading full resolution..."_s);
     this->remoteHighResCubeWatcher.setProperty("requestId", ++this->currentRemoteHighResRequestId);
