@@ -33,6 +33,7 @@ class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
 class vtkLineSource;
+class vtkRegularPolygonSource;
 class vtkRenderer;
 class vtkScalarBarActor;
 class vtkTextActor;
@@ -75,10 +76,19 @@ private slots:
     // Interactors
     void setInteractorStyleImage();
     void setInteractorStyleProfile();
+    void setInteractorStyleRegion();
     void toggleProbeFreeze();
+    void finishRegionInteraction();
     void setProbeModeActive(bool active);
 
 private:
+    enum class RegionMode
+    {
+        None,
+        Box,
+        Circle,
+    };
+
     Ui::vtkWindowImage *ui;
     const QString filepath;
     const bool isRemoteMode;
@@ -98,6 +108,8 @@ private:
     QPointer<QAction> actionWcsSexagesimal;
     QPointer<QAction> actionWcsDecimal;
     QPointer<QAction> actionExtractSpectrum;
+    QPointer<QAction> actionBoxRegion;
+    QPointer<QAction> actionCircleRegion;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
@@ -118,12 +130,17 @@ private:
     vtkNew<vtkCoordinate> coordinate;
     bool showWcsAxes{ true };
     bool probeModeActive{ false };
+    RegionMode regionMode{ RegionMode::None };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
     bool wcsOverlayInitialized{ false };
     bool probeFrozen{ false };
     bool probeValid{ false };
+    bool regionDragging{ false };
+    bool regionValid{ false };
     std::array<int, 2> probeVoxel{ -1, -1 };
+    std::array<int, 2> regionAnchorVoxel{ -1, -1 };
+    std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
@@ -133,6 +150,16 @@ private:
     vtkNew<vtkLineSource> probeVerticalLine;
     vtkNew<vtkActor> probeHorizontalActor;
     vtkNew<vtkActor> probeVerticalActor;
+    vtkNew<vtkLineSource> regionTopLine;
+    vtkNew<vtkLineSource> regionBottomLine;
+    vtkNew<vtkLineSource> regionLeftLine;
+    vtkNew<vtkLineSource> regionRightLine;
+    vtkNew<vtkActor> regionTopActor;
+    vtkNew<vtkActor> regionBottomActor;
+    vtkNew<vtkActor> regionLeftActor;
+    vtkNew<vtkActor> regionRightActor;
+    vtkNew<vtkRegularPolygonSource> regionCircleSource;
+    vtkNew<vtkActor> regionCircleActor;
     void setupRenderer();
     void mouseCallback();
     bool updateProbeFromDisplayPosition(int displayX, int displayY);
@@ -147,6 +174,11 @@ private:
     void requestWcsOverlayRender();
     void updateDataStatePanel();
     QString currentWcsFrameLabel() const;
+    void setRegionMode(RegionMode mode, bool active);
+    bool updateRegionFromDisplayPosition(int displayX, int displayY);
+    void refreshRegionOverlay();
+    void clearRegion();
+    void analyzeCurrentRegion();
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;
 

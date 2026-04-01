@@ -25,11 +25,18 @@ class ProfileWidget : public QWidget
     Q_OBJECT
 
 public:
+    enum class UsageMode
+    {
+        ProbeLive,
+        RegionStatic,
+    };
+
     explicit ProfileWidget(vtkInteractorStyleProfile *style, vtkImageData *dataset,
                            const std::string &filepath, QWidget *parent = nullptr);
     explicit ProfileWidget(QWidget *parent = nullptr);
     ~ProfileWidget();
 
+    void setUsageMode(UsageMode mode, const QString &windowTitle = QString());
     void setupImagePlots();
     void setupImagePlots(const QString &xLabel, const QString &yLabel);
     void setupSpectrumPlot();
@@ -55,9 +62,11 @@ private:
     vtkSmartPointer<vtkInteractorStyleProfile> interactor;
     QCPItemLine *refLineX;
     QCPItemLine *refLineY;
+    UsageMode usageMode{ UsageMode::ProbeLive };
 
     void plotProfile(double x, double y, bool live);
     void plotSpectrum(double x, double y, bool live);
+    void applyUsageModeUi(const QString &windowTitle = QString());
 };
 
 #endif

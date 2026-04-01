@@ -51,8 +51,34 @@ ProfileWidget::~ProfileWidget()
     delete ui;
 }
 
+void ProfileWidget::setUsageMode(UsageMode mode, const QString &windowTitle)
+{
+    this->usageMode = mode;
+    this->applyUsageModeUi(windowTitle);
+}
+
+void ProfileWidget::applyUsageModeUi(const QString &windowTitle)
+{
+    const bool liveMode = this->usageMode == UsageMode::ProbeLive;
+    ui->checkLive->setVisible(liveMode);
+    ui->checkLive->setEnabled(liveMode);
+    if (!liveMode) {
+        ui->checkLive->setChecked(false);
+        if (this->interactor) {
+            this->interactor->SetLiveMode(false);
+        }
+    }
+
+    if (!windowTitle.isEmpty()) {
+        this->setWindowTitle(windowTitle);
+    } else {
+        this->setWindowTitle(liveMode ? u"Profile"_s : u"Region Profile"_s);
+    }
+}
+
 void ProfileWidget::setupImagePlots()
 {
+    this->applyUsageModeUi();
     if (!this->interactor || !this->astro) {
         return;
     }
@@ -86,6 +112,7 @@ void ProfileWidget::setupImagePlots()
 
 void ProfileWidget::setupImagePlots(const QString &xLabel, const QString &yLabel)
 {
+    this->applyUsageModeUi();
     ui->plot1->clearGraphs();
     ui->plot2->clearGraphs();
     ui->plot1->addGraph();
@@ -119,6 +146,7 @@ void ProfileWidget::setupImagePlots(const QString &xLabel, const QString &yLabel
 
 void ProfileWidget::setupSpectrumPlot()
 {
+    this->applyUsageModeUi();
     if (!this->astro || !this->interactor) {
         return;
     }
@@ -144,6 +172,7 @@ void ProfileWidget::setupSpectrumPlot()
 
 void ProfileWidget::setupSpectrumPlot(const QString &xLabel, const QString &yLabel)
 {
+    this->applyUsageModeUi();
     ui->plot2->hide();
     ui->plot1->clearGraphs();
     ui->plot1->addGraph();
@@ -164,7 +193,9 @@ void ProfileWidget::setLiveMode(bool live)
 
 void ProfileWidget::plotProfile(double x, double y, bool live)
 {
-    ui->checkLive->setChecked(live);
+    if (this->usageMode == UsageMode::ProbeLive) {
+        ui->checkLive->setChecked(live);
+    }
     const long pixX = std::lround(x);
     const long pixY = std::lround(y);
 
@@ -202,7 +233,9 @@ void ProfileWidget::plotProfile(double x, double y, bool live)
 
 void ProfileWidget::plotSpectrum(double x, double y, bool live)
 {
-    ui->checkLive->setChecked(live);
+    if (this->usageMode == UsageMode::ProbeLive) {
+        ui->checkLive->setChecked(live);
+    }
     const long pixX = std::lround(x);
     const long pixY = std::lround(y);
 
@@ -237,7 +270,9 @@ void ProfileWidget::updateSpectrumPlot(const QVector<double> &key, const QVector
         ui->plot1->addGraph();
     }
 
-    ui->checkLive->setChecked(live);
+    if (this->usageMode == UsageMode::ProbeLive) {
+        ui->checkLive->setChecked(live);
+    }
     ui->plot1->graph()->setData(key, values);
     ui->plot1->rescaleAxes();
     if (auto *titleElement = qobject_cast<QCPTextElement *>(ui->plot1->plotLayout()->element(0, 0))) {
@@ -256,7 +291,9 @@ void ProfileWidget::updateImageProfiles(const QVector<double> &keyX, const QVect
         this->setupImagePlots(u"X"_s, u"Value"_s);
     }
 
-    ui->checkLive->setChecked(live);
+    if (this->usageMode == UsageMode::ProbeLive) {
+        ui->checkLive->setChecked(live);
+    }
     ui->plot1->graph()->setData(keyX, valuesX);
     ui->plot1->rescaleAxes();
     ui->plot1->xAxis->setRange(-1., keyX.size() + 1.);

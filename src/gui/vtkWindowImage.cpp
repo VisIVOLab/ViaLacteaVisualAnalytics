@@ -21,12 +21,14 @@
 #include <vtkImageData.h>
 #include <vtkImageStack.h>
 #include <vtkInteractorStyleImage.h>
+#include <vtkInteractorStyleUser.h>
 #include <vtkLineSource.h>
 #include <vtkLookupTable.h>
 #include <vtkNew.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 #include <vtkProperty2D.h>
+#include <vtkRegularPolygonSource.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkScalarBarActor.h>
@@ -45,6 +47,7 @@
 #include <QMessageBox>
 #include <QtConcurrentRun>
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -62,6 +65,95 @@ struct VisibleImageBounds2D
     double ymin{ 0. };
     double ymax{ 0. };
 };
+
+struct RegionStatistics
+{
+    int totalCount{ 0 };
+    int validCount{ 0 };
+    int blankedCount{ 0 };
+    double minValue{ 0. };
+    double maxValue{ 0. };
+    double mean{ 0. };
+    double median{ 0. };
+    double stddev{ 0. };
+    bool valid{ false };
+};
+
+bool pointInBox(const std::array<int, 2> &anchor, const std::array<int, 2> &current, int x, int y)
+{
+    const int xmin = std::min(anchor[0], current[0]);
+    const int xmax = std::max(anchor[0], current[0]);
+    const int ymin = std::min(anchor[1], current[1]);
+    const int ymax = std::max(anchor[1], current[1]);
+    return x >= xmin && x <= xmax && y >= ymin && y <= ymax;
+}
+
+bool pointInCircle(const std::array<int, 2> &anchor, const std::array<int, 2> &current, int x, int y)
+{
+    const double dx = static_cast<double>(current[0] - anchor[0]);
+    const double dy = static_cast<double>(current[1] - anchor[1]);
+    const double radius = std::sqrt(dx * dx + dy * dy);
+    if (radius <= 0.0) {
+        return x == anchor[0] && y == anchor[1];
+    }
+    const double px = static_cast<double>(x - anchor[0]);
+    const double py = static_cast<double>(y - anchor[1]);
+    return (px * px + py * py) <= radius * radius;
+}
+
+RegionStatistics computeRegionStatistics2D(vtkImageData *imageData, const std::array<int, 2> &anchor,
+                                           const std::array<int, 2> &current, bool circular)
+{
+    RegionStatistics stats;
+    if (!imageData) {
+        return stats;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    std::vector<double> values;
+    double sum = 0.0;
+    double sumSq = 0.0;
+    stats.minValue = std::numeric_limits<double>::infinity();
+    stats.maxValue = -std::numeric_limits<double>::infinity();
+
+    for (int y = extent[2]; y <= extent[3]; ++y) {
+        for (int x = extent[0]; x <= extent[1]; ++x) {
+            const bool inside = circular ? pointInCircle(anchor, current, x, y)
+                                         : pointInBox(anchor, current, x, y);
+            if (!inside) {
+                continue;
+            }
+
+            ++stats.totalCount;
+            const double value = imageData->GetScalarComponentAsDouble(x, y, 0, 0);
+            if (!std::isfinite(value)) {
+                ++stats.blankedCount;
+                continue;
+            }
+
+            ++stats.validCount;
+            stats.minValue = std::min(stats.minValue, value);
+            stats.maxValue = std::max(stats.maxValue, value);
+            sum += value;
+            sumSq += value * value;
+            values.push_back(value);
+        }
+    }
+
+    if (stats.validCount <= 0) {
+        return stats;
+    }
+
+    stats.mean = sum / static_cast<double>(stats.validCount);
+    stats.stddev = std::sqrt(std::max(0.0, sumSq / static_cast<double>(stats.validCount)
+                                               - stats.mean * stats.mean));
+    std::sort(values.begin(), values.end());
+    const int mid = stats.validCount / 2;
+    stats.median = (stats.validCount % 2 == 0) ? 0.5 * (values[mid - 1] + values[mid]) : values[mid];
+    stats.valid = true;
+    return stats;
+}
 
 VisibleImageBounds2D computeVisibleImageBounds2D(vtkRenderer *renderer, vtkImageData *imageData)
 {
@@ -399,6 +491,19 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
             u"Spectrum extraction is only available for cube views."_s);
     this->actionExtractSpectrum->setStatusTip(
             u"Spectrum extraction is only available for cube views."_s);
+    ui->menuTools->addSeparator();
+    this->actionBoxRegion = ui->menuTools->addAction(u"Box Region Stats"_s);
+    this->actionCircleRegion = ui->menuTools->addAction(u"Circle Region Stats"_s);
+    this->actionBoxRegion->setCheckable(true);
+    this->actionCircleRegion->setCheckable(true);
+    auto *regionGroup = new QActionGroup(this);
+    regionGroup->setExclusive(false);
+    regionGroup->addAction(this->actionBoxRegion);
+    regionGroup->addAction(this->actionCircleRegion);
+    QObject::connect(this->actionBoxRegion, &QAction::toggled, this,
+                     [this](bool checked) { this->setRegionMode(RegionMode::Box, checked); });
+    QObject::connect(this->actionCircleRegion, &QAction::toggled, this,
+                     [this](bool checked) { this->setRegionMode(RegionMode::Circle, checked); });
 
     // Setup Buttons
     ui->btnSources->setIcon(QIcon(u":/icons/RECT_SELECT.png"_s));
@@ -530,6 +635,8 @@ void vtkWindowImage::setupRenderer()
                                       &vtkWindowImage::mouseCallback);
     win->GetInteractor()->AddObserver(vtkCommand::LeftButtonPressEvent, this,
                                       &vtkWindowImage::toggleProbeFreeze);
+    win->GetInteractor()->AddObserver(vtkCommand::LeftButtonReleaseEvent, this,
+                                      &vtkWindowImage::finishRegionInteraction);
 
     this->coordinate->SetCoordinateSystemToDisplay();
     this->coordinate->SetViewport(ren);
@@ -572,6 +679,29 @@ void vtkWindowImage::setupRenderer()
     this->probeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->probeVerticalActor->VisibilityOff();
     ren->AddActor(this->probeVerticalActor);
+    vtkRenderer *renderer = ren;
+    const auto configureRegionLineActor = [renderer](vtkLineSource *line, vtkActor *actor) {
+        vtkNew<vtkPolyDataMapper> mapper;
+        mapper->SetInputConnection(line->GetOutputPort());
+        actor->SetMapper(mapper);
+        actor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+        actor->GetProperty()->SetLineWidth(2.0);
+        actor->VisibilityOff();
+        renderer->AddActor(actor);
+    };
+    configureRegionLineActor(this->regionTopLine, this->regionTopActor);
+    configureRegionLineActor(this->regionBottomLine, this->regionBottomActor);
+    configureRegionLineActor(this->regionLeftLine, this->regionLeftActor);
+    configureRegionLineActor(this->regionRightLine, this->regionRightActor);
+    this->regionCircleSource->SetNumberOfSides(96);
+    this->regionCircleSource->GeneratePolygonOff();
+    vtkNew<vtkPolyDataMapper> regionCircleMapper;
+    regionCircleMapper->SetInputConnection(this->regionCircleSource->GetOutputPort());
+    this->regionCircleActor->SetMapper(regionCircleMapper);
+    this->regionCircleActor->GetProperty()->SetColor(0.2, 0.9, 1.0);
+    this->regionCircleActor->GetProperty()->SetLineWidth(2.0);
+    this->regionCircleActor->VisibilityOff();
+    ren->AddActor(this->regionCircleActor);
     this->overlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->overlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->overlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -610,16 +740,36 @@ void vtkWindowImage::mouseCallback()
         return;
     }
     this->updateProbeFromDisplayPosition(position[0], position[1]);
+    if (this->regionMode != RegionMode::None && this->regionDragging) {
+        if (this->updateRegionFromDisplayPosition(position[0], position[1])) {
+            ui->vtk->renderWindow()->Render();
+        }
+    }
 }
 
 void vtkWindowImage::toggleProbeFreeze()
 {
-    if (this->isBusy() || !this->probeModeActive) {
+    if (this->isBusy()) {
         return;
     }
 
     const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
     if (!position) {
+        return;
+    }
+
+    if (this->regionMode != RegionMode::None) {
+        if (this->updateRegionFromDisplayPosition(position[0], position[1])) {
+            this->regionAnchorVoxel = this->regionCurrentVoxel;
+            this->regionDragging = true;
+            this->regionValid = true;
+            this->refreshRegionOverlay();
+            ui->vtk->renderWindow()->Render();
+        }
+        return;
+    }
+
+    if (!this->probeModeActive) {
         return;
     }
 
@@ -630,6 +780,29 @@ void vtkWindowImage::toggleProbeFreeze()
     } else {
         this->probeFrozen = false;
         this->updateProbeFromDisplayPosition(position[0], position[1]);
+    }
+}
+
+void vtkWindowImage::finishRegionInteraction()
+{
+    if (this->isBusy() || this->regionMode == RegionMode::None || !this->regionDragging) {
+        return;
+    }
+
+    const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
+    if (position) {
+        this->updateRegionFromDisplayPosition(position[0], position[1]);
+    }
+    this->regionDragging = false;
+    this->regionValid = true;
+    this->refreshRegionOverlay();
+    this->analyzeCurrentRegion();
+    ui->vtk->renderWindow()->Render();
+    if (this->regionMode == RegionMode::Box && this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
+        this->actionBoxRegion->setChecked(false);
+    } else if (this->regionMode == RegionMode::Circle && this->actionCircleRegion
+               && this->actionCircleRegion->isChecked()) {
+        this->actionCircleRegion->setChecked(false);
     }
 }
 
@@ -744,9 +917,162 @@ void vtkWindowImage::clearProbe()
     this->probeVerticalActor->VisibilityOff();
 }
 
+void vtkWindowImage::setRegionMode(RegionMode mode, bool active)
+{
+    if (!active) {
+        if (this->regionMode == mode) {
+            this->regionMode = RegionMode::None;
+            this->regionDragging = false;
+            this->clearRegion();
+            this->setInteractorStyleImage();
+            ui->vtk->setCursor(this->probeModeActive ? Qt::CrossCursor : Qt::ArrowCursor);
+            if (ui->vtk->renderWindow()) {
+                ui->vtk->renderWindow()->Render();
+            }
+        }
+        return;
+    }
+
+    if (this->probeModeActive && ui->actionProfile->isChecked()) {
+        ui->actionProfile->setChecked(false);
+    }
+    if (mode == RegionMode::Box && this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
+        this->actionCircleRegion->setChecked(false);
+    } else if (mode == RegionMode::Circle && this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
+        this->actionBoxRegion->setChecked(false);
+    }
+    this->regionMode = mode;
+    this->regionDragging = false;
+    this->regionValid = false;
+    this->clearRegion();
+    this->setInteractorStyleRegion();
+    ui->vtk->setCursor(Qt::CrossCursor);
+}
+
+bool vtkWindowImage::updateRegionFromDisplayPosition(int displayX, int displayY)
+{
+    auto *renderer = ui->vtk->renderWindow() ? ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer()
+                                             : nullptr;
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    if (!renderer || !imageData) {
+        return false;
+    }
+
+    this->coordinate->SetValue(displayX, displayY);
+    const double *worldCoord = this->coordinate->GetComputedWorldValue(renderer);
+    if (!worldCoord) {
+        return false;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    double origin[3];
+    double spacing[3];
+    imageData->GetOrigin(origin);
+    imageData->GetSpacing(spacing);
+    const int voxelX = std::lround(extent[0] + (worldCoord[0] - origin[0]) / spacing[0]);
+    const int voxelY = std::lround(extent[2] + (worldCoord[1] - origin[1]) / spacing[1]);
+    if (voxelX < extent[0] || voxelX > extent[1] || voxelY < extent[2] || voxelY > extent[3]) {
+        return false;
+    }
+
+    this->regionCurrentVoxel = { voxelX, voxelY };
+    this->refreshRegionOverlay();
+    return true;
+}
+
+void vtkWindowImage::refreshRegionOverlay()
+{
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    if (!imageData || this->regionMode == RegionMode::None || !this->regionValid) {
+        this->clearRegion();
+        return;
+    }
+
+    double bounds[6];
+    imageData->GetBounds(bounds);
+    const int xmin = std::min(this->regionAnchorVoxel[0], this->regionCurrentVoxel[0]);
+    const int xmax = std::max(this->regionAnchorVoxel[0], this->regionCurrentVoxel[0]);
+    const int ymin = std::min(this->regionAnchorVoxel[1], this->regionCurrentVoxel[1]);
+    const int ymax = std::max(this->regionAnchorVoxel[1], this->regionCurrentVoxel[1]);
+
+    const bool showBox = this->regionMode == RegionMode::Box;
+    this->regionTopActor->SetVisibility(showBox);
+    this->regionBottomActor->SetVisibility(showBox);
+    this->regionLeftActor->SetVisibility(showBox);
+    this->regionRightActor->SetVisibility(showBox);
+    this->regionCircleActor->SetVisibility(!showBox);
+
+    if (showBox) {
+        this->regionTopLine->SetPoint1(xmin, ymax, 0.0);
+        this->regionTopLine->SetPoint2(xmax, ymax, 0.0);
+        this->regionBottomLine->SetPoint1(xmin, ymin, 0.0);
+        this->regionBottomLine->SetPoint2(xmax, ymin, 0.0);
+        this->regionLeftLine->SetPoint1(xmin, ymin, 0.0);
+        this->regionLeftLine->SetPoint2(xmin, ymax, 0.0);
+        this->regionRightLine->SetPoint1(xmax, ymin, 0.0);
+        this->regionRightLine->SetPoint2(xmax, ymax, 0.0);
+    } else {
+        const double dx = static_cast<double>(this->regionCurrentVoxel[0] - this->regionAnchorVoxel[0]);
+        const double dy = static_cast<double>(this->regionCurrentVoxel[1] - this->regionAnchorVoxel[1]);
+        this->regionCircleSource->SetCenter(this->regionAnchorVoxel[0], this->regionAnchorVoxel[1], 0.0);
+        this->regionCircleSource->SetRadius(std::sqrt(dx * dx + dy * dy));
+    }
+    Q_UNUSED(bounds);
+}
+
+void vtkWindowImage::clearRegion()
+{
+    this->regionValid = false;
+    this->regionTopActor->VisibilityOff();
+    this->regionBottomActor->VisibilityOff();
+    this->regionLeftActor->VisibilityOff();
+    this->regionRightActor->VisibilityOff();
+    this->regionCircleActor->VisibilityOff();
+}
+
+void vtkWindowImage::analyzeCurrentRegion()
+{
+    if (this->regionMode == RegionMode::None || !this->regionValid || !this->layers) {
+        return;
+    }
+
+    auto *imageData = this->layers->getImageData(this->layers->getMasterIndex());
+    const bool circular = this->regionMode == RegionMode::Circle;
+    const auto stats = computeRegionStatistics2D(imageData, this->regionAnchorVoxel, this->regionCurrentVoxel,
+                                                 circular);
+    QString text;
+    if (!stats.valid) {
+        text = u"No valid pixels in the selected region.\nBlanked/NaN pixels are ignored."_s;
+    } else {
+        text = u"Shape: %1\nValid pixels: %2 / %3\nBlanked/NaN: %4\nMin: %5\nMax: %6\nMean: %7\nMedian: %8\nStddev: %9\n\nComputed on valid pixels only."_s
+                       .arg(circular ? u"Circle"_s : u"Box"_s)
+                       .arg(stats.validCount)
+                       .arg(stats.totalCount)
+                       .arg(stats.blankedCount)
+                       .arg(stats.minValue, 0, 'g', 8)
+                       .arg(stats.maxValue, 0, 'g', 8)
+                       .arg(stats.mean, 0, 'g', 8)
+                       .arg(stats.median, 0, 'g', 8)
+                       .arg(stats.stddev, 0, 'g', 8);
+    }
+    if (this->isRemoteMode) {
+        text += u"\n\nComputed on the currently loaded data block."_s;
+    }
+    QMessageBox::information(this, u"Region Statistics"_s, text);
+}
+
 void vtkWindowImage::setProbeModeActive(bool active)
 {
     this->probeModeActive = active;
+    if (active) {
+        if (this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
+            this->actionBoxRegion->setChecked(false);
+        }
+        if (this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
+            this->actionCircleRegion->setChecked(false);
+        }
+    }
     ui->vtk->setCursor(active ? Qt::CrossCursor : Qt::ArrowCursor);
     this->probeFrozen = false;
     if (!active) {
@@ -761,6 +1087,7 @@ void vtkWindowImage::setProbeModeActive(bool active)
 
     if (!this->profileWidget) {
         this->profileWidget = new ProfileWidget(this);
+        this->profileWidget->setUsageMode(ProfileWidget::UsageMode::ProbeLive, u"Profile"_s);
         this->profileWidget->setupImagePlots(u"Pixel"_s, u"Value"_s);
         QObject::connect(this->profileWidget, &ProfileWidget::destroyed, this, [this]() {
             this->profileWidget = nullptr;
@@ -768,6 +1095,8 @@ void vtkWindowImage::setProbeModeActive(bool active)
                 ui->actionProfile->setChecked(false);
             }
         });
+    } else {
+        this->profileWidget->setUsageMode(ProfileWidget::UsageMode::ProbeLive, u"Profile"_s);
     }
 
     if (!this->probeValid) {
@@ -827,6 +1156,13 @@ void vtkWindowImage::setInteractorStyleImage()
     this->vtkRender();
 }
 
+void vtkWindowImage::setInteractorStyleRegion()
+{
+    vtkNew<vtkInteractorStyleUser> style;
+    ui->vtk->renderWindow()->GetInteractor()->SetInteractorStyle(style);
+    this->vtkRender();
+}
+
 void vtkWindowImage::setInteractorStyleProfile()
 {
     if (!this->profileWidget) {
@@ -837,6 +1173,7 @@ void vtkWindowImage::setInteractorStyleProfile()
         this->profileWidget =
                 new ProfileWidget(style, this->layers->getImageData(this->layers->getMasterIndex()),
                                   this->filepath.toStdString(), this);
+        this->profileWidget->setUsageMode(ProfileWidget::UsageMode::ProbeLive, u"Profile"_s);
         this->profileWidget->setupImagePlots();
         QObject::connect(this->profileWidget, &ProfileWidget::destroyed, this,
                          &vtkWindowImage::setInteractorStyleImage, Qt::QueuedConnection);

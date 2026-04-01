@@ -48,6 +48,7 @@ class vtkOrientationMarkerWidget;
 class vtkPlaneSource;
 class vtkPiecewiseFunction;
 class vtkPolyData;
+class vtkRegularPolygonSource;
 class vtkRenderer;
 class vtkTextActor;
 class vtkTrivialProducer;
@@ -141,7 +142,9 @@ private slots:
 
     void setInteractorStyleImage();
     void setInteractorStyleProfile();
+    void setInteractorStyleRegion();
     void toggleProbeFreeze();
+    void finishRegionInteraction();
     void extractSpectrumAtCurrentProbe();
     void setProbeModeActive(bool active);
 
@@ -175,6 +178,12 @@ public:
     };
 
 private:
+    enum class RegionMode
+    {
+        None,
+        Box,
+        Circle,
+    };
 
     struct MomentMapApplyResult
     {
@@ -209,6 +218,8 @@ private:
     QPointer<QCheckBox> wcsAxesCheck;
     QPointer<QAction> actionWcsSexagesimal;
     QPointer<QAction> actionWcsDecimal;
+    QPointer<QAction> actionBoxRegion;
+    QPointer<QAction> actionCircleRegion;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
@@ -237,13 +248,18 @@ private:
     bool useCameraRoiRefinement{ false };
     bool pendingRemoteRefinementReload{ false };
     bool probeModeActive{ false };
+    RegionMode regionMode{ RegionMode::None };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
     bool sliceWcsOverlayInitialized{ false };
     bool momentWcsOverlayInitialized{ false };
     bool probeFrozen{ false };
     bool probeValid{ false };
+    bool regionDragging{ false };
+    bool regionValid{ false };
     std::array<int, 3> probeVoxel{ -1, -1, -1 };
+    std::array<int, 2> regionAnchorVoxel{ -1, -1 };
+    std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
     static constexpr int remoteSliceDebounceDelayMs = 100;
@@ -272,8 +288,12 @@ private:
     void setCameraElevation(double el);
     void mouseCallback();
     bool updateProbeFromDisplayPosition(int displayX, int displayY);
+    bool updateRegionFromDisplayPosition(int displayX, int displayY);
     void refreshProbeOverlay();
+    void refreshRegionOverlay();
     void clearProbe();
+    void clearRegion();
+    void analyzeCurrentRegion();
     void updateProbeReadout(vtkImageData *imageData);
     void updateProbePlot();
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 3> &voxel) const;
@@ -325,6 +345,7 @@ private:
     QString formatDegreeCoordinate(double value) const;
     void updateDataStatePanel();
     QString currentWcsFrameLabel() const;
+    void setRegionMode(RegionMode mode, bool active);
     void updateSliceWcsOverlay();
     void updateMomentWcsOverlay();
     void set2dWcsOverlayVisible(bool visible);
@@ -351,6 +372,16 @@ private:
     vtkNew<vtkLineSource> sliceProbeVerticalLine;
     vtkNew<vtkActor> sliceProbeHorizontalActor;
     vtkNew<vtkActor> sliceProbeVerticalActor;
+    vtkNew<vtkLineSource> sliceRegionTopLine;
+    vtkNew<vtkLineSource> sliceRegionBottomLine;
+    vtkNew<vtkLineSource> sliceRegionLeftLine;
+    vtkNew<vtkLineSource> sliceRegionRightLine;
+    vtkNew<vtkActor> sliceRegionTopActor;
+    vtkNew<vtkActor> sliceRegionBottomActor;
+    vtkNew<vtkActor> sliceRegionLeftActor;
+    vtkNew<vtkActor> sliceRegionRightActor;
+    vtkNew<vtkRegularPolygonSource> sliceRegionCircleSource;
+    vtkNew<vtkActor> sliceRegionCircleActor;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
     std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
@@ -394,6 +425,16 @@ private:
     vtkNew<vtkLineSource> momentProbeVerticalLine;
     vtkNew<vtkActor> momentProbeHorizontalActor;
     vtkNew<vtkActor> momentProbeVerticalActor;
+    vtkNew<vtkLineSource> momentRegionTopLine;
+    vtkNew<vtkLineSource> momentRegionBottomLine;
+    vtkNew<vtkLineSource> momentRegionLeftLine;
+    vtkNew<vtkLineSource> momentRegionRightLine;
+    vtkNew<vtkActor> momentRegionTopActor;
+    vtkNew<vtkActor> momentRegionBottomActor;
+    vtkNew<vtkActor> momentRegionLeftActor;
+    vtkNew<vtkActor> momentRegionRightActor;
+    vtkNew<vtkRegularPolygonSource> momentRegionCircleSource;
+    vtkNew<vtkActor> momentRegionCircleActor;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;
     std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
