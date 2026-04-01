@@ -48,6 +48,8 @@ class vtkMomentMapFilter;
 class vtkOrientationMarkerWidget;
 class vtkPlaneSource;
 class vtkPiecewiseFunction;
+class vtkPoints;
+class vtkCellArray;
 class vtkPolyData;
 class vtkRegularPolygonSource;
 class vtkRenderer;
@@ -146,6 +148,7 @@ private slots:
     void setInteractorStyleRegion();
     void toggleProbeFreeze();
     void finishRegionInteraction();
+    void finalizePvInteraction();
     void extractSpectrumAtCurrentProbe();
     void setPvModeActive(bool active);
     void setProbeModeActive(bool active);
@@ -256,6 +259,7 @@ private:
     bool pvModeActive{ false };
     bool pvDragging{ false };
     bool pvValid{ false };
+    bool pvCursorValid{ false };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
     bool sliceWcsOverlayInitialized{ false };
@@ -267,8 +271,8 @@ private:
     std::array<int, 3> probeVoxel{ -1, -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
-    std::array<int, 2> pvAnchorVoxel{ -1, -1 };
     std::array<int, 2> pvCurrentVoxel{ -1, -1 };
+    std::vector<std::array<int, 2>> pvPolylineVertices;
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
     static constexpr int remoteSliceDebounceDelayMs = 100;
@@ -396,7 +400,9 @@ private:
     vtkNew<vtkActor> sliceRegionRightActor;
     vtkNew<vtkRegularPolygonSource> sliceRegionCircleSource;
     vtkNew<vtkActor> sliceRegionCircleActor;
-    vtkNew<vtkLineSource> slicePvLine;
+    vtkNew<vtkPoints> slicePvPoints;
+    vtkNew<vtkCellArray> slicePvCells;
+    vtkNew<vtkPolyData> slicePvData;
     vtkNew<vtkActor> slicePvActor;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
@@ -451,7 +457,9 @@ private:
     vtkNew<vtkActor> momentRegionRightActor;
     vtkNew<vtkRegularPolygonSource> momentRegionCircleSource;
     vtkNew<vtkActor> momentRegionCircleActor;
-    vtkNew<vtkLineSource> momentPvLine;
+    vtkNew<vtkPoints> momentPvPoints;
+    vtkNew<vtkCellArray> momentPvCells;
+    vtkNew<vtkPolyData> momentPvData;
     vtkNew<vtkActor> momentPvActor;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;

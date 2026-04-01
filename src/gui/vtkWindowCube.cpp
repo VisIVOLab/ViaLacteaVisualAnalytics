@@ -1716,6 +1716,10 @@ void vtkWindowCube::setupSliceRenderer()
                                                  &vtkWindowCube::toggleProbeFreeze);
     this->sliceWin->GetInteractor()->AddObserver(vtkCommand::LeftButtonReleaseEvent, this,
                                                  &vtkWindowCube::finishRegionInteraction);
+    this->sliceWin->GetInteractor()->AddObserver(vtkCommand::RightButtonPressEvent, this,
+                                                 &vtkWindowCube::finalizePvInteraction);
+    this->sliceWin->GetInteractor()->AddObserver(vtkCommand::LeftButtonDoubleClickEvent, this,
+                                                 &vtkWindowCube::finalizePvInteraction);
     this->coordinate->SetCoordinateSystemToDisplay();
     this->coordinate->SetViewport(ren);
 
@@ -1797,8 +1801,10 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->sliceProbeVerticalActor->VisibilityOff();
     ren->AddActor(this->sliceProbeVerticalActor);
+    this->slicePvData->SetPoints(this->slicePvPoints);
+    this->slicePvData->SetLines(this->slicePvCells);
     vtkNew<vtkPolyDataMapper> slicePvMapper;
-    slicePvMapper->SetInputConnection(this->slicePvLine->GetOutputPort());
+    slicePvMapper->SetInputData(this->slicePvData);
     this->slicePvActor->SetMapper(slicePvMapper);
     this->slicePvActor->GetProperty()->SetColor(1.0, 0.4, 0.1);
     this->slicePvActor->GetProperty()->SetLineWidth(2.5);
@@ -1864,6 +1870,8 @@ void vtkWindowCube::setupMomentRenderer()
     iren->AddObserver(vtkCommand::MouseMoveEvent, this, &vtkWindowCube::mouseCallback);
     iren->AddObserver(vtkCommand::LeftButtonPressEvent, this, &vtkWindowCube::toggleProbeFreeze);
     iren->AddObserver(vtkCommand::LeftButtonReleaseEvent, this, &vtkWindowCube::finishRegionInteraction);
+    iren->AddObserver(vtkCommand::RightButtonPressEvent, this, &vtkWindowCube::finalizePvInteraction);
+    iren->AddObserver(vtkCommand::LeftButtonDoubleClickEvent, this, &vtkWindowCube::finalizePvInteraction);
 
     vtkNew<vtkInteractorStyleImage> style;
     iren->SetInteractorStyle(style);
@@ -1931,8 +1939,10 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->momentProbeVerticalActor->VisibilityOff();
     ren->AddActor(this->momentProbeVerticalActor);
+    this->momentPvData->SetPoints(this->momentPvPoints);
+    this->momentPvData->SetLines(this->momentPvCells);
     vtkNew<vtkPolyDataMapper> momentPvMapper;
-    momentPvMapper->SetInputConnection(this->momentPvLine->GetOutputPort());
+    momentPvMapper->SetInputData(this->momentPvData);
     this->momentPvActor->SetMapper(momentPvMapper);
     this->momentPvActor->GetProperty()->SetColor(1.0, 0.4, 0.1);
     this->momentPvActor->GetProperty()->SetLineWidth(2.5);
@@ -2023,8 +2033,8 @@ void vtkWindowCube::mouseCallback()
         return;
     }
     this->updateProbeFromDisplayPosition(position[0], position[1]);
-    if (this->pvModeActive && this->pvDragging) {
-        if (this->updatePvFromDisplayPosition(position[0], position[1])) {
+    if (this->pvModeActive) {
+        if (this->updatePvFromDisplayPosition(position[0], position[1]) && this->pvDragging) {
             ui->vtkImage->renderWindow()->Render();
         }
         return;
@@ -2049,9 +2059,18 @@ void vtkWindowCube::toggleProbeFreeze()
 
     if (this->pvModeActive) {
         if (this->updatePvFromDisplayPosition(position[0], position[1])) {
-            this->pvAnchorVoxel = this->pvCurrentVoxel;
-            this->pvDragging = true;
-            this->pvValid = true;
+            if (!this->pvDragging) {
+                this->pvPolylineVertices.clear();
+                this->pvPolylineVertices.push_back(this->pvCurrentVoxel);
+                this->pvDragging = true;
+            } else if (this->pvPolylineVertices.empty()
+                       || this->pvPolylineVertices.back() != this->pvCurrentVoxel) {
+                this->pvPolylineVertices.push_back(this->pvCurrentVoxel);
+            } else {
+                this->statusBar()->showMessage(u"PV vertex unchanged; move and click to add a new point."_s,
+                                               1500);
+            }
+            this->pvValid = this->pvPolylineVertices.size() >= 1;
             this->refreshPvOverlay();
             ui->vtkImage->renderWindow()->Render();
         }
@@ -2089,33 +2108,11 @@ void vtkWindowCube::finishRegionInteraction()
         return;
     }
 
-    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
-    if (this->pvModeActive && this->pvDragging) {
-        if (position) {
-            this->updatePvFromDisplayPosition(position[0], position[1]);
-        }
-        qDebug().noquote()
-                << QStringLiteral("[pv] finish anchor=(%1,%2) current=(%3,%4) valid=%5")
-                           .arg(this->pvAnchorVoxel[0])
-                           .arg(this->pvAnchorVoxel[1])
-                           .arg(this->pvCurrentVoxel[0])
-                           .arg(this->pvCurrentVoxel[1])
-                           .arg(this->pvValid);
-        this->pvDragging = false;
-        this->pvValid = true;
-        this->refreshPvOverlay();
-        this->extractCurrentPvDiagram();
-        ui->vtkImage->renderWindow()->Render();
-        if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
-            this->actionExtractPvDiagram->setChecked(false);
-        }
-        return;
-    }
-
     if (this->regionMode == RegionMode::None || !this->regionDragging) {
         return;
     }
 
+    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
     if (position) {
         this->updateRegionFromDisplayPosition(position[0], position[1]);
     }
@@ -2129,6 +2126,50 @@ void vtkWindowCube::finishRegionInteraction()
     } else if (this->regionMode == RegionMode::Circle && this->actionCircleRegion
                && this->actionCircleRegion->isChecked()) {
         this->actionCircleRegion->setChecked(false);
+    }
+}
+
+void vtkWindowCube::finalizePvInteraction()
+{
+    if (this->isBusy() || !this->pvModeActive) {
+        return;
+    }
+
+    const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
+    if (position) {
+        this->updatePvFromDisplayPosition(position[0], position[1]);
+    }
+    if (this->pvDragging && this->pvCursorValid
+        && (this->pvPolylineVertices.empty() || this->pvPolylineVertices.back() != this->pvCurrentVoxel)) {
+        this->pvPolylineVertices.push_back(this->pvCurrentVoxel);
+    }
+
+    std::vector<std::array<int, 2>> cleaned;
+    cleaned.reserve(this->pvPolylineVertices.size());
+    for (const auto &vertex : this->pvPolylineVertices) {
+        if (cleaned.empty() || cleaned.back() != vertex) {
+            cleaned.push_back(vertex);
+        }
+    }
+    this->pvPolylineVertices = std::move(cleaned);
+    this->pvDragging = false;
+    this->pvValid = this->pvPolylineVertices.size() >= 2;
+    this->refreshPvOverlay();
+
+    qDebug().noquote() << QStringLiteral("[pv] finalize vertices=%1 valid=%2")
+                                  .arg(this->pvPolylineVertices.size())
+                                  .arg(this->pvValid);
+
+    if (!this->pvValid) {
+        this->statusBar()->showMessage(u"Define at least two points for PV path."_s, 2500);
+        ui->vtkImage->renderWindow()->Render();
+        return;
+    }
+
+    this->extractCurrentPvDiagram();
+    ui->vtkImage->renderWindow()->Render();
+    if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+        this->actionExtractPvDiagram->setChecked(false);
     }
 }
 
@@ -2303,12 +2344,16 @@ bool vtkWindowCube::updateRegionFromDisplayPosition(int displayX, int displayY)
                        : this->slice->GetOutput())
             : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
     if (!renderer || !imageData) {
+        this->pvCursorValid = false;
+        this->refreshPvOverlay();
         return false;
     }
 
     this->coordinate->SetValue(displayX, displayY);
     const double *worldCoord = this->coordinate->GetComputedWorldValue(renderer);
     if (!worldCoord) {
+        this->pvCursorValid = false;
+        this->refreshPvOverlay();
         return false;
     }
 
@@ -2321,6 +2366,8 @@ bool vtkWindowCube::updateRegionFromDisplayPosition(int displayX, int displayY)
     const int voxelX = std::lround(extent[0] + (worldCoord[0] - origin[0]) / spacing[0]);
     const int voxelY = std::lround(extent[2] + (worldCoord[1] - origin[1]) / spacing[1]);
     if (voxelX < extent[0] || voxelX > extent[1] || voxelY < extent[2] || voxelY > extent[3]) {
+        this->pvCursorValid = false;
+        this->refreshPvOverlay();
         return false;
     }
 
@@ -2361,6 +2408,7 @@ bool vtkWindowCube::updatePvFromDisplayPosition(int displayX, int displayY)
     }
 
     this->pvCurrentVoxel = { voxelX, voxelY };
+    this->pvCursorValid = true;
     this->refreshPvOverlay();
     return true;
 }
@@ -2439,27 +2487,47 @@ void vtkWindowCube::clearRegion()
 
 void vtkWindowCube::refreshPvOverlay()
 {
-    const auto updateLine = [this](vtkImageData *imageData, vtkLineSource *line, vtkActor *actor) {
-        if (!imageData || !this->pvModeActive || !this->pvValid) {
+    const auto updateLine = [this](vtkImageData *imageData, vtkPoints *points, vtkCellArray *cells,
+                                   vtkPolyData *polyData, vtkActor *actor) {
+        if (!imageData || !this->pvModeActive) {
             actor->VisibilityOff();
             return;
         }
-        line->SetPoint1(this->pvAnchorVoxel[0], this->pvAnchorVoxel[1], 0.0);
-        line->SetPoint2(this->pvCurrentVoxel[0], this->pvCurrentVoxel[1], 0.0);
+        std::vector<std::array<int, 2>> drawVertices = this->pvPolylineVertices;
+        if (this->pvDragging && this->pvCursorValid
+            && (drawVertices.empty() || drawVertices.back() != this->pvCurrentVoxel)) {
+            drawVertices.push_back(this->pvCurrentVoxel);
+        }
+        if (drawVertices.size() < 2) {
+            actor->VisibilityOff();
+            return;
+        }
+
+        points->Reset();
+        cells->Reset();
+        cells->InsertNextCell(static_cast<vtkIdType>(drawVertices.size()));
+        for (vtkIdType i = 0; i < static_cast<vtkIdType>(drawVertices.size()); ++i) {
+            points->InsertNextPoint(drawVertices[static_cast<std::size_t>(i)][0],
+                                    drawVertices[static_cast<std::size_t>(i)][1], 0.0);
+            cells->InsertCellPoint(i);
+        }
+        polyData->Modified();
         actor->VisibilityOn();
     };
 
     updateLine(this->isRemoteMode
                        ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
                        : this->slice->GetOutput(),
-               this->slicePvLine, this->slicePvActor);
+               this->slicePvPoints, this->slicePvCells, this->slicePvData, this->slicePvActor);
     updateLine(vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0)),
-               this->momentPvLine, this->momentPvActor);
+               this->momentPvPoints, this->momentPvCells, this->momentPvData, this->momentPvActor);
 }
 
 void vtkWindowCube::clearPv()
 {
     this->pvValid = false;
+    this->pvCursorValid = false;
+    this->pvPolylineVertices.clear();
     this->slicePvActor->VisibilityOff();
     this->momentPvActor->VisibilityOff();
 }
@@ -2614,9 +2682,9 @@ QString vtkWindowCube::formatSpatialPointSummary(const std::array<int, 2> &voxel
 
 void vtkWindowCube::extractCurrentPvDiagram()
 {
-    if (!this->pvValid) {
+    if (!this->pvValid || this->pvPolylineVertices.size() < 2) {
         qDebug().noquote() << QStringLiteral("[pv] extraction skipped: line not valid");
-        this->statusBar()->showMessage(u"Draw a valid PV line first."_s, 2000);
+        this->statusBar()->showMessage(u"Define at least two points for PV path."_s, 2000);
         return;
     }
 
@@ -2627,27 +2695,8 @@ void vtkWindowCube::extractCurrentPvDiagram()
         return;
     }
 
-    const int x0 = this->pvAnchorVoxel[0];
-    const int y0 = this->pvAnchorVoxel[1];
-    const int x1 = this->pvCurrentVoxel[0];
-    const int y1 = this->pvCurrentVoxel[1];
-    const int dx = x1 - x0;
-    const int dy = y1 - y0;
-    const int steps = std::max(std::abs(dx), std::abs(dy)) + 1;
     qDebug().noquote()
-            << QStringLiteral("[pv] anchor=(%1,%2) current=(%3,%4) dx=%5 dy=%6 steps=%7")
-                       .arg(x0)
-                       .arg(y0)
-                       .arg(x1)
-                       .arg(y1)
-                       .arg(dx)
-                       .arg(dy)
-                       .arg(steps);
-    if (steps < 2) {
-        qDebug().noquote() << QStringLiteral("[pv] line too short");
-        this->statusBar()->showMessage(u"PV line too short. Draw a longer PV line."_s, 2500);
-        return;
-    }
+            << QStringLiteral("[pv] polyline vertices=%1").arg(this->pvPolylineVertices.size());
 
     int extent[6];
     cubeImage->GetExtent(extent);
@@ -2671,11 +2720,9 @@ void vtkWindowCube::extractCurrentPvDiagram()
         return;
     }
 
-    const double cutLength = std::hypot(static_cast<double>(dx), static_cast<double>(dy));
-    QVector<double> positions(steps);
     QVector<double> spectral(zCount);
-    QVector<double> values(steps * zCount, std::numeric_limits<double>::quiet_NaN());
-    int validSamples = 0;
+    std::vector<std::array<int, 2>> sampledPoints;
+    QVector<double> positions;
 
     for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
         const int zIndex = localZ - extent[4];
@@ -2687,30 +2734,66 @@ void vtkWindowCube::extractCurrentPvDiagram()
         }
     }
 
-    for (int i = 0; i < steps; ++i) {
-        const double t = steps == 1 ? 0.0 : static_cast<double>(i) / static_cast<double>(steps - 1);
-        const int datasetX = std::lround(static_cast<double>(x0) + t * dx);
-        const int datasetY = std::lround(static_cast<double>(y0) + t * dy);
-        positions[i] = t * cutLength;
+    double cumulativeDistance = 0.0;
+    for (std::size_t segment = 1; segment < this->pvPolylineVertices.size(); ++segment) {
+        const auto &a = this->pvPolylineVertices[segment - 1];
+        const auto &b = this->pvPolylineVertices[segment];
+        const int dx = b[0] - a[0];
+        const int dy = b[1] - a[1];
+        const int steps = std::max(std::abs(dx), std::abs(dy)) + 1;
+        if (steps < 2) {
+            continue;
+        }
+        for (int i = 0; i < steps; ++i) {
+            const double t = steps == 1 ? 0.0 : static_cast<double>(i) / static_cast<double>(steps - 1);
+            const std::array<int, 2> point = {
+                    static_cast<int>(std::lround(static_cast<double>(a[0]) + t * dx)),
+                    static_cast<int>(std::lround(static_cast<double>(a[1]) + t * dy)),
+            };
+            if (!sampledPoints.empty() && sampledPoints.back() == point) {
+                continue;
+            }
+            if (!sampledPoints.empty()) {
+                cumulativeDistance += std::hypot(static_cast<double>(point[0] - sampledPoints.back()[0]),
+                                                 static_cast<double>(point[1] - sampledPoints.back()[1]));
+            }
+            sampledPoints.push_back(point);
+            positions.push_back(cumulativeDistance);
+        }
+    }
 
+    qDebug().noquote()
+            << QStringLiteral("[pv] sampled polyline points=%1 cumulativeLength=%2")
+                       .arg(sampledPoints.size())
+                       .arg(positions.isEmpty() ? 0.0 : positions.back());
+    if (sampledPoints.size() < 2) {
+        this->statusBar()->showMessage(u"PV line too short. Draw a longer PV path."_s, 2500);
+        return;
+    }
+
+    const int xSamples = static_cast<int>(sampledPoints.size());
+    QVector<double> values(xSamples * zCount, std::numeric_limits<double>::quiet_NaN());
+    int validSamples = 0;
+    for (int i = 0; i < xSamples; ++i) {
+        const int datasetX = sampledPoints[static_cast<std::size_t>(i)][0];
+        const int datasetY = sampledPoints[static_cast<std::size_t>(i)][1];
         const int localX = std::lround(extent[0] + (datasetX - origin[0]) / spacing[0]);
         const int localY = std::lround(extent[2] + (datasetY - origin[1]) / spacing[1]);
         if (localX < extent[0] || localX > extent[1] || localY < extent[2] || localY > extent[3]) {
             continue;
         }
-
         for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
             const int zIndex = localZ - extent[4];
             const double value = cubeImage->GetScalarComponentAsDouble(localX, localY, localZ, 0);
-            values[zIndex * steps + i] = value;
+            values[zIndex * xSamples + i] = value;
             if (std::isfinite(value)) {
                 ++validSamples;
             }
         }
     }
     qDebug().noquote()
-            << QStringLiteral("[pv] sampled matrix steps=%1 zCount=%2 validSamples=%3")
-                       .arg(steps)
+            << QStringLiteral("[pv] sampled matrix xSamples=%1 zCount=%2 validSamples=%3")
+                       .arg(xSamples)
                        .arg(zCount)
                        .arg(validSamples);
 
@@ -2733,15 +2816,16 @@ void vtkWindowCube::extractCurrentPvDiagram()
                          });
     }
 
-    QString details = u"Start: %1\nEnd: %2\nSampling: nearest-neighbor, width=1 pixel\nData scope: %3"_s
-                              .arg(this->formatSpatialPointSummary(this->pvAnchorVoxel),
-                                   this->formatSpatialPointSummary(this->pvCurrentVoxel),
-                                   this->isRemoteMode ? u"currently loaded cube block only"_s
+    QString details = u"Start: %1\nEnd: %2\nVertices: %3\nSampling: nearest-neighbor, width=1 pixel\nData scope: %4"_s
+                              .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.front()))
+                              .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.back()))
+                              .arg(static_cast<int>(this->pvPolylineVertices.size()))
+                              .arg(this->isRemoteMode ? u"currently loaded cube block only"_s
                                                       : u"full loaded cube"_s);
     qDebug().noquote() << QStringLiteral("[pv] updating widget and requesting show/raise");
-    this->pvDiagramWidget->setPvData(positions, spectral, values, steps, zCount, u"Position Along Cut [px]"_s,
+    this->pvDiagramWidget->setPvData(positions, spectral, values, xSamples, zCount, u"Offset Along Path (pixels)"_s,
                                      this->spectralAxisTitle(),
-                                     u"PV Diagram"_s, details);
+                                     u"PV Diagram (Polyline)"_s, details);
 }
 
 void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
