@@ -80,6 +80,7 @@
 #include <QMetaObject>
 #include <QMessageBox>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QSpinBox>
 #include <QtConcurrentRun>
 #include <QVBoxLayout>
@@ -4202,8 +4203,17 @@ bool vtkWindowCube::configureMomentRequest(int defaultOrder, MomentGenerationCon
 {
     QDialog dialog(this);
     dialog.setWindowTitle(u"Moment Map Settings"_s);
+    dialog.setMinimumWidth(560);
     auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(8);
     auto *form = new QFormLayout();
+    form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    form->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
+    form->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
+    form->setHorizontalSpacing(12);
+    form->setVerticalSpacing(8);
     layout->addLayout(form);
 
     auto *momentCombo = new QComboBox(&dialog);
@@ -4246,8 +4256,12 @@ bool vtkWindowCube::configureMomentRequest(int defaultOrder, MomentGenerationCon
 
     auto *blankingLabel = new QLabel(u"NaN/blanked voxels excluded automatically"_s, &dialog);
     blankingLabel->setWordWrap(true);
+    blankingLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    blankingLabel->setMinimumHeight(blankingLabel->fontMetrics().lineSpacing() * 2 + 8);
     auto *scopeLabel = new QLabel(this->describeMomentScope(), &dialog);
     scopeLabel->setWordWrap(true);
+    scopeLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    scopeLabel->setMinimumHeight(scopeLabel->fontMetrics().lineSpacing() * 2 + 8);
 
     form->addRow(u"Moment"_s, momentCombo);
     form->addRow(u"Start channel"_s, channelStartSpin);
@@ -5124,6 +5138,16 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     ui->vtkImage->setRenderWindow(this->momentWin);
     ui->labelImg->setText(u"Moment:"_s);
     this->coordinate->SetViewport(ui->vtkImage->renderWindow()->GetRenderers()->GetFirstRenderer());
+    if (auto *renderer = this->momentWin->GetRenderers()->GetFirstRenderer()) {
+        renderer->ResetCamera();
+        renderer->ResetCameraClippingRange();
+    }
+    this->lastMomentOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN() };
+    this->lastMomentOverlayViewportSize = { -1, -1 };
+    this->updateMomentWcsOverlay();
 
     {
         const QSignalBlocker blockMin(ui->lineImgMin);
@@ -5142,6 +5166,23 @@ void vtkWindowCube::applyMomentMapResult(const MomentMapApplyResult &result)
     QElapsedTimer renderTimer;
     renderTimer.start();
     ui->vtkImage->renderWindow()->Render();
+    QMetaObject::invokeMethod(
+            this,
+            [this]() {
+                this->lastMomentOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                                         std::numeric_limits<double>::quiet_NaN(),
+                                                         std::numeric_limits<double>::quiet_NaN(),
+                                                         std::numeric_limits<double>::quiet_NaN() };
+                this->lastMomentOverlayViewportSize = { -1, -1 };
+                this->updateMomentWcsOverlay();
+                if (this->momentWin) {
+                    this->momentWin->Render();
+                }
+                if (ui && ui->vtkImage) {
+                    ui->vtkImage->update();
+                }
+            },
+            Qt::QueuedConnection);
     qDebug().noquote() << QStringLiteral("[perf][moment] render after apply: %1 ms").arg(
             renderTimer.elapsed());
     qDebug().noquote() << QStringLiteral("[perf][moment] apply total: %1 ms").arg(
