@@ -60,6 +60,11 @@ class OpenDatasetResponse(BaseModel):
     depth: int = 0
     spacing: list[float] = [1.0, 1.0, 1.0]
     origin: list[float] = [0.0, 0.0, 0.0]
+    ctype: list[str] = ["", "", ""]
+    cunit: list[str] = ["", "", ""]
+    crval: list[float] = [0.0, 0.0, 0.0]
+    crpix: list[float] = [1.0, 1.0, 1.0]
+    cdelt: list[float] = [1.0, 1.0, 1.0]
 
 
 class MomentProductRequest(BaseModel):
@@ -217,6 +222,19 @@ def _dataset_geometry(array: np.ndarray, header: fits.Header) -> dict[str, Any]:
         "depth": depth,
         "spacing": spacing,
         "origin": origin,
+        "ctype": [str(header.get("CTYPE1", "")), str(header.get("CTYPE2", "")), str(header.get("CTYPE3", ""))],
+        "cunit": [str(header.get("CUNIT1", "")), str(header.get("CUNIT2", "")), str(header.get("CUNIT3", ""))],
+        "crval": [
+            float(header.get("CRVAL1", 0.0)),
+            float(header.get("CRVAL2", 0.0)),
+            float(header.get("CRVAL3", 0.0)),
+        ],
+        "crpix": [
+            float(header.get("CRPIX1", 1.0)),
+            float(header.get("CRPIX2", 1.0)),
+            float(header.get("CRPIX3", 1.0)),
+        ],
+        "cdelt": spacing,
     }
 
 
@@ -475,6 +493,11 @@ def open_dataset(request: OpenDatasetRequest) -> OpenDatasetResponse:
         depth=geometry["depth"],
         spacing=geometry["spacing"],
         origin=geometry["origin"],
+        ctype=geometry["ctype"],
+        cunit=geometry["cunit"],
+        crval=geometry["crval"],
+        crpix=geometry["crpix"],
+        cdelt=geometry["cdelt"],
     )
 
 

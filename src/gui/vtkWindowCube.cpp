@@ -642,14 +642,32 @@ AsyncIsosurfaceResult fetchRemoteIsosurface(const QString &backendUrl, const QSt
 }
 
 vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
-    : vtkWindowCube(filepath, {}, {}, 0, 0, 0, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, parent)
+    : vtkWindowCube(filepath,
+                    {},
+                    {},
+                    0,
+                    0,
+                    0,
+                    { 1.0, 1.0, 1.0 },
+                    { 0.0, 0.0, 0.0 },
+                    { QString(), QString(), QString() },
+                    { QString(), QString(), QString() },
+                    { 0.0, 0.0, 0.0 },
+                    { 1.0, 1.0, 1.0 },
+                    { 1.0, 1.0, 1.0 },
+                    parent)
 {
 }
 
 vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              const QString &datasetId, int remoteWidth, int remoteHeight,
                              int remoteDepth, const std::array<double, 3> &remoteSpacing,
-                             const std::array<double, 3> &remoteOrigin, QWidget *parent)
+                             const std::array<double, 3> &remoteOrigin,
+                             const std::array<QString, 3> &remoteCtype,
+                             const std::array<QString, 3> &remoteCunit,
+                             const std::array<double, 3> &remoteCrval,
+                             const std::array<double, 3> &remoteCrpix,
+                             const std::array<double, 3> &remoteCdelt, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowCube),
       filepath(filepath),
@@ -661,6 +679,11 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
       remoteDatasetDepth(remoteDepth),
       remoteDatasetSpacing(remoteSpacing),
       remoteDatasetOrigin(remoteOrigin),
+      remoteDatasetCtype(remoteCtype),
+      remoteDatasetCunit(remoteCunit),
+      remoteDatasetCrval(remoteCrval),
+      remoteDatasetCrpix(remoteCrpix),
+      remoteDatasetCdelt(remoteCdelt),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -669,6 +692,15 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     ui->setupUi(this);
     this->setWindowTitle(this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
+    if (this->isRemoteMode) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs] remote metadata loaded ctype=%1,%2,%3 cdelt=%4,%5,%6")
+                           .arg(this->remoteDatasetCtype[0], this->remoteDatasetCtype[1],
+                                this->remoteDatasetCtype[2])
+                           .arg(this->remoteDatasetCdelt[0], 0, 'g', 12)
+                           .arg(this->remoteDatasetCdelt[1], 0, 'g', 12)
+                           .arg(this->remoteDatasetCdelt[2], 0, 'g', 12);
+    }
     this->cubeOpenStateLabel = new QLabel(this);
     this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
     this->cubeOpenStateLabel->hide();
@@ -1101,7 +1133,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(QString::fromStdString(unit)));
     }
     ui->lineSpectral->setText(this->astro ? QString::number(this->astro->getInitialSpectralValue())
-                                          : QString::number(this->remoteSliceCoordinate(0)));
+                                          : this->remoteFormatAxisCoordinate(2, 0.0));
     QObject::connect(ui->sliderSlice, &QSlider::actionTriggered, this,
                      &vtkWindowCube::sliceSliderChanged);
     QObject::connect(ui->spinSlice, &QSpinBox::valueChanged, this,
@@ -1529,6 +1561,22 @@ void vtkWindowCube::mouseCallback()
 
         this->astro->xy2sky(worldCoord, wcs, WCS_ECLIPTIC);
         ss << "  <ecliptic> ELON: " << wcs[0] << " ELAT: " << wcs[1];
+    } else if (this->isRemoteMode) {
+        const QString axis1Label = this->remoteDatasetCtype[0].isEmpty() ? u"AXIS1"_s
+                                                                          : this->remoteDatasetCtype[0];
+        const QString axis2Label = this->remoteDatasetCtype[1].isEmpty() ? u"AXIS2"_s
+                                                                          : this->remoteDatasetCtype[1];
+        ss << "  <wcs> " << axis1Label.toStdString() << ": "
+           << this->remoteFormatAxisCoordinate(0, static_cast<double>(imageCoord[0])).toStdString();
+        ss << "  " << axis2Label.toStdString() << ": "
+           << this->remoteFormatAxisCoordinate(1, static_cast<double>(imageCoord[1])).toStdString();
+        if (this->viewingSlice()) {
+            const QString axis3Label = this->remoteDatasetCtype[2].isEmpty() ? u"AXIS3"_s
+                                                                              : this->remoteDatasetCtype[2];
+            ss << "  " << axis3Label.toStdString() << ": "
+               << this->remoteFormatAxisCoordinate(2, static_cast<double>(ui->spinSlice->value() - 1))
+                          .toStdString();
+        }
     }
 
     this->statusBar()->showMessage(QString::fromStdString(ss.str()));
@@ -1975,7 +2023,7 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     ui->lineSpectral->setText(this->astro
                                       ? QString::number(this->astro->getInitialSpectralValue()
                                                         + this->astro->getIncrements()[2] * clampedSlice)
-                                      : QString::number(this->remoteSliceCoordinate(clampedSlice)));
+                                      : this->remoteFormatAxisCoordinate(2, clampedSlice));
     qDebug().noquote()
             << QStringLiteral("[perf][cube] apply cube UI fields: %1 ms").arg(
                        cubeFieldsTimer.elapsed());
@@ -2123,7 +2171,7 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     ui->lineSpectral->setText(this->astro
                                       ? QString::number(this->astro->getInitialSpectralValue()
                                                         + this->astro->getIncrements()[2] * result.index)
-                                      : QString::number(this->remoteSliceCoordinate(result.index)));
+                                      : this->remoteFormatAxisCoordinate(2, result.index));
     this->updateRemoteCuttingPlane(result.index);
     ui->vtkCube->renderWindow()->Render();
     qDebug().noquote() << QStringLiteral("[remote-plane] render triggered");
@@ -2148,7 +2196,7 @@ void vtkWindowCube::updateRemoteSliceDragFeedback(int sliceIndex)
     ui->lineSpectral->setText(this->astro
                                       ? QString::number(this->astro->getInitialSpectralValue()
                                                         + this->astro->getIncrements()[2] * clampedSlice)
-                                      : QString::number(this->remoteSliceCoordinate(clampedSlice)));
+                                      : this->remoteFormatAxisCoordinate(2, clampedSlice));
     this->updateRemoteCuttingPlane(clampedSlice);
     ui->vtkCube->renderWindow()->Render();
 }
@@ -2166,8 +2214,46 @@ int vtkWindowCube::clampRemoteSliceIndex(int sliceIndex) const
 double vtkWindowCube::remoteSliceCoordinate(int sliceIndex) const
 {
     const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
-    return this->remoteDatasetOrigin[2]
-            + this->remoteDatasetSpacing[2] * static_cast<double>(clampedSlice);
+    bool ok = false;
+    const double wcsValue = this->remoteVoxelToWcs(2, static_cast<double>(clampedSlice), &ok);
+    return ok ? wcsValue : static_cast<double>(clampedSlice);
+}
+
+bool vtkWindowCube::remoteHasWcsAxis(int axis) const
+{
+    return axis >= 0 && axis < 3 && std::isfinite(this->remoteDatasetCrval[axis])
+            && std::isfinite(this->remoteDatasetCrpix[axis])
+            && std::isfinite(this->remoteDatasetCdelt[axis])
+            && std::abs(this->remoteDatasetCdelt[axis]) > 1e-12;
+}
+
+double vtkWindowCube::remoteVoxelToWcs(int axis, double voxelIndex, bool *ok) const
+{
+    const bool valid = this->remoteHasWcsAxis(axis);
+    if (ok) {
+        *ok = valid;
+    }
+    if (!valid) {
+        return voxelIndex;
+    }
+
+    return this->remoteDatasetCrval[axis]
+            + ((voxelIndex + 1.0) - this->remoteDatasetCrpix[axis]) * this->remoteDatasetCdelt[axis];
+}
+
+QString vtkWindowCube::remoteFormatAxisCoordinate(int axis, double voxelIndex) const
+{
+    bool ok = false;
+    const double world = this->remoteVoxelToWcs(axis, voxelIndex, &ok);
+    if (!ok) {
+        return QString::number(voxelIndex, 'g', 12);
+    }
+
+    const QString unit = (axis >= 0 && axis < 3) ? this->remoteDatasetCunit[axis].trimmed() : QString();
+    if (unit.isEmpty()) {
+        return QString::number(world, 'g', 12);
+    }
+    return u"%1 %2"_s.arg(QString::number(world, 'g', 12), unit);
 }
 
 QString vtkWindowCube::remoteSliceCacheKey(int sliceIndex) const

@@ -136,12 +136,32 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path) const
     result.depth = object.value("depth").toInt();
     const QJsonArray spacing = object.value("spacing").toArray();
     const QJsonArray origin = object.value("origin").toArray();
+    const QJsonArray ctype = object.value("ctype").toArray();
+    const QJsonArray cunit = object.value("cunit").toArray();
+    const QJsonArray crval = object.value("crval").toArray();
+    const QJsonArray crpix = object.value("crpix").toArray();
+    const QJsonArray cdelt = object.value("cdelt").toArray();
     for (int i = 0; i < 3; ++i) {
         if (i < spacing.size()) {
             result.spacing[static_cast<std::size_t>(i)] = spacing.at(i).toDouble(1.0);
         }
         if (i < origin.size()) {
             result.origin[static_cast<std::size_t>(i)] = origin.at(i).toDouble(0.0);
+        }
+        if (i < ctype.size()) {
+            result.ctype[static_cast<std::size_t>(i)] = ctype.at(i).toString();
+        }
+        if (i < cunit.size()) {
+            result.cunit[static_cast<std::size_t>(i)] = cunit.at(i).toString();
+        }
+        if (i < crval.size()) {
+            result.crval[static_cast<std::size_t>(i)] = crval.at(i).toDouble(0.0);
+        }
+        if (i < crpix.size()) {
+            result.crpix[static_cast<std::size_t>(i)] = crpix.at(i).toDouble(1.0);
+        }
+        if (i < cdelt.size()) {
+            result.cdelt[static_cast<std::size_t>(i)] = cdelt.at(i).toDouble(1.0);
         }
     }
     return result;

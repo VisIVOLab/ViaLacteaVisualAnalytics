@@ -98,7 +98,12 @@ public:
     vtkWindowCube(const QString &filepath, const QString &backendUrl, const QString &datasetId,
                   int remoteWidth, int remoteHeight, int remoteDepth,
                   const std::array<double, 3> &remoteSpacing,
-                  const std::array<double, 3> &remoteOrigin, QWidget *parent = nullptr);
+                  const std::array<double, 3> &remoteOrigin,
+                  const std::array<QString, 3> &remoteCtype,
+                  const std::array<QString, 3> &remoteCunit,
+                  const std::array<double, 3> &remoteCrval,
+                  const std::array<double, 3> &remoteCrpix,
+                  const std::array<double, 3> &remoteCdelt, QWidget *parent = nullptr);
     ~vtkWindowCube() override;
     void closeEvent(QCloseEvent *event) override;
 
@@ -155,6 +160,11 @@ private:
     const int remoteDatasetDepth;
     const std::array<double, 3> remoteDatasetSpacing;
     const std::array<double, 3> remoteDatasetOrigin;
+    const std::array<QString, 3> remoteDatasetCtype;
+    const std::array<QString, 3> remoteDatasetCunit;
+    const std::array<double, 3> remoteDatasetCrval;
+    const std::array<double, 3> remoteDatasetCrpix;
+    const std::array<double, 3> remoteDatasetCdelt;
     std::unique_ptr<AstroUtils> astro;
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
@@ -242,6 +252,9 @@ private:
     int remoteSliceCount() const;
     int clampRemoteSliceIndex(int sliceIndex) const;
     double remoteSliceCoordinate(int sliceIndex) const;
+    bool remoteHasWcsAxis(int axis) const;
+    double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
+    QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
 
     // Slice
     vtkNew<vtkImageReslice> slice;

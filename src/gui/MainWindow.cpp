@@ -173,7 +173,9 @@ void MainWindow::openRemoteData()
 
     if (opened.kind != u"cube"_s) {
         if (opened.kind == u"image"_s) {
-            auto *win = new vtkWindowImage(remotePath, client.baseUrl(), opened.datasetId, this);
+            auto *win = new vtkWindowImage(remotePath, client.baseUrl(), opened.datasetId,
+                                           opened.ctype, opened.cunit, opened.crval, opened.crpix,
+                                           opened.cdelt, this);
             win->show();
             win->raise();
             win->activateWindow();
@@ -185,7 +187,9 @@ void MainWindow::openRemoteData()
     }
 
     auto *win = new vtkWindowCube(remotePath, client.baseUrl(), opened.datasetId, opened.width,
-                                  opened.height, opened.depth, opened.spacing, opened.origin, this);
+                                  opened.height, opened.depth, opened.spacing, opened.origin,
+                                  opened.ctype, opened.cunit, opened.crval, opened.crpix,
+                                  opened.cdelt, this);
     win->show();
     win->raise();
     win->activateWindow();

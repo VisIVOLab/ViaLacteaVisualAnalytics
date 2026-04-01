@@ -34,6 +34,7 @@
 #include <QMessageBox>
 #include <QtConcurrentRun>
 
+#include <cmath>
 #include <cstring>
 #include <sstream>
 
@@ -104,18 +105,36 @@ ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QStr
 }
 
 vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
-    : vtkWindowImage(filepath, {}, {}, parent)
+    : vtkWindowImage(filepath,
+                     {},
+                     {},
+                     { QString(), QString(), QString() },
+                     { QString(), QString(), QString() },
+                     { 0.0, 0.0, 0.0 },
+                     { 1.0, 1.0, 1.0 },
+                     { 1.0, 1.0, 1.0 },
+                     parent)
 {
 }
 
 vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUrl,
-                               const QString &datasetId, QWidget *parent)
+                               const QString &datasetId,
+                               const std::array<QString, 3> &remoteCtype,
+                               const std::array<QString, 3> &remoteCunit,
+                               const std::array<double, 3> &remoteCrval,
+                               const std::array<double, 3> &remoteCrpix,
+                               const std::array<double, 3> &remoteCdelt, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowImage),
       filepath(filepath),
       isRemoteMode(!datasetId.isEmpty()),
       remoteBackendUrl(backendUrl),
       remoteDatasetId(datasetId),
+      remoteDatasetCtype(remoteCtype),
+      remoteDatasetCunit(remoteCunit),
+      remoteDatasetCrval(remoteCrval),
+      remoteDatasetCrpix(remoteCrpix),
+      remoteDatasetCdelt(remoteCdelt),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -123,6 +142,13 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
       importService(std::make_unique<ImageLayerImportService>())
 {
     ui->setupUi(this);
+    if (this->isRemoteMode) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs] remote metadata loaded ctype=%1,%2 cdelt=%3,%4")
+                           .arg(this->remoteDatasetCtype[0], this->remoteDatasetCtype[1])
+                           .arg(this->remoteDatasetCdelt[0], 0, 'g', 12)
+                           .arg(this->remoteDatasetCdelt[1], 0, 'g', 12);
+    }
     this->setWindowTitle(this->isRemoteMode ? u"%1 [remote image]"_s.arg(this->filepath)
                                             : this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
@@ -378,6 +404,15 @@ void vtkWindowImage::mouseCallback()
 
         this->astro->xy2sky(worldCoord, wcs, WCS_ECLIPTIC);
         ss << "  <ecliptic> ELON: " << wcs[0] << " ELAT: " << wcs[1];
+    } else if (this->isRemoteMode) {
+        const QString axis1Label = this->remoteDatasetCtype[0].isEmpty() ? u"AXIS1"_s
+                                                                          : this->remoteDatasetCtype[0];
+        const QString axis2Label = this->remoteDatasetCtype[1].isEmpty() ? u"AXIS2"_s
+                                                                          : this->remoteDatasetCtype[1];
+        ss << "  <wcs> " << axis1Label.toStdString() << ": "
+           << this->remoteFormatAxisCoordinate(0, static_cast<double>(imageCoord[0])).toStdString();
+        ss << "  " << axis2Label.toStdString() << ": "
+           << this->remoteFormatAxisCoordinate(1, static_cast<double>(imageCoord[1])).toStdString();
     }
 
     this->statusBar()->showMessage(QString::fromStdString(ss.str()));
@@ -484,6 +519,43 @@ void vtkWindowImage::clearPersistentStatusMessage()
 void vtkWindowImage::setLayerImportEnabled(bool enabled)
 {
     ui->actionAddFITS->setEnabled(enabled && !this->isRemoteMode);
+}
+
+bool vtkWindowImage::remoteHasWcsAxis(int axis) const
+{
+    return axis >= 0 && axis < 3 && std::isfinite(this->remoteDatasetCrval[axis])
+            && std::isfinite(this->remoteDatasetCrpix[axis])
+            && std::isfinite(this->remoteDatasetCdelt[axis])
+            && std::abs(this->remoteDatasetCdelt[axis]) > 1e-12;
+}
+
+double vtkWindowImage::remoteVoxelToWcs(int axis, double voxelIndex, bool *ok) const
+{
+    const bool valid = this->remoteHasWcsAxis(axis);
+    if (ok) {
+        *ok = valid;
+    }
+    if (!valid) {
+        return voxelIndex;
+    }
+
+    return this->remoteDatasetCrval[axis]
+            + ((voxelIndex + 1.0) - this->remoteDatasetCrpix[axis]) * this->remoteDatasetCdelt[axis];
+}
+
+QString vtkWindowImage::remoteFormatAxisCoordinate(int axis, double voxelIndex) const
+{
+    bool ok = false;
+    const double world = this->remoteVoxelToWcs(axis, voxelIndex, &ok);
+    if (!ok) {
+        return QString::number(voxelIndex, 'g', 12);
+    }
+
+    const QString unit = (axis >= 0 && axis < 3) ? this->remoteDatasetCunit[axis].trimmed() : QString();
+    if (unit.isEmpty()) {
+        return QString::number(world, 'g', 12);
+    }
+    return u"%1 %2"_s.arg(QString::number(world, 'g', 12), unit);
 }
 
 void vtkWindowImage::vtkRender()

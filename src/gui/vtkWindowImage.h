@@ -39,6 +39,11 @@ class vtkWindowImage : public QMainWindow
 public:
     explicit vtkWindowImage(const QString &filepath, QWidget *parent = nullptr);
     vtkWindowImage(const QString &filepath, const QString &backendUrl, const QString &datasetId,
+                   const std::array<QString, 3> &remoteCtype,
+                   const std::array<QString, 3> &remoteCunit,
+                   const std::array<double, 3> &remoteCrval,
+                   const std::array<double, 3> &remoteCrpix,
+                   const std::array<double, 3> &remoteCdelt,
                    QWidget *parent = nullptr);
     ~vtkWindowImage();
     void closeEvent(QCloseEvent *event) override;
@@ -66,6 +71,11 @@ private:
     const bool isRemoteMode;
     const QString remoteBackendUrl;
     const QString remoteDatasetId;
+    const std::array<QString, 3> remoteDatasetCtype;
+    const std::array<QString, 3> remoteDatasetCunit;
+    const std::array<double, 3> remoteDatasetCrval;
+    const std::array<double, 3> remoteDatasetCrpix;
+    const std::array<double, 3> remoteDatasetCdelt;
     std::unique_ptr<AstroUtils> astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
@@ -96,6 +106,9 @@ private:
     void setLayerImportEnabled(bool enabled);
     int currentLayerIndex() const;
     void addLayerImage(const std::string &filepath);
+    bool remoteHasWcsAxis(int axis) const;
+    double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
+    QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
 };
 
 #endif

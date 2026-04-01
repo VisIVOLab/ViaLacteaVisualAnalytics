@@ -43,6 +43,11 @@ struct BackendOpenDatasetResult
     int depth{ 0 };
     std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
     std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
+    std::array<QString, 3> ctype{ QString(), QString(), QString() };
+    std::array<QString, 3> cunit{ QString(), QString(), QString() };
+    std::array<double, 3> crval{ 0.0, 0.0, 0.0 };
+    std::array<double, 3> crpix{ 1.0, 1.0, 1.0 };
+    std::array<double, 3> cdelt{ 1.0, 1.0, 1.0 };
 };
 
 struct BackendFileHeaderResult
