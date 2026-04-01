@@ -68,6 +68,7 @@ struct AsyncIsosurfaceResult
     vtkSmartPointer<vtkPolyData> mesh;
     QString errorMessage;
     int requestId{ 0 };
+    bool meshInDisplayCoordinates{ false };
 };
 
 struct RemoteCubePreviewResult
@@ -254,6 +255,8 @@ private:
     int currentRemoteHighResRequestId{ 0 };
     int currentRemoteSliceRequestId{ 0 };
     std::array<int, 6> currentRemoteRoi{ 0, 0, 0, 0, 0, 0 };
+    QString currentRemoteRefinementModeLabel{ QStringLiteral("Full") };
+    bool currentRemoteRoiThicknessExpanded{ false };
     int currentRequestedRemoteSliceIndex{ 0 };
     int pendingRemoteSliceIndex{ 0 };
     int activeRemoteSliceRequests{ 0 };
@@ -362,7 +365,7 @@ private:
     void scheduleIsosurfacePrewarm();
     void setCubeRenderModeLocally(bool isosurfaceMode);
     void updateCube();
-    std::array<int, 6> computeVisibleROI() const;
+    std::array<int, 6> computeVisibleROI();
     bool requestHighResCube();
     void updateRemoteCuttingPlane(int sliceIndex);
     int remoteSliceCount() const;

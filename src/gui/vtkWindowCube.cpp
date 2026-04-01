@@ -856,6 +856,7 @@ AsyncIsosurfaceResult computeIsosurface(vtkSmartPointer<vtkImageData> image, dou
     vtkSmartPointer<vtkPolyData> mesh = vtkSmartPointer<vtkPolyData>::New();
     mesh->ShallowCopy(filter->GetOutput());
     result.mesh = mesh;
+    result.meshInDisplayCoordinates = true;
     qDebug().noquote()
             << QStringLiteral("[perf][isosurface] compute: %1 ms").arg(timer.elapsed());
     return result;
@@ -1163,6 +1164,7 @@ AsyncIsosurfaceResult fetchRemoteIsosurface(const QString &backendUrl, const QSt
         result.errorMessage = u"Invalid remote isocontour payload."_s;
         return result;
     }
+    result.meshInDisplayCoordinates = false;
     qDebug().noquote()
             << QStringLiteral("[remote-iso] mesh points=%1 polys=%2")
                        .arg(result.mesh->GetNumberOfPoints())
@@ -1283,6 +1285,9 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     QObject::connect(this->remoteRoiRefinementCheck, &QCheckBox::toggled, this,
                      [this](bool checked) {
                          this->useCameraRoiRefinement = checked;
+                         this->currentRemoteRefinementModeLabel =
+                                 checked ? u"Viewport ROI"_s : u"Full"_s;
+                         this->updateDataStatePanel();
                          qDebug().noquote()
                                  << QStringLiteral("[remote-roi] mode toggled to %1")
                                             .arg(checked ? u"Camera ROI"_s : u"Full"_s);
@@ -3479,7 +3484,7 @@ void vtkWindowCube::updateCube()
     ui->vtkCube->renderWindow()->Render();
 }
 
-std::array<int, 6> vtkWindowCube::computeVisibleROI() const
+std::array<int, 6> vtkWindowCube::computeVisibleROI()
 {
     const auto fullRoi = std::array<int, 6> { 0,
                                               std::max(0, this->remoteDatasetWidth - 1),
@@ -3487,7 +3492,9 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
                                               std::max(0, this->remoteDatasetHeight - 1),
                                               0,
                                               std::max(0, this->remoteDatasetDepth - 1) };
+    this->currentRemoteRoiThicknessExpanded = false;
     if (!this->useCameraRoiRefinement) {
+        this->currentRemoteRefinementModeLabel = u"Full"_s;
         return fullRoi;
     }
 
@@ -3496,18 +3503,21 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
             : nullptr;
     auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
     if (!renderer || !cubeImage) {
+        this->currentRemoteRefinementModeLabel = u"Full"_s;
         return fullRoi;
     }
 
     double displayedBounds[6];
     cubeImage->GetBounds(displayedBounds);
     if (!validBounds(displayedBounds)) {
+        this->currentRemoteRefinementModeLabel = u"Full"_s;
         return fullRoi;
     }
 
     double viewportBounds[6];
     if (!computeViewportIntersectionBounds(renderer, ui->vtkCube->renderWindow(), displayedBounds,
                                            viewportBounds)) {
+        this->currentRemoteRefinementModeLabel = u"Full"_s;
         return fullRoi;
     }
 
@@ -3519,6 +3529,7 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
         clippedBounds[i1] = std::min(displayedBounds[i1], viewportBounds[i1]);
         if (!std::isfinite(clippedBounds[i0]) || !std::isfinite(clippedBounds[i1])
             || clippedBounds[i0] > clippedBounds[i1]) {
+            this->currentRemoteRefinementModeLabel = u"Full"_s;
             return fullRoi;
         }
     }
@@ -3570,7 +3581,67 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
     y = padAxis(y, this->remoteDatasetHeight);
     z = padAxis(z, this->remoteDatasetDepth);
 
+    qDebug().noquote()
+            << QStringLiteral("[remote-roi] viewport roi before thickness safeguard x=%1..%2 y=%3..%4 z=%5..%6")
+                       .arg(x[0])
+                       .arg(x[1])
+                       .arg(y[0])
+                       .arg(y[1])
+                       .arg(z[0])
+                       .arg(z[1]);
+
+    const auto enforceMinThickness = [this](std::array<int, 2> roi, int fullSize,
+                                            int minExtent) -> std::array<int, 2> {
+        const int maxIndex = std::max(0, fullSize - 1);
+        minExtent = std::max(1, std::min(minExtent, fullSize));
+        const int currentExtent = roi[1] - roi[0] + 1;
+        if (currentExtent >= minExtent) {
+            return roi;
+        }
+
+        const int deficit = minExtent - currentExtent;
+        const int expandBefore = deficit / 2;
+        const int expandAfter = deficit - expandBefore;
+        roi[0] = std::max(0, roi[0] - expandBefore);
+        roi[1] = std::min(maxIndex, roi[1] + expandAfter);
+        const int remainingDeficit = minExtent - (roi[1] - roi[0] + 1);
+        if (remainingDeficit > 0) {
+            if (roi[0] == 0) {
+                roi[1] = std::min(maxIndex, roi[1] + remainingDeficit);
+            } else if (roi[1] == maxIndex) {
+                roi[0] = std::max(0, roi[0] - remainingDeficit);
+            }
+        }
+        return roi;
+    };
+
+    const int minViewportExtentX =
+            std::max(8, std::min(this->remoteDatasetWidth, std::max(12, this->remoteDatasetWidth / 24)));
+    const int minViewportExtentY =
+            std::max(8, std::min(this->remoteDatasetHeight, std::max(12, this->remoteDatasetHeight / 24)));
+    const int minViewportExtentZ =
+            std::max(6, std::min(this->remoteDatasetDepth, std::max(10, this->remoteDatasetDepth / 24)));
+    const auto originalX = x;
+    const auto originalY = y;
+    const auto originalZ = z;
+    x = enforceMinThickness(x, this->remoteDatasetWidth, minViewportExtentX);
+    y = enforceMinThickness(y, this->remoteDatasetHeight, minViewportExtentY);
+    z = enforceMinThickness(z, this->remoteDatasetDepth, minViewportExtentZ);
+    this->currentRemoteRoiThicknessExpanded =
+            (x != originalX) || (y != originalY) || (z != originalZ);
+
+    qDebug().noquote()
+            << QStringLiteral("[remote-roi] viewport roi final x=%1..%2 y=%3..%4 z=%5..%6 thicknessExpanded=%7")
+                       .arg(x[0])
+                       .arg(x[1])
+                       .arg(y[0])
+                       .arg(y[1])
+                       .arg(z[0])
+                       .arg(z[1])
+                       .arg(this->currentRemoteRoiThicknessExpanded);
+
     if (x[0] > x[1] || y[0] > y[1] || z[0] > z[1]) {
+        this->currentRemoteRefinementModeLabel = u"Full"_s;
         return fullRoi;
     }
 
@@ -3583,6 +3654,9 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
                        .arg(z[0])
                        .arg(z[1]);
     const std::array<int, 6> viewportRoi = { x[0], x[1], y[0], y[1], z[0], z[1] };
+    this->currentRemoteRefinementModeLabel = this->currentRemoteRoiThicknessExpanded
+            ? u"Viewport ROI + Min Thickness"_s
+            : u"Viewport ROI"_s;
     if (cubeImage->GetScalarType() != VTK_FLOAT || cubeImage->GetNumberOfScalarComponents() != 1) {
         qDebug().noquote() << QStringLiteral("[remote-roi] content roi fallback to viewport");
         return viewportRoi;
@@ -3593,6 +3667,11 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
     const double visibleRange = visibleMax - visibleMin;
     const double contentThreshold =
             visibleRange > 0.0 ? (visibleMin + 0.05 * visibleRange) : visibleMin;
+    qDebug().noquote()
+            << QStringLiteral("[remote-roi] content threshold visibleMin=%1 visibleMax=%2 threshold=%3")
+                       .arg(visibleMin, 0, 'g', 8)
+                       .arg(visibleMax, 0, 'g', 8)
+                       .arg(contentThreshold, 0, 'g', 8);
 
     int extent[6];
     cubeImage->GetExtent(extent);
@@ -3625,6 +3704,7 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
     int maxContentY = contentY[0];
     int minContentZ = contentZ[1];
     int maxContentZ = contentZ[0];
+    int meaningfulVoxelCount = 0;
     bool foundMeaningful = false;
     for (int zIdx = contentZ[0]; zIdx <= contentZ[1]; ++zIdx) {
         for (int yIdx = contentY[0]; yIdx <= contentY[1]; ++yIdx) {
@@ -3637,6 +3717,7 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
                 }
 
                 foundMeaningful = true;
+                ++meaningfulVoxelCount;
                 minContentX = std::min(minContentX, xIdx);
                 maxContentX = std::max(maxContentX, xIdx);
                 minContentY = std::min(minContentY, yIdx);
@@ -3669,22 +3750,51 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
     contentZ = padContentAxis(minContentZ, maxContentZ, this->remoteDatasetDepth, viewportRoi[4],
                               viewportRoi[5]);
 
-    const int minContentExtent = 4;
-    if (contentX[1] - contentX[0] + 1 < minContentExtent
-        || contentY[1] - contentY[0] + 1 < minContentExtent
-        || contentZ[1] - contentZ[0] + 1 < minContentExtent) {
-        qDebug().noquote() << QStringLiteral("[remote-roi] content roi fallback to viewport");
+    const int minContentExtentX =
+            std::max(4, std::min(this->remoteDatasetWidth, std::max(8, (viewportRoi[1] - viewportRoi[0] + 1) / 20)));
+    const int minContentExtentY =
+            std::max(4, std::min(this->remoteDatasetHeight, std::max(8, (viewportRoi[3] - viewportRoi[2] + 1) / 20)));
+    const int minContentExtentZ =
+            std::max(4, std::min(this->remoteDatasetDepth, std::max(6, (viewportRoi[5] - viewportRoi[4] + 1) / 20)));
+    const int minMeaningfulVoxelCount = std::max(
+            16,
+            std::min(512, ((viewportRoi[1] - viewportRoi[0] + 1) * (viewportRoi[3] - viewportRoi[2] + 1)
+                           * std::max(1, viewportRoi[5] - viewportRoi[4] + 1))
+                              / 2000));
+    if (meaningfulVoxelCount < minMeaningfulVoxelCount) {
+        qDebug().noquote()
+                << QStringLiteral("[remote-roi] content roi fallback to viewport meaningful=%1 minRequired=%2")
+                           .arg(meaningfulVoxelCount)
+                           .arg(minMeaningfulVoxelCount);
+        return viewportRoi;
+    }
+
+    if (contentX[1] - contentX[0] + 1 < minContentExtentX
+        || contentY[1] - contentY[0] + 1 < minContentExtentY
+        || contentZ[1] - contentZ[0] + 1 < minContentExtentZ) {
+        qDebug().noquote()
+                << QStringLiteral("[remote-roi] content roi fallback to viewport extent=%1x%2x%3 min=%4x%5x%6")
+                           .arg(contentX[1] - contentX[0] + 1)
+                           .arg(contentY[1] - contentY[0] + 1)
+                           .arg(contentZ[1] - contentZ[0] + 1)
+                           .arg(minContentExtentX)
+                           .arg(minContentExtentY)
+                           .arg(minContentExtentZ);
         return viewportRoi;
     }
 
     qDebug().noquote()
-            << QStringLiteral("[remote-roi] content roi x=%1..%2 y=%3..%4 z=%5..%6")
+            << QStringLiteral("[remote-roi] content roi x=%1..%2 y=%3..%4 z=%5..%6 meaningful=%7")
                        .arg(contentX[0])
                        .arg(contentX[1])
                        .arg(contentY[0])
                        .arg(contentY[1])
                        .arg(contentZ[0])
-                       .arg(contentZ[1]);
+                       .arg(contentZ[1])
+                       .arg(meaningfulVoxelCount);
+    this->currentRemoteRefinementModeLabel = this->currentRemoteRoiThicknessExpanded
+            ? u"Viewport + Content ROI + Min Thickness"_s
+            : u"Viewport + Content ROI"_s;
     return { contentX[0], contentX[1], contentY[0], contentY[1], contentZ[0], contentZ[1] };
 }
 
@@ -3698,7 +3808,7 @@ bool vtkWindowCube::requestHighResCube()
     this->currentRemoteRoi = roi;
     qDebug().noquote()
             << QStringLiteral("[remote-roi] mode=%1 request x=%2..%3 y=%4..%5 z=%6..%7")
-                       .arg(this->useCameraRoiRefinement ? u"Camera ROI"_s : u"Full"_s)
+                       .arg(this->currentRemoteRefinementModeLabel)
                        .arg(roi[0])
                        .arg(roi[1])
                        .arg(roi[2])
@@ -3797,6 +3907,10 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     this->cubeDisplaySource->SetOutput(result.cubeImageData);
     this->cubeDisplaySource->Modified();
     result.cubeImageData->Modified();
+    if (this->isRemoteMode) {
+        this->remoteIsosurfaceReady = false;
+        this->setCubeRenderModeLocally(false);
+    }
     if (result.momentImageData) {
         this->momentDisplaySource->SetOutput(result.momentImageData);
         this->momentDisplaySource->Modified();
@@ -3955,6 +4069,35 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     this->setCubeRenderModeLocally(ui->actionIsosurface->isChecked());
     if (this->isRemoteMode) {
         this->updateRemoteCuttingPlane(clampedSlice);
+        if (ui->actionIsosurface->isChecked()) {
+            const double threshold = ui->lineThreshold->text().toDouble();
+            qDebug().noquote()
+                    << QStringLiteral("[remote-iso] block range=%1..%2 threshold=%3")
+                               .arg(this->currentCubeVisibleRange[0], 0, 'g', 8)
+                               .arg(this->currentCubeVisibleRange[1], 0, 'g', 8)
+                               .arg(threshold, 0, 'g', 8);
+            if (threshold < this->currentCubeVisibleRange[0]
+                || threshold > this->currentCubeVisibleRange[1]) {
+                qDebug().noquote()
+                        << QStringLiteral("[remote-iso] recompute skipped threshold outside current ROI range");
+                this->persistentStatusActive = false;
+                this->statusMessageClearTimer.stop();
+                this->statusBar()->showMessage(
+                        u"Isosurface threshold is outside the current ROI data range (%1 .. %2)."_s
+                                .arg(this->currentCubeVisibleRange[0], 0, 'g', 6)
+                                .arg(this->currentCubeVisibleRange[1], 0, 'g', 6),
+                        5000);
+                {
+                    const QSignalBlocker blockIso(ui->actionIsosurface);
+                    const QSignalBlocker blockVolume(ui->actionVolume);
+                    ui->actionIsosurface->setChecked(false);
+                    ui->actionVolume->setChecked(true);
+                }
+                this->setCubeRenderModeLocally(false);
+            } else {
+                this->scheduleIsosurfaceRecompute();
+            }
+        }
     }
     cubeRenderer->Modified();
     ui->vtkCube->renderWindow()->Modified();
@@ -4495,6 +4638,7 @@ void vtkWindowCube::updateDataStatePanel()
     auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
     const QString origin = this->isRemoteMode ? u"Remote"_s : u"Local"_s;
     QString representation;
+    QString refinement;
     if (!this->isRemoteMode) {
         representation = u"Full dataset"_s;
     } else {
@@ -4517,6 +4661,7 @@ void vtkWindowCube::updateDataStatePanel()
                     : u"Full resolution"_s;
             break;
         }
+        refinement = this->currentRemoteRefinementModeLabel;
     }
 
     const QString loadedBounds = formatCubeBoundsSummary(cubeImage);
@@ -4531,16 +4676,19 @@ void vtkWindowCube::updateDataStatePanel()
                        : loadedBounds);
     const QString note = this->isRemoteMode ? u"Probe/profile: loaded block only"_s
                                             : u"Probe/profile: full cube"_s;
-    this->dataStateLabel->setText(
-            u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | Axis3: %6 | %7"_s.arg(origin,
-                                                                                      representation,
-                                                                                      loadedBounds,
-                                                                                      datasetBounds,
-                                                                                      this->currentWcsFrameLabel(),
-                                                                                      this->spectralAxisTitle(),
-                                                                                      note));
+    QString text = u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | Axis3: %6"_s.arg(origin,
+                                                                                         representation,
+                                                                                         loadedBounds,
+                                                                                         datasetBounds,
+                                                                                         this->currentWcsFrameLabel(),
+                                                                                         this->spectralAxisTitle());
+    if (this->isRemoteMode) {
+        text += u" | Refine: %1"_s.arg(refinement);
+    }
+    text += u" | %1"_s.arg(note);
+    this->dataStateLabel->setText(text);
     this->dataStateLabel->setToolTip(
-            u"Persistent data provenance: origin, current representation, loaded bounds, full dataset bounds, WCS frame, spectral-axis semantics, and probe/profile scope."_s);
+            u"Persistent data provenance: origin, current representation, loaded bounds, full dataset bounds, WCS frame, spectral-axis semantics, remote refinement strategy, and probe/profile scope."_s);
 }
 
 QString vtkWindowCube::selectedFrameAxisTitle(int axis) const
@@ -5732,6 +5880,39 @@ void vtkWindowCube::startAsyncIsosurface(double isoValue)
     this->showPersistentStatusMessage(u"Computing isocontour..."_s);
 
     if (this->isRemoteMode) {
+        const std::array<int, 6> fullExtent = { 0,
+                                                std::max(0, this->remoteDatasetWidth - 1),
+                                                0,
+                                                std::max(0, this->remoteDatasetHeight - 1),
+                                                0,
+                                                std::max(0, this->remoteDatasetDepth - 1) };
+        const bool roiSubvolumeActive = this->usingHighResCube && this->currentRemoteRoi != fullExtent;
+        if (roiSubvolumeActive) {
+            if (this->isosurfaceWatcher.isRunning()) {
+                return;
+            }
+            auto *source = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+            if (!source) {
+                return;
+            }
+
+            vtkSmartPointer<vtkImageData> data = vtkSmartPointer<vtkImageData>::New();
+            data->DeepCopy(source);
+            qDebug().noquote()
+                    << QStringLiteral("[remote-iso] using loaded ROI/subvolume block for isosurface roi=%1..%2,%3..%4,%5..%6")
+                               .arg(this->currentRemoteRoi[0])
+                               .arg(this->currentRemoteRoi[1])
+                               .arg(this->currentRemoteRoi[2])
+                               .arg(this->currentRemoteRoi[3])
+                               .arg(this->currentRemoteRoi[4])
+                               .arg(this->currentRemoteRoi[5]);
+            this->isosurfaceWatcher.setFuture(
+                    QtConcurrent::run([data, isoValue, requestId]() {
+                        return computeIsosurface(data, isoValue, requestId);
+                    }));
+            return;
+        }
+
         ++this->activeRemoteIsosurfaceRequests;
         this->remoteIsosurfaceRequestInFlight = true;
         this->inFlightRemoteIsosurfaceThreshold = isoValue;
@@ -5903,7 +6084,7 @@ void vtkWindowCube::applyIsosurfaceResult(const AsyncIsosurfaceResult &result)
         return;
     }
 
-    if (this->isRemoteMode && cubeImage && validBounds(cubeBounds)) {
+    if (this->isRemoteMode && cubeImage && validBounds(cubeBounds) && !result.meshInDisplayCoordinates) {
         const double fullBounds[6] = { 0.0,
                                        std::max(0, this->remoteDatasetWidth - 1) * 1.0,
                                        0.0,
