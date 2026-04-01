@@ -105,6 +105,7 @@ private:
     QPointer<QCheckBox> wcsAxesCheck;
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
+    QPointer<QLabel> sanityLabel;
     QPointer<QAction> actionWcsSexagesimal;
     QPointer<QAction> actionWcsDecimal;
     QPointer<QAction> actionExtractSpectrum;
@@ -173,6 +174,7 @@ private:
     void applyDefaultWcsFormatForSelectedFrame();
     void requestWcsOverlayRender();
     void updateDataStatePanel();
+    void updateSanityPanel();
     QString currentWcsFrameLabel() const;
     void setRegionMode(RegionMode mode, bool active);
     bool updateRegionFromDisplayPosition(int displayX, int displayY);

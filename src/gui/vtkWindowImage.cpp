@@ -79,6 +79,66 @@ struct RegionStatistics
     bool valid{ false };
 };
 
+enum class SanityLevel
+{
+    Ok,
+    Warning,
+    Unknown,
+};
+
+struct SanityReport
+{
+    SanityLevel level{ SanityLevel::Ok };
+    QString summary;
+    QString details;
+};
+
+double computeBlankFraction(vtkImageData *imageData)
+{
+    if (!imageData) {
+        return 0.0;
+    }
+    int extent[6];
+    imageData->GetExtent(extent);
+    const qsizetype total = static_cast<qsizetype>(extent[1] - extent[0] + 1)
+            * static_cast<qsizetype>(extent[3] - extent[2] + 1)
+            * static_cast<qsizetype>(std::max(1, extent[5] - extent[4] + 1));
+    if (total <= 0) {
+        return 0.0;
+    }
+    qsizetype blanked = 0;
+    for (int z = extent[4]; z <= extent[5]; ++z) {
+        for (int y = extent[2]; y <= extent[3]; ++y) {
+            for (int x = extent[0]; x <= extent[1]; ++x) {
+                if (!std::isfinite(imageData->GetScalarComponentAsDouble(x, y, z, 0))) {
+                    ++blanked;
+                }
+            }
+        }
+    }
+    return static_cast<double>(blanked) / static_cast<double>(total);
+}
+
+bool axisHasAnyMetadata(const QString &ctype, const QString &cunit, double crval, double crpix, double cdelt)
+{
+    return !ctype.trimmed().isEmpty() || !cunit.trimmed().isEmpty() || std::isfinite(crval)
+            || std::isfinite(crpix) || std::isfinite(cdelt);
+}
+
+bool axisHasLinearWcs(const QString &ctype, double crval, double crpix, double cdelt)
+{
+    return !ctype.trimmed().isEmpty() && std::isfinite(crval) && std::isfinite(crpix)
+            && std::isfinite(cdelt) && std::abs(cdelt) > 1e-12;
+}
+
+bool isCelestialLikeAxis(const QString &ctypeRaw)
+{
+    const QString ctype = ctypeRaw.trimmed().toUpper();
+    return ctype.startsWith(u"RA"_s) || ctype.startsWith(u"DEC"_s) || ctype.startsWith(u"GLON"_s)
+            || ctype.startsWith(u"GLAT"_s) || ctype.startsWith(u"ELON"_s)
+            || ctype.startsWith(u"ELAT"_s);
+}
+
 bool pointInBox(const std::array<int, 2> &anchor, const std::array<int, 2> &current, int x, int y)
 {
     const int xmin = std::min(anchor[0], current[0]);
@@ -234,6 +294,87 @@ int inferCelestialFrameFromCtypePair(const std::array<QString, 3> &ctype)
         return WCS_J2000;
     }
     return -1;
+}
+
+SanityReport buildImageSanityReport(bool isRemoteMode, AstroUtils *astro,
+                                    const std::array<QString, 3> &ctype,
+                                    const std::array<QString, 3> &cunit,
+                                    const std::array<double, 3> &crval,
+                                    const std::array<double, 3> &crpix,
+                                    const std::array<double, 3> &cdelt,
+                                    vtkImageData *imageData)
+{
+    const auto pairRecognized = [&ctype]() {
+        const QString c1 = ctype[0].trimmed().toUpper();
+        const QString c2 = ctype[1].trimmed().toUpper();
+        return (c1.startsWith(u"GLON"_s) && c2.startsWith(u"GLAT"_s))
+                || (c1.startsWith(u"ELON"_s) && c2.startsWith(u"ELAT"_s))
+                || (c1.startsWith(u"RA"_s) && c2.startsWith(u"DEC"_s));
+    };
+
+    QStringList warnings;
+    QStringList unknowns;
+
+    for (int axis = 0; axis < 2; ++axis) {
+        if (axisHasAnyMetadata(ctype[axis], cunit[axis], crval[axis], crpix[axis], cdelt[axis])
+            && !axisHasLinearWcs(ctype[axis], crval[axis], crpix[axis], cdelt[axis])) {
+            warnings << u"Axis %1 has incomplete WCS metadata."_s.arg(axis + 1);
+        }
+    }
+
+    const bool axis0Celestial = isCelestialLikeAxis(ctype[0]);
+    const bool axis1Celestial = isCelestialLikeAxis(ctype[1]);
+    if (axis0Celestial != axis1Celestial) {
+        warnings << u"Only one spatial axis looks celestial; the coordinate pairing is incomplete."_s;
+    } else if (axis0Celestial && !pairRecognized()) {
+        warnings << u"Celestial axis pairing is not recognized as FK5, Galactic, or Ecliptic."_s;
+    } else if (!axis0Celestial && !axis1Celestial) {
+        unknowns << u"Celestial WCS metadata unavailable; overlay may fall back to pixel coordinates."_s;
+    }
+
+    if (ctype[0].trimmed().isEmpty() || ctype[1].trimmed().isEmpty()) {
+        unknowns << u"CTYPE metadata incomplete for one or more spatial axes."_s;
+    }
+
+    const double blankFraction = computeBlankFraction(imageData);
+    if (blankFraction >= 0.2) {
+        warnings << u"Loaded image is heavily blanked/NaN (%1%)."_s.arg(blankFraction * 100.0, 0, 'f', 1);
+    }
+
+    if (isRemoteMode && (!warnings.isEmpty() || !unknowns.isEmpty())) {
+        unknowns << u"Remote image still opens, but incomplete metadata lowers WCS confidence."_s;
+    }
+    if (!isRemoteMode && astro && astro->isSimulation()) {
+        unknowns << u"Local dataset has no supported celestial WCS; pixel/index semantics remain valid."_s;
+    }
+
+    SanityReport report;
+    if (!warnings.isEmpty()) {
+        report.level = SanityLevel::Warning;
+        report.summary = u"Sanity: Warning (%1)"_s.arg(warnings.size());
+    } else if (!unknowns.isEmpty()) {
+        report.level = SanityLevel::Unknown;
+        report.summary = u"Sanity: Unknown / incomplete"_s;
+    } else {
+        report.level = SanityLevel::Ok;
+        report.summary = u"Sanity: OK"_s;
+    }
+
+    QString details;
+    if (!warnings.isEmpty()) {
+        details += u"Warnings:\n- %1"_s.arg(warnings.join(u"\n- "_s));
+    }
+    if (!unknowns.isEmpty()) {
+        if (!details.isEmpty()) {
+            details += u"\n\n"_s;
+        }
+        details += u"Unknown / incomplete:\n- %1"_s.arg(unknowns.join(u"\n- "_s));
+    }
+    if (details.isEmpty()) {
+        details = u"No common FITS/WCS issues detected in the current image metadata."_s;
+    }
+    report.details = details;
+    return report;
 }
 
 QString formatCelestialCoordinate(int frame, int axis, double value)
@@ -395,6 +536,10 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->dataStateLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
     this->dataStateLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->statusBar()->addPermanentWidget(this->dataStateLabel);
+    this->sanityLabel = new QLabel(this);
+    this->sanityLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
+    this->sanityLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->sanityLabel);
     QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
         this->showWcsAxes = checked;
         this->lastOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
@@ -456,6 +601,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
 
     this->setupRenderer();
     this->updateDataStatePanel();
+    this->updateSanityPanel();
 
     // Setup Menu File
     QObject::connect(ui->actionAddFITS, &QAction::triggered, this, &vtkWindowImage::addLocalFile);
@@ -1202,6 +1348,7 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
         this->refreshProbeOverlay();
     }
     this->updateDataStatePanel();
+    this->updateSanityPanel();
     this->vtkRender();
     qDebug().noquote()
             << QStringLiteral("[perf][layer] render after apply: %1 ms").arg(timer.elapsed());
@@ -1229,6 +1376,7 @@ void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
         this->refreshProbeOverlay();
     }
     this->updateDataStatePanel();
+    this->updateSanityPanel();
     this->vtkRender();
 }
 
@@ -1536,6 +1684,37 @@ void vtkWindowImage::updateDataStatePanel()
             u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame."_s);
 }
 
+void vtkWindowImage::updateSanityPanel()
+{
+    if (!this->sanityLabel) {
+        return;
+    }
+
+    std::array<QString, 3> ctype = this->remoteDatasetCtype;
+    std::array<QString, 3> cunit = this->remoteDatasetCunit;
+    std::array<double, 3> crval = this->remoteDatasetCrval;
+    std::array<double, 3> crpix = this->remoteDatasetCrpix;
+    std::array<double, 3> cdelt = this->remoteDatasetCdelt;
+    if (!this->isRemoteMode && this->astro) {
+        const auto *refValues = this->astro->getReferenceValues();
+        const auto *refPixels = this->astro->getReferencePixels();
+        const auto *increments = this->astro->getIncrements();
+        for (int axis = 0; axis < 3; ++axis) {
+            ctype[axis] = QString::fromStdString(this->astro->getAxisType(axis));
+            cunit[axis] = QString::fromStdString(this->astro->getAxisUnit(axis));
+            crval[axis] = refValues[axis];
+            crpix[axis] = refPixels[axis];
+            cdelt[axis] = increments[axis];
+        }
+    }
+
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    const auto report = buildImageSanityReport(this->isRemoteMode, this->astro.get(), ctype, cunit,
+                                               crval, crpix, cdelt, imageData);
+    this->sanityLabel->setText(report.summary);
+    this->sanityLabel->setToolTip(report.details);
+}
+
 bool vtkWindowImage::remoteHasWcsAxis(int axis) const
 {
     return axis >= 0 && axis < 3 && std::isfinite(this->remoteDatasetCrval[axis])
@@ -1698,6 +1877,7 @@ void vtkWindowImage::changeLegendWCS()
                        .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
                                                 : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
     this->updateDataStatePanel();
+    this->updateSanityPanel();
     this->requestWcsOverlayRender();
 }
 

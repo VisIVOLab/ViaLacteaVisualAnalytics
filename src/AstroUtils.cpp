@@ -124,6 +124,16 @@ const double *AstroUtils::getIncrements() const
     return this->cdelt;
 }
 
+const double *AstroUtils::getReferenceValues() const
+{
+    return this->crval;
+}
+
+const double *AstroUtils::getReferencePixels() const
+{
+    return this->crpix;
+}
+
 double AstroUtils::getInitialSpectralValue() const
 {
     return this->crval[2] - this->cdelt[2] * (crpix[2] - 1);

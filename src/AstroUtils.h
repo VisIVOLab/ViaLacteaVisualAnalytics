@@ -69,6 +69,16 @@ public:
     const double *getIncrements() const;
 
     /**
+   * @return CRVAL values
+   */
+    const double *getReferenceValues() const;
+
+    /**
+   * @return CRPIX values
+   */
+    const double *getReferencePixels() const;
+
+    /**
    * @return Spectral value at first slice
    */
     double getInitialSpectralValue() const;

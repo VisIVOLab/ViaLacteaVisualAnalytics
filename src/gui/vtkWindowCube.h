@@ -236,6 +236,7 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
+    QPointer<QLabel> sanityLabel;
     QPointer<QLabel> momentProvenanceLabel;
     QPointer<QCheckBox> remoteRoiRefinementCheck;
     QPointer<QCheckBox> wcsAxesCheck;
@@ -402,6 +403,7 @@ private:
     QString describeMomentScope() const;
     QString formatMomentChannelRange(const MomentGenerationConfig &config) const;
     void updateMomentProvenancePanel();
+    void updateSanityPanel();
 
     // Slice
     vtkNew<vtkImageReslice> slice;
