@@ -23,6 +23,7 @@
 #include <vector>
 
 class CubeViewController;
+class QAction;
 class QCheckBox;
 class QLabel;
 class LUTCustomizerDialog;
@@ -176,6 +177,8 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QPointer<QCheckBox> remoteRoiRefinementCheck;
     QPointer<QCheckBox> wcsAxesCheck;
+    QPointer<QAction> actionWcsSexagesimal;
+    QPointer<QAction> actionWcsDecimal;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
@@ -203,6 +206,8 @@ private:
     bool usingHighResCube{ false };
     bool useCameraRoiRefinement{ false };
     bool pendingRemoteRefinementReload{ false };
+    bool useSexagesimalWcsFormat{ false };
+    bool wcsFormatExplicitlyChosen{ false };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
     static constexpr int remoteSliceDebounceDelayMs = 100;
@@ -268,12 +273,15 @@ private:
                                            double &frameY) const;
     QString formatRemoteOverlayCoordinate(int axis, double value) const;
     QString remoteOverlayAxisTitle(int axis) const;
+    QString formatDegreeCoordinate(double value) const;
     void updateSliceWcsOverlay();
     void updateMomentWcsOverlay();
     void set2dWcsOverlayVisible(bool visible);
     void ensureOverlayTickActors(vtkRenderer *renderer,
                                  std::vector<vtkSmartPointer<vtkTextActor>> &xActors,
                                  std::vector<vtkSmartPointer<vtkTextActor>> &yActors);
+    void invalidateWcsOverlayCache();
+    void applyDefaultWcsFormatForSelectedFrame();
 
     // Slice
     vtkNew<vtkImageReslice> slice;

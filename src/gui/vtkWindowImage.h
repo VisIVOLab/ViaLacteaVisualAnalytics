@@ -24,6 +24,7 @@ class LayerListModel;
 class LUTCustomizerDialog;
 class ProfileWidget;
 class AstroUtils;
+class QAction;
 class QCheckBox;
 class vtkAxisActor2D;
 class vtkCoordinate;
@@ -87,6 +88,8 @@ private:
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QPointer<QCheckBox> wcsAxesCheck;
+    QPointer<QAction> actionWcsSexagesimal;
+    QPointer<QAction> actionWcsDecimal;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
@@ -106,6 +109,8 @@ private:
     vtkNew<vtkScalarBarActor> colorbar;
     vtkNew<vtkCoordinate> coordinate;
     bool showWcsAxes{ true };
+    bool useSexagesimalWcsFormat{ false };
+    bool wcsFormatExplicitlyChosen{ false };
     std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
@@ -116,6 +121,8 @@ private:
     void updateWcsOverlay();
     void setWcsOverlayVisible(bool visible);
     void ensureOverlayTickActors(vtkRenderer *renderer);
+    void invalidateWcsOverlayCache();
+    void applyDefaultWcsFormatForSelectedFrame();
 
     // Stack
     vtkNew<vtkImageStack> stack;
@@ -140,6 +147,7 @@ private:
                                            double &frameY) const;
     QString formatRemoteOverlayCoordinate(int axis, double value) const;
     QString remoteOverlayAxisTitle(int axis) const;
+    QString formatDegreeCoordinate(double value) const;
 };
 
 #endif

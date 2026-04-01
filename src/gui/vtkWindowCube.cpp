@@ -58,6 +58,7 @@
 #include <vtkVolumeProperty.h>
 
 #include <QActionGroup>
+#include <QAction>
 #include <QApplication>
 #include <QCheckBox>
 #include <QColorDialog>
@@ -1245,6 +1246,21 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     groupWCS->addAction(ui->actionEcliptic);
     ui->menuWCS->setEnabled((this->astro && !this->astro->isSimulation()) || this->remoteHasCelestialAxes());
     QObject::connect(groupWCS, &QActionGroup::triggered, this, &vtkWindowCube::changeLegendWCS);
+    ui->menuWCS->addSeparator();
+    auto *formatGroup = new QActionGroup(this);
+    this->actionWcsSexagesimal = ui->menuWCS->addAction(u"Sexagesimal"_s);
+    this->actionWcsDecimal = ui->menuWCS->addAction(u"Decimal"_s);
+    this->actionWcsSexagesimal->setCheckable(true);
+    this->actionWcsDecimal->setCheckable(true);
+    formatGroup->addAction(this->actionWcsSexagesimal);
+    formatGroup->addAction(this->actionWcsDecimal);
+    QObject::connect(formatGroup, &QActionGroup::triggered, this, [this](QAction *action) {
+        this->wcsFormatExplicitlyChosen = true;
+        this->useSexagesimalWcsFormat = action == this->actionWcsSexagesimal;
+        this->invalidateWcsOverlayCache();
+        ui->vtkImage->renderWindow()->Render();
+    });
+    this->applyDefaultWcsFormatForSelectedFrame();
 
     // Setup menu Tools
     QObject::connect(ui->actionExtractSpectrum, &QAction::triggered, this,
@@ -2481,6 +2497,9 @@ QString vtkWindowCube::formatRemoteOverlayCoordinate(int axis, double value) con
     if (!this->remoteHasCelestialAxes()) {
         return QString::number(value, 'g', 8);
     }
+    if (!this->useSexagesimalWcsFormat) {
+        return this->formatDegreeCoordinate(value);
+    }
     return formatCelestialCoordinate(this->selectedWcsFrame(), axis, value);
 }
 
@@ -2493,7 +2512,15 @@ QString vtkWindowCube::remoteOverlayAxisTitle(int axis) const
     if (frame == WCS_J2000) {
         return axis == 0 ? u"Right Ascension"_s : u"Declination"_s;
     }
-    return axis == 0 ? u"Longitude"_s : u"Latitude"_s;
+    if (frame == WCS_GALACTIC) {
+        return axis == 0 ? u"Galactic Longitude"_s : u"Galactic Latitude"_s;
+    }
+    return axis == 0 ? u"Ecliptic Longitude"_s : u"Ecliptic Latitude"_s;
+}
+
+QString vtkWindowCube::formatDegreeCoordinate(double value) const
+{
+    return QString::number(value, 'f', 2);
 }
 
 void vtkWindowCube::set2dWcsOverlayVisible(bool visible)
@@ -2553,6 +2580,35 @@ void vtkWindowCube::ensureOverlayTickActors(
             renderer->AddViewProp(actor);
             yActors.push_back(actor);
         }
+    }
+}
+
+void vtkWindowCube::invalidateWcsOverlayCache()
+{
+    this->lastSliceOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                            std::numeric_limits<double>::quiet_NaN(),
+                                            std::numeric_limits<double>::quiet_NaN(),
+                                            std::numeric_limits<double>::quiet_NaN() };
+    this->lastMomentOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN() };
+    this->lastSliceOverlayViewportSize = { -1, -1 };
+    this->lastMomentOverlayViewportSize = { -1, -1 };
+}
+
+void vtkWindowCube::applyDefaultWcsFormatForSelectedFrame()
+{
+    if (this->wcsFormatExplicitlyChosen) {
+        return;
+    }
+
+    this->useSexagesimalWcsFormat = this->selectedWcsFrame() == WCS_J2000;
+    if (this->actionWcsSexagesimal) {
+        this->actionWcsSexagesimal->setChecked(this->useSexagesimalWcsFormat);
+    }
+    if (this->actionWcsDecimal) {
+        this->actionWcsDecimal->setChecked(!this->useSexagesimalWcsFormat);
     }
 }
 
@@ -3030,14 +3086,8 @@ void vtkWindowCube::changeLegendWCS()
     if (this->astro) {
         this->viewController->setLegendWcs(wcs);
     }
-    this->lastSliceOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
-                                            std::numeric_limits<double>::quiet_NaN(),
-                                            std::numeric_limits<double>::quiet_NaN(),
-                                            std::numeric_limits<double>::quiet_NaN() };
-    this->lastMomentOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
-                                             std::numeric_limits<double>::quiet_NaN(),
-                                             std::numeric_limits<double>::quiet_NaN(),
-                                             std::numeric_limits<double>::quiet_NaN() };
+    this->applyDefaultWcsFormatForSelectedFrame();
+    this->invalidateWcsOverlayCache();
     qDebug().noquote()
             << QStringLiteral("[wcs] overlay using selected frame %1")
                        .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
