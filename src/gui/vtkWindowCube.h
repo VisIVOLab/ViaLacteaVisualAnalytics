@@ -167,6 +167,7 @@ private:
     int currentRemotePreviewRequestId{ 0 };
     int currentRemoteHighResRequestId{ 0 };
     int currentRemoteSliceRequestId{ 0 };
+    std::array<int, 6> currentRemoteRoi{ 0, 0, 0, 0, 0, 0 };
     int currentRequestedRemoteSliceIndex{ 0 };
     int pendingRemoteSliceIndex{ 0 };
     int activeRemoteSliceRequests{ 0 };

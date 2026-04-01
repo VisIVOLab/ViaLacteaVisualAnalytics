@@ -410,8 +410,13 @@ RemoteCubeSubvolumeResult fetchRemoteSubvolume(const QString &backendUrl, const 
         return result;
     }
 
+    result.cubeImageData->SetOrigin(static_cast<double>(roi[0]), static_cast<double>(roi[2]),
+                                    static_cast<double>(roi[4]));
+    result.cubeImageData->SetSpacing(1., 1., 1.);
+    result.cubeImageData->Modified();
+
     result.valid = true;
-    result.dataExtent = { 0, response.width - 1, 0, response.height - 1, 0, response.depth - 1 };
+    result.dataExtent = roi;
     computeVolumeStats(result.cubeImageData, result.cubeRange, result.cubeMean, result.cubeRms);
     return result;
 }
@@ -708,7 +713,13 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              double bounds[6];
                              cubeImage->GetBounds(bounds);
                              qDebug().noquote()
-                                     << QStringLiteral("[remote-roi] applied bounds=%1,%2,%3,%4,%5,%6")
+                                     << QStringLiteral("[remote-roi] applied roi=%1..%2,%3..%4,%5..%6 bounds=%7,%8,%9,%10,%11,%12")
+                                                .arg(this->currentRemoteRoi[0])
+                                                .arg(this->currentRemoteRoi[1])
+                                                .arg(this->currentRemoteRoi[2])
+                                                .arg(this->currentRemoteRoi[3])
+                                                .arg(this->currentRemoteRoi[4])
+                                                .arg(this->currentRemoteRoi[5])
                                                 .arg(bounds[0], 0, 'g', 12)
                                                 .arg(bounds[1], 0, 'g', 12)
                                                 .arg(bounds[2], 0, 'g', 12)
@@ -1366,6 +1377,7 @@ bool vtkWindowCube::requestHighResCube()
     }
 
     const auto roi = this->computeVisibleROI();
+    this->currentRemoteRoi = roi;
     qDebug().noquote()
             << QStringLiteral("[remote-roi] request x=%1..%2 y=%3..%4 z=%5..%6")
                        .arg(roi[0])
