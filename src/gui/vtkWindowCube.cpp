@@ -6,6 +6,7 @@
 #include "LUTCustomizerDialog.h"
 #include "MomentMapComputeTask.h"
 #include "ProfileWidget.h"
+#include "PvDiagramWidget.h"
 #include "app/BackendClient.h"
 #include "vtkFITSReader.h"
 #include "vtkInteractorStyleProfile.h"
@@ -1456,6 +1457,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     ui->actionExtractSpectrum->setCheckable(true);
     QObject::connect(ui->actionExtractSpectrum, &QAction::toggled, this,
                      &vtkWindowCube::setProbeModeActive);
+    this->actionExtractPvDiagram = ui->menuTools->addAction(u"Extract PV Diagram"_s);
+    this->actionExtractPvDiagram->setCheckable(true);
+    QObject::connect(this->actionExtractPvDiagram, &QAction::toggled, this,
+                     &vtkWindowCube::setPvModeActive);
     this->actionBoxRegion = ui->menuTools->addAction(u"Box Region Analysis"_s);
     this->actionCircleRegion = ui->menuTools->addAction(u"Circle Region Analysis"_s);
     this->actionBoxRegion->setCheckable(true);
@@ -1792,6 +1797,13 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->sliceProbeVerticalActor->VisibilityOff();
     ren->AddActor(this->sliceProbeVerticalActor);
+    vtkNew<vtkPolyDataMapper> slicePvMapper;
+    slicePvMapper->SetInputConnection(this->slicePvLine->GetOutputPort());
+    this->slicePvActor->SetMapper(slicePvMapper);
+    this->slicePvActor->GetProperty()->SetColor(1.0, 0.4, 0.1);
+    this->slicePvActor->GetProperty()->SetLineWidth(2.5);
+    this->slicePvActor->VisibilityOff();
+    ren->AddActor(this->slicePvActor);
     vtkRenderer *sliceRenderer = ren;
     const auto configureRegionLineActor = [sliceRenderer](vtkLineSource *line, vtkActor *actor) {
         vtkNew<vtkPolyDataMapper> mapper;
@@ -1919,6 +1931,13 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->momentProbeVerticalActor->VisibilityOff();
     ren->AddActor(this->momentProbeVerticalActor);
+    vtkNew<vtkPolyDataMapper> momentPvMapper;
+    momentPvMapper->SetInputConnection(this->momentPvLine->GetOutputPort());
+    this->momentPvActor->SetMapper(momentPvMapper);
+    this->momentPvActor->GetProperty()->SetColor(1.0, 0.4, 0.1);
+    this->momentPvActor->GetProperty()->SetLineWidth(2.5);
+    this->momentPvActor->VisibilityOff();
+    ren->AddActor(this->momentPvActor);
     vtkRenderer *momentRenderer = ren;
     const auto configureRegionLineActor = [momentRenderer](vtkLineSource *line, vtkActor *actor) {
         vtkNew<vtkPolyDataMapper> mapper;
@@ -2004,6 +2023,12 @@ void vtkWindowCube::mouseCallback()
         return;
     }
     this->updateProbeFromDisplayPosition(position[0], position[1]);
+    if (this->pvModeActive && this->pvDragging) {
+        if (this->updatePvFromDisplayPosition(position[0], position[1])) {
+            ui->vtkImage->renderWindow()->Render();
+        }
+        return;
+    }
     if (this->regionMode != RegionMode::None && this->regionDragging) {
         if (this->updateRegionFromDisplayPosition(position[0], position[1])) {
             ui->vtkImage->renderWindow()->Render();
@@ -2019,6 +2044,17 @@ void vtkWindowCube::toggleProbeFreeze()
 
     const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
     if (!position) {
+        return;
+    }
+
+    if (this->pvModeActive) {
+        if (this->updatePvFromDisplayPosition(position[0], position[1])) {
+            this->pvAnchorVoxel = this->pvCurrentVoxel;
+            this->pvDragging = true;
+            this->pvValid = true;
+            this->refreshPvOverlay();
+            ui->vtkImage->renderWindow()->Render();
+        }
         return;
     }
 
@@ -2049,11 +2085,37 @@ void vtkWindowCube::toggleProbeFreeze()
 
 void vtkWindowCube::finishRegionInteraction()
 {
-    if (this->isBusy() || this->regionMode == RegionMode::None || !this->regionDragging) {
+    if (this->isBusy()) {
         return;
     }
 
     const int *position = ui->vtkImage->renderWindow()->GetInteractor()->GetEventPosition();
+    if (this->pvModeActive && this->pvDragging) {
+        if (position) {
+            this->updatePvFromDisplayPosition(position[0], position[1]);
+        }
+        qDebug().noquote()
+                << QStringLiteral("[pv] finish anchor=(%1,%2) current=(%3,%4) valid=%5")
+                           .arg(this->pvAnchorVoxel[0])
+                           .arg(this->pvAnchorVoxel[1])
+                           .arg(this->pvCurrentVoxel[0])
+                           .arg(this->pvCurrentVoxel[1])
+                           .arg(this->pvValid);
+        this->pvDragging = false;
+        this->pvValid = true;
+        this->refreshPvOverlay();
+        this->extractCurrentPvDiagram();
+        ui->vtkImage->renderWindow()->Render();
+        if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+            this->actionExtractPvDiagram->setChecked(false);
+        }
+        return;
+    }
+
+    if (this->regionMode == RegionMode::None || !this->regionDragging) {
+        return;
+    }
+
     if (position) {
         this->updateRegionFromDisplayPosition(position[0], position[1]);
     }
@@ -2185,6 +2247,9 @@ void vtkWindowCube::setRegionMode(RegionMode mode, bool active)
     if (this->probeModeActive && ui->actionExtractSpectrum->isChecked()) {
         ui->actionExtractSpectrum->setChecked(false);
     }
+    if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+        this->actionExtractPvDiagram->setChecked(false);
+    }
     if (mode == RegionMode::Box && this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
         this->actionCircleRegion->setChecked(false);
     } else if (mode == RegionMode::Circle && this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
@@ -2194,6 +2259,36 @@ void vtkWindowCube::setRegionMode(RegionMode mode, bool active)
     this->regionDragging = false;
     this->regionValid = false;
     this->clearRegion();
+    this->setInteractorStyleRegion();
+    ui->vtkImage->setCursor(Qt::CrossCursor);
+}
+
+void vtkWindowCube::setPvModeActive(bool active)
+{
+    this->pvModeActive = active;
+    if (!active) {
+        this->pvDragging = false;
+        this->clearPv();
+        this->setInteractorStyleImage();
+        ui->vtkImage->setCursor(this->probeModeActive ? Qt::CrossCursor : Qt::ArrowCursor);
+        if (ui->vtkImage->renderWindow()) {
+            ui->vtkImage->renderWindow()->Render();
+        }
+        return;
+    }
+
+    if (this->probeModeActive && ui->actionExtractSpectrum->isChecked()) {
+        ui->actionExtractSpectrum->setChecked(false);
+    }
+    if (this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
+        this->actionBoxRegion->setChecked(false);
+    }
+    if (this->actionCircleRegion && this->actionCircleRegion->isChecked()) {
+        this->actionCircleRegion->setChecked(false);
+    }
+    this->pvDragging = false;
+    this->pvValid = false;
+    this->clearPv();
     this->setInteractorStyleRegion();
     ui->vtkImage->setCursor(Qt::CrossCursor);
 }
@@ -2231,6 +2326,42 @@ bool vtkWindowCube::updateRegionFromDisplayPosition(int displayX, int displayY)
 
     this->regionCurrentVoxel = { voxelX, voxelY };
     this->refreshRegionOverlay();
+    return true;
+}
+
+bool vtkWindowCube::updatePvFromDisplayPosition(int displayX, int displayY)
+{
+    auto *renderer = ui->vtkImage->renderWindow() ? ui->vtkImage->renderWindow()->GetRenderers()->GetFirstRenderer()
+                                                  : nullptr;
+    auto *imageData = this->viewingSlice()
+            ? (this->isRemoteMode
+                       ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                       : this->slice->GetOutput())
+            : vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    if (!renderer || !imageData) {
+        return false;
+    }
+
+    this->coordinate->SetValue(displayX, displayY);
+    const double *worldCoord = this->coordinate->GetComputedWorldValue(renderer);
+    if (!worldCoord) {
+        return false;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    double origin[3];
+    double spacing[3];
+    imageData->GetOrigin(origin);
+    imageData->GetSpacing(spacing);
+    const int voxelX = std::lround(extent[0] + (worldCoord[0] - origin[0]) / spacing[0]);
+    const int voxelY = std::lround(extent[2] + (worldCoord[1] - origin[1]) / spacing[1]);
+    if (voxelX < extent[0] || voxelX > extent[1] || voxelY < extent[2] || voxelY > extent[3]) {
+        return false;
+    }
+
+    this->pvCurrentVoxel = { voxelX, voxelY };
+    this->refreshPvOverlay();
     return true;
 }
 
@@ -2304,6 +2435,33 @@ void vtkWindowCube::clearRegion()
     this->momentRegionLeftActor->VisibilityOff();
     this->momentRegionRightActor->VisibilityOff();
     this->momentRegionCircleActor->VisibilityOff();
+}
+
+void vtkWindowCube::refreshPvOverlay()
+{
+    const auto updateLine = [this](vtkImageData *imageData, vtkLineSource *line, vtkActor *actor) {
+        if (!imageData || !this->pvModeActive || !this->pvValid) {
+            actor->VisibilityOff();
+            return;
+        }
+        line->SetPoint1(this->pvAnchorVoxel[0], this->pvAnchorVoxel[1], 0.0);
+        line->SetPoint2(this->pvCurrentVoxel[0], this->pvCurrentVoxel[1], 0.0);
+        actor->VisibilityOn();
+    };
+
+    updateLine(this->isRemoteMode
+                       ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                       : this->slice->GetOutput(),
+               this->slicePvLine, this->slicePvActor);
+    updateLine(vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0)),
+               this->momentPvLine, this->momentPvActor);
+}
+
+void vtkWindowCube::clearPv()
+{
+    this->pvValid = false;
+    this->slicePvActor->VisibilityOff();
+    this->momentPvActor->VisibilityOff();
 }
 
 void vtkWindowCube::analyzeCurrentRegion()
@@ -2415,6 +2573,175 @@ void vtkWindowCube::analyzeCurrentRegion()
         text += u"\n\nComputed on the currently loaded data block."_s;
     }
     QMessageBox::information(this, u"Region Analysis"_s, text);
+}
+
+QString vtkWindowCube::formatSpatialPointSummary(const std::array<int, 2> &voxel) const
+{
+    const std::array<int, 3> fullVoxel = { voxel[0],
+                                           voxel[1],
+                                           this->isRemoteMode ? this->clampRemoteSliceIndex(ui->spinSlice->value() - 1)
+                                                              : std::max(0, ui->spinSlice->value() - 1) };
+    if (this->astro && !this->astro->isSimulation()) {
+        return u"(%1, %2)  %3=%4  %5=%6"_s.arg(voxel[0])
+                .arg(voxel[1])
+                .arg(this->selectedFrameAxisTitle(0))
+                .arg(this->formatLocalProbeCoordinate(0, fullVoxel))
+                .arg(this->selectedFrameAxisTitle(1))
+                .arg(this->formatLocalProbeCoordinate(1, fullVoxel));
+    }
+
+    QString axis0 = this->remoteFormatAxisCoordinate(0, voxel[0]);
+    QString axis1 = this->remoteFormatAxisCoordinate(1, voxel[1]);
+    if (this->remoteHasCelestialAxes()) {
+        bool ok0 = false;
+        bool ok1 = false;
+        double nativeX = this->remoteVoxelToWcs(0, voxel[0], &ok0);
+        double nativeY = this->remoteVoxelToWcs(1, voxel[1], &ok1);
+        double frameX = nativeX;
+        double frameY = nativeY;
+        if (ok0 && ok1 && this->convertRemoteCelestialCoordinates(nativeX, nativeY, frameX, frameY)) {
+            axis0 = this->formatRemoteOverlayCoordinate(0, frameX);
+            axis1 = this->formatRemoteOverlayCoordinate(1, frameY);
+        }
+    }
+    return u"(%1, %2)  %3=%4  %5=%6"_s.arg(voxel[0])
+            .arg(voxel[1])
+            .arg(this->selectedFrameAxisTitle(0))
+            .arg(axis0)
+            .arg(this->selectedFrameAxisTitle(1))
+            .arg(axis1);
+}
+
+void vtkWindowCube::extractCurrentPvDiagram()
+{
+    if (!this->pvValid) {
+        qDebug().noquote() << QStringLiteral("[pv] extraction skipped: line not valid");
+        this->statusBar()->showMessage(u"Draw a valid PV line first."_s, 2000);
+        return;
+    }
+
+    auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    if (!cubeImage) {
+        qDebug().noquote() << QStringLiteral("[pv] extraction skipped: cube image unavailable");
+        this->statusBar()->showMessage(u"No loaded cube data available for PV extraction."_s, 2000);
+        return;
+    }
+
+    const int x0 = this->pvAnchorVoxel[0];
+    const int y0 = this->pvAnchorVoxel[1];
+    const int x1 = this->pvCurrentVoxel[0];
+    const int y1 = this->pvCurrentVoxel[1];
+    const int dx = x1 - x0;
+    const int dy = y1 - y0;
+    const int steps = std::max(std::abs(dx), std::abs(dy)) + 1;
+    qDebug().noquote()
+            << QStringLiteral("[pv] anchor=(%1,%2) current=(%3,%4) dx=%5 dy=%6 steps=%7")
+                       .arg(x0)
+                       .arg(y0)
+                       .arg(x1)
+                       .arg(y1)
+                       .arg(dx)
+                       .arg(dy)
+                       .arg(steps);
+    if (steps < 2) {
+        qDebug().noquote() << QStringLiteral("[pv] line too short");
+        this->statusBar()->showMessage(u"PV line too short. Draw a longer PV line."_s, 2500);
+        return;
+    }
+
+    int extent[6];
+    cubeImage->GetExtent(extent);
+    double origin[3];
+    double spacing[3];
+    cubeImage->GetOrigin(origin);
+    cubeImage->GetSpacing(spacing);
+    const int zCount = extent[5] - extent[4] + 1;
+    qDebug().noquote()
+            << QStringLiteral("[pv] cube extent x=%1..%2 y=%3..%4 z=%5..%6 zCount=%7")
+                       .arg(extent[0])
+                       .arg(extent[1])
+                       .arg(extent[2])
+                       .arg(extent[3])
+                       .arg(extent[4])
+                       .arg(extent[5])
+                       .arg(zCount);
+    if (zCount <= 0) {
+        qDebug().noquote() << QStringLiteral("[pv] invalid z dimension");
+        this->statusBar()->showMessage(u"Invalid spectral dimension for PV extraction."_s, 2500);
+        return;
+    }
+
+    const double cutLength = std::hypot(static_cast<double>(dx), static_cast<double>(dy));
+    QVector<double> positions(steps);
+    QVector<double> spectral(zCount);
+    QVector<double> values(steps * zCount, std::numeric_limits<double>::quiet_NaN());
+    int validSamples = 0;
+
+    for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
+        const int zIndex = localZ - extent[4];
+        const double datasetZ = origin[2] + (localZ - extent[4]) * spacing[2];
+        bool ok = false;
+        spectral[zIndex] = this->spectralAxisValue(datasetZ, &ok);
+        if (!ok) {
+            spectral[zIndex] = datasetZ;
+        }
+    }
+
+    for (int i = 0; i < steps; ++i) {
+        const double t = steps == 1 ? 0.0 : static_cast<double>(i) / static_cast<double>(steps - 1);
+        const int datasetX = std::lround(static_cast<double>(x0) + t * dx);
+        const int datasetY = std::lround(static_cast<double>(y0) + t * dy);
+        positions[i] = t * cutLength;
+
+        const int localX = std::lround(extent[0] + (datasetX - origin[0]) / spacing[0]);
+        const int localY = std::lround(extent[2] + (datasetY - origin[1]) / spacing[1]);
+        if (localX < extent[0] || localX > extent[1] || localY < extent[2] || localY > extent[3]) {
+            continue;
+        }
+
+        for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
+            const int zIndex = localZ - extent[4];
+            const double value = cubeImage->GetScalarComponentAsDouble(localX, localY, localZ, 0);
+            values[zIndex * steps + i] = value;
+            if (std::isfinite(value)) {
+                ++validSamples;
+            }
+        }
+    }
+    qDebug().noquote()
+            << QStringLiteral("[pv] sampled matrix steps=%1 zCount=%2 validSamples=%3")
+                       .arg(steps)
+                       .arg(zCount)
+                       .arg(validSamples);
+
+    if (validSamples == 0) {
+        qDebug().noquote() << QStringLiteral("[pv] no valid data found along cut");
+        this->statusBar()->showMessage(
+                u"No valid data found along PV cut in the currently loaded cube block."_s, 3000);
+        return;
+    }
+
+    if (!this->pvDiagramWidget) {
+        qDebug().noquote() << QStringLiteral("[pv] creating PvDiagramWidget");
+        this->pvDiagramWidget = new PvDiagramWidget(this);
+        QObject::connect(this->pvDiagramWidget, &PvDiagramWidget::destroyed, this,
+                         [this]() {
+                             this->pvDiagramWidget = nullptr;
+                             if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+                                 this->actionExtractPvDiagram->setChecked(false);
+                             }
+                         });
+    }
+
+    QString details = u"Start: %1\nEnd: %2\nSampling: nearest-neighbor, width=1 pixel\nData scope: %3"_s
+                              .arg(this->formatSpatialPointSummary(this->pvAnchorVoxel),
+                                   this->formatSpatialPointSummary(this->pvCurrentVoxel),
+                                   this->isRemoteMode ? u"currently loaded cube block only"_s
+                                                      : u"full loaded cube"_s);
+    qDebug().noquote() << QStringLiteral("[pv] updating widget and requesting show/raise");
+    this->pvDiagramWidget->setPvData(positions, spectral, values, steps, zCount, u"Position Along Cut [px]"_s,
+                                     this->spectralAxisTitle(),
+                                     u"PV Diagram"_s, details);
 }
 
 void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
@@ -4285,6 +4612,9 @@ void vtkWindowCube::setCubeOpenActionsEnabled(bool enabled)
 {
     this->setMomentActionsEnabled(enabled);
     ui->actionExtractSpectrum->setEnabled(enabled);
+    if (this->actionExtractPvDiagram) {
+        this->actionExtractPvDiagram->setEnabled(enabled);
+    }
 }
 
 void vtkWindowCube::setCubeOpenStateLabel(const QString &text)
@@ -4359,6 +4689,9 @@ void vtkWindowCube::setProbeModeActive(bool active)
 {
     this->probeModeActive = active;
     if (active) {
+        if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+            this->actionExtractPvDiagram->setChecked(false);
+        }
         if (this->actionBoxRegion && this->actionBoxRegion->isChecked()) {
             this->actionBoxRegion->setChecked(false);
         }
@@ -4451,6 +4784,9 @@ void vtkWindowCube::changeImageRenderer()
     }
     if (this->regionMode != RegionMode::None && this->regionValid) {
         this->refreshRegionOverlay();
+    }
+    if (this->pvModeActive && this->pvValid) {
+        this->refreshPvOverlay();
     }
     ui->vtkImage->renderWindow()->Render();
 }

@@ -28,6 +28,7 @@ class QCheckBox;
 class QLabel;
 class LUTCustomizerDialog;
 class ProfileWidget;
+class PvDiagramWidget;
 class vtkAxisActor2D;
 class vtkActor;
 class vtkColorTransferFunction;
@@ -146,6 +147,7 @@ private slots:
     void toggleProbeFreeze();
     void finishRegionInteraction();
     void extractSpectrumAtCurrentProbe();
+    void setPvModeActive(bool active);
     void setProbeModeActive(bool active);
 
 public:
@@ -211,6 +213,7 @@ private:
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QPointer<ProfileWidget> probePlotWidget;
+    QPointer<PvDiagramWidget> pvDiagramWidget;
     QPointer<QLabel> cubeOpenStateLabel;
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
@@ -220,6 +223,7 @@ private:
     QPointer<QAction> actionWcsDecimal;
     QPointer<QAction> actionBoxRegion;
     QPointer<QAction> actionCircleRegion;
+    QPointer<QAction> actionExtractPvDiagram;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
@@ -249,6 +253,9 @@ private:
     bool pendingRemoteRefinementReload{ false };
     bool probeModeActive{ false };
     RegionMode regionMode{ RegionMode::None };
+    bool pvModeActive{ false };
+    bool pvDragging{ false };
+    bool pvValid{ false };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
     bool sliceWcsOverlayInitialized{ false };
@@ -260,6 +267,8 @@ private:
     std::array<int, 3> probeVoxel{ -1, -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
+    std::array<int, 2> pvAnchorVoxel{ -1, -1 };
+    std::array<int, 2> pvCurrentVoxel{ -1, -1 };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
     static constexpr int remoteSliceDebounceDelayMs = 100;
@@ -289,13 +298,18 @@ private:
     void mouseCallback();
     bool updateProbeFromDisplayPosition(int displayX, int displayY);
     bool updateRegionFromDisplayPosition(int displayX, int displayY);
+    bool updatePvFromDisplayPosition(int displayX, int displayY);
     void refreshProbeOverlay();
     void refreshRegionOverlay();
+    void refreshPvOverlay();
     void clearProbe();
     void clearRegion();
+    void clearPv();
     void analyzeCurrentRegion();
+    void extractCurrentPvDiagram();
     void updateProbeReadout(vtkImageData *imageData);
     void updateProbePlot();
+    QString formatSpatialPointSummary(const std::array<int, 2> &voxel) const;
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 3> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;
     bool viewingIsosurface() const;
@@ -382,6 +396,8 @@ private:
     vtkNew<vtkActor> sliceRegionRightActor;
     vtkNew<vtkRegularPolygonSource> sliceRegionCircleSource;
     vtkNew<vtkActor> sliceRegionCircleActor;
+    vtkNew<vtkLineSource> slicePvLine;
+    vtkNew<vtkActor> slicePvActor;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
     std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
@@ -435,6 +451,8 @@ private:
     vtkNew<vtkActor> momentRegionRightActor;
     vtkNew<vtkRegularPolygonSource> momentRegionCircleSource;
     vtkNew<vtkActor> momentRegionCircleActor;
+    vtkNew<vtkLineSource> momentPvLine;
+    vtkNew<vtkActor> momentPvActor;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;
     std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),

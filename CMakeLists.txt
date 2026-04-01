@@ -89,6 +89,8 @@ set(PROJECT_SOURCES
         src/gui/MainWindow.h
         src/gui/ProfileWidget.cpp
         src/gui/ProfileWidget.h
+        src/gui/PvDiagramWidget.cpp
+        src/gui/PvDiagramWidget.h
         src/gui/SettingsDialog.cpp
         src/gui/SettingsDialog.h
         src/gui/vtkWindowCube.cpp
