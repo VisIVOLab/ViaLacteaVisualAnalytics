@@ -11,6 +11,7 @@
 #include <QFutureWatcher>
 #include <QMainWindow>
 #include <QPointer>
+#include <QStringList>
 #include <QTimer>
 
 #include <array>
@@ -120,6 +121,9 @@ private:
     QPointer<QAction> actionCircleRegion;
     QPointer<QAction> actionPolygonRegion;
     QPointer<QAction> actionAnnulusRegion;
+    QPointer<QAction> actionLoadCatalogueOverlay;
+    QPointer<QAction> actionShowCatalogueOverlay;
+    QPointer<QAction> actionClearCatalogueOverlay;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
@@ -148,11 +152,16 @@ private:
     bool probeValid{ false };
     bool regionDragging{ false };
     bool regionValid{ false };
+    bool catalogueOverlayLoaded{ false };
     bool ignoreNextPolygonRelease{ false };
     std::array<int, 2> probeVoxel{ -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> regionPolygonVertices;
+    std::vector<std::array<double, 2>> catalogueOverlayPixels;
+    std::vector<int> catalogueOverlayLabelIndices;
+    QStringList catalogueOverlayLabels;
+    QString catalogueOverlaySummary;
     double regionAnnulusInnerRadius{ 0.0 };
     std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
@@ -188,6 +197,11 @@ private:
     vtkNew<vtkPolyData> regionPolygonFillData;
     vtkNew<vtkContourTriangulator> regionPolygonTriangulator;
     vtkNew<vtkActor> regionPolygonFillActor;
+    vtkNew<vtkPoints> catalogueOverlayPoints;
+    vtkNew<vtkCellArray> catalogueOverlayCells;
+    vtkNew<vtkPolyData> catalogueOverlayData;
+    vtkNew<vtkActor> catalogueOverlayActor;
+    std::vector<vtkSmartPointer<vtkTextActor>> catalogueOverlayLabelActors;
     void setupRenderer();
     void mouseCallback();
     bool updateProbeFromDisplayPosition(int displayX, int displayY);
@@ -209,6 +223,12 @@ private:
     void clearRegion();
     void analyzeCurrentRegion();
     bool finalizePolygonRegion();
+    void loadCatalogueOverlay();
+    void clearCatalogueOverlay();
+    void setCatalogueOverlayVisible(bool visible);
+    void rebuildCatalogueOverlay();
+    void updateCatalogueOverlayLabels();
+    bool catalogueWorldToPixel(double raDeg, double decDeg, std::array<double, 2> &pixel) const;
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;
 

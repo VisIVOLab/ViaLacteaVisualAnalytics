@@ -15,6 +15,7 @@
 #include <QMainWindow>
 #include <QPointer>
 #include <QSet>
+#include <QStringList>
 #include <QTimer>
 
 #include <array>
@@ -252,6 +253,9 @@ private:
     QPointer<QAction> actionPolygonRegion;
     QPointer<QAction> actionAnnulusRegion;
     QPointer<QAction> actionExtractPvDiagram;
+    QPointer<QAction> actionLoadCatalogueOverlay;
+    QPointer<QAction> actionShowCatalogueOverlay;
+    QPointer<QAction> actionClearCatalogueOverlay;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
@@ -296,6 +300,7 @@ private:
     bool probeValid{ false };
     bool regionDragging{ false };
     bool regionValid{ false };
+    bool catalogueOverlayLoaded{ false };
     bool ignoreNextPolygonRelease{ false };
     MomentGenerationConfig currentMomentConfig;
     MomentProvenanceState momentProvenanceState;
@@ -303,6 +308,10 @@ private:
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> regionPolygonVertices;
+    std::vector<std::array<double, 2>> catalogueOverlayPixels;
+    std::vector<int> catalogueOverlayLabelIndices;
+    QStringList catalogueOverlayLabels;
+    QString catalogueOverlaySummary;
     double regionAnnulusInnerRadius{ 0.0 };
     std::array<int, 2> pvCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> pvPolylineVertices;
@@ -345,6 +354,12 @@ private:
     void analyzeCurrentRegion();
     bool finalizePolygonRegion();
     void extractCurrentPvDiagram();
+    void loadCatalogueOverlay();
+    void clearCatalogueOverlay();
+    void setCatalogueOverlayVisible(bool visible);
+    void rebuildCatalogueOverlay();
+    void updateCatalogueOverlayLabels();
+    bool catalogueWorldToPixel(double raDeg, double decDeg, std::array<double, 2> &pixel) const;
     void updateProbeReadout(vtkImageData *imageData);
     void updateProbePlot();
     QString formatSpatialPointSummary(const std::array<int, 2> &voxel) const;
@@ -434,6 +449,7 @@ private:
     vtkNew<vtkLineSource> sliceProbeVerticalLine;
     vtkNew<vtkActor> sliceProbeHorizontalActor;
     vtkNew<vtkActor> sliceProbeVerticalActor;
+    vtkNew<vtkActor> sliceCatalogueOverlayActor;
     vtkNew<vtkLineSource> sliceRegionTopLine;
     vtkNew<vtkLineSource> sliceRegionBottomLine;
     vtkNew<vtkLineSource> sliceRegionLeftLine;
@@ -471,6 +487,7 @@ private:
     vtkNew<vtkCellArray> slicePvLowerCells;
     vtkNew<vtkPolyData> slicePvLowerData;
     vtkNew<vtkActor> slicePvLowerActor;
+    std::vector<vtkSmartPointer<vtkTextActor>> sliceCatalogueOverlayLabelActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
     std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
@@ -514,6 +531,7 @@ private:
     vtkNew<vtkLineSource> momentProbeVerticalLine;
     vtkNew<vtkActor> momentProbeHorizontalActor;
     vtkNew<vtkActor> momentProbeVerticalActor;
+    vtkNew<vtkActor> momentCatalogueOverlayActor;
     vtkNew<vtkLineSource> momentRegionTopLine;
     vtkNew<vtkLineSource> momentRegionBottomLine;
     vtkNew<vtkLineSource> momentRegionLeftLine;
@@ -551,6 +569,10 @@ private:
     vtkNew<vtkCellArray> momentPvLowerCells;
     vtkNew<vtkPolyData> momentPvLowerData;
     vtkNew<vtkActor> momentPvLowerActor;
+    vtkNew<vtkPoints> catalogueOverlayPoints;
+    vtkNew<vtkCellArray> catalogueOverlayCells;
+    vtkNew<vtkPolyData> catalogueOverlayData;
+    std::vector<vtkSmartPointer<vtkTextActor>> momentCatalogueOverlayLabelActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;
     std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),

@@ -2,6 +2,7 @@
 #include "ui_vtkWindowCube.h"
 
 #include "ColorMaps.h"
+#include "CatalogueOverlayUtils.h"
 #include "CubeViewController.h"
 #include "LUTCustomizerDialog.h"
 #include "MomentMapComputeTask.h"
@@ -74,6 +75,7 @@
 #include <QDoubleValidator>
 #include <QDoubleSpinBox>
 #include <QElapsedTimer>
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QInputDialog>
 #include <QLabel>
@@ -98,6 +100,8 @@ namespace {
 constexpr double pi = 3.14159265358979323846;
 constexpr int overlayTickCount = 5;
 constexpr double polygonClosureTolerance = 3.0;
+constexpr double catalogueMarkerHalfSize = 3.0;
+constexpr int maxCatalogueLabelCount = 200;
 
 struct VisibleImageBounds2D
 {
@@ -1909,6 +1913,19 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                      [this](bool checked) { this->setRegionMode(RegionMode::Polygon, checked); });
     QObject::connect(this->actionAnnulusRegion, &QAction::toggled, this,
                      [this](bool checked) { this->setRegionMode(RegionMode::Annulus, checked); });
+    ui->menuTools->addSeparator();
+    this->actionLoadCatalogueOverlay = ui->menuTools->addAction(u"Load Catalogue Overlay"_s);
+    this->actionShowCatalogueOverlay = ui->menuTools->addAction(u"Show Catalogue Overlay"_s);
+    this->actionClearCatalogueOverlay = ui->menuTools->addAction(u"Clear Catalogue Overlay"_s);
+    this->actionShowCatalogueOverlay->setCheckable(true);
+    this->actionShowCatalogueOverlay->setEnabled(false);
+    this->actionClearCatalogueOverlay->setEnabled(false);
+    QObject::connect(this->actionLoadCatalogueOverlay, &QAction::triggered, this,
+                     &vtkWindowCube::loadCatalogueOverlay);
+    QObject::connect(this->actionShowCatalogueOverlay, &QAction::toggled, this,
+                     &vtkWindowCube::setCatalogueOverlayVisible);
+    QObject::connect(this->actionClearCatalogueOverlay, &QAction::triggered, this,
+                     &vtkWindowCube::clearCatalogueOverlay);
 
     // Setup Threshold UI
     const std::string bunit = this->astro ? this->astro->getPhysicalUnit() : std::string {};
@@ -2238,6 +2255,15 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->sliceProbeVerticalActor->VisibilityOff();
     ren->AddActor(this->sliceProbeVerticalActor);
+    this->catalogueOverlayData->SetPoints(this->catalogueOverlayPoints);
+    this->catalogueOverlayData->SetLines(this->catalogueOverlayCells);
+    vtkNew<vtkPolyDataMapper> sliceCatalogueOverlayMapper;
+    sliceCatalogueOverlayMapper->SetInputData(this->catalogueOverlayData);
+    this->sliceCatalogueOverlayActor->SetMapper(sliceCatalogueOverlayMapper);
+    this->sliceCatalogueOverlayActor->GetProperty()->SetColor(1.0, 0.45, 0.15);
+    this->sliceCatalogueOverlayActor->GetProperty()->SetLineWidth(1.5);
+    this->sliceCatalogueOverlayActor->VisibilityOff();
+    ren->AddActor(this->sliceCatalogueOverlayActor);
     this->slicePvData->SetPoints(this->slicePvPoints);
     this->slicePvData->SetLines(this->slicePvCells);
     vtkNew<vtkPolyDataMapper> slicePvMapper;
@@ -2348,6 +2374,7 @@ void vtkWindowCube::setupSliceRenderer()
     this->sliceWcsOverlayInitialized = true;
     this->set2dWcsOverlayVisible(this->showWcsAxes);
     this->sliceWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateSliceWcsOverlay);
+    this->sliceWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateCatalogueOverlayLabels);
 
     ren->ResetCamera();
     this->sliceWin->Render();
@@ -2437,6 +2464,13 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentProbeVerticalActor->GetProperty()->SetLineWidth(1.5);
     this->momentProbeVerticalActor->VisibilityOff();
     ren->AddActor(this->momentProbeVerticalActor);
+    vtkNew<vtkPolyDataMapper> momentCatalogueOverlayMapper;
+    momentCatalogueOverlayMapper->SetInputData(this->catalogueOverlayData);
+    this->momentCatalogueOverlayActor->SetMapper(momentCatalogueOverlayMapper);
+    this->momentCatalogueOverlayActor->GetProperty()->SetColor(1.0, 0.45, 0.15);
+    this->momentCatalogueOverlayActor->GetProperty()->SetLineWidth(1.5);
+    this->momentCatalogueOverlayActor->VisibilityOff();
+    ren->AddActor(this->momentCatalogueOverlayActor);
     this->momentPvData->SetPoints(this->momentPvPoints);
     this->momentPvData->SetLines(this->momentPvCells);
     vtkNew<vtkPolyDataMapper> momentPvMapper;
@@ -2548,6 +2582,7 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentWcsOverlayInitialized = true;
     this->set2dWcsOverlayVisible(this->showWcsAxes);
     this->momentWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateMomentWcsOverlay);
+    this->momentWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateCatalogueOverlayLabels);
 
     ren->ResetCamera();
 }
@@ -3523,6 +3558,276 @@ bool vtkWindowCube::finalizePolygonRegion()
         this->actionPolygonRegion->setChecked(false);
     }
     return true;
+}
+
+void vtkWindowCube::loadCatalogueOverlay()
+{
+    const QString path = QFileDialog::getOpenFileName(
+            this, u"Load Catalogue Overlay"_s, QString(),
+            u"Catalogue files (*.reg *.csv);;DS9 region (*.reg);;CSV (*.csv)"_s);
+    if (path.isEmpty()) {
+        return;
+    }
+
+    const CatalogueOverlayParseResult parsed = CatalogueOverlayUtils::parseFile(path);
+    if (!parsed.valid) {
+        QMessageBox::warning(this, u"Catalogue Overlay"_s, parsed.errorMessage);
+        return;
+    }
+
+    if ((!this->isRemoteMode && !this->astro) || (this->isRemoteMode && !this->remoteHasCelestialAxes())) {
+        QMessageBox::warning(this, u"Catalogue Overlay"_s,
+                             u"Catalogue overlay requires celestial WCS information."_s);
+        return;
+    }
+
+    this->catalogueOverlayPixels.clear();
+    this->catalogueOverlayLabels.clear();
+    this->catalogueOverlayLabelIndices.clear();
+    int skippedProjection = 0;
+    for (const CatalogueOverlayEntry &entry : parsed.entries) {
+        std::array<double, 2> pixel{ 0.0, 0.0 };
+        if (!this->catalogueWorldToPixel(entry.raDeg, entry.decDeg, pixel)) {
+            ++skippedProjection;
+            continue;
+        }
+        this->catalogueOverlayPixels.push_back(pixel);
+        this->catalogueOverlayLabels.push_back(entry.label);
+    }
+
+    if (this->catalogueOverlayPixels.empty()) {
+        QMessageBox::warning(this, u"Catalogue Overlay"_s,
+                             u"No sources could be projected onto the current cube WCS."_s);
+        return;
+    }
+
+    this->catalogueOverlayLoaded = true;
+    this->catalogueOverlaySummary =
+            u"%1 sources from %2 (%3)"_s.arg(this->catalogueOverlayPixels.size())
+                    .arg(parsed.sourceLabel, parsed.frameLabel);
+    this->rebuildCatalogueOverlay();
+    if (this->actionShowCatalogueOverlay) {
+        this->actionShowCatalogueOverlay->setEnabled(true);
+        this->actionShowCatalogueOverlay->setChecked(true);
+    }
+    if (this->actionClearCatalogueOverlay) {
+        this->actionClearCatalogueOverlay->setEnabled(true);
+    }
+    this->setCatalogueOverlayVisible(true);
+    this->showPersistentStatusMessage(
+            u"Catalogue overlay loaded: %1 sources (%2)."_s.arg(this->catalogueOverlayPixels.size())
+                    .arg(parsed.frameLabel),
+            3000);
+    if (skippedProjection > 0 || parsed.skippedEntries > 0) {
+        qDebug().noquote() << QStringLiteral("[catalogue] loaded=%1 skipped_parse=%2 skipped_wcs=%3")
+                                          .arg(this->catalogueOverlayPixels.size())
+                                          .arg(parsed.skippedEntries)
+                                          .arg(skippedProjection);
+    }
+    this->sliceWin->Render();
+    this->momentWin->Render();
+}
+
+void vtkWindowCube::clearCatalogueOverlay()
+{
+    this->catalogueOverlayLoaded = false;
+    this->catalogueOverlayPixels.clear();
+    this->catalogueOverlayLabels.clear();
+    this->catalogueOverlayLabelIndices.clear();
+    this->catalogueOverlaySummary.clear();
+    this->catalogueOverlayPoints->Reset();
+    this->catalogueOverlayCells->Reset();
+    this->catalogueOverlayData->Modified();
+    if (auto *sliceRenderer = this->sliceWin->GetRenderers()->GetFirstRenderer()) {
+        for (const auto &actor : this->sliceCatalogueOverlayLabelActors) {
+            sliceRenderer->RemoveViewProp(actor);
+        }
+    }
+    if (auto *momentRenderer = this->momentWin->GetRenderers()->GetFirstRenderer()) {
+        for (const auto &actor : this->momentCatalogueOverlayLabelActors) {
+            momentRenderer->RemoveViewProp(actor);
+        }
+    }
+    this->sliceCatalogueOverlayLabelActors.clear();
+    this->momentCatalogueOverlayLabelActors.clear();
+    this->sliceCatalogueOverlayActor->VisibilityOff();
+    this->momentCatalogueOverlayActor->VisibilityOff();
+    if (this->actionShowCatalogueOverlay) {
+        const QSignalBlocker blocker(this->actionShowCatalogueOverlay);
+        this->actionShowCatalogueOverlay->setChecked(false);
+        this->actionShowCatalogueOverlay->setEnabled(false);
+    }
+    if (this->actionClearCatalogueOverlay) {
+        this->actionClearCatalogueOverlay->setEnabled(false);
+    }
+    this->sliceWin->Render();
+    this->momentWin->Render();
+}
+
+void vtkWindowCube::setCatalogueOverlayVisible(bool visible)
+{
+    const bool effectiveVisible = visible && this->catalogueOverlayLoaded;
+    this->sliceCatalogueOverlayActor->SetVisibility(effectiveVisible ? 1 : 0);
+    this->momentCatalogueOverlayActor->SetVisibility(effectiveVisible ? 1 : 0);
+    for (const auto &actor : this->sliceCatalogueOverlayLabelActors) {
+        actor->SetVisibility(effectiveVisible ? 1 : 0);
+    }
+    for (const auto &actor : this->momentCatalogueOverlayLabelActors) {
+        actor->SetVisibility(effectiveVisible ? 1 : 0);
+    }
+    if (effectiveVisible) {
+        this->updateCatalogueOverlayLabels();
+    }
+    this->sliceWin->Render();
+    this->momentWin->Render();
+}
+
+void vtkWindowCube::rebuildCatalogueOverlay()
+{
+    this->catalogueOverlayPoints->Reset();
+    this->catalogueOverlayCells->Reset();
+    this->catalogueOverlayLabelIndices.clear();
+    for (std::size_t i = 0; i < this->catalogueOverlayPixels.size(); ++i) {
+        const double x = this->catalogueOverlayPixels[i][0];
+        const double y = this->catalogueOverlayPixels[i][1];
+        const vtkIdType p0 =
+                this->catalogueOverlayPoints->InsertNextPoint(x - catalogueMarkerHalfSize, y, 0.0);
+        const vtkIdType p1 =
+                this->catalogueOverlayPoints->InsertNextPoint(x + catalogueMarkerHalfSize, y, 0.0);
+        const vtkIdType p2 =
+                this->catalogueOverlayPoints->InsertNextPoint(x, y - catalogueMarkerHalfSize, 0.0);
+        const vtkIdType p3 =
+                this->catalogueOverlayPoints->InsertNextPoint(x, y + catalogueMarkerHalfSize, 0.0);
+        this->catalogueOverlayCells->InsertNextCell(2);
+        this->catalogueOverlayCells->InsertCellPoint(p0);
+        this->catalogueOverlayCells->InsertCellPoint(p1);
+        this->catalogueOverlayCells->InsertNextCell(2);
+        this->catalogueOverlayCells->InsertCellPoint(p2);
+        this->catalogueOverlayCells->InsertCellPoint(p3);
+        if (!this->catalogueOverlayLabels.value(static_cast<qsizetype>(i)).trimmed().isEmpty()
+            && static_cast<int>(this->catalogueOverlayLabelIndices.size()) < maxCatalogueLabelCount) {
+            this->catalogueOverlayLabelIndices.push_back(static_cast<int>(i));
+        }
+    }
+    this->catalogueOverlayData->SetPoints(this->catalogueOverlayPoints);
+    this->catalogueOverlayData->SetLines(this->catalogueOverlayCells);
+    this->catalogueOverlayData->Modified();
+
+    if (auto *sliceRenderer = this->sliceWin->GetRenderers()->GetFirstRenderer()) {
+        for (const auto &actor : this->sliceCatalogueOverlayLabelActors) {
+            sliceRenderer->RemoveViewProp(actor);
+        }
+        this->sliceCatalogueOverlayLabelActors.clear();
+        for (int index : this->catalogueOverlayLabelIndices) {
+            auto actor = vtkSmartPointer<vtkTextActor>::New();
+            actor->SetInput(this->catalogueOverlayLabels.value(index).toUtf8().constData());
+            actor->GetTextProperty()->SetColor(1.0, 0.65, 0.25);
+            actor->GetTextProperty()->SetFontSize(12);
+            actor->GetTextProperty()->SetShadow(true);
+            actor->SetVisibility(this->actionShowCatalogueOverlay && this->actionShowCatalogueOverlay->isChecked());
+            sliceRenderer->AddViewProp(actor);
+            this->sliceCatalogueOverlayLabelActors.push_back(actor);
+        }
+    }
+    if (auto *momentRenderer = this->momentWin->GetRenderers()->GetFirstRenderer()) {
+        for (const auto &actor : this->momentCatalogueOverlayLabelActors) {
+            momentRenderer->RemoveViewProp(actor);
+        }
+        this->momentCatalogueOverlayLabelActors.clear();
+        for (int index : this->catalogueOverlayLabelIndices) {
+            auto actor = vtkSmartPointer<vtkTextActor>::New();
+            actor->SetInput(this->catalogueOverlayLabels.value(index).toUtf8().constData());
+            actor->GetTextProperty()->SetColor(1.0, 0.65, 0.25);
+            actor->GetTextProperty()->SetFontSize(12);
+            actor->GetTextProperty()->SetShadow(true);
+            actor->SetVisibility(this->actionShowCatalogueOverlay && this->actionShowCatalogueOverlay->isChecked());
+            momentRenderer->AddViewProp(actor);
+            this->momentCatalogueOverlayLabelActors.push_back(actor);
+        }
+    }
+    this->updateCatalogueOverlayLabels();
+}
+
+void vtkWindowCube::updateCatalogueOverlayLabels()
+{
+    if (!this->catalogueOverlayLoaded || !this->actionShowCatalogueOverlay
+        || !this->actionShowCatalogueOverlay->isChecked()) {
+        return;
+    }
+
+    const auto updateRendererLabels =
+            [this](vtkRenderer *renderer, std::vector<vtkSmartPointer<vtkTextActor>> &actors) {
+                if (!renderer) {
+                    return;
+                }
+                vtkNew<vtkCoordinate> coordinate;
+                coordinate->SetCoordinateSystemToWorld();
+                for (std::size_t i = 0; i < actors.size()
+                                         && i < this->catalogueOverlayLabelIndices.size();
+                     ++i) {
+                    const int pointIndex = this->catalogueOverlayLabelIndices[i];
+                    if (pointIndex < 0
+                        || static_cast<std::size_t>(pointIndex) >= this->catalogueOverlayPixels.size()) {
+                        continue;
+                    }
+                    coordinate->SetValue(this->catalogueOverlayPixels[pointIndex][0],
+                                         this->catalogueOverlayPixels[pointIndex][1], 0.0);
+                    int *display = coordinate->GetComputedDisplayValue(renderer);
+                    if (!display) {
+                        continue;
+                    }
+                    actors[i]->SetDisplayPosition(display[0] + 4, display[1] + 4);
+                }
+            };
+
+    updateRendererLabels(this->sliceWin->GetRenderers()->GetFirstRenderer(),
+                         this->sliceCatalogueOverlayLabelActors);
+    updateRendererLabels(this->momentWin->GetRenderers()->GetFirstRenderer(),
+                         this->momentCatalogueOverlayLabelActors);
+}
+
+bool vtkWindowCube::catalogueWorldToPixel(double raDeg, double decDeg, std::array<double, 2> &pixel) const
+{
+    if (!std::isfinite(raDeg) || !std::isfinite(decDeg)) {
+        return false;
+    }
+
+    if (!this->isRemoteMode) {
+        if (!this->astro) {
+            return false;
+        }
+        double pos[2] = { raDeg, decDeg };
+        double pix[2] = { 0.0, 0.0 };
+        this->astro->sky2xy(pos, pix, WCS_J2000);
+        if (!std::isfinite(pix[0]) || !std::isfinite(pix[1])) {
+            return false;
+        }
+        pixel = { pix[0], pix[1] };
+        return true;
+    }
+
+    if (!this->remoteHasCelestialAxes()) {
+        return false;
+    }
+
+    double nativeX = raDeg;
+    double nativeY = decDeg;
+    const int nativeFrame = this->remoteNativeCelestialFrame();
+    if (nativeFrame < 0) {
+        return false;
+    }
+    if (nativeFrame != WCS_J2000) {
+        wcscon(WCS_J2000, nativeFrame, 2000.0, 2000.0, &nativeX, &nativeY, 2000.0);
+    }
+    if (std::abs(this->remoteDatasetCdelt[0]) <= std::numeric_limits<double>::epsilon()
+        || std::abs(this->remoteDatasetCdelt[1]) <= std::numeric_limits<double>::epsilon()) {
+        return false;
+    }
+    pixel[0] = ((nativeX - this->remoteDatasetCrval[0]) / this->remoteDatasetCdelt[0])
+            + this->remoteDatasetCrpix[0] - 1.0;
+    pixel[1] = ((nativeY - this->remoteDatasetCrval[1]) / this->remoteDatasetCdelt[1])
+            + this->remoteDatasetCrpix[1] - 1.0;
+    return std::isfinite(pixel[0]) && std::isfinite(pixel[1]);
 }
 
 QString vtkWindowCube::formatSpatialPointSummary(const std::array<int, 2> &voxel) const
