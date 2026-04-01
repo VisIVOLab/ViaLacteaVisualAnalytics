@@ -79,6 +79,7 @@ using namespace Qt::StringLiterals;
 
 namespace {
 constexpr double pi = 3.14159265358979323846;
+constexpr int overlayTickCount = 5;
 
 struct VisibleImageBounds2D
 {
@@ -147,6 +148,50 @@ void configureVerticalAxisTitle(vtkAxisActor2D *axis)
     titleProp->SetColor(1., 1., 1.);
     titleProp->SetFontSize(14);
     axis->SetTitlePosition(0.5);
+}
+
+QString upperCtype(const QString &value)
+{
+    return value.trimmed().toUpper();
+}
+
+int inferCelestialFrameFromCtypePair(const std::array<QString, 3> &ctype)
+{
+    const QString c1 = upperCtype(ctype[0]);
+    const QString c2 = upperCtype(ctype[1]);
+    if (c1.startsWith(u"GLON"_s) && c2.startsWith(u"GLAT"_s)) {
+        return WCS_GALACTIC;
+    }
+    if (c1.startsWith(u"ELON"_s) && c2.startsWith(u"ELAT"_s)) {
+        return WCS_ECLIPTIC;
+    }
+    if (c1.startsWith(u"RA"_s) && c2.startsWith(u"DEC"_s)) {
+        return WCS_J2000;
+    }
+    return -1;
+}
+
+QString formatCelestialCoordinate(int frame, int axis, double value)
+{
+    char buffer[64] = { 0 };
+    if (frame == WCS_J2000 && axis == 0) {
+        ra2str(buffer, sizeof(buffer), value, 1);
+    } else {
+        dec2str(buffer, sizeof(buffer), value, axis == 0 ? 1 : 0);
+    }
+    return QString::fromLatin1(buffer).trimmed();
+}
+
+void configureTickLabelActor(vtkTextActor *actor, bool rightAligned)
+{
+    actor->GetTextProperty()->SetColor(1., 1., 1.);
+    actor->GetTextProperty()->SetFontSize(12);
+    actor->GetTextProperty()->SetVerticalJustificationToCentered();
+    if (rightAligned) {
+        actor->GetTextProperty()->SetJustificationToRight();
+    } else {
+        actor->GetTextProperty()->SetJustificationToCentered();
+    }
 }
 
 vtkSmartPointer<vtkImageData> createPlaceholderImageData()
@@ -1198,7 +1243,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     groupWCS->addAction(ui->actionGalactic);
     groupWCS->addAction(ui->actionFK5);
     groupWCS->addAction(ui->actionEcliptic);
-    ui->menuWCS->setEnabled(this->astro && !this->astro->isSimulation());
+    ui->menuWCS->setEnabled((this->astro && !this->astro->isSimulation()) || this->remoteHasCelestialAxes());
     QObject::connect(groupWCS, &QActionGroup::triggered, this, &vtkWindowCube::changeLegendWCS);
 
     // Setup menu Tools
@@ -2398,6 +2443,59 @@ QString vtkWindowCube::remoteAxisTitle(int axis) const
     return cunit.isEmpty() ? label : u"%1 (%2)"_s.arg(label, cunit);
 }
 
+int vtkWindowCube::selectedWcsFrame() const
+{
+    return ui->actionGalactic->isChecked() ? WCS_GALACTIC
+            : (ui->actionFK5->isChecked() ? WCS_J2000 : WCS_ECLIPTIC);
+}
+
+int vtkWindowCube::remoteNativeCelestialFrame() const
+{
+    return inferCelestialFrameFromCtypePair(this->remoteDatasetCtype);
+}
+
+bool vtkWindowCube::remoteHasCelestialAxes() const
+{
+    return this->remoteNativeCelestialFrame() >= 0 && this->remoteHasWcsAxis(0)
+            && this->remoteHasWcsAxis(1);
+}
+
+bool vtkWindowCube::convertRemoteCelestialCoordinates(double nativeX, double nativeY, double &frameX,
+                                                      double &frameY) const
+{
+    frameX = nativeX;
+    frameY = nativeY;
+    const int nativeFrame = this->remoteNativeCelestialFrame();
+    const int targetFrame = this->selectedWcsFrame();
+    if (nativeFrame < 0) {
+        return false;
+    }
+    if (nativeFrame != targetFrame) {
+        wcscon(nativeFrame, targetFrame, 2000.0, 2000.0, &frameX, &frameY, 2000.0);
+    }
+    return true;
+}
+
+QString vtkWindowCube::formatRemoteOverlayCoordinate(int axis, double value) const
+{
+    if (!this->remoteHasCelestialAxes()) {
+        return QString::number(value, 'g', 8);
+    }
+    return formatCelestialCoordinate(this->selectedWcsFrame(), axis, value);
+}
+
+QString vtkWindowCube::remoteOverlayAxisTitle(int axis) const
+{
+    if (!this->remoteHasCelestialAxes()) {
+        return this->remoteAxisTitle(axis);
+    }
+    const int frame = this->selectedWcsFrame();
+    if (frame == WCS_J2000) {
+        return axis == 0 ? u"Right Ascension"_s : u"Declination"_s;
+    }
+    return axis == 0 ? u"Longitude"_s : u"Latitude"_s;
+}
+
 void vtkWindowCube::set2dWcsOverlayVisible(bool visible)
 {
     const bool useLegend = this->astro && !this->astro->isSimulation();
@@ -2411,6 +2509,51 @@ void vtkWindowCube::set2dWcsOverlayVisible(bool visible)
     this->momentOverlayYAxis->SetVisibility(visible && !useLegend);
     this->momentOverlayXTitleActor->SetVisibility(visible && !useLegend);
     this->momentOverlayYTitleActor->SetVisibility(visible && !useLegend);
+    for (const auto &actor : this->sliceOverlayXTickActors) {
+        if (actor) {
+            actor->SetVisibility(visible && !useLegend);
+        }
+    }
+    for (const auto &actor : this->sliceOverlayYTickActors) {
+        if (actor) {
+            actor->SetVisibility(visible && !useLegend);
+        }
+    }
+    for (const auto &actor : this->momentOverlayXTickActors) {
+        if (actor) {
+            actor->SetVisibility(visible && !useLegend);
+        }
+    }
+    for (const auto &actor : this->momentOverlayYTickActors) {
+        if (actor) {
+            actor->SetVisibility(visible && !useLegend);
+        }
+    }
+}
+
+void vtkWindowCube::ensureOverlayTickActors(
+        vtkRenderer *renderer, std::vector<vtkSmartPointer<vtkTextActor>> &xActors,
+        std::vector<vtkSmartPointer<vtkTextActor>> &yActors)
+{
+    if (!renderer) {
+        return;
+    }
+    if (xActors.empty()) {
+        for (int i = 0; i < overlayTickCount; ++i) {
+            auto actor = vtkSmartPointer<vtkTextActor>::New();
+            configureTickLabelActor(actor, false);
+            renderer->AddViewProp(actor);
+            xActors.push_back(actor);
+        }
+    }
+    if (yActors.empty()) {
+        for (int i = 0; i < overlayTickCount; ++i) {
+            auto actor = vtkSmartPointer<vtkTextActor>::New();
+            configureTickLabelActor(actor, true);
+            renderer->AddViewProp(actor);
+            yActors.push_back(actor);
+        }
+    }
 }
 
 void vtkWindowCube::updateSliceWcsOverlay()
@@ -2426,6 +2569,7 @@ void vtkWindowCube::updateSliceWcsOverlay()
     if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
         return;
     }
+    this->ensureOverlayTickActors(renderer, this->sliceOverlayXTickActors, this->sliceOverlayYTickActors);
 
     const auto visible = computeVisibleImageBounds2D(renderer, imageData);
     if (!visible.valid) {
@@ -2457,11 +2601,11 @@ void vtkWindowCube::updateSliceWcsOverlay()
                        bottomMargin);
     configureAxisActor(this->sliceOverlayYAxis, axisX, size[1] - topMargin, axisX, bottomMargin);
     this->sliceOverlayXAxis->SetTitle("");
-    this->sliceOverlayXTitleActor->SetInput(this->remoteAxisTitle(0).toStdString().c_str());
+    this->sliceOverlayXTitleActor->SetInput(this->remoteOverlayAxisTitle(0).toStdString().c_str());
     this->sliceOverlayXTitleActor->SetDisplayPosition((axisX + (size[0] - rightMargin)) / 2,
                                                       static_cast<int>(bottomMargin / 2.0) - 2);
     this->sliceOverlayYAxis->SetTitle("");
-    this->sliceOverlayYTitleActor->SetInput(this->remoteAxisTitle(1).toStdString().c_str());
+    this->sliceOverlayYTitleActor->SetInput(this->remoteOverlayAxisTitle(1).toStdString().c_str());
     this->sliceOverlayYTitleActor->SetDisplayPosition(static_cast<int>(leftMargin / 3.0), size[1] / 2);
 
     bool xOk = false;
@@ -2472,10 +2616,40 @@ void vtkWindowCube::updateSliceWcsOverlay()
     const double yMax = this->remoteVoxelToWcs(1, visible.ymax, &yOk);
     this->sliceOverlayXAxis->SetRange(xOk ? xMin : visible.xmin, xOk ? xMax : visible.xmax);
     this->sliceOverlayYAxis->SetRange(yOk ? yMax : visible.ymax, yOk ? yMin : visible.ymin);
+    this->sliceOverlayXAxis->LabelVisibilityOff();
+    this->sliceOverlayYAxis->LabelVisibilityOff();
     this->sliceOverlayXAxis->VisibilityOn();
     this->sliceOverlayYAxis->VisibilityOn();
     this->sliceOverlayXTitleActor->VisibilityOn();
     this->sliceOverlayYTitleActor->VisibilityOn();
+    for (int i = 0; i < overlayTickCount; ++i) {
+        const double t = overlayTickCount == 1 ? 0.0
+                                               : static_cast<double>(i)
+                        / static_cast<double>(overlayTickCount - 1);
+        const double voxelX = visible.xmin + t * (visible.xmax - visible.xmin);
+        const double voxelY = visible.ymin + t * (visible.ymax - visible.ymin);
+        bool tickXOk = false;
+        bool tickYOk = false;
+        double tickX = this->remoteVoxelToWcs(0, voxelX, &tickXOk);
+        double tickY = this->remoteVoxelToWcs(1, voxelY, &tickYOk);
+        double frameX = tickX;
+        double frameY = tickY;
+        if (tickXOk && tickYOk && this->remoteHasCelestialAxes()) {
+            this->convertRemoteCelestialCoordinates(tickX, tickY, frameX, frameY);
+        }
+        this->sliceOverlayXTickActors[static_cast<std::size_t>(i)]->SetInput(
+                this->formatRemoteOverlayCoordinate(0, frameX).toStdString().c_str());
+        this->sliceOverlayXTickActors[static_cast<std::size_t>(i)]->SetDisplayPosition(
+                static_cast<int>(axisX + t * ((size[0] - rightMargin) - axisX)),
+                static_cast<int>(bottomMargin - 18));
+        this->sliceOverlayXTickActors[static_cast<std::size_t>(i)]->VisibilityOn();
+        this->sliceOverlayYTickActors[static_cast<std::size_t>(i)]->SetInput(
+                this->formatRemoteOverlayCoordinate(1, frameY).toStdString().c_str());
+        this->sliceOverlayYTickActors[static_cast<std::size_t>(i)]->SetDisplayPosition(
+                static_cast<int>(axisX - 10),
+                static_cast<int>(bottomMargin + t * ((size[1] - topMargin) - bottomMargin)));
+        this->sliceOverlayYTickActors[static_cast<std::size_t>(i)]->VisibilityOn();
+    }
     qDebug().noquote()
             << QStringLiteral("[wcs-overlay] updated ticks for slice x=%1..%2 y=%3..%4 size=%5x%6 actor=%7 endpoints=(%8,%9)->(%10,%11) outer=%12")
                        .arg(visible.xmin, 0, 'g', 12)
@@ -2501,6 +2675,7 @@ void vtkWindowCube::updateMomentWcsOverlay()
     if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
         return;
     }
+    this->ensureOverlayTickActors(renderer, this->momentOverlayXTickActors, this->momentOverlayYTickActors);
 
     const auto visible = computeVisibleImageBounds2D(renderer, imageData);
     if (!visible.valid) {
@@ -2532,11 +2707,11 @@ void vtkWindowCube::updateMomentWcsOverlay()
                        bottomMargin);
     configureAxisActor(this->momentOverlayYAxis, axisX, size[1] - topMargin, axisX, bottomMargin);
     this->momentOverlayXAxis->SetTitle("");
-    this->momentOverlayXTitleActor->SetInput(this->remoteAxisTitle(0).toStdString().c_str());
+    this->momentOverlayXTitleActor->SetInput(this->remoteOverlayAxisTitle(0).toStdString().c_str());
     this->momentOverlayXTitleActor->SetDisplayPosition((axisX + (size[0] - rightMargin)) / 2,
                                                        static_cast<int>(bottomMargin / 2.0) - 2);
     this->momentOverlayYAxis->SetTitle("");
-    this->momentOverlayYTitleActor->SetInput(this->remoteAxisTitle(1).toStdString().c_str());
+    this->momentOverlayYTitleActor->SetInput(this->remoteOverlayAxisTitle(1).toStdString().c_str());
     this->momentOverlayYTitleActor->SetDisplayPosition(static_cast<int>(leftMargin / 3.0), size[1] / 2);
 
     bool xOk = false;
@@ -2547,10 +2722,40 @@ void vtkWindowCube::updateMomentWcsOverlay()
     const double yMax = this->remoteVoxelToWcs(1, visible.ymax, &yOk);
     this->momentOverlayXAxis->SetRange(xOk ? xMin : visible.xmin, xOk ? xMax : visible.xmax);
     this->momentOverlayYAxis->SetRange(yOk ? yMax : visible.ymax, yOk ? yMin : visible.ymin);
+    this->momentOverlayXAxis->LabelVisibilityOff();
+    this->momentOverlayYAxis->LabelVisibilityOff();
     this->momentOverlayXAxis->VisibilityOn();
     this->momentOverlayYAxis->VisibilityOn();
     this->momentOverlayXTitleActor->VisibilityOn();
     this->momentOverlayYTitleActor->VisibilityOn();
+    for (int i = 0; i < overlayTickCount; ++i) {
+        const double t = overlayTickCount == 1 ? 0.0
+                                               : static_cast<double>(i)
+                        / static_cast<double>(overlayTickCount - 1);
+        const double voxelX = visible.xmin + t * (visible.xmax - visible.xmin);
+        const double voxelY = visible.ymin + t * (visible.ymax - visible.ymin);
+        bool tickXOk = false;
+        bool tickYOk = false;
+        double tickX = this->remoteVoxelToWcs(0, voxelX, &tickXOk);
+        double tickY = this->remoteVoxelToWcs(1, voxelY, &tickYOk);
+        double frameX = tickX;
+        double frameY = tickY;
+        if (tickXOk && tickYOk && this->remoteHasCelestialAxes()) {
+            this->convertRemoteCelestialCoordinates(tickX, tickY, frameX, frameY);
+        }
+        this->momentOverlayXTickActors[static_cast<std::size_t>(i)]->SetInput(
+                this->formatRemoteOverlayCoordinate(0, frameX).toStdString().c_str());
+        this->momentOverlayXTickActors[static_cast<std::size_t>(i)]->SetDisplayPosition(
+                static_cast<int>(axisX + t * ((size[0] - rightMargin) - axisX)),
+                static_cast<int>(bottomMargin - 18));
+        this->momentOverlayXTickActors[static_cast<std::size_t>(i)]->VisibilityOn();
+        this->momentOverlayYTickActors[static_cast<std::size_t>(i)]->SetInput(
+                this->formatRemoteOverlayCoordinate(1, frameY).toStdString().c_str());
+        this->momentOverlayYTickActors[static_cast<std::size_t>(i)]->SetDisplayPosition(
+                static_cast<int>(axisX - 10),
+                static_cast<int>(bottomMargin + t * ((size[1] - topMargin) - bottomMargin)));
+        this->momentOverlayYTickActors[static_cast<std::size_t>(i)]->VisibilityOn();
+    }
     qDebug().noquote()
             << QStringLiteral("[wcs-overlay] updated ticks for moment x=%1..%2 y=%3..%4 size=%5x%6 actor=%7 endpoints=(%8,%9)->(%10,%11) outer=%12")
                        .arg(visible.xmin, 0, 'g', 12)
@@ -2819,14 +3024,24 @@ void vtkWindowCube::sliceSpinChanged(int value)
 
 void vtkWindowCube::changeLegendWCS()
 {
-    if (!this->astro) {
-        return;
-    }
-
     const int wcs = (ui->actionGalactic->isChecked()
                              ? WCS_GALACTIC
                              : (ui->actionFK5->isChecked() ? WCS_J2000 : WCS_ECLIPTIC));
-    this->viewController->setLegendWcs(wcs);
+    if (this->astro) {
+        this->viewController->setLegendWcs(wcs);
+    }
+    this->lastSliceOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                            std::numeric_limits<double>::quiet_NaN(),
+                                            std::numeric_limits<double>::quiet_NaN(),
+                                            std::numeric_limits<double>::quiet_NaN() };
+    this->lastMomentOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::quiet_NaN() };
+    qDebug().noquote()
+            << QStringLiteral("[wcs] overlay using selected frame %1")
+                       .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
+                                                : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
     ui->vtkImage->renderWindow()->Render();
 }
 

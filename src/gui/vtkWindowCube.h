@@ -20,6 +20,7 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <vector>
 
 class CubeViewController;
 class QCheckBox;
@@ -45,6 +46,7 @@ class vtkOrientationMarkerWidget;
 class vtkPlaneSource;
 class vtkPiecewiseFunction;
 class vtkPolyData;
+class vtkRenderer;
 class vtkTextActor;
 class vtkTrivialProducer;
 class vtkVolume;
@@ -259,9 +261,19 @@ private:
     double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
     QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
     QString remoteAxisTitle(int axis) const;
+    int selectedWcsFrame() const;
+    int remoteNativeCelestialFrame() const;
+    bool remoteHasCelestialAxes() const;
+    bool convertRemoteCelestialCoordinates(double nativeX, double nativeY, double &frameX,
+                                           double &frameY) const;
+    QString formatRemoteOverlayCoordinate(int axis, double value) const;
+    QString remoteOverlayAxisTitle(int axis) const;
     void updateSliceWcsOverlay();
     void updateMomentWcsOverlay();
     void set2dWcsOverlayVisible(bool visible);
+    void ensureOverlayTickActors(vtkRenderer *renderer,
+                                 std::vector<vtkSmartPointer<vtkTextActor>> &xActors,
+                                 std::vector<vtkSmartPointer<vtkTextActor>> &yActors);
 
     // Slice
     vtkNew<vtkImageReslice> slice;
@@ -275,6 +287,8 @@ private:
     vtkNew<vtkAxisActor2D> sliceOverlayYAxis;
     vtkNew<vtkTextActor> sliceOverlayXTitleActor;
     vtkNew<vtkTextActor> sliceOverlayYTitleActor;
+    std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
+    std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
     std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                          std::numeric_limits<double>::quiet_NaN(),
                                                          std::numeric_limits<double>::quiet_NaN(),
@@ -312,6 +326,8 @@ private:
     vtkNew<vtkAxisActor2D> momentOverlayYAxis;
     vtkNew<vtkTextActor> momentOverlayXTitleActor;
     vtkNew<vtkTextActor> momentOverlayYTitleActor;
+    std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
+    std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;
     std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                           std::numeric_limits<double>::quiet_NaN(),
                                                           std::numeric_limits<double>::quiet_NaN(),

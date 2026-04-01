@@ -4,6 +4,7 @@
 #include "ImageLayerLoadTask.h"
 
 #include <vtkNew.h>
+#include <vtkSmartPointer.h>
 
 #include <QCloseEvent>
 #include <QElapsedTimer>
@@ -15,6 +16,7 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <vector>
 
 class ImageLayerController;
 class ImageLayerImportService;
@@ -27,6 +29,7 @@ class vtkAxisActor2D;
 class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
+class vtkRenderer;
 class vtkScalarBarActor;
 class vtkTextActor;
 
@@ -98,6 +101,8 @@ private:
     vtkNew<vtkAxisActor2D> overlayYAxis;
     vtkNew<vtkTextActor> overlayXTitleActor;
     vtkNew<vtkTextActor> overlayYTitleActor;
+    std::vector<vtkSmartPointer<vtkTextActor>> overlayXTickActors;
+    std::vector<vtkSmartPointer<vtkTextActor>> overlayYTickActors;
     vtkNew<vtkScalarBarActor> colorbar;
     vtkNew<vtkCoordinate> coordinate;
     bool showWcsAxes{ true };
@@ -110,6 +115,7 @@ private:
     void mouseCallback();
     void updateWcsOverlay();
     void setWcsOverlayVisible(bool visible);
+    void ensureOverlayTickActors(vtkRenderer *renderer);
 
     // Stack
     vtkNew<vtkImageStack> stack;
@@ -127,6 +133,13 @@ private:
     double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
     QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
     QString remoteAxisTitle(int axis) const;
+    int selectedWcsFrame() const;
+    int remoteNativeCelestialFrame() const;
+    bool remoteHasCelestialAxes() const;
+    bool convertRemoteCelestialCoordinates(double nativeX, double nativeY, double &frameX,
+                                           double &frameY) const;
+    QString formatRemoteOverlayCoordinate(int axis, double value) const;
+    QString remoteOverlayAxisTitle(int axis) const;
 };
 
 #endif
