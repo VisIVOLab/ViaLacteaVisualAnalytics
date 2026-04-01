@@ -165,6 +165,115 @@ bool validBounds(const double bounds[6])
             && bounds[0] <= bounds[1] && bounds[2] <= bounds[3] && bounds[4] <= bounds[5];
 }
 
+bool displayPointToWorld(vtkRenderer *renderer, double x, double y, double z, double world[3])
+{
+    if (!renderer) {
+        return false;
+    }
+
+    renderer->SetDisplayPoint(x, y, z);
+    renderer->DisplayToWorld();
+    const double *worldPoint = renderer->GetWorldPoint();
+    if (!worldPoint || std::fabs(worldPoint[3]) <= 1e-9) {
+        return false;
+    }
+
+    world[0] = worldPoint[0] / worldPoint[3];
+    world[1] = worldPoint[1] / worldPoint[3];
+    world[2] = worldPoint[2] / worldPoint[3];
+    return std::isfinite(world[0]) && std::isfinite(world[1]) && std::isfinite(world[2]);
+}
+
+bool intersectLineWithBounds(const double p0[3], const double p1[3], const double bounds[6],
+                             double entry[3], double exit[3])
+{
+    double direction[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+    double tMin = 0.0;
+    double tMax = 1.0;
+
+    for (int axis = 0; axis < 3; ++axis) {
+        const int i0 = axis * 2;
+        const int i1 = i0 + 1;
+        if (std::fabs(direction[axis]) <= 1e-12) {
+            if (p0[axis] < bounds[i0] || p0[axis] > bounds[i1]) {
+                return false;
+            }
+            continue;
+        }
+
+        const double invDir = 1.0 / direction[axis];
+        double t0 = (bounds[i0] - p0[axis]) * invDir;
+        double t1 = (bounds[i1] - p0[axis]) * invDir;
+        if (t0 > t1) {
+            std::swap(t0, t1);
+        }
+        tMin = std::max(tMin, t0);
+        tMax = std::min(tMax, t1);
+        if (tMin > tMax) {
+            return false;
+        }
+    }
+
+    for (int axis = 0; axis < 3; ++axis) {
+        entry[axis] = p0[axis] + tMin * direction[axis];
+        exit[axis] = p0[axis] + tMax * direction[axis];
+    }
+    return true;
+}
+
+bool computeViewportIntersectionBounds(vtkRenderer *renderer, vtkRenderWindow *window,
+                                       const double cubeBounds[6], double bounds[6])
+{
+    if (!renderer || !window || !validBounds(cubeBounds)) {
+        return false;
+    }
+
+    const int *size = window->GetSize();
+    if (!size || size[0] <= 1 || size[1] <= 1) {
+        return false;
+    }
+
+    bounds[0] = bounds[2] = bounds[4] = std::numeric_limits<double>::infinity();
+    bounds[1] = bounds[3] = bounds[5] = -std::numeric_limits<double>::infinity();
+    const std::array<std::pair<double, double>, 9> samples = {{
+            { 0.0, 0.0 },
+            { static_cast<double>(size[0] - 1), 0.0 },
+            { 0.0, static_cast<double>(size[1] - 1) },
+            { static_cast<double>(size[0] - 1), static_cast<double>(size[1] - 1) },
+            { 0.5 * (size[0] - 1), 0.0 },
+            { 0.5 * (size[0] - 1), static_cast<double>(size[1] - 1) },
+            { 0.0, 0.5 * (size[1] - 1) },
+            { static_cast<double>(size[0] - 1), 0.5 * (size[1] - 1) },
+            { 0.5 * (size[0] - 1), 0.5 * (size[1] - 1) },
+    }};
+
+    bool hasIntersection = false;
+    for (const auto &[x, y] : samples) {
+        double nearWorld[3];
+        double farWorld[3];
+        if (!displayPointToWorld(renderer, x, y, 0.0, nearWorld)
+            || !displayPointToWorld(renderer, x, y, 1.0, farWorld)) {
+            continue;
+        }
+
+        double entry[3];
+        double exit[3];
+        if (!intersectLineWithBounds(nearWorld, farWorld, cubeBounds, entry, exit)) {
+            continue;
+        }
+
+        hasIntersection = true;
+        for (int axis = 0; axis < 3; ++axis) {
+            const int i0 = axis * 2;
+            const int i1 = i0 + 1;
+            bounds[i0] = std::min(bounds[i0], std::min(entry[axis], exit[axis]));
+            bounds[i1] = std::max(bounds[i1], std::max(entry[axis], exit[axis]));
+        }
+    }
+
+    return hasIntersection && validBounds(bounds);
+}
+
 void refitParallelSliceCamera(vtkRenderer *renderer, vtkImageData *sliceImage, vtkRenderWindow *win)
 {
     if (!renderer || !sliceImage || !win) {
@@ -564,19 +673,19 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
     this->cubeOpenStateLabel->hide();
     this->statusBar()->addPermanentWidget(this->cubeOpenStateLabel);
-    this->remoteRoiRefinementCheck = new QCheckBox(u"Use Central ROI"_s, this);
-    this->remoteRoiRefinementCheck->setChecked(this->useCentralRoiRefinement);
+    this->remoteRoiRefinementCheck = new QCheckBox(u"Use Camera ROI"_s, this);
+    this->remoteRoiRefinementCheck->setChecked(this->useCameraRoiRefinement);
     this->remoteRoiRefinementCheck->setToolTip(
-            u"Unchecked: refine using the full dataset. Checked: refine using a central ROI."_s);
+            u"Unchecked: refine using the full dataset. Checked: refine using the current camera view."_s);
     this->remoteRoiRefinementCheck->setVisible(this->isRemoteMode);
     this->remoteRoiRefinementCheck->setEnabled(this->isRemoteMode);
     this->statusBar()->addPermanentWidget(this->remoteRoiRefinementCheck);
     QObject::connect(this->remoteRoiRefinementCheck, &QCheckBox::toggled, this,
                      [this](bool checked) {
-                         this->useCentralRoiRefinement = checked;
+                         this->useCameraRoiRefinement = checked;
                          qDebug().noquote()
                                  << QStringLiteral("[remote-roi] mode toggled to %1")
-                                            .arg(checked ? u"Central ROI"_s : u"Full"_s);
+                                            .arg(checked ? u"Camera ROI"_s : u"Full"_s);
                          if (!this->isRemoteMode) {
                              return;
                          }
@@ -1461,31 +1570,107 @@ void vtkWindowCube::updateCube()
 
 std::array<int, 6> vtkWindowCube::computeVisibleROI() const
 {
-    if (!this->useCentralRoiRefinement) {
-        return { 0,
-                 std::max(0, this->remoteDatasetWidth - 1),
-                 0,
-                 std::max(0, this->remoteDatasetHeight - 1),
-                 0,
-                 std::max(0, this->remoteDatasetDepth - 1) };
+    const auto fullRoi = std::array<int, 6> { 0,
+                                              std::max(0, this->remoteDatasetWidth - 1),
+                                              0,
+                                              std::max(0, this->remoteDatasetHeight - 1),
+                                              0,
+                                              std::max(0, this->remoteDatasetDepth - 1) };
+    if (!this->useCameraRoiRefinement) {
+        return fullRoi;
     }
 
-    const auto computeAxisRoi = [](int size) -> std::array<int, 2> {
-        const int maxIndex = std::max(0, size - 1);
-        if (size <= 1) {
+    auto *renderer = ui->vtkCube->renderWindow()
+            ? ui->vtkCube->renderWindow()->GetRenderers()->GetFirstRenderer()
+            : nullptr;
+    auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    if (!renderer || !cubeImage) {
+        return fullRoi;
+    }
+
+    double displayedBounds[6];
+    cubeImage->GetBounds(displayedBounds);
+    if (!validBounds(displayedBounds)) {
+        return fullRoi;
+    }
+
+    double viewportBounds[6];
+    if (!computeViewportIntersectionBounds(renderer, ui->vtkCube->renderWindow(), displayedBounds,
+                                           viewportBounds)) {
+        return fullRoi;
+    }
+
+    double clippedBounds[6];
+    for (int axis = 0; axis < 3; ++axis) {
+        const int i0 = axis * 2;
+        const int i1 = i0 + 1;
+        clippedBounds[i0] = std::max(displayedBounds[i0], viewportBounds[i0]);
+        clippedBounds[i1] = std::min(displayedBounds[i1], viewportBounds[i1]);
+        if (!std::isfinite(clippedBounds[i0]) || !std::isfinite(clippedBounds[i1])
+            || clippedBounds[i0] > clippedBounds[i1]) {
+            return fullRoi;
+        }
+    }
+
+    const auto convertAxis = [&](double worldMin, double worldMax, double displayMin, double displayMax,
+                                 int fullSize) -> std::array<int, 2> {
+        const int maxIndex = std::max(0, fullSize - 1);
+        if (maxIndex <= 0 || !std::isfinite(worldMin) || !std::isfinite(worldMax)) {
             return { 0, maxIndex };
         }
 
-        const int minKeep = std::min(size, std::max(8, size / 2));
-        const int keep = std::clamp(static_cast<int>(std::lround(size * 0.6)), minKeep, size);
-        const int start = std::max(0, (size - keep) / 2);
-        const int end = std::min(maxIndex, start + keep - 1);
-        return { start, end };
+        if (this->usingHighResCube) {
+            const int start = std::clamp(static_cast<int>(std::floor(worldMin)), 0, maxIndex);
+            const int end = std::clamp(static_cast<int>(std::ceil(worldMax)), 0, maxIndex);
+            return { std::min(start, end), std::max(start, end) };
+        }
+
+        const double span = displayMax - displayMin;
+        if (span <= 1e-9) {
+            return { 0, maxIndex };
+        }
+
+        const double normalizedMin = std::clamp((worldMin - displayMin) / span, 0.0, 1.0);
+        const double normalizedMax = std::clamp((worldMax - displayMin) / span, 0.0, 1.0);
+        const int start =
+                std::clamp(static_cast<int>(std::floor(normalizedMin * maxIndex)), 0, maxIndex);
+        const int end =
+                std::clamp(static_cast<int>(std::ceil(normalizedMax * maxIndex)), 0, maxIndex);
+        return { std::min(start, end), std::max(start, end) };
     };
 
-    const auto x = computeAxisRoi(this->remoteDatasetWidth);
-    const auto y = computeAxisRoi(this->remoteDatasetHeight);
-    const auto z = computeAxisRoi(this->remoteDatasetDepth);
+    auto x = convertAxis(clippedBounds[0], clippedBounds[1], displayedBounds[0], displayedBounds[1],
+                         this->remoteDatasetWidth);
+    auto y = convertAxis(clippedBounds[2], clippedBounds[3], displayedBounds[2], displayedBounds[3],
+                         this->remoteDatasetHeight);
+    auto z = convertAxis(clippedBounds[4], clippedBounds[5], displayedBounds[4], displayedBounds[5],
+                         this->remoteDatasetDepth);
+
+    const auto padAxis = [](std::array<int, 2> roi, int fullSize) -> std::array<int, 2> {
+        const int maxIndex = std::max(0, fullSize - 1);
+        const int extent = std::max(1, roi[1] - roi[0] + 1);
+        const int padding = std::max(1, static_cast<int>(std::ceil(extent * 0.1)));
+        roi[0] = std::max(0, roi[0] - padding);
+        roi[1] = std::min(maxIndex, roi[1] + padding);
+        return roi;
+    };
+
+    x = padAxis(x, this->remoteDatasetWidth);
+    y = padAxis(y, this->remoteDatasetHeight);
+    z = padAxis(z, this->remoteDatasetDepth);
+
+    if (x[0] > x[1] || y[0] > y[1] || z[0] > z[1]) {
+        return fullRoi;
+    }
+
+    qDebug().noquote()
+            << QStringLiteral("[remote-roi] viewport roi x=%1..%2 y=%3..%4 z=%5..%6")
+                       .arg(x[0])
+                       .arg(x[1])
+                       .arg(y[0])
+                       .arg(y[1])
+                       .arg(z[0])
+                       .arg(z[1]);
     return { x[0], x[1], y[0], y[1], z[0], z[1] };
 }
 
@@ -1499,7 +1684,7 @@ bool vtkWindowCube::requestHighResCube()
     this->currentRemoteRoi = roi;
     qDebug().noquote()
             << QStringLiteral("[remote-roi] mode=%1 request x=%2..%3 y=%4..%5 z=%6..%7")
-                       .arg(this->useCentralRoiRefinement ? u"Central ROI"_s : u"Full"_s)
+                       .arg(this->useCameraRoiRefinement ? u"Camera ROI"_s : u"Full"_s)
                        .arg(roi[0])
                        .arg(roi[1])
                        .arg(roi[2])

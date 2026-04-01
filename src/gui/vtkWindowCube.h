@@ -186,7 +186,7 @@ private:
     int statusMessageMinDurationMs{ 0 };
     bool persistentStatusActive{ false };
     bool usingHighResCube{ false };
-    bool useCentralRoiRefinement{ false };
+    bool useCameraRoiRefinement{ false };
     bool pendingRemoteRefinementReload{ false };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
