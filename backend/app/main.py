@@ -138,6 +138,28 @@ class CubeSubvolumeResponse(BaseModel):
     data_base64: str = ""
 
 
+class CubePvRequest(BaseModel):
+    dataset_id: str
+    vertices: list[list[int]]
+    width_pixels: int = 1
+
+
+class CubePvResponse(BaseModel):
+    valid: bool
+    error: str
+    num_samples: int = 0
+    depth: int = 0
+    scalar_type: str = ""
+    compression: str = ""
+    positions_base64: str = ""
+    data_base64: str = ""
+    computed_on: str = ""
+    width_pixels: int = 1
+    vertex_count: int = 0
+    total_length: float = 0.0
+    valid_samples: int = 0
+
+
 class ImageFullRequest(BaseModel):
     dataset_id: str
 
@@ -398,6 +420,110 @@ def _moment_map(cube: np.ndarray, header: fits.Header, order: int) -> np.ndarray
     raise ValueError("Unsupported moment order.")
 
 
+def _sample_polyline_points(vertices: list[tuple[int, int]]) -> tuple[list[tuple[int, int]], float]:
+    sampled_points: list[tuple[int, int]] = []
+    cumulative_distance = 0.0
+    if len(vertices) < 2:
+        return sampled_points, cumulative_distance
+
+    for segment_index in range(1, len(vertices)):
+        start = vertices[segment_index - 1]
+        end = vertices[segment_index]
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        steps = max(abs(dx), abs(dy))
+        if steps <= 0:
+            if not sampled_points or sampled_points[-1] != start:
+                sampled_points.append(start)
+            continue
+
+        for step in range(steps + 1):
+            t = float(step) / float(steps)
+            point = (
+                int(round(float(start[0]) + t * dx)),
+                int(round(float(start[1]) + t * dy)),
+            )
+            if sampled_points and sampled_points[-1] == point:
+                continue
+            if sampled_points:
+                cumulative_distance += float(
+                    np.hypot(point[0] - sampled_points[-1][0], point[1] - sampled_points[-1][1])
+                )
+            sampled_points.append(point)
+
+    return sampled_points, cumulative_distance
+
+
+def _pv_local_normal(sampled_points: list[tuple[int, int]], index: int) -> tuple[float, float]:
+    if not sampled_points:
+        return 0.0, 1.0
+
+    center = sampled_points[index]
+    prev_point = sampled_points[index if index == 0 else index - 1]
+    next_point = sampled_points[index + 1 if index + 1 < len(sampled_points) else index]
+    tx = float(next_point[0] - prev_point[0])
+    ty = float(next_point[1] - prev_point[1])
+    if tx == 0.0 and ty == 0.0:
+        tx, ty = 1.0, 0.0
+        if index > 0:
+            tx = float(center[0] - sampled_points[index - 1][0])
+            ty = float(center[1] - sampled_points[index - 1][1])
+        elif index + 1 < len(sampled_points):
+            tx = float(sampled_points[index + 1][0] - center[0])
+            ty = float(sampled_points[index + 1][1] - center[1])
+
+    length = float(np.hypot(tx, ty))
+    if length <= 0.0:
+        return 0.0, 1.0
+    return -ty / length, tx / length
+
+
+def _compute_pv_matrix(
+    cube: np.ndarray, vertices: list[tuple[int, int]], width_pixels: int
+) -> tuple[np.ndarray, np.ndarray, int, float]:
+    if cube.ndim != 3:
+        raise ValueError("PV extraction requires a cube dataset.")
+
+    sampled_points, total_length = _sample_polyline_points(vertices)
+    if len(sampled_points) < 2:
+        raise ValueError("Define at least two points for PV path.")
+
+    depth, height, width = cube.shape
+    x_samples = len(sampled_points)
+    positions = np.zeros(x_samples, dtype=np.float32)
+    pv = np.full((depth, x_samples), np.nan, dtype=np.float32)
+    valid_samples = 0
+    half_width = 0.5 * float(max(1, width_pixels) - 1)
+
+    for i in range(1, x_samples):
+        positions[i] = positions[i - 1] + float(
+            np.hypot(
+                sampled_points[i][0] - sampled_points[i - 1][0],
+                sampled_points[i][1] - sampled_points[i - 1][1],
+            )
+        )
+
+    for sample_index, center in enumerate(sampled_points):
+        nx, ny = _pv_local_normal(sampled_points, sample_index)
+        for z in range(depth):
+            values: list[float] = []
+            for offset_index in range(max(1, width_pixels)):
+                centered_offset = float(offset_index) - half_width
+                sample_x = int(round(float(center[0]) + centered_offset * nx))
+                sample_y = int(round(float(center[1]) + centered_offset * ny))
+                if sample_x < 0 or sample_x >= width or sample_y < 0 or sample_y >= height:
+                    continue
+                value = float(cube[z, sample_y, sample_x])
+                if not np.isfinite(value):
+                    continue
+                values.append(value)
+            if values:
+                pv[z, sample_index] = float(np.mean(values))
+                valid_samples += 1
+
+    return positions, pv, valid_samples, total_length
+
+
 @app.get("/health")
 def health() -> dict[str, bool]:
     return {"ok": True}
@@ -626,6 +752,66 @@ def cube_subvolume(request: CubeSubvolumeRequest) -> CubeSubvolumeResponse:
         depth=int(subvolume.shape[0]),
         scalar_type="float32",
         data_base64=_encode_array(subvolume),
+    )
+
+
+@app.post("/cube/pv", response_model=CubePvResponse)
+def cube_pv(request: CubePvRequest) -> CubePvResponse:
+    try:
+        cube_path = _require_cube(request.dataset_id)
+        cube, _ = _load_dataset_array(cube_path)
+        if cube.ndim != 3:
+            raise ValueError("PV endpoint requires a cube dataset.")
+
+        cleaned_vertices: list[tuple[int, int]] = []
+        for vertex in request.vertices:
+            if len(vertex) < 2:
+                continue
+            point = (int(vertex[0]), int(vertex[1]))
+            if not cleaned_vertices or cleaned_vertices[-1] != point:
+                cleaned_vertices.append(point)
+
+        if len(cleaned_vertices) < 2:
+            raise ValueError("Define at least two points for PV path.")
+
+        width_pixels = max(1, int(request.width_pixels))
+        positions, pv, valid_samples, total_length = _compute_pv_matrix(
+            cube, cleaned_vertices, width_pixels
+        )
+        if valid_samples <= 0:
+            raise ValueError("No valid data found along PV cut in the full remote dataset.")
+    except Exception as exc:
+        logger.warning("[remote-pv] failed dataset_id=%s error=%s", request.dataset_id, exc)
+        return CubePvResponse(valid=False, error=str(exc))
+
+    compression, positions_base64 = _encode_array_compressed(positions)
+    data_compression, data_base64 = _encode_array_compressed(pv.reshape(-1))
+    if compression != data_compression:
+        return CubePvResponse(valid=False, error="Inconsistent PV payload compression.")
+    logger.info(
+        "[remote-pv] dataset_id=%s vertices=%s width=%s samples=%s depth=%s valid=%s total_length=%s",
+        request.dataset_id,
+        len(cleaned_vertices),
+        width_pixels,
+        int(positions.shape[0]),
+        int(pv.shape[0]),
+        valid_samples,
+        float(total_length),
+    )
+    return CubePvResponse(
+        valid=True,
+        error="",
+        num_samples=int(positions.shape[0]),
+        depth=int(pv.shape[0]),
+        scalar_type="float32",
+        compression=compression,
+        positions_base64=positions_base64,
+        data_base64=data_base64,
+        computed_on="full_dataset",
+        width_pixels=width_pixels,
+        vertex_count=len(cleaned_vertices),
+        total_length=float(total_length),
+        valid_samples=valid_samples,
     )
 
 

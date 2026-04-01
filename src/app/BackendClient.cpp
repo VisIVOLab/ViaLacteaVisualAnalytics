@@ -260,6 +260,51 @@ BackendCubeSubvolumeResult BackendClient::requestSubvolume(const QString &datase
     return result;
 }
 
+BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
+                                             const std::vector<std::array<int, 2>> &vertices,
+                                             int widthPixels) const
+{
+    BackendCubePvResult result;
+    QString error;
+    QJsonArray vertexArray;
+    for (const auto &vertex : vertices) {
+        vertexArray.append(QJsonArray{ vertex[0], vertex[1] });
+    }
+
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("vertices"), vertexArray },
+                                          { QStringLiteral("width_pixels"), widthPixels } });
+    const QByteArray payload = this->performPost(QUrl(this->m_baseUrl + "/cube/pv"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.numSamples = object.value("num_samples").toInt();
+    result.depth = object.value("depth").toInt();
+    result.scalarType = object.value("scalar_type").toString();
+    result.computedOn = object.value("computed_on").toString();
+    result.widthPixels = object.value("width_pixels").toInt(1);
+    result.vertexCount = object.value("vertex_count").toInt();
+    result.totalLength = object.value("total_length").toDouble();
+    result.validSamples = object.value("valid_samples").toInt();
+    result.positions =
+            this->decodePayload(object, QStringLiteral("positions_base64"), QStringLiteral("compression"),
+                                result.error);
+    if (result.error.isEmpty()) {
+        result.data =
+                this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                    result.error);
+    }
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
+    return result;
+}
+
 BackendImageResult BackendClient::requestImage(const QString &datasetId) const
 {
     BackendImageResult result;

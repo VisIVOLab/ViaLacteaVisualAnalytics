@@ -105,6 +105,22 @@ struct BackendCubeSubvolumeResult
     QByteArray data;
 };
 
+struct BackendCubePvResult
+{
+    bool valid{ false };
+    QString error;
+    int numSamples{ 0 };
+    int depth{ 0 };
+    QString scalarType;
+    QByteArray positions;
+    QByteArray data;
+    QString computedOn;
+    int widthPixels{ 1 };
+    int vertexCount{ 0 };
+    double totalLength{ 0. };
+    int validSamples{ 0 };
+};
+
 struct BackendImageResult
 {
     bool valid{ false };
@@ -145,6 +161,9 @@ public:
                                         int index) const;
     BackendCubeSubvolumeResult requestSubvolume(const QString &datasetId, int x0, int x1, int y0,
                                                 int y1, int z0, int z1) const;
+    BackendCubePvResult requestPv(const QString &datasetId,
+                                  const std::vector<std::array<int, 2>> &vertices,
+                                  int widthPixels) const;
     BackendImageResult requestImage(const QString &datasetId) const;
     BackendIsosurfaceResult requestIsosurface(const QString &datasetId, double threshold) const;
     BackendMomentResult requestMoment(const QString &datasetId, int order) const;

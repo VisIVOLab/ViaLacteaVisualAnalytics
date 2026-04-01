@@ -260,6 +260,7 @@ private:
     bool pvDragging{ false };
     bool pvValid{ false };
     bool pvCursorValid{ false };
+    int pvWidthPixels{ 1 };
     bool useSexagesimalWcsFormat{ false };
     bool wcsFormatExplicitlyChosen{ false };
     bool sliceWcsOverlayInitialized{ false };
@@ -314,6 +315,10 @@ private:
     void updateProbeReadout(vtkImageData *imageData);
     void updateProbePlot();
     QString formatSpatialPointSummary(const std::array<int, 2> &voxel) const;
+    std::vector<std::array<int, 2>> pvSampledPath(
+            const std::vector<std::array<int, 2>> &vertices) const;
+    std::array<double, 2> pvLocalNormalForSample(
+            const std::vector<std::array<int, 2>> &sampledPoints, std::size_t index) const;
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 3> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;
     bool viewingIsosurface() const;
@@ -404,6 +409,14 @@ private:
     vtkNew<vtkCellArray> slicePvCells;
     vtkNew<vtkPolyData> slicePvData;
     vtkNew<vtkActor> slicePvActor;
+    vtkNew<vtkPoints> slicePvUpperPoints;
+    vtkNew<vtkCellArray> slicePvUpperCells;
+    vtkNew<vtkPolyData> slicePvUpperData;
+    vtkNew<vtkActor> slicePvUpperActor;
+    vtkNew<vtkPoints> slicePvLowerPoints;
+    vtkNew<vtkCellArray> slicePvLowerCells;
+    vtkNew<vtkPolyData> slicePvLowerData;
+    vtkNew<vtkActor> slicePvLowerActor;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
     std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
@@ -461,6 +474,14 @@ private:
     vtkNew<vtkCellArray> momentPvCells;
     vtkNew<vtkPolyData> momentPvData;
     vtkNew<vtkActor> momentPvActor;
+    vtkNew<vtkPoints> momentPvUpperPoints;
+    vtkNew<vtkCellArray> momentPvUpperCells;
+    vtkNew<vtkPolyData> momentPvUpperData;
+    vtkNew<vtkActor> momentPvUpperActor;
+    vtkNew<vtkPoints> momentPvLowerPoints;
+    vtkNew<vtkCellArray> momentPvLowerCells;
+    vtkNew<vtkPolyData> momentPvLowerData;
+    vtkNew<vtkActor> momentPvLowerActor;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> momentOverlayYTickActors;
     std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),

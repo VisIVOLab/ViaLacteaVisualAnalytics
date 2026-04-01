@@ -98,6 +98,21 @@ struct VisibleImageBounds2D
     double ymax{ 0. };
 };
 
+struct RemotePvFetchResult
+{
+    bool valid{ false };
+    QString errorMessage;
+    QVector<double> positions;
+    QVector<double> values;
+    int numSamples{ 0 };
+    int depth{ 0 };
+    QString computedOn;
+    int widthPixels{ 1 };
+    int vertexCount{ 0 };
+    double totalLength{ 0. };
+    int validSamples{ 0 };
+};
+
 struct RegionStatistics
 {
     int totalCount{ 0 };
@@ -903,6 +918,60 @@ RemoteCubeSubvolumeResult fetchRemoteSubvolume(const QString &backendUrl, const 
     result.valid = true;
     result.dataExtent = roi;
     computeVolumeStats(result.cubeImageData, result.cubeRange, result.cubeMean, result.cubeRms);
+    return result;
+}
+
+RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &datasetId,
+                                  const std::vector<std::array<int, 2>> &vertices, int widthPixels)
+{
+    RemotePvFetchResult result;
+
+    BackendClient client(backendUrl);
+    const auto response = client.requestPv(datasetId, vertices, widthPixels);
+    if (!response.valid) {
+        result.errorMessage =
+                response.error.isEmpty() ? u"Remote PV request failed."_s : response.error;
+        return result;
+    }
+    if (response.scalarType != u"float32"_s) {
+        result.errorMessage = u"Unsupported remote PV scalar type."_s;
+        return result;
+    }
+    if (response.numSamples <= 0 || response.depth <= 0) {
+        result.errorMessage = u"Remote PV payload has invalid dimensions."_s;
+        return result;
+    }
+
+    const qsizetype expectedPositionsBytes =
+            static_cast<qsizetype>(response.numSamples) * static_cast<qsizetype>(sizeof(float));
+    const qsizetype expectedDataBytes =
+            static_cast<qsizetype>(response.numSamples) * response.depth
+            * static_cast<qsizetype>(sizeof(float));
+    if (response.positions.size() != expectedPositionsBytes || response.data.size() != expectedDataBytes) {
+        result.errorMessage = u"Invalid remote PV payload."_s;
+        return result;
+    }
+
+    const auto *rawPositions = reinterpret_cast<const float *>(response.positions.constData());
+    result.positions.resize(response.numSamples);
+    for (int i = 0; i < response.numSamples; ++i) {
+        result.positions[i] = static_cast<double>(rawPositions[i]);
+    }
+
+    const auto *rawValues = reinterpret_cast<const float *>(response.data.constData());
+    result.values.resize(response.numSamples * response.depth);
+    for (int i = 0; i < response.numSamples * response.depth; ++i) {
+        result.values[i] = static_cast<double>(rawValues[i]);
+    }
+
+    result.valid = true;
+    result.numSamples = response.numSamples;
+    result.depth = response.depth;
+    result.computedOn = response.computedOn;
+    result.widthPixels = response.widthPixels;
+    result.vertexCount = response.vertexCount;
+    result.totalLength = response.totalLength;
+    result.validSamples = response.validSamples;
     return result;
 }
 
@@ -1811,6 +1880,23 @@ void vtkWindowCube::setupSliceRenderer()
     this->slicePvActor->VisibilityOff();
     ren->AddActor(this->slicePvActor);
     vtkRenderer *sliceRenderer = ren;
+    const auto configurePvBoundaryActor = [sliceRenderer](vtkPoints *points, vtkCellArray *cells,
+                                                          vtkPolyData *polyData, vtkActor *actor) {
+        polyData->SetPoints(points);
+        polyData->SetLines(cells);
+        vtkNew<vtkPolyDataMapper> mapper;
+        mapper->SetInputData(polyData);
+        actor->SetMapper(mapper);
+        actor->GetProperty()->SetColor(1.0, 0.72, 0.2);
+        actor->GetProperty()->SetLineWidth(1.5);
+        actor->GetProperty()->SetOpacity(0.8);
+        actor->VisibilityOff();
+        sliceRenderer->AddActor(actor);
+    };
+    configurePvBoundaryActor(this->slicePvUpperPoints, this->slicePvUpperCells,
+                             this->slicePvUpperData, this->slicePvUpperActor);
+    configurePvBoundaryActor(this->slicePvLowerPoints, this->slicePvLowerCells,
+                             this->slicePvLowerData, this->slicePvLowerActor);
     const auto configureRegionLineActor = [sliceRenderer](vtkLineSource *line, vtkActor *actor) {
         vtkNew<vtkPolyDataMapper> mapper;
         mapper->SetInputConnection(line->GetOutputPort());
@@ -1949,6 +2035,24 @@ void vtkWindowCube::setupMomentRenderer()
     this->momentPvActor->VisibilityOff();
     ren->AddActor(this->momentPvActor);
     vtkRenderer *momentRenderer = ren;
+    const auto configureMomentPvBoundaryActor =
+            [momentRenderer](vtkPoints *points, vtkCellArray *cells, vtkPolyData *polyData,
+                             vtkActor *actor) {
+        polyData->SetPoints(points);
+        polyData->SetLines(cells);
+        vtkNew<vtkPolyDataMapper> mapper;
+        mapper->SetInputData(polyData);
+        actor->SetMapper(mapper);
+        actor->GetProperty()->SetColor(1.0, 0.72, 0.2);
+        actor->GetProperty()->SetLineWidth(1.5);
+        actor->GetProperty()->SetOpacity(0.8);
+        actor->VisibilityOff();
+        momentRenderer->AddActor(actor);
+    };
+    configureMomentPvBoundaryActor(this->momentPvUpperPoints, this->momentPvUpperCells,
+                                   this->momentPvUpperData, this->momentPvUpperActor);
+    configureMomentPvBoundaryActor(this->momentPvLowerPoints, this->momentPvLowerCells,
+                                   this->momentPvLowerData, this->momentPvLowerActor);
     const auto configureRegionLineActor = [momentRenderer](vtkLineSource *line, vtkActor *actor) {
         vtkNew<vtkPolyDataMapper> mapper;
         mapper->SetInputConnection(line->GetOutputPort());
@@ -2318,6 +2422,19 @@ void vtkWindowCube::setPvModeActive(bool active)
         return;
     }
 
+    bool accepted = false;
+    const int width = QInputDialog::getInt(this, u"PV Width"_s, u"Path width (pixels):"_s,
+                                           this->pvWidthPixels, 1, 99, 1, &accepted);
+    if (!accepted) {
+        this->pvModeActive = false;
+        if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+            const QSignalBlocker blocker(this->actionExtractPvDiagram);
+            this->actionExtractPvDiagram->setChecked(false);
+        }
+        return;
+    }
+    this->pvWidthPixels = width;
+
     if (this->probeModeActive && ui->actionExtractSpectrum->isChecked()) {
         ui->actionExtractSpectrum->setChecked(false);
     }
@@ -2488,9 +2605,15 @@ void vtkWindowCube::clearRegion()
 void vtkWindowCube::refreshPvOverlay()
 {
     const auto updateLine = [this](vtkImageData *imageData, vtkPoints *points, vtkCellArray *cells,
-                                   vtkPolyData *polyData, vtkActor *actor) {
+                                   vtkPolyData *polyData, vtkActor *actor, vtkPoints *upperPoints,
+                                   vtkCellArray *upperCells, vtkPolyData *upperData,
+                                   vtkActor *upperActor, vtkPoints *lowerPoints,
+                                   vtkCellArray *lowerCells, vtkPolyData *lowerData,
+                                   vtkActor *lowerActor) {
         if (!imageData || !this->pvModeActive) {
             actor->VisibilityOff();
+            upperActor->VisibilityOff();
+            lowerActor->VisibilityOff();
             return;
         }
         std::vector<std::array<int, 2>> drawVertices = this->pvPolylineVertices;
@@ -2500,6 +2623,8 @@ void vtkWindowCube::refreshPvOverlay()
         }
         if (drawVertices.size() < 2) {
             actor->VisibilityOff();
+            upperActor->VisibilityOff();
+            lowerActor->VisibilityOff();
             return;
         }
 
@@ -2513,14 +2638,60 @@ void vtkWindowCube::refreshPvOverlay()
         }
         polyData->Modified();
         actor->VisibilityOn();
+
+        if (this->pvWidthPixels <= 1) {
+            upperActor->VisibilityOff();
+            lowerActor->VisibilityOff();
+            return;
+        }
+
+        const auto sampledPath = this->pvSampledPath(drawVertices);
+        if (sampledPath.size() < 2) {
+            upperActor->VisibilityOff();
+            lowerActor->VisibilityOff();
+            return;
+        }
+
+        const double halfWidth = 0.5 * static_cast<double>(this->pvWidthPixels - 1);
+        upperPoints->Reset();
+        upperCells->Reset();
+        upperCells->InsertNextCell(static_cast<vtkIdType>(sampledPath.size()));
+        lowerPoints->Reset();
+        lowerCells->Reset();
+        lowerCells->InsertNextCell(static_cast<vtkIdType>(sampledPath.size()));
+
+        for (vtkIdType i = 0; i < static_cast<vtkIdType>(sampledPath.size()); ++i) {
+            const auto &point = sampledPath[static_cast<std::size_t>(i)];
+            const auto normal = this->pvLocalNormalForSample(sampledPath,
+                                                             static_cast<std::size_t>(i));
+            upperPoints->InsertNextPoint(static_cast<double>(point[0]) + halfWidth * normal[0],
+                                         static_cast<double>(point[1]) + halfWidth * normal[1],
+                                         0.0);
+            upperCells->InsertCellPoint(i);
+            lowerPoints->InsertNextPoint(static_cast<double>(point[0]) - halfWidth * normal[0],
+                                         static_cast<double>(point[1]) - halfWidth * normal[1],
+                                         0.0);
+            lowerCells->InsertCellPoint(i);
+        }
+
+        upperData->Modified();
+        lowerData->Modified();
+        upperActor->VisibilityOn();
+        lowerActor->VisibilityOn();
     };
 
     updateLine(this->isRemoteMode
                        ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
                        : this->slice->GetOutput(),
-               this->slicePvPoints, this->slicePvCells, this->slicePvData, this->slicePvActor);
+               this->slicePvPoints, this->slicePvCells, this->slicePvData, this->slicePvActor,
+               this->slicePvUpperPoints, this->slicePvUpperCells, this->slicePvUpperData,
+               this->slicePvUpperActor, this->slicePvLowerPoints, this->slicePvLowerCells,
+               this->slicePvLowerData, this->slicePvLowerActor);
     updateLine(vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0)),
-               this->momentPvPoints, this->momentPvCells, this->momentPvData, this->momentPvActor);
+               this->momentPvPoints, this->momentPvCells, this->momentPvData, this->momentPvActor,
+               this->momentPvUpperPoints, this->momentPvUpperCells, this->momentPvUpperData,
+               this->momentPvUpperActor, this->momentPvLowerPoints, this->momentPvLowerCells,
+               this->momentPvLowerData, this->momentPvLowerActor);
 }
 
 void vtkWindowCube::clearPv()
@@ -2529,7 +2700,11 @@ void vtkWindowCube::clearPv()
     this->pvCursorValid = false;
     this->pvPolylineVertices.clear();
     this->slicePvActor->VisibilityOff();
+    this->slicePvUpperActor->VisibilityOff();
+    this->slicePvLowerActor->VisibilityOff();
     this->momentPvActor->VisibilityOff();
+    this->momentPvUpperActor->VisibilityOff();
+    this->momentPvLowerActor->VisibilityOff();
 }
 
 void vtkWindowCube::analyzeCurrentRegion()
@@ -2680,6 +2855,77 @@ QString vtkWindowCube::formatSpatialPointSummary(const std::array<int, 2> &voxel
             .arg(axis1);
 }
 
+std::vector<std::array<int, 2>> vtkWindowCube::pvSampledPath(
+        const std::vector<std::array<int, 2>> &vertices) const
+{
+    std::vector<std::array<int, 2>> sampledPoints;
+    if (vertices.size() < 2) {
+        return sampledPoints;
+    }
+
+    sampledPoints.reserve(vertices.size() * 4);
+    for (std::size_t vertexIndex = 1; vertexIndex < vertices.size(); ++vertexIndex) {
+        const auto &start = vertices[vertexIndex - 1];
+        const auto &end = vertices[vertexIndex];
+        const int dx = end[0] - start[0];
+        const int dy = end[1] - start[1];
+        const int steps = std::max(std::abs(dx), std::abs(dy));
+        if (steps <= 0) {
+            if (sampledPoints.empty() || sampledPoints.back() != start) {
+                sampledPoints.push_back(start);
+            }
+            continue;
+        }
+
+        for (int step = 0; step <= steps; ++step) {
+            const double t = static_cast<double>(step) / static_cast<double>(steps);
+            const std::array<int, 2> point = { static_cast<int>(std::lround(
+                                                       static_cast<double>(start[0]) + t * dx)),
+                                               static_cast<int>(std::lround(
+                                                       static_cast<double>(start[1]) + t * dy)) };
+            if (sampledPoints.empty() || sampledPoints.back() != point) {
+                sampledPoints.push_back(point);
+            }
+        }
+    }
+
+    return sampledPoints;
+}
+
+std::array<double, 2> vtkWindowCube::pvLocalNormalForSample(
+        const std::vector<std::array<int, 2>> &sampledPoints, std::size_t index) const
+{
+    if (sampledPoints.empty()) {
+        return { 0.0, 1.0 };
+    }
+
+    const auto &center = sampledPoints[index];
+    const auto &prev = sampledPoints[index == 0 ? index : index - 1];
+    const auto &next = sampledPoints[index + 1 < sampledPoints.size() ? index + 1 : index];
+    double tx = static_cast<double>(next[0] - prev[0]);
+    double ty = static_cast<double>(next[1] - prev[1]);
+    if (tx == 0.0 && ty == 0.0) {
+        tx = 1.0;
+        ty = 0.0;
+        if (index > 0) {
+            tx = static_cast<double>(center[0] - sampledPoints[index - 1][0]);
+            ty = static_cast<double>(center[1] - sampledPoints[index - 1][1]);
+        } else if (index + 1 < sampledPoints.size()) {
+            tx = static_cast<double>(sampledPoints[index + 1][0] - center[0]);
+            ty = static_cast<double>(sampledPoints[index + 1][1] - center[1]);
+        }
+    }
+
+    const double length = std::hypot(tx, ty);
+    if (length <= 0.0) {
+        return { 0.0, 1.0 };
+    }
+
+    const double nx = -ty / length;
+    const double ny = tx / length;
+    return { nx, ny };
+}
+
 void vtkWindowCube::extractCurrentPvDiagram()
 {
     if (!this->pvValid || this->pvPolylineVertices.size() < 2) {
@@ -2688,144 +2934,207 @@ void vtkWindowCube::extractCurrentPvDiagram()
         return;
     }
 
-    auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
-    if (!cubeImage) {
-        qDebug().noquote() << QStringLiteral("[pv] extraction skipped: cube image unavailable");
-        this->statusBar()->showMessage(u"No loaded cube data available for PV extraction."_s, 2000);
-        return;
-    }
-
-    qDebug().noquote()
-            << QStringLiteral("[pv] polyline vertices=%1").arg(this->pvPolylineVertices.size());
-
-    int extent[6];
-    cubeImage->GetExtent(extent);
-    double origin[3];
-    double spacing[3];
-    cubeImage->GetOrigin(origin);
-    cubeImage->GetSpacing(spacing);
-    const int zCount = extent[5] - extent[4] + 1;
-    qDebug().noquote()
-            << QStringLiteral("[pv] cube extent x=%1..%2 y=%3..%4 z=%5..%6 zCount=%7")
-                       .arg(extent[0])
-                       .arg(extent[1])
-                       .arg(extent[2])
-                       .arg(extent[3])
-                       .arg(extent[4])
-                       .arg(extent[5])
-                       .arg(zCount);
-    if (zCount <= 0) {
-        qDebug().noquote() << QStringLiteral("[pv] invalid z dimension");
-        this->statusBar()->showMessage(u"Invalid spectral dimension for PV extraction."_s, 2500);
-        return;
-    }
-
-    QVector<double> spectral(zCount);
-    std::vector<std::array<int, 2>> sampledPoints;
-    QVector<double> positions;
-
-    for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
-        const int zIndex = localZ - extent[4];
-        const double datasetZ = origin[2] + (localZ - extent[4]) * spacing[2];
-        bool ok = false;
-        spectral[zIndex] = this->spectralAxisValue(datasetZ, &ok);
-        if (!ok) {
-            spectral[zIndex] = datasetZ;
+    const auto ensurePvWidget = [this]() {
+        if (!this->pvDiagramWidget) {
+            qDebug().noquote() << QStringLiteral("[pv] creating PvDiagramWidget");
+            this->pvDiagramWidget = new PvDiagramWidget(this);
+            QObject::connect(this->pvDiagramWidget, &PvDiagramWidget::destroyed, this,
+                             [this]() {
+                                 this->pvDiagramWidget = nullptr;
+                                 if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
+                                     this->actionExtractPvDiagram->setChecked(false);
+                                 }
+                             });
         }
-    }
+    };
 
-    double cumulativeDistance = 0.0;
-    for (std::size_t segment = 1; segment < this->pvPolylineVertices.size(); ++segment) {
-        const auto &a = this->pvPolylineVertices[segment - 1];
-        const auto &b = this->pvPolylineVertices[segment];
-        const int dx = b[0] - a[0];
-        const int dy = b[1] - a[1];
-        const int steps = std::max(std::abs(dx), std::abs(dy)) + 1;
-        if (steps < 2) {
-            continue;
-        }
-        for (int i = 0; i < steps; ++i) {
-            const double t = steps == 1 ? 0.0 : static_cast<double>(i) / static_cast<double>(steps - 1);
-            const std::array<int, 2> point = {
-                    static_cast<int>(std::lround(static_cast<double>(a[0]) + t * dx)),
-                    static_cast<int>(std::lround(static_cast<double>(a[1]) + t * dy)),
-            };
-            if (!sampledPoints.empty() && sampledPoints.back() == point) {
-                continue;
-            }
-            if (!sampledPoints.empty()) {
-                cumulativeDistance += std::hypot(static_cast<double>(point[0] - sampledPoints.back()[0]),
-                                                 static_cast<double>(point[1] - sampledPoints.back()[1]));
-            }
-            sampledPoints.push_back(point);
-            positions.push_back(cumulativeDistance);
-        }
-    }
+    const auto showPvDiagram = [this, &ensurePvWidget](const QVector<double> &positions,
+                                                       const QVector<double> &spectral,
+                                                       const QVector<double> &values, int xSamples,
+                                                       int zCount, const QString &details) {
+        ensurePvWidget();
+        qDebug().noquote() << QStringLiteral("[pv] updating widget and requesting show/raise");
+        this->pvDiagramWidget->setPvData(positions, spectral, values, xSamples, zCount,
+                                         u"Offset Along Path (pixels)"_s, this->spectralAxisTitle(),
+                                         u"PV Diagram (Polyline)"_s, details);
+    };
 
-    qDebug().noquote()
-            << QStringLiteral("[pv] sampled polyline points=%1 cumulativeLength=%2")
-                       .arg(sampledPoints.size())
-                       .arg(positions.isEmpty() ? 0.0 : positions.back());
-    if (sampledPoints.size() < 2) {
-        this->statusBar()->showMessage(u"PV line too short. Draw a longer PV path."_s, 2500);
-        return;
-    }
-
-    const int xSamples = static_cast<int>(sampledPoints.size());
-    QVector<double> values(xSamples * zCount, std::numeric_limits<double>::quiet_NaN());
-    int validSamples = 0;
-    for (int i = 0; i < xSamples; ++i) {
-        const int datasetX = sampledPoints[static_cast<std::size_t>(i)][0];
-        const int datasetY = sampledPoints[static_cast<std::size_t>(i)][1];
-        const int localX = std::lround(extent[0] + (datasetX - origin[0]) / spacing[0]);
-        const int localY = std::lround(extent[2] + (datasetY - origin[1]) / spacing[1]);
-        if (localX < extent[0] || localX > extent[1] || localY < extent[2] || localY > extent[3]) {
-            continue;
+    const auto extractLoadedBlockPv = [this, &showPvDiagram](const QString &provenanceLabel,
+                                                             const QString &noDataMessage) -> bool {
+        auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+        if (!cubeImage) {
+            qDebug().noquote() << QStringLiteral("[pv] extraction skipped: cube image unavailable");
+            this->statusBar()->showMessage(u"No loaded cube data available for PV extraction."_s, 2000);
+            return false;
         }
+
+        qDebug().noquote()
+                << QStringLiteral("[pv] polyline vertices=%1").arg(this->pvPolylineVertices.size());
+
+        int extent[6];
+        cubeImage->GetExtent(extent);
+        double origin[3];
+        double spacing[3];
+        cubeImage->GetOrigin(origin);
+        cubeImage->GetSpacing(spacing);
+        const int zCount = extent[5] - extent[4] + 1;
+        qDebug().noquote()
+                << QStringLiteral("[pv] cube extent x=%1..%2 y=%3..%4 z=%5..%6 zCount=%7")
+                           .arg(extent[0])
+                           .arg(extent[1])
+                           .arg(extent[2])
+                           .arg(extent[3])
+                           .arg(extent[4])
+                           .arg(extent[5])
+                           .arg(zCount);
+        if (zCount <= 0) {
+            qDebug().noquote() << QStringLiteral("[pv] invalid z dimension");
+            this->statusBar()->showMessage(u"Invalid spectral dimension for PV extraction."_s, 2500);
+            return false;
+        }
+
+        QVector<double> spectral(zCount);
         for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
             const int zIndex = localZ - extent[4];
-            const double value = cubeImage->GetScalarComponentAsDouble(localX, localY, localZ, 0);
-            values[zIndex * xSamples + i] = value;
-            if (std::isfinite(value)) {
-                ++validSamples;
+            const double datasetZ = origin[2] + (localZ - extent[4]) * spacing[2];
+            bool ok = false;
+            spectral[zIndex] = this->spectralAxisValue(datasetZ, &ok);
+            if (!ok) {
+                spectral[zIndex] = datasetZ;
             }
         }
-    }
-    qDebug().noquote()
-            << QStringLiteral("[pv] sampled matrix xSamples=%1 zCount=%2 validSamples=%3")
-                       .arg(xSamples)
-                       .arg(zCount)
-                       .arg(validSamples);
 
-    if (validSamples == 0) {
-        qDebug().noquote() << QStringLiteral("[pv] no valid data found along cut");
-        this->statusBar()->showMessage(
-                u"No valid data found along PV cut in the currently loaded cube block."_s, 3000);
+        const auto sampledPoints = this->pvSampledPath(this->pvPolylineVertices);
+        QVector<double> positions;
+        positions.reserve(static_cast<qsizetype>(sampledPoints.size()));
+        double cumulativeDistance = 0.0;
+        for (std::size_t i = 0; i < sampledPoints.size(); ++i) {
+            if (i > 0) {
+                cumulativeDistance += std::hypot(
+                        static_cast<double>(sampledPoints[i][0] - sampledPoints[i - 1][0]),
+                        static_cast<double>(sampledPoints[i][1] - sampledPoints[i - 1][1]));
+            }
+            positions.push_back(cumulativeDistance);
+        }
+
+        qDebug().noquote()
+                << QStringLiteral("[pv] sampled polyline points=%1 cumulativeLength=%2")
+                           .arg(sampledPoints.size())
+                           .arg(positions.isEmpty() ? 0.0 : positions.back());
+        if (sampledPoints.size() < 2) {
+            this->statusBar()->showMessage(u"PV line too short. Draw a longer PV path."_s, 2500);
+            return false;
+        }
+
+        const int xSamples = static_cast<int>(sampledPoints.size());
+        QVector<double> values(xSamples * zCount, std::numeric_limits<double>::quiet_NaN());
+        int validSamples = 0;
+        for (int i = 0; i < xSamples; ++i) {
+            const auto &center = sampledPoints[static_cast<std::size_t>(i)];
+            const auto normal =
+                    this->pvLocalNormalForSample(sampledPoints, static_cast<std::size_t>(i));
+            for (int localZ = extent[4]; localZ <= extent[5]; ++localZ) {
+                const int zIndex = localZ - extent[4];
+                double sum = 0.0;
+                int count = 0;
+                for (int sample = 0; sample < this->pvWidthPixels; ++sample) {
+                    const double centeredOffset =
+                            static_cast<double>(sample)
+                            - (static_cast<double>(this->pvWidthPixels - 1) / 2.0);
+                    const int datasetX = static_cast<int>(
+                            std::lround(static_cast<double>(center[0]) + centeredOffset * normal[0]));
+                    const int datasetY = static_cast<int>(
+                            std::lround(static_cast<double>(center[1]) + centeredOffset * normal[1]));
+                    const int localX =
+                            std::lround(extent[0] + (datasetX - origin[0]) / spacing[0]);
+                    const int localY =
+                            std::lround(extent[2] + (datasetY - origin[1]) / spacing[1]);
+                    if (localX < extent[0] || localX > extent[1] || localY < extent[2]
+                        || localY > extent[3]) {
+                        continue;
+                    }
+                    const double value = cubeImage->GetScalarComponentAsDouble(localX, localY, localZ, 0);
+                    if (!std::isfinite(value)) {
+                        continue;
+                    }
+                    sum += value;
+                    count += 1;
+                }
+                if (count > 0) {
+                    values[zIndex * xSamples + i] = sum / static_cast<double>(count);
+                    ++validSamples;
+                }
+            }
+        }
+        qDebug().noquote()
+                << QStringLiteral("[pv] sampled matrix xSamples=%1 zCount=%2 validSamples=%3")
+                           .arg(xSamples)
+                           .arg(zCount)
+                           .arg(validSamples);
+
+        if (validSamples == 0) {
+            qDebug().noquote() << QStringLiteral("[pv] no valid data found along cut");
+            this->statusBar()->showMessage(noDataMessage, 3000);
+            return false;
+        }
+
+        const QString details =
+                u"Start: %1\nEnd: %2\nVertices: %3\nPath width: %4 px\nPath length: %5 px\nSampling: nearest-neighbor perpendicular averaging\nComputation: %6"_s
+                        .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.front()))
+                        .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.back()))
+                        .arg(static_cast<int>(this->pvPolylineVertices.size()))
+                        .arg(this->pvWidthPixels)
+                        .arg(positions.isEmpty() ? 0.0 : positions.back(), 0, 'f', 2)
+                        .arg(provenanceLabel);
+        showPvDiagram(positions, spectral, values, xSamples, zCount, details);
+        return true;
+    };
+
+    if (this->isRemoteMode) {
+        qDebug().noquote() << QStringLiteral("[remote-pv] requesting backend pv vertices=%1 width=%2")
+                                      .arg(this->pvPolylineVertices.size())
+                                      .arg(this->pvWidthPixels);
+        const auto remoteResult = fetchRemotePv(this->remoteBackendUrl, this->remoteDatasetId,
+                                                this->pvPolylineVertices, this->pvWidthPixels);
+        if (remoteResult.valid) {
+            QVector<double> spectral(remoteResult.depth);
+            for (int datasetZ = 0; datasetZ < remoteResult.depth; ++datasetZ) {
+                bool ok = false;
+                spectral[datasetZ] = this->spectralAxisValue(static_cast<double>(datasetZ), &ok);
+                if (!ok) {
+                    spectral[datasetZ] = static_cast<double>(datasetZ);
+                }
+            }
+            const QString details =
+                    u"Start: %1\nEnd: %2\nVertices: %3\nPath width: %4 px\nPath length: %5 px\nSampling: nearest-neighbor perpendicular averaging\nComputation: Computed remotely on full dataset"_s
+                            .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.front()))
+                            .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.back()))
+                            .arg(remoteResult.vertexCount > 0 ? remoteResult.vertexCount
+                                                              : static_cast<int>(this->pvPolylineVertices.size()))
+                            .arg(remoteResult.widthPixels > 0 ? remoteResult.widthPixels : this->pvWidthPixels)
+                            .arg(remoteResult.totalLength, 0, 'f', 2);
+            showPvDiagram(remoteResult.positions, spectral, remoteResult.values, remoteResult.numSamples,
+                          remoteResult.depth, details);
+            return;
+        }
+
+        qDebug().noquote() << QStringLiteral("[remote-pv] backend extraction failed: %1")
+                                      .arg(remoteResult.errorMessage);
+        this->statusBar()->showMessage(u"Remote PV extraction failed; using loaded block fallback."_s,
+                                       4000);
+        if (extractLoadedBlockPv(u"Computed on currently loaded remote block (fallback)"_s,
+                                 u"No valid data found along PV cut in the currently loaded remote block."_s)) {
+            return;
+        }
+        this->statusBar()->showMessage(remoteResult.errorMessage.isEmpty()
+                                               ? u"Remote PV extraction failed."_s
+                                               : remoteResult.errorMessage,
+                                       4000);
         return;
     }
 
-    if (!this->pvDiagramWidget) {
-        qDebug().noquote() << QStringLiteral("[pv] creating PvDiagramWidget");
-        this->pvDiagramWidget = new PvDiagramWidget(this);
-        QObject::connect(this->pvDiagramWidget, &PvDiagramWidget::destroyed, this,
-                         [this]() {
-                             this->pvDiagramWidget = nullptr;
-                             if (this->actionExtractPvDiagram && this->actionExtractPvDiagram->isChecked()) {
-                                 this->actionExtractPvDiagram->setChecked(false);
-                             }
-                         });
-    }
-
-    QString details = u"Start: %1\nEnd: %2\nVertices: %3\nSampling: nearest-neighbor, width=1 pixel\nData scope: %4"_s
-                              .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.front()))
-                              .arg(this->formatSpatialPointSummary(this->pvPolylineVertices.back()))
-                              .arg(static_cast<int>(this->pvPolylineVertices.size()))
-                              .arg(this->isRemoteMode ? u"currently loaded cube block only"_s
-                                                      : u"full loaded cube"_s);
-    qDebug().noquote() << QStringLiteral("[pv] updating widget and requesting show/raise");
-    this->pvDiagramWidget->setPvData(positions, spectral, values, xSamples, zCount, u"Offset Along Path (pixels)"_s,
-                                     this->spectralAxisTitle(),
-                                     u"PV Diagram (Polyline)"_s, details);
+    extractLoadedBlockPv(u"Computed locally on full loaded cube"_s,
+                         u"No valid data found along PV cut in the currently loaded cube."_s);
 }
 
 void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
