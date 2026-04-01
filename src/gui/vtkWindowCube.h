@@ -186,7 +186,7 @@ private:
     int statusMessageMinDurationMs{ 0 };
     bool persistentStatusActive{ false };
     bool usingHighResCube{ false };
-    bool useCentralRoiRefinement{ true };
+    bool useCentralRoiRefinement{ false };
     bool pendingRemoteRefinementReload{ false };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
     static constexpr int remoteLoadingStateDelayMs = 250;
@@ -195,6 +195,8 @@ private:
     double inFlightRemoteIsosurfaceThreshold{ std::numeric_limits<double>::quiet_NaN() };
 
     vtkNew<vtkFITSReader> reader;
+    std::array<double, 2> currentCubeVisibleRange{ 0., 0. };
+    double currentCubeInvisibleSentinel{ -1.0 };
     float lowerBound;
     float upperBound;
 

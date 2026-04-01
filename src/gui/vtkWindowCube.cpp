@@ -32,7 +32,6 @@
 #include <vtkImageReslice.h>
 #include <vtkImageSlice.h>
 #include <vtkImageSliceMapper.h>
-#include <vtkImageThreshold.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
@@ -84,6 +83,79 @@ vtkSmartPointer<vtkImageData> createPlaceholderImageData()
     image->AllocateScalars(VTK_FLOAT, 1);
     image->SetScalarComponentFromFloat(0, 0, 0, 0, 0.f);
     return image;
+}
+
+struct SanitizedCubeStats
+{
+    std::array<double, 2> visibleRange{ 0., 0. };
+    double invisibleSentinel{ -1.0 };
+};
+
+SanitizedCubeStats sanitizeCubeScalarsInPlace(vtkImageData *image)
+{
+    if (!image) {
+        return { { 0., 0. }, -1.0 };
+    }
+
+    if (image->GetScalarType() != VTK_FLOAT || image->GetNumberOfScalarComponents() != 1) {
+        double scalarRange[2] = { 0., 0. };
+        image->GetScalarRange(scalarRange);
+        const double range = scalarRange[1] - scalarRange[0];
+        const double sentinel = range > 0.0 ? (scalarRange[0] - 0.01 * range) : (scalarRange[0] - 1.0);
+        return { { scalarRange[0], scalarRange[1] }, sentinel };
+    }
+
+    int extent[6];
+    image->GetExtent(extent);
+    const auto voxelCount = static_cast<qsizetype>(extent[1] - extent[0] + 1)
+            * static_cast<qsizetype>(extent[3] - extent[2] + 1)
+            * static_cast<qsizetype>(extent[5] - extent[4] + 1);
+    if (voxelCount <= 0) {
+        return { { 0., 0. }, -1.0 };
+    }
+
+    auto *values = static_cast<float *>(image->GetScalarPointer());
+    double rangeMin = std::numeric_limits<double>::infinity();
+    double rangeMax = -std::numeric_limits<double>::infinity();
+    for (qsizetype i = 0; i < voxelCount; ++i) {
+        const float value = values[i];
+        if (!std::isfinite(value)) {
+            continue;
+        }
+
+        rangeMin = std::min(rangeMin, static_cast<double>(value));
+        rangeMax = std::max(rangeMax, static_cast<double>(value));
+    }
+
+    if (!std::isfinite(rangeMin) || !std::isfinite(rangeMax)) {
+        rangeMin = 0.;
+        rangeMax = 0.;
+    }
+
+    const double range = rangeMax - rangeMin;
+    const float invisibleSentinel =
+            static_cast<float>(range > 0.0 ? (rangeMin - 0.01 * range) : (rangeMin - 1.0));
+
+    qsizetype replaced = 0;
+    for (qsizetype i = 0; i < voxelCount; ++i) {
+        if (!std::isfinite(values[i])) {
+            values[i] = invisibleSentinel;
+            ++replaced;
+        }
+    }
+
+    if (replaced > 0) {
+        image->Modified();
+        qDebug().noquote()
+                << QStringLiteral("[nan] replaced %1 NaN voxels with sentinel %2")
+                           .arg(replaced)
+                           .arg(invisibleSentinel, 0, 'g', 12);
+    }
+    qDebug().noquote()
+            << QStringLiteral("[nan] cube visible range after sanitization min=%1 max=%2")
+                       .arg(rangeMin, 0, 'g', 12)
+                       .arg(rangeMax, 0, 'g', 12);
+    return { { rangeMin, rangeMax }, invisibleSentinel };
 }
 
 bool validBounds(const double bounds[6])
@@ -492,8 +564,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
     this->cubeOpenStateLabel->hide();
     this->statusBar()->addPermanentWidget(this->cubeOpenStateLabel);
-    this->remoteRoiRefinementCheck = new QCheckBox(u"Central ROI"_s, this);
+    this->remoteRoiRefinementCheck = new QCheckBox(u"Use Central ROI"_s, this);
     this->remoteRoiRefinementCheck->setChecked(this->useCentralRoiRefinement);
+    this->remoteRoiRefinementCheck->setToolTip(
+            u"Unchecked: refine using the full dataset. Checked: refine using a central ROI."_s);
     this->remoteRoiRefinementCheck->setVisible(this->isRemoteMode);
     this->remoteRoiRefinementCheck->setEnabled(this->isRemoteMode);
     this->statusBar()->addPermanentWidget(this->remoteRoiRefinementCheck);
@@ -568,9 +642,14 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         placeholder->AllocateScalars(VTK_FLOAT, 1);
         static_cast<float *>(placeholder->GetScalarPointer())[0] = 0.f;
         this->cubeDisplaySource->SetOutput(placeholder);
+        this->currentCubeVisibleRange = { 0., 0. };
+        this->currentCubeInvisibleSentinel = -1.0;
         this->lowerBound = 0.f;
         this->upperBound = 1.f;
     } else if (usingPreview) {
+        const auto sanitized = sanitizeCubeScalarsInPlace(preview.cubeImageData);
+        this->currentCubeVisibleRange = sanitized.visibleRange;
+        this->currentCubeInvisibleSentinel = sanitized.invisibleSentinel;
         this->cubeDisplaySource->SetOutput(preview.cubeImageData);
         this->momentDisplaySource->SetOutput(preview.momentImageData);
         this->lowerBound = 3.f * preview.cubeRms;
@@ -578,6 +657,9 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     } else {
         this->reader->SetFileName(this->filepath.toUtf8());
         this->reader->Update();
+        const auto sanitized = sanitizeCubeScalarsInPlace(this->reader->GetOutput());
+        this->currentCubeVisibleRange = sanitized.visibleRange;
+        this->currentCubeInvisibleSentinel = sanitized.invisibleSentinel;
         this->cubeDisplaySource->SetOutput(this->reader->GetOutput());
         this->lowerBound = 3.f * this->reader->GetRMS();
         this->upperBound = this->reader->GetMax();
@@ -1025,15 +1107,14 @@ void vtkWindowCube::setupCubeRenderer()
 
     // Volume
     const auto cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
-    double cubeRange[2] = { 0., 0. };
-    if (cubeImage) {
-        cubeImage->GetScalarRange(cubeRange);
-    }
+    const double cubeRange[2] = { this->currentCubeVisibleRange[0], this->currentCubeVisibleRange[1] };
     vtkNew<vtkLookupTable> lutVolume;
     lutVolume->SetTableRange(cubeRange);
     ColorMaps::SetColorMap(lutVolume);
     ColorMaps::SetColorTransferFunction(lutVolume, this->volumeColorTransferFunction);
     this->volumeColorTransferFunction->SetObjectName(lutVolume->GetObjectName());
+    this->volumeOpacity->RemoveAllPoints();
+    this->volumeOpacity->AddPoint(this->currentCubeInvisibleSentinel, 0.0);
     this->volumeOpacity->AddPoint(cubeRange[0], 0.0);
     this->volumeOpacity->AddPoint(this->lowerBound, 0.05);
     this->volumeOpacity->AddPoint(cubeRange[1], 0.3);
@@ -1041,17 +1122,8 @@ void vtkWindowCube::setupCubeRenderer()
     volumeProperty->SetColor(this->volumeColorTransferFunction);
     volumeProperty->SetScalarOpacity(this->volumeOpacity);
     volumeProperty->SetInterpolationTypeToLinear();
-    vtkNew<vtkImageThreshold> nanMask;
-    nanMask->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
-    nanMask->ThresholdBetween(cubeRange[0], cubeRange[1]);
-    nanMask->SetOutValue(0.0);
-    nanMask->SetInValue(255.0);
-    nanMask->SetOutputScalarTypeToUnsignedChar();
-    nanMask->Update();
     vtkNew<vtkGPUVolumeRayCastMapper> volumeMapper;
     volumeMapper->SetInputConnection(this->cubeDisplaySource->GetOutputPort());
-    volumeMapper->SetMaskInput(nanMask->GetOutput());
-    volumeMapper->SetMaskTypeToBinary();
     this->volume->SetMapper(volumeMapper);
     this->volume->SetProperty(volumeProperty);
     // By default, we show the isosurface
@@ -1372,16 +1444,12 @@ void vtkWindowCube::updateCube()
 {
     const double threshold = ui->lineThreshold->text().toDouble();
     if (this->isRemoteMode) {
-        auto *cubeData = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
-        if (cubeData) {
-            double cubeRange[2];
-            cubeData->GetScalarRange(cubeRange);
-            this->isosurfaceFilter->SetValue(0, threshold);
-            this->volumeOpacity->RemoveAllPoints();
-            this->volumeOpacity->AddPoint(cubeRange[0], 0.0);
-            this->volumeOpacity->AddPoint(threshold, 0.05);
-            this->volumeOpacity->AddPoint(cubeRange[1], 0.3);
-        }
+        this->isosurfaceFilter->SetValue(0, threshold);
+        this->volumeOpacity->RemoveAllPoints();
+        this->volumeOpacity->AddPoint(this->currentCubeInvisibleSentinel, 0.0);
+        this->volumeOpacity->AddPoint(this->currentCubeVisibleRange[0], 0.0);
+        this->volumeOpacity->AddPoint(threshold, 0.05);
+        this->volumeOpacity->AddPoint(this->currentCubeVisibleRange[1], 0.3);
     } else {
         this->viewController->updateCube(threshold);
     }
@@ -1519,6 +1587,14 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
     QElapsedTimer totalTimer;
     totalTimer.start();
 
+    const auto *currentCubeImage =
+            vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    if (currentCubeImage != result.cubeImageData.GetPointer()) {
+        const auto sanitized = sanitizeCubeScalarsInPlace(result.cubeImageData);
+        this->currentCubeVisibleRange = sanitized.visibleRange;
+        this->currentCubeInvisibleSentinel = sanitized.invisibleSentinel;
+    }
+
     this->cubeDisplaySource->SetOutput(result.cubeImageData);
     this->cubeDisplaySource->Modified();
     result.cubeImageData->Modified();
@@ -1604,8 +1680,8 @@ void vtkWindowCube::applyCubeOpenResult(const CubeOpenStageResult &result)
 
     QElapsedTimer cubeFieldsTimer;
     cubeFieldsTimer.start();
-    ui->lineCubeMin->setText(QString::number(result.cubeRange[0]));
-    ui->lineCubeMax->setText(QString::number(result.cubeRange[1]));
+    ui->lineCubeMin->setText(QString::number(this->currentCubeVisibleRange[0]));
+    ui->lineCubeMax->setText(QString::number(this->currentCubeVisibleRange[1]));
     ui->lineCubeMean->setText(QString::number(result.cubeMean));
     ui->lineCubeRms->setText(QString::number(result.cubeRms));
     ui->lineSpectral->setText(this->astro
