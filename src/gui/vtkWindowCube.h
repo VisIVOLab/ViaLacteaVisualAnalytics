@@ -18,6 +18,7 @@
 #include <QTimer>
 
 #include <array>
+#include <limits>
 #include <memory>
 
 class CubeViewController;
@@ -163,11 +164,16 @@ private:
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
     QFutureWatcher<MomentMapComputeResult> momentComputeWatcher;
     QFutureWatcher<AsyncIsosurfaceResult> isosurfaceWatcher;
+    int currentRemotePreviewRequestId{ 0 };
+    int currentRemoteHighResRequestId{ 0 };
     int currentRemoteSliceRequestId{ 0 };
     int currentRequestedRemoteSliceIndex{ 0 };
+    int pendingRemoteSliceIndex{ 0 };
     int activeRemoteSliceRequests{ 0 };
     int activeRemoteIsosurfaceRequests{ 0 };
     QTimer isosurfaceDebounceTimer;
+    QTimer remoteSliceDebounceTimer;
+    QTimer remoteFullResolutionStateTimer;
     int currentMomentRequestId{ 0 };
     int currentIsosurfaceRequestId{ 0 };
     int currentFullCubeGeneration{ 0 };
@@ -178,6 +184,10 @@ private:
     bool persistentStatusActive{ false };
     bool usingHighResCube{ false };
     RemoteCubeDisplayState remoteCubeDisplayState{ RemoteCubeDisplayState::Preview };
+    static constexpr int remoteLoadingStateDelayMs = 250;
+    static constexpr int remoteSliceDebounceDelayMs = 100;
+    bool remoteIsosurfaceRequestInFlight{ false };
+    double inFlightRemoteIsosurfaceThreshold{ std::numeric_limits<double>::quiet_NaN() };
 
     vtkNew<vtkFITSReader> reader;
     float lowerBound;
@@ -239,6 +249,7 @@ private:
     QSet<QString> remoteSliceFetchesInFlight;
     static constexpr int remoteSliceCacheCapacity = 8;
     void updateSlice();
+    void updateRemoteSliceDragFeedback(int sliceIndex);
     void requestRemoteSlice(int sliceIndex);
     void applyRemoteSliceResult(const RemoteCubeSliceResult &result);
     QString remoteSliceCacheKey(int sliceIndex) const;

@@ -1,5 +1,7 @@
 #include "RemoteFileBrowserDialog.h"
 
+#include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFormLayout>
@@ -9,6 +11,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QSplitter>
 #include <QStyle>
 #include <QTextEdit>
@@ -16,6 +19,8 @@
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 #include <QtConcurrentRun>
+
+#include <algorithm>
 
 using namespace Qt::StringLiterals;
 
@@ -25,6 +30,35 @@ constexpr int TypeRole = Qt::UserRole + 2;
 constexpr int SizeRole = Qt::UserRole + 3;
 constexpr int ModifiedRole = Qt::UserRole + 4;
 constexpr int IsFitsRole = Qt::UserRole + 5;
+QString g_lastVisitedRemoteDirectory;
+
+class RemoteFileTreeItem : public QTreeWidgetItem
+{
+public:
+    using QTreeWidgetItem::QTreeWidgetItem;
+
+    bool operator<(const QTreeWidgetItem &other) const override
+    {
+        const auto thisType = this->data(0, TypeRole).toString();
+        const auto otherType = other.data(0, TypeRole).toString();
+        const bool thisDir = thisType == u"directory"_s;
+        const bool otherDir = otherType == u"directory"_s;
+        if (thisDir != otherDir) {
+            return thisDir;
+        }
+
+        const int column = this->treeWidget() ? this->treeWidget()->sortColumn() : 0;
+        switch (column) {
+        case 1:
+            return this->data(0, SizeRole).toLongLong() < other.data(0, SizeRole).toLongLong();
+        case 2:
+            return this->data(0, ModifiedRole).toString() < other.data(0, ModifiedRole).toString();
+        case 0:
+        default:
+            return this->text(0).localeAwareCompare(other.text(0)) < 0;
+        }
+    }
+};
 }
 
 RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWidget *parent)
@@ -33,6 +67,8 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
       pathEdit(new QLineEdit(this)),
       entriesTree(new QTreeWidget(this)),
       openButton(new QPushButton(u"Open"_s, this)),
+      fitsOnlyCheck(new QCheckBox(u"FITS only"_s, this)),
+      sortCombo(new QComboBox(this)),
       nameValue(new QLabel(this)),
       pathValue(new QLabel(this)),
       typeValue(new QLabel(this)),
@@ -48,13 +84,25 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
     auto *homeButton = new QPushButton(u"Home"_s, this);
     auto *upButton = new QPushButton(u"Up"_s, this);
     auto *refreshButton = new QPushButton(u"Refresh"_s, this);
+    auto *goButton = new QPushButton(u"Go"_s, this);
 
     pathRow->addWidget(new QLabel(u"Path"_s, this));
     pathRow->addWidget(this->pathEdit, 1);
+    pathRow->addWidget(goButton);
     pathRow->addWidget(homeButton);
     pathRow->addWidget(upButton);
     pathRow->addWidget(refreshButton);
     layout->addLayout(pathRow);
+
+    auto *optionsRow = new QHBoxLayout;
+    this->sortCombo->addItem(u"Name"_s);
+    this->sortCombo->addItem(u"Size"_s);
+    this->sortCombo->addItem(u"Modified"_s);
+    optionsRow->addWidget(this->fitsOnlyCheck);
+    optionsRow->addStretch(1);
+    optionsRow->addWidget(new QLabel(u"Sort by"_s, this));
+    optionsRow->addWidget(this->sortCombo);
+    layout->addLayout(optionsRow);
 
     auto *splitter = new QSplitter(this);
     splitter->setChildrenCollapsible(false);
@@ -67,7 +115,8 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
     this->entriesTree->setHeaderLabels({ u"Name"_s, u"Size"_s, u"Modified"_s });
     this->entriesTree->setAlternatingRowColors(true);
     this->entriesTree->setRootIsDecorated(false);
-    this->entriesTree->setSortingEnabled(false);
+    this->entriesTree->setSortingEnabled(true);
+    this->entriesTree->sortByColumn(0, Qt::AscendingOrder);
     this->entriesTree->header()->setStretchLastSection(false);
     this->entriesTree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
     this->entriesTree->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -75,11 +124,17 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
     browserLayout->addWidget(this->entriesTree);
 
     auto *detailsPane = new QWidget(splitter);
+    detailsPane->setMaximumWidth(420);
+    detailsPane->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     auto *detailsLayout = new QVBoxLayout(detailsPane);
     detailsLayout->setContentsMargins(0, 0, 0, 0);
     auto *detailsTitle = new QLabel(u"Details"_s, detailsPane);
     auto *detailsForm = new QFormLayout;
     detailsForm->setContentsMargins(0, 0, 0, 0);
+    this->nameValue->setWordWrap(true);
+    this->pathValue->setWordWrap(true);
+    this->nameValue->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    this->pathValue->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     this->pathValue->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->headerView->setReadOnly(true);
     this->headerView->setLineWrapMode(QTextEdit::NoWrap);
@@ -93,8 +148,9 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
     detailsLayout->addLayout(detailsForm);
     detailsLayout->addWidget(new QLabel(u"FITS Header"_s, detailsPane));
     detailsLayout->addWidget(this->headerView, 1);
-    splitter->setStretchFactor(0, 3);
+    splitter->setStretchFactor(0, 5);
     splitter->setStretchFactor(1, 2);
+    splitter->setSizes({ 640, 320 });
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Cancel, this);
     buttons->addButton(this->openButton, QDialogButtonBox::AcceptRole);
@@ -109,15 +165,21 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
             this->accept();
         }
     });
+    QObject::connect(goButton, &QPushButton::clicked, this,
+                     [this]() { this->loadPath(this->pathEdit->text()); });
     QObject::connect(this->pathEdit, &QLineEdit::returnPressed, this,
                      [this]() { this->loadPath(this->pathEdit->text()); });
     QObject::connect(refreshButton, &QPushButton::clicked, this,
-                     [this]() { this->loadPath(this->pathEdit->text()); });
+                     [this]() { this->loadPath(this->currentDirectory); });
     QObject::connect(homeButton, &QPushButton::clicked, this, [this]() { this->loadPath({}); });
     QObject::connect(upButton, &QPushButton::clicked, this, [this]() {
         const QDir dir(this->pathEdit->text());
         this->loadPath(dir.absoluteFilePath(u".."_s));
     });
+    QObject::connect(this->fitsOnlyCheck, &QCheckBox::toggled, this,
+                     [this]() { this->refreshEntriesView(); });
+    QObject::connect(this->sortCombo, &QComboBox::currentIndexChanged, this,
+                     [this](int) { this->refreshEntriesView(); });
     QObject::connect(this->entriesTree, &QTreeWidget::currentItemChanged, this,
                      [this](QTreeWidgetItem *current) {
                          this->updateSelectionState();
@@ -172,7 +234,9 @@ RemoteFileBrowserDialog::RemoteFileBrowserDialog(const QString &backendUrl, QWid
                          this->headerView->setPlainText(result.cards.join(u"\n"_s));
                      });
 
-    this->loadPath({});
+    this->pathEdit->setClearButtonEnabled(true);
+    this->pathEdit->setPlaceholderText(u"Enter a remote path"_s);
+    this->loadPath(g_lastVisitedRemoteDirectory);
 }
 
 RemoteFileBrowserDialog::~RemoteFileBrowserDialog() = default;
@@ -193,13 +257,16 @@ void RemoteFileBrowserDialog::loadPath(const QString &path)
     }
 
     this->selectedPath.clear();
+    this->currentDirectory = result.currentPath;
+    g_lastVisitedRemoteDirectory = result.currentPath;
+    this->currentEntries = result.entries;
     this->pathEdit->setText(result.currentPath);
-    this->populateEntries(result.entries);
+    this->refreshEntriesView();
     this->clearDetails();
     this->updateSelectionState();
 }
 
-void RemoteFileBrowserDialog::populateEntries(const std::vector<BackendFileEntry> &entries)
+void RemoteFileBrowserDialog::populateEntries()
 {
     this->entriesTree->clear();
 
@@ -207,8 +274,45 @@ void RemoteFileBrowserDialog::populateEntries(const std::vector<BackendFileEntry
     const QIcon fitsIcon = this->style()->standardIcon(QStyle::SP_FileIcon);
     const QIcon fileIcon = this->style()->standardIcon(QStyle::SP_FileLinkIcon);
 
-    for (const auto &entry : entries) {
-        auto *item = new QTreeWidgetItem(this->entriesTree);
+    std::vector<BackendFileEntry> visibleEntries;
+    visibleEntries.reserve(this->currentEntries.size());
+    for (const auto &entry : this->currentEntries) {
+        if (this->fitsOnlyCheck->isChecked() && entry.type == u"file"_s && !entry.isFits) {
+            continue;
+        }
+        visibleEntries.push_back(entry);
+    }
+
+    const int sortIndex = this->sortCombo->currentIndex();
+    std::stable_sort(visibleEntries.begin(), visibleEntries.end(),
+                     [sortIndex](const BackendFileEntry &lhs, const BackendFileEntry &rhs) {
+                         const bool lhsDir = lhs.type == u"directory"_s;
+                         const bool rhsDir = rhs.type == u"directory"_s;
+                         if (lhsDir != rhsDir) {
+                             return lhsDir;
+                         }
+
+                         switch (sortIndex) {
+                         case 1:
+                             if (lhs.size != rhs.size) {
+                                 return lhs.size < rhs.size;
+                             }
+                             break;
+                         case 2:
+                             if (lhs.modifiedTime != rhs.modifiedTime) {
+                                 return lhs.modifiedTime < rhs.modifiedTime;
+                             }
+                             break;
+                         case 0:
+                         default:
+                             break;
+                         }
+
+                         return lhs.name.localeAwareCompare(rhs.name) < 0;
+                     });
+
+    for (const auto &entry : visibleEntries) {
+        auto *item = new RemoteFileTreeItem(this->entriesTree);
         item->setText(0, entry.name);
         item->setText(1, entry.type == u"directory"_s ? QString() : this->humanReadableSize(entry.size));
         item->setText(2, entry.modifiedTime);
@@ -219,6 +323,8 @@ void RemoteFileBrowserDialog::populateEntries(const std::vector<BackendFileEntry
         item->setData(0, IsFitsRole, entry.isFits);
         item->setIcon(0, entry.type == u"directory"_s ? folderIcon : (entry.isFits ? fitsIcon : fileIcon));
     }
+
+    this->entriesTree->sortItems(this->sortCombo->currentIndex(), Qt::AscendingOrder);
 }
 
 void RemoteFileBrowserDialog::requestHeaderPreview(const QString &path)
@@ -273,6 +379,11 @@ void RemoteFileBrowserDialog::updateSelectionState()
             item && item->data(0, TypeRole).toString() == u"file"_s && item->data(0, IsFitsRole).toBool();
     this->selectedPath = isFitsFile ? item->data(0, PathRole).toString() : QString();
     this->openButton->setEnabled(isFitsFile);
+}
+
+void RemoteFileBrowserDialog::refreshEntriesView()
+{
+    this->populateEntries();
 }
 
 QString RemoteFileBrowserDialog::humanReadableSize(qint64 size) const

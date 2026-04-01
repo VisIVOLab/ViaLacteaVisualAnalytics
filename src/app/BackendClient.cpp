@@ -10,6 +10,27 @@
 #include <QUrl>
 #include <QUrlQuery>
 
+namespace {
+QByteArray decodeCompressedPayload(const QByteArray &encoded, const QString &compression, QString &error)
+{
+    const QByteArray raw = QByteArray::fromBase64(encoded);
+    if (compression.isEmpty() || compression == QStringLiteral("none")) {
+        return raw;
+    }
+
+    if (compression == QStringLiteral("qt-zlib")) {
+        const QByteArray uncompressed = qUncompress(raw);
+        if (uncompressed.isEmpty()) {
+            error = QStringLiteral("Failed to decompress backend payload.");
+        }
+        return uncompressed;
+    }
+
+    error = QStringLiteral("Unsupported backend compression: %1").arg(compression);
+    return {};
+}
+}
+
 BackendClient::BackendClient(QString baseUrl) : m_baseUrl(std::move(baseUrl))
 {
 }
@@ -147,7 +168,11 @@ BackendCubePreviewResult BackendClient::requestPreview(const QString &datasetId,
     result.scalarType = object.value("scalar_type").toString();
     result.rangeMin = object.value("range_min").toDouble();
     result.rangeMax = object.value("range_max").toDouble();
-    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                      result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
     return result;
 }
 
@@ -173,7 +198,11 @@ BackendCubeSliceResult BackendClient::requestSlice(const QString &datasetId, con
     result.scalarType = object.value("scalar_type").toString();
     result.rangeMin = object.value("range_min").toDouble();
     result.rangeMax = object.value("range_max").toDouble();
-    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                      result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
     return result;
 }
 
@@ -203,7 +232,11 @@ BackendCubeSubvolumeResult BackendClient::requestSubvolume(const QString &datase
     result.height = object.value("height").toInt();
     result.depth = object.value("depth").toInt();
     result.scalarType = object.value("scalar_type").toString();
-    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                      result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
     return result;
 }
 
@@ -225,7 +258,11 @@ BackendImageResult BackendClient::requestImage(const QString &datasetId) const
     result.width = object.value("width").toInt();
     result.height = object.value("height").toInt();
     result.scalarType = object.value("scalar_type").toString();
-    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                      result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
     return result;
 }
 
@@ -249,8 +286,16 @@ BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetI
     result.numPoints = object.value("num_points").toInt();
     result.numPolys = object.value("num_polys").toInt();
     result.pointsData =
-            QByteArray::fromBase64(object.value("points_base64").toString().toUtf8());
-    result.polysData = QByteArray::fromBase64(object.value("polys_base64").toString().toUtf8());
+            this->decodePayload(object, QStringLiteral("points_base64"), QStringLiteral("compression"),
+                                result.error);
+    if (result.error.isEmpty()) {
+        result.polysData =
+                this->decodePayload(object, QStringLiteral("polys_base64"), QStringLiteral("compression"),
+                                    result.error);
+    }
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
     return result;
 }
 
@@ -275,8 +320,19 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     result.scalarType = object.value("scalar_type").toString();
     result.rangeMin = object.value("range_min").toDouble();
     result.rangeMax = object.value("range_max").toDouble();
-    result.data = QByteArray::fromBase64(object.value("data_base64").toString().toUtf8());
+    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                      result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
     return result;
+}
+
+QByteArray BackendClient::decodePayload(const QJsonObject &object, const QString &base64Field,
+                                        const QString &compressionField, QString &error)
+{
+    return decodeCompressedPayload(object.value(base64Field).toString().toUtf8(),
+                                   object.value(compressionField).toString(), error);
 }
 
 QByteArray BackendClient::performGet(const QUrl &url, QString &error) const

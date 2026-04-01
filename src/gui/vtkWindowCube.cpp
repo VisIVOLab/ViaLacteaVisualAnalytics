@@ -491,6 +491,23 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         this->persistentStatusActive = false;
         this->statusBar()->clearMessage();
     });
+    this->remoteSliceDebounceTimer.setSingleShot(true);
+    QObject::connect(&this->remoteSliceDebounceTimer, &QTimer::timeout, this, [this]() {
+        if (!this->isRemoteMode) {
+            return;
+        }
+
+        this->requestRemoteSlice(this->pendingRemoteSliceIndex);
+    });
+    this->remoteFullResolutionStateTimer.setSingleShot(true);
+    QObject::connect(&this->remoteFullResolutionStateTimer, &QTimer::timeout, this, [this]() {
+        if (!this->isRemoteMode || this->remoteCubeDisplayState != RemoteCubeDisplayState::LoadingFullResolution
+            || !this->remoteHighResCubeWatcher.isRunning()) {
+            return;
+        }
+
+        this->setCubeOpenStateLabel(u"Loading full resolution..."_s);
+    });
     this->isosurfaceDebounceTimer.setSingleShot(true);
     QObject::connect(&this->isosurfaceDebounceTimer, &QTimer::timeout, this, [this]() {
         qDebug().noquote()
@@ -618,6 +635,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                      });
     QObject::connect(&this->remotePreviewWatcher, &QFutureWatcher<RemoteCubePreviewResult>::finished, this,
                      [this]() {
+                         const int requestId =
+                                 this->remotePreviewWatcher.property("requestId").toInt();
+                         if (requestId != this->currentRemotePreviewRequestId) {
+                             return;
+                         }
+
                          this->setCubeOpenActionsEnabled(true);
 
                          const auto result = this->remotePreviewWatcher.result();
@@ -653,6 +676,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                      });
     QObject::connect(&this->remoteHighResCubeWatcher,
                      &QFutureWatcher<RemoteCubeSubvolumeResult>::finished, this, [this]() {
+                         const int requestId =
+                                 this->remoteHighResCubeWatcher.property("requestId").toInt();
+                         if (requestId != this->currentRemoteHighResRequestId) {
+                             return;
+                         }
+
                          const auto result = this->remoteHighResCubeWatcher.result();
                          if (!result.valid || !result.cubeImageData) {
                              this->persistentStatusActive = false;
@@ -859,6 +888,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         this->setCubeRenderModeLocally(false);
         this->setRemoteCubeDisplayState(RemoteCubeDisplayState::Preview);
         this->showPersistentStatusMessage(u"Loading remote preview..."_s);
+        this->remotePreviewWatcher.setProperty("requestId", ++this->currentRemotePreviewRequestId);
         this->remotePreviewWatcher.setFuture(
                 QtConcurrent::run(&fetchRemotePreview, this->remoteBackendUrl, this->remoteDatasetId, 4));
     } else if (usingPreview) {
@@ -1314,6 +1344,7 @@ bool vtkWindowCube::requestHighResCube()
     const auto roi = this->computeVisibleROI();
     this->setRemoteCubeDisplayState(RemoteCubeDisplayState::LoadingFullResolution);
     this->showPersistentStatusMessage(u"Loading full resolution..."_s);
+    this->remoteHighResCubeWatcher.setProperty("requestId", ++this->currentRemoteHighResRequestId);
     this->remoteHighResCubeWatcher.setFuture(
             QtConcurrent::run(&fetchRemoteSubvolume, this->remoteBackendUrl, this->remoteDatasetId, roi));
     return true;
@@ -1568,6 +1599,7 @@ void vtkWindowCube::updateSlice()
 {
     const int slice = ui->spinSlice->value() - 1;
     if (this->isRemoteMode) {
+        this->remoteSliceDebounceTimer.stop();
         this->requestRemoteSlice(slice);
         return;
     }
@@ -1647,6 +1679,18 @@ void vtkWindowCube::applyRemoteSliceResult(const RemoteCubeSliceResult &result)
     sliceRenderer->ResetCameraClippingRange();
     this->sliceWin->Render();
     this->prefetchNeighborRemoteSlices(result.index);
+}
+
+void vtkWindowCube::updateRemoteSliceDragFeedback(int sliceIndex)
+{
+    const int clampedSlice = this->clampRemoteSliceIndex(sliceIndex);
+    this->currentRequestedRemoteSliceIndex = clampedSlice;
+    ui->lineSpectral->setText(this->astro
+                                      ? QString::number(this->astro->getInitialSpectralValue()
+                                                        + this->astro->getIncrements()[2] * clampedSlice)
+                                      : QString::number(this->remoteSliceCoordinate(clampedSlice)));
+    this->updateRemoteCuttingPlane(clampedSlice);
+    ui->vtkCube->renderWindow()->Render();
 }
 
 int vtkWindowCube::remoteSliceCount() const
@@ -1883,7 +1927,23 @@ void vtkWindowCube::sliceSliderChanged(int action)
         return;
     }
 
-    ui->spinSlice->setValue(ui->sliderSlice->sliderPosition());
+    const int sliderValue = ui->sliderSlice->sliderPosition();
+    if (this->isRemoteMode && ui->sliderSlice->isSliderDown()) {
+        const QSignalBlocker blockSpin(ui->spinSlice);
+        ui->spinSlice->setValue(sliderValue);
+        const int sliceIndex = sliderValue - 1;
+        this->updateRemoteSliceDragFeedback(sliceIndex);
+        if (this->tryApplyCachedRemoteSlice(sliceIndex)) {
+            this->remoteSliceDebounceTimer.stop();
+            return;
+        }
+
+        this->pendingRemoteSliceIndex = sliceIndex;
+        this->remoteSliceDebounceTimer.start(remoteSliceDebounceDelayMs);
+        return;
+    }
+
+    ui->spinSlice->setValue(sliderValue);
     // updateSlice is called by spinSlice
 }
 
@@ -1896,6 +1956,7 @@ void vtkWindowCube::sliceSpinChanged(int value)
     }
 
     ui->sliderSlice->setValue(value);
+    this->remoteSliceDebounceTimer.stop();
     this->updateSlice();
 }
 
@@ -2018,12 +2079,14 @@ void vtkWindowCube::setRemoteCubeDisplayState(RemoteCubeDisplayState state)
 
     switch (state) {
     case RemoteCubeDisplayState::Preview:
+        this->remoteFullResolutionStateTimer.stop();
         this->setCubeOpenStateLabel(u"Preview"_s);
         break;
     case RemoteCubeDisplayState::LoadingFullResolution:
-        this->setCubeOpenStateLabel(u"Loading full resolution..."_s);
+        this->remoteFullResolutionStateTimer.start(remoteLoadingStateDelayMs);
         break;
     case RemoteCubeDisplayState::FullResolution:
+        this->remoteFullResolutionStateTimer.stop();
         this->setCubeOpenStateLabel(u"Full resolution"_s);
         break;
     }
@@ -2231,6 +2294,14 @@ void vtkWindowCube::syncSlicesLUT()
 
 void vtkWindowCube::startAsyncIsosurface(double isoValue)
 {
+    if (this->isRemoteMode && this->remoteIsosurfaceRequestInFlight
+        && std::fabs(this->inFlightRemoteIsosurfaceThreshold - isoValue) < 1e-9) {
+        qDebug().noquote()
+                << QStringLiteral("[remote-iso] skipping duplicate in-flight threshold=%1")
+                           .arg(isoValue, 0, 'g', 12);
+        return;
+    }
+
     const int requestId = ++this->currentIsosurfaceRequestId;
     this->remoteIsosurfaceReady = false;
     qDebug().noquote()
@@ -2242,13 +2313,22 @@ void vtkWindowCube::startAsyncIsosurface(double isoValue)
 
     if (this->isRemoteMode) {
         ++this->activeRemoteIsosurfaceRequests;
+        this->remoteIsosurfaceRequestInFlight = true;
+        this->inFlightRemoteIsosurfaceThreshold = isoValue;
         auto *watcher = new QFutureWatcher<AsyncIsosurfaceResult>(this);
         watcher->setProperty("requestId", requestId);
+        watcher->setProperty("isoValue", isoValue);
         QObject::connect(watcher, &QFutureWatcher<AsyncIsosurfaceResult>::finished, this,
                          [this, watcher]() {
                              --this->activeRemoteIsosurfaceRequests;
                              const auto result = watcher->result();
                              const int requestId = watcher->property("requestId").toInt();
+                             const double isoValue = watcher->property("isoValue").toDouble();
+                             if (std::fabs(this->inFlightRemoteIsosurfaceThreshold - isoValue) < 1e-9) {
+                                 this->remoteIsosurfaceRequestInFlight = false;
+                                 this->inFlightRemoteIsosurfaceThreshold =
+                                         std::numeric_limits<double>::quiet_NaN();
+                             }
                              watcher->deleteLater();
 
                              if (requestId != this->currentIsosurfaceRequestId) {

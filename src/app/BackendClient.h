@@ -121,6 +121,7 @@ struct BackendIsosurfaceResult
 };
 
 class QJsonDocument;
+class QJsonObject;
 class QUrl;
 
 class BackendClient
@@ -146,6 +147,8 @@ public:
 private:
     QByteArray performGet(const QUrl &url, QString &error) const;
     QByteArray performPost(const QUrl &url, const QJsonDocument &body, QString &error) const;
+    static QByteArray decodePayload(const QJsonObject &object, const QString &base64Field,
+                                    const QString &compressionField, QString &error);
 
     QString m_baseUrl;
 };

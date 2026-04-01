@@ -6,6 +6,7 @@ import logging
 import uuid
 from pathlib import Path
 from typing import Any
+import zlib
 
 import numpy as np
 from astropy.io import fits
@@ -108,6 +109,7 @@ class CubeSliceResponse(BaseModel):
     scalar_type: str = ""
     range_min: float = 0.0
     range_max: float = 0.0
+    compression: str = ""
     data_base64: str = ""
 
 
@@ -141,6 +143,7 @@ class ImageFullResponse(BaseModel):
     width: int = 0
     height: int = 0
     scalar_type: str = ""
+    compression: str = ""
     data_base64: str = ""
 
 
@@ -152,6 +155,7 @@ class IsosurfaceProductRequest(BaseModel):
 class IsosurfaceProductResponse(BaseModel):
     valid: bool
     error: str
+    compression: str = ""
     points_base64: str = ""
     polys_base64: str = ""
     num_points: int = 0
@@ -255,6 +259,20 @@ def _encode_int_array(array: np.ndarray) -> str:
     return base64.b64encode(np.ascontiguousarray(array, dtype=np.int32).tobytes()).decode("ascii")
 
 
+def _qt_zlib_compress(raw: bytes) -> bytes:
+    return len(raw).to_bytes(4, byteorder="big", signed=False) + zlib.compress(raw)
+
+
+def _encode_array_compressed(array: np.ndarray) -> tuple[str, str]:
+    raw = np.ascontiguousarray(array, dtype=np.float32).tobytes()
+    return "qt-zlib", base64.b64encode(_qt_zlib_compress(raw)).decode("ascii")
+
+
+def _encode_int_array_compressed(array: np.ndarray) -> tuple[str, str]:
+    raw = np.ascontiguousarray(array, dtype=np.int32).tobytes()
+    return "qt-zlib", base64.b64encode(_qt_zlib_compress(raw)).decode("ascii")
+
+
 def _compute_isosurface_payload(cube: np.ndarray, entry: dict[str, Any], threshold: float) -> dict[str, Any]:
     try:
         import vtk
@@ -305,9 +323,14 @@ def _compute_isosurface_payload(cube: np.ndarray, entry: dict[str, Any], thresho
 
     points_data = vtk_to_numpy(mesh.GetPoints().GetData()).astype(np.float32, copy=False).reshape(-1)
     polys_data = vtk_to_numpy(mesh.GetPolys().GetData()).astype(np.int32, copy=False)
+    points_compression, points_base64 = _encode_array_compressed(points_data)
+    polys_compression, polys_base64 = _encode_int_array_compressed(polys_data)
+    if points_compression != polys_compression:
+        raise ValueError("Inconsistent isosurface payload compression.")
     return {
-        "points_base64": _encode_array(points_data),
-        "polys_base64": _encode_int_array(polys_data),
+        "compression": points_compression,
+        "points_base64": points_base64,
+        "polys_base64": polys_base64,
         "num_points": num_points,
         "num_polys": num_polys,
     }
@@ -536,6 +559,7 @@ def cube_slice(request: CubeSliceRequest) -> CubeSliceResponse:
         return CubeSliceResponse(valid=False, error=str(exc))
 
     range_min, range_max = _finite_range(image)
+    compression, data_base64 = _encode_array_compressed(image)
     return CubeSliceResponse(
         valid=True,
         error="",
@@ -544,7 +568,8 @@ def cube_slice(request: CubeSliceRequest) -> CubeSliceResponse:
         scalar_type="float32",
         range_min=range_min,
         range_max=range_max,
-        data_base64=_encode_array(image),
+        compression=compression,
+        data_base64=data_base64,
     )
 
 
@@ -595,11 +620,13 @@ def image_full(request: ImageFullRequest) -> ImageFullResponse:
     except Exception as exc:
         return ImageFullResponse(valid=False, error=str(exc))
 
+    compression, data_base64 = _encode_array_compressed(image)
     return ImageFullResponse(
         valid=True,
         error="",
         width=int(image.shape[1]),
         height=int(image.shape[0]),
         scalar_type="float32",
-        data_base64=_encode_array(image),
+        compression=compression,
+        data_base64=data_base64,
     )

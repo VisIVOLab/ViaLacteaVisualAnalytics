@@ -7,7 +7,10 @@
 #include <QFutureWatcher>
 
 #include <memory>
+#include <vector>
 
+class QCheckBox;
+class QComboBox;
 class QLineEdit;
 class QPushButton;
 class QTextEdit;
@@ -27,17 +30,20 @@ public:
 
 private:
     void loadPath(const QString &path);
-    void populateEntries(const std::vector<BackendFileEntry> &entries);
+    void populateEntries();
     void requestHeaderPreview(const QString &path);
     void clearDetails();
     void updateDetails(const BackendFileEntry *entry);
     void updateSelectionState();
     QString humanReadableSize(qint64 size) const;
+    void refreshEntriesView();
 
     std::unique_ptr<BackendClient> client;
     QLineEdit *pathEdit;
     QTreeWidget *entriesTree;
     QPushButton *openButton;
+    QCheckBox *fitsOnlyCheck;
+    QComboBox *sortCombo;
     QLabel *nameValue;
     QLabel *pathValue;
     QLabel *typeValue;
@@ -46,6 +52,8 @@ private:
     QTextEdit *headerView;
     QFutureWatcher<BackendFileHeaderResult> headerWatcher;
     QString selectedPath;
+    QString currentDirectory;
+    std::vector<BackendFileEntry> currentEntries;
 };
 
 #endif
