@@ -15,6 +15,7 @@
 #include "wcs.h"
 
 #include <vtkCamera.h>
+#include <vtkAxisActor2D.h>
 #include <vtkCoordinate.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkImageData.h>
@@ -22,12 +23,16 @@
 #include <vtkInteractorStyleImage.h>
 #include <vtkLookupTable.h>
 #include <vtkNew.h>
+#include <vtkProperty2D.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkScalarBarActor.h>
+#include <vtkTextActor.h>
+#include <vtkTextProperty.h>
 
 #include <QActionGroup>
 #include <QButtonGroup>
+#include <QCheckBox>
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFileDialog>
@@ -41,6 +46,75 @@
 using namespace Qt::StringLiterals;
 
 namespace {
+struct VisibleImageBounds2D
+{
+    bool valid{ false };
+    double xmin{ 0. };
+    double xmax{ 0. };
+    double ymin{ 0. };
+    double ymax{ 0. };
+};
+
+VisibleImageBounds2D computeVisibleImageBounds2D(vtkRenderer *renderer, vtkImageData *imageData)
+{
+    VisibleImageBounds2D result;
+    if (!renderer || !imageData || !renderer->GetActiveCamera()) {
+        return result;
+    }
+
+    const int *size = renderer->GetSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) {
+        return result;
+    }
+
+    double bounds[6];
+    imageData->GetBounds(bounds);
+    auto *camera = renderer->GetActiveCamera();
+    const double *focalPoint = camera->GetFocalPoint();
+    const double halfHeight = camera->GetParallelScale();
+    const double halfWidth = halfHeight * static_cast<double>(size[0]) / static_cast<double>(size[1]);
+
+    result.xmin = std::max(bounds[0], focalPoint[0] - halfWidth);
+    result.xmax = std::min(bounds[1], focalPoint[0] + halfWidth);
+    result.ymin = std::max(bounds[2], focalPoint[1] - halfHeight);
+    result.ymax = std::min(bounds[3], focalPoint[1] + halfHeight);
+    result.valid = result.xmin <= result.xmax && result.ymin <= result.ymax;
+    return result;
+}
+
+void configureAxisActor(vtkAxisActor2D *axis, double x1, double y1, double x2, double y2)
+{
+    axis->GetPoint1Coordinate()->SetCoordinateSystemToDisplay();
+    axis->GetPoint2Coordinate()->SetCoordinateSystemToDisplay();
+    axis->GetPoint1Coordinate()->SetValue(x1, y1);
+    axis->GetPoint2Coordinate()->SetValue(x2, y2);
+    axis->SetNumberOfLabels(5);
+    axis->AdjustLabelsOn();
+    axis->SetLabelFormat("%-#6.4g");
+    axis->SetFontFactor(0.6);
+    axis->SetTickLength(6);
+    axis->AxisVisibilityOn();
+    axis->TickVisibilityOn();
+    axis->LabelVisibilityOn();
+    axis->TitleVisibilityOn();
+    axis->GetProperty()->SetColor(1., 1., 1.);
+    axis->GetLabelTextProperty()->SetColor(1., 1., 1.);
+    axis->GetTitleTextProperty()->SetColor(1., 1., 1.);
+    axis->GetLabelTextProperty()->SetFontSize(14);
+    axis->GetTitleTextProperty()->SetFontSize(16);
+}
+
+void configureVerticalAxisTitle(vtkAxisActor2D *axis)
+{
+    auto *titleProp = axis->GetTitleTextProperty();
+    titleProp->SetOrientation(90.);
+    titleProp->SetJustificationToCentered();
+    titleProp->SetVerticalJustificationToCentered();
+    titleProp->SetColor(1., 1., 1.);
+    titleProp->SetFontSize(14);
+    axis->SetTitlePosition(0.5);
+}
+
 vtkSmartPointer<vtkImageData> createPlaceholderImageData()
 {
     vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
@@ -152,6 +226,20 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->setWindowTitle(this->isRemoteMode ? u"%1 [remote image]"_s.arg(this->filepath)
                                             : this->filepath);
     this->setAttribute(Qt::WA_DeleteOnClose);
+    this->wcsAxesCheck = new QCheckBox(u"Show WCS Axes"_s, this);
+    this->wcsAxesCheck->setChecked(this->showWcsAxes);
+    this->statusBar()->addPermanentWidget(this->wcsAxesCheck);
+    QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        this->showWcsAxes = checked;
+        this->lastOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                           std::numeric_limits<double>::quiet_NaN(),
+                                           std::numeric_limits<double>::quiet_NaN(),
+                                           std::numeric_limits<double>::quiet_NaN() };
+        this->lastOverlayViewportSize = { -1, -1 };
+        this->setWcsOverlayVisible(checked);
+        this->updateWcsOverlay();
+        this->vtkRender();
+    });
     this->statusMessageClearTimer.setSingleShot(true);
     QObject::connect(&this->statusMessageClearTimer, &QTimer::timeout, this, [this]() {
         this->persistentStatusActive = false;
@@ -341,6 +429,7 @@ void vtkWindowImage::setupRenderer()
 
     vtkNew<vtkGenericOpenGLRenderWindow> win;
     win->AddRenderer(ren);
+    win->AddObserver(vtkCommand::EndEvent, this, &vtkWindowImage::updateWcsOverlay);
     ui->vtk->setRenderWindow(win);
     ui->vtk->setEnableTouchEventProcessing(false);
 
@@ -373,6 +462,25 @@ void vtkWindowImage::setupRenderer()
         this->legendWCS->SetWCS(WCS_GALACTIC);
         ren->AddViewProp(this->legendWCS);
     }
+    ren->AddViewProp(this->overlayXAxis);
+    ren->AddViewProp(this->overlayYAxis);
+    ren->AddViewProp(this->overlayXTitleActor);
+    ren->AddViewProp(this->overlayYTitleActor);
+    this->overlayXAxis->GetTitleTextProperty()->SetFontSize(16);
+    this->overlayXAxis->GetTitleTextProperty()->SetBold(false);
+    this->overlayYAxis->GetTitleTextProperty()->SetFontSize(16);
+    this->overlayYAxis->GetTitleTextProperty()->SetOrientation(90.);
+    this->overlayYAxis->GetTitleTextProperty()->SetBold(false);
+    this->overlayXTitleActor->GetTextProperty()->SetColor(1., 1., 1.);
+    this->overlayXTitleActor->GetTextProperty()->SetFontSize(14);
+    this->overlayXTitleActor->GetTextProperty()->SetJustificationToCentered();
+    this->overlayXTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->overlayYTitleActor->GetTextProperty()->SetColor(1., 1., 1.);
+    this->overlayYTitleActor->GetTextProperty()->SetFontSize(14);
+    this->overlayYTitleActor->GetTextProperty()->SetOrientation(90.);
+    this->overlayYTitleActor->GetTextProperty()->SetJustificationToCentered();
+    this->overlayYTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->setWcsOverlayVisible(this->showWcsAxes);
 
     ren->ResetCamera();
     win->Render();
@@ -521,6 +629,92 @@ void vtkWindowImage::setLayerImportEnabled(bool enabled)
     ui->actionAddFITS->setEnabled(enabled && !this->isRemoteMode);
 }
 
+void vtkWindowImage::updateWcsOverlay()
+{
+    auto *renderer = ui->vtk->renderWindow() ? ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer()
+                                             : nullptr;
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    const bool useLegend = this->astro && !this->astro->isSimulation();
+    this->setWcsOverlayVisible(this->showWcsAxes);
+    if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
+        return;
+    }
+
+    const auto visible = computeVisibleImageBounds2D(renderer, imageData);
+    if (!visible.valid) {
+        this->overlayXAxis->VisibilityOff();
+        this->overlayYAxis->VisibilityOff();
+        return;
+    }
+
+    const int *size = renderer->GetSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) {
+        return;
+    }
+
+    const std::array<double, 4> visibleBounds = { visible.xmin, visible.xmax, visible.ymin, visible.ymax };
+    const std::array<int, 2> viewportSize = { size[0], size[1] };
+    if (visibleBounds == this->lastOverlayVisibleBounds && viewportSize == this->lastOverlayViewportSize) {
+        return;
+    }
+    this->lastOverlayVisibleBounds = visibleBounds;
+    this->lastOverlayViewportSize = viewportSize;
+
+    constexpr double leftMargin = 168.;
+    constexpr double axisX = 136.;
+    constexpr double bottomMargin = 58.;
+    constexpr double rightMargin = 34.;
+    constexpr double topMargin = 28.;
+    configureAxisActor(this->overlayXAxis, axisX, bottomMargin, size[0] - rightMargin, bottomMargin);
+    configureAxisActor(this->overlayYAxis, axisX, size[1] - topMargin, axisX, bottomMargin);
+    this->overlayXAxis->SetTitle("");
+    this->overlayXTitleActor->SetInput(this->remoteAxisTitle(0).toStdString().c_str());
+    this->overlayXTitleActor->SetDisplayPosition((axisX + (size[0] - rightMargin)) / 2,
+                                                 static_cast<int>(bottomMargin / 2.0) - 2);
+    this->overlayYAxis->SetTitle("");
+    this->overlayYTitleActor->SetInput(this->remoteAxisTitle(1).toStdString().c_str());
+    this->overlayYTitleActor->SetDisplayPosition(static_cast<int>(leftMargin / 3.0), size[1] / 2);
+
+    bool xOk = false;
+    const double xMin = this->remoteVoxelToWcs(0, visible.xmin, &xOk);
+    const double xMax = this->remoteVoxelToWcs(0, visible.xmax, &xOk);
+    bool yOk = false;
+    const double yMin = this->remoteVoxelToWcs(1, visible.ymin, &yOk);
+    const double yMax = this->remoteVoxelToWcs(1, visible.ymax, &yOk);
+    this->overlayXAxis->SetRange(xOk ? xMin : visible.xmin, xOk ? xMax : visible.xmax);
+    this->overlayYAxis->SetRange(yOk ? yMax : visible.ymax, yOk ? yMin : visible.ymin);
+    this->overlayXAxis->VisibilityOn();
+    this->overlayYAxis->VisibilityOn();
+    this->overlayXTitleActor->VisibilityOn();
+    this->overlayYTitleActor->VisibilityOn();
+    qDebug().noquote()
+            << QStringLiteral("[wcs-overlay] updated ticks x=%1..%2 y=%3..%4 size=%5x%6 actor=%7 endpoints=(%8,%9)->(%10,%11) outer=%12")
+                       .arg(visible.xmin, 0, 'g', 12)
+                       .arg(visible.xmax, 0, 'g', 12)
+                       .arg(visible.ymin, 0, 'g', 12)
+                       .arg(visible.ymax, 0, 'g', 12)
+                       .arg(size[0])
+                       .arg(size[1])
+                       .arg(this->overlayXAxis->GetVisibility())
+                       .arg(axisX, 0, 'g', 12)
+                       .arg(size[1] - topMargin, 0, 'g', 12)
+                       .arg(axisX, 0, 'g', 12)
+                       .arg(bottomMargin, 0, 'g', 12)
+                       .arg(leftMargin, 0, 'g', 12);
+}
+
+void vtkWindowImage::setWcsOverlayVisible(bool visible)
+{
+    const bool useLegend = this->astro && !this->astro->isSimulation();
+    if (this->legendWCS) {
+        this->legendWCS->SetVisibility(visible && useLegend);
+    }
+    this->overlayXAxis->SetVisibility(visible && !useLegend);
+    this->overlayYAxis->SetVisibility(visible && !useLegend);
+    this->overlayXTitleActor->SetVisibility(visible && !useLegend);
+    this->overlayYTitleActor->SetVisibility(visible && !useLegend);
+}
+
 bool vtkWindowImage::remoteHasWcsAxis(int axis) const
 {
     return axis >= 0 && axis < 3 && std::isfinite(this->remoteDatasetCrval[axis])
@@ -556,6 +750,15 @@ QString vtkWindowImage::remoteFormatAxisCoordinate(int axis, double voxelIndex) 
         return QString::number(world, 'g', 12);
     }
     return u"%1 %2"_s.arg(QString::number(world, 'g', 12), unit);
+}
+
+QString vtkWindowImage::remoteAxisTitle(int axis) const
+{
+    const QString base = axis == 0 ? u"X"_s : (axis == 1 ? u"Y"_s : u"Z"_s);
+    const QString ctype = (axis >= 0 && axis < 3) ? this->remoteDatasetCtype[axis].trimmed() : QString();
+    const QString cunit = (axis >= 0 && axis < 3) ? this->remoteDatasetCunit[axis].trimmed() : QString();
+    const QString label = ctype.isEmpty() ? base : ctype;
+    return cunit.isEmpty() ? label : u"%1 (%2)"_s.arg(label, cunit);
 }
 
 void vtkWindowImage::vtkRender()

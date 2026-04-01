@@ -13,6 +13,7 @@
 #include <QTimer>
 
 #include <array>
+#include <limits>
 #include <memory>
 
 class ImageLayerController;
@@ -21,10 +22,13 @@ class LayerListModel;
 class LUTCustomizerDialog;
 class ProfileWidget;
 class AstroUtils;
+class QCheckBox;
+class vtkAxisActor2D;
 class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
 class vtkScalarBarActor;
+class vtkTextActor;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -79,6 +83,7 @@ private:
     std::unique_ptr<AstroUtils> astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
+    QPointer<QCheckBox> wcsAxesCheck;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
     QTimer statusMessageClearTimer;
@@ -89,10 +94,22 @@ private:
 
     // Renderer
     vtkNew<vtkLegendScaleActorWCS> legendWCS;
+    vtkNew<vtkAxisActor2D> overlayXAxis;
+    vtkNew<vtkAxisActor2D> overlayYAxis;
+    vtkNew<vtkTextActor> overlayXTitleActor;
+    vtkNew<vtkTextActor> overlayYTitleActor;
     vtkNew<vtkScalarBarActor> colorbar;
     vtkNew<vtkCoordinate> coordinate;
+    bool showWcsAxes{ true };
+    std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
+                                                    std::numeric_limits<double>::quiet_NaN(),
+                                                    std::numeric_limits<double>::quiet_NaN(),
+                                                    std::numeric_limits<double>::quiet_NaN() };
+    std::array<int, 2> lastOverlayViewportSize{ -1, -1 };
     void setupRenderer();
     void mouseCallback();
+    void updateWcsOverlay();
+    void setWcsOverlayVisible(bool visible);
 
     // Stack
     vtkNew<vtkImageStack> stack;
@@ -109,6 +126,7 @@ private:
     bool remoteHasWcsAxis(int axis) const;
     double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
     QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
+    QString remoteAxisTitle(int axis) const;
 };
 
 #endif

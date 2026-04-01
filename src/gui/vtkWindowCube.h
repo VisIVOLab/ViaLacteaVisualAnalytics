@@ -26,6 +26,7 @@ class QCheckBox;
 class QLabel;
 class LUTCustomizerDialog;
 class ProfileWidget;
+class vtkAxisActor2D;
 class vtkActor;
 class vtkColorTransferFunction;
 class vtkCoordinate;
@@ -44,6 +45,7 @@ class vtkOrientationMarkerWidget;
 class vtkPlaneSource;
 class vtkPiecewiseFunction;
 class vtkPolyData;
+class vtkTextActor;
 class vtkTrivialProducer;
 class vtkVolume;
 
@@ -171,6 +173,7 @@ private:
     QPointer<ProfileWidget> profileWidget;
     QPointer<QLabel> cubeOpenStateLabel;
     QPointer<QCheckBox> remoteRoiRefinementCheck;
+    QPointer<QCheckBox> wcsAxesCheck;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;
     QFutureWatcher<RemoteCubeSubvolumeResult> remoteHighResCubeWatcher;
@@ -255,6 +258,10 @@ private:
     bool remoteHasWcsAxis(int axis) const;
     double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
     QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
+    QString remoteAxisTitle(int axis) const;
+    void updateSliceWcsOverlay();
+    void updateMomentWcsOverlay();
+    void set2dWcsOverlayVisible(bool visible);
 
     // Slice
     vtkNew<vtkImageReslice> slice;
@@ -264,6 +271,15 @@ private:
     vtkNew<vtkLookupTable> lutSliceOnCube;
     vtkNew<vtkTrivialProducer> remoteSliceDisplaySource;
     vtkNew<vtkLegendScaleActorWCS> legendSlice;
+    vtkNew<vtkAxisActor2D> sliceOverlayXAxis;
+    vtkNew<vtkAxisActor2D> sliceOverlayYAxis;
+    vtkNew<vtkTextActor> sliceOverlayXTitleActor;
+    vtkNew<vtkTextActor> sliceOverlayYTitleActor;
+    std::array<double, 4> lastSliceOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
+                                                         std::numeric_limits<double>::quiet_NaN(),
+                                                         std::numeric_limits<double>::quiet_NaN(),
+                                                         std::numeric_limits<double>::quiet_NaN() };
+    std::array<int, 2> lastSliceOverlayViewportSize{ -1, -1 };
     QHash<QString, RemoteCubeSliceResult> remoteSliceCache;
     QList<QString> remoteSliceCacheLru;
     QSet<QString> remoteSliceFetchesInFlight;
@@ -292,6 +308,16 @@ private:
     vtkNew<vtkImageMapToColors> momentColors;
     vtkNew<vtkLookupTable> lutMoment;
     vtkNew<vtkLegendScaleActorWCS> legendMoment;
+    vtkNew<vtkAxisActor2D> momentOverlayXAxis;
+    vtkNew<vtkAxisActor2D> momentOverlayYAxis;
+    vtkNew<vtkTextActor> momentOverlayXTitleActor;
+    vtkNew<vtkTextActor> momentOverlayYTitleActor;
+    std::array<double, 4> lastMomentOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
+                                                          std::numeric_limits<double>::quiet_NaN(),
+                                                          std::numeric_limits<double>::quiet_NaN(),
+                                                          std::numeric_limits<double>::quiet_NaN() };
+    std::array<int, 2> lastMomentOverlayViewportSize{ -1, -1 };
+    bool showWcsAxes{ true };
     void applyMomentMapResult(const MomentMapApplyResult &result);
     bool isBusy() const;
     void setRemoteCubeDisplayState(RemoteCubeDisplayState state);

@@ -15,6 +15,7 @@
 
 #include <QVTKInteractor.h>
 #include <vtkActor.h>
+#include <vtkAxisActor2D.h>
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
 #include <vtkCellArray.h>
@@ -42,13 +43,16 @@
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
+#include <vtkProperty2D.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindow.h>
 #include <vtkScalarBarActor.h>
+#include <vtkTextActor.h>
 #include <vtkTransform.h>
 #include <vtkTransformPolyDataFilter.h>
 #include <vtkIdTypeArray.h>
+#include <vtkTextProperty.h>
 #include <vtkTrivialProducer.h>
 #include <vtkVolume.h>
 #include <vtkVolumeProperty.h>
@@ -75,6 +79,75 @@ using namespace Qt::StringLiterals;
 
 namespace {
 constexpr double pi = 3.14159265358979323846;
+
+struct VisibleImageBounds2D
+{
+    bool valid{ false };
+    double xmin{ 0. };
+    double xmax{ 0. };
+    double ymin{ 0. };
+    double ymax{ 0. };
+};
+
+VisibleImageBounds2D computeVisibleImageBounds2D(vtkRenderer *renderer, vtkImageData *imageData)
+{
+    VisibleImageBounds2D result;
+    if (!renderer || !imageData || !renderer->GetActiveCamera()) {
+        return result;
+    }
+
+    const int *size = renderer->GetSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) {
+        return result;
+    }
+
+    double bounds[6];
+    imageData->GetBounds(bounds);
+    auto *camera = renderer->GetActiveCamera();
+    const double *focalPoint = camera->GetFocalPoint();
+    const double halfHeight = camera->GetParallelScale();
+    const double halfWidth = halfHeight * static_cast<double>(size[0]) / static_cast<double>(size[1]);
+
+    result.xmin = std::max(bounds[0], focalPoint[0] - halfWidth);
+    result.xmax = std::min(bounds[1], focalPoint[0] + halfWidth);
+    result.ymin = std::max(bounds[2], focalPoint[1] - halfHeight);
+    result.ymax = std::min(bounds[3], focalPoint[1] + halfHeight);
+    result.valid = result.xmin <= result.xmax && result.ymin <= result.ymax;
+    return result;
+}
+
+void configureAxisActor(vtkAxisActor2D *axis, double x1, double y1, double x2, double y2)
+{
+    axis->GetPoint1Coordinate()->SetCoordinateSystemToDisplay();
+    axis->GetPoint2Coordinate()->SetCoordinateSystemToDisplay();
+    axis->GetPoint1Coordinate()->SetValue(x1, y1);
+    axis->GetPoint2Coordinate()->SetValue(x2, y2);
+    axis->SetNumberOfLabels(5);
+    axis->AdjustLabelsOn();
+    axis->SetLabelFormat("%-#6.4g");
+    axis->SetFontFactor(0.6);
+    axis->SetTickLength(6);
+    axis->AxisVisibilityOn();
+    axis->TickVisibilityOn();
+    axis->LabelVisibilityOn();
+    axis->TitleVisibilityOn();
+    axis->GetProperty()->SetColor(1., 1., 1.);
+    axis->GetLabelTextProperty()->SetColor(1., 1., 1.);
+    axis->GetTitleTextProperty()->SetColor(1., 1., 1.);
+    axis->GetLabelTextProperty()->SetFontSize(14);
+    axis->GetTitleTextProperty()->SetFontSize(16);
+}
+
+void configureVerticalAxisTitle(vtkAxisActor2D *axis)
+{
+    auto *titleProp = axis->GetTitleTextProperty();
+    titleProp->SetOrientation(90.);
+    titleProp->SetJustificationToCentered();
+    titleProp->SetVerticalJustificationToCentered();
+    titleProp->SetColor(1., 1., 1.);
+    titleProp->SetFontSize(14);
+    axis->SetTitlePosition(0.5);
+}
 
 vtkSmartPointer<vtkImageData> createPlaceholderImageData()
 {
@@ -705,6 +778,26 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->cubeOpenStateLabel->setStyleSheet(u"QLabel { font-weight: 600; padding-left: 8px; }"_s);
     this->cubeOpenStateLabel->hide();
     this->statusBar()->addPermanentWidget(this->cubeOpenStateLabel);
+    this->wcsAxesCheck = new QCheckBox(u"Show WCS Axes"_s, this);
+    this->wcsAxesCheck->setChecked(this->showWcsAxes);
+    this->statusBar()->addPermanentWidget(this->wcsAxesCheck);
+    QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        this->showWcsAxes = checked;
+        this->lastSliceOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                                std::numeric_limits<double>::quiet_NaN(),
+                                                std::numeric_limits<double>::quiet_NaN(),
+                                                std::numeric_limits<double>::quiet_NaN() };
+        this->lastMomentOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
+                                                 std::numeric_limits<double>::quiet_NaN(),
+                                                 std::numeric_limits<double>::quiet_NaN(),
+                                                 std::numeric_limits<double>::quiet_NaN() };
+        this->lastSliceOverlayViewportSize = { -1, -1 };
+        this->lastMomentOverlayViewportSize = { -1, -1 };
+        this->set2dWcsOverlayVisible(checked);
+        this->updateSliceWcsOverlay();
+        this->updateMomentWcsOverlay();
+        ui->vtkImage->renderWindow()->Render();
+    });
     this->remoteRoiRefinementCheck = new QCheckBox(u"Use Camera ROI"_s, this);
     this->remoteRoiRefinementCheck->setChecked(this->useCameraRoiRefinement);
     this->remoteRoiRefinementCheck->setToolTip(
@@ -1346,6 +1439,7 @@ void vtkWindowCube::setupSliceRenderer()
     ren->GetActiveCamera()->ParallelProjectionOn();
 
     this->sliceWin->AddRenderer(ren);
+    this->sliceWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateSliceWcsOverlay);
     ui->vtkImage->setRenderWindow(this->sliceWin);
     ui->vtkImage->setEnableTouchEventProcessing(false);
 
@@ -1416,6 +1510,25 @@ void vtkWindowCube::setupSliceRenderer()
         this->legendSlice->SetWCS(WCS_GALACTIC);
         ren->AddViewProp(this->legendSlice);
     }
+    ren->AddViewProp(this->sliceOverlayXAxis);
+    ren->AddViewProp(this->sliceOverlayYAxis);
+    ren->AddViewProp(this->sliceOverlayXTitleActor);
+    ren->AddViewProp(this->sliceOverlayYTitleActor);
+    this->sliceOverlayXAxis->GetTitleTextProperty()->SetFontSize(16);
+    this->sliceOverlayXAxis->GetTitleTextProperty()->SetBold(false);
+    this->sliceOverlayYAxis->GetTitleTextProperty()->SetFontSize(16);
+    this->sliceOverlayYAxis->GetTitleTextProperty()->SetOrientation(90.);
+    this->sliceOverlayYAxis->GetTitleTextProperty()->SetBold(false);
+    this->sliceOverlayXTitleActor->GetTextProperty()->SetColor(1., 1., 1.);
+    this->sliceOverlayXTitleActor->GetTextProperty()->SetFontSize(14);
+    this->sliceOverlayXTitleActor->GetTextProperty()->SetJustificationToCentered();
+    this->sliceOverlayXTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->sliceOverlayYTitleActor->GetTextProperty()->SetColor(1., 1., 1.);
+    this->sliceOverlayYTitleActor->GetTextProperty()->SetFontSize(14);
+    this->sliceOverlayYTitleActor->GetTextProperty()->SetOrientation(90.);
+    this->sliceOverlayYTitleActor->GetTextProperty()->SetJustificationToCentered();
+    this->sliceOverlayYTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->set2dWcsOverlayVisible(this->showWcsAxes);
 
     ren->ResetCamera();
     this->sliceWin->Render();
@@ -1427,6 +1540,7 @@ void vtkWindowCube::setupMomentRenderer()
     ren->SetBackground(0.21, 0.23, 0.25);
     ren->GetActiveCamera()->ParallelProjectionOn();
     this->momentWin->AddRenderer(ren);
+    this->momentWin->AddObserver(vtkCommand::EndEvent, this, &vtkWindowCube::updateMomentWcsOverlay);
 
     vtkNew<QVTKInteractor> iren;
     this->momentWin->SetInteractor(iren);
@@ -1481,6 +1595,25 @@ void vtkWindowCube::setupMomentRenderer()
         this->legendMoment->SetWCS(WCS_GALACTIC);
         ren->AddViewProp(this->legendMoment);
     }
+    ren->AddViewProp(this->momentOverlayXAxis);
+    ren->AddViewProp(this->momentOverlayYAxis);
+    ren->AddViewProp(this->momentOverlayXTitleActor);
+    ren->AddViewProp(this->momentOverlayYTitleActor);
+    this->momentOverlayXAxis->GetTitleTextProperty()->SetFontSize(16);
+    this->momentOverlayXAxis->GetTitleTextProperty()->SetBold(false);
+    this->momentOverlayYAxis->GetTitleTextProperty()->SetFontSize(16);
+    this->momentOverlayYAxis->GetTitleTextProperty()->SetOrientation(90.);
+    this->momentOverlayYAxis->GetTitleTextProperty()->SetBold(false);
+    this->momentOverlayXTitleActor->GetTextProperty()->SetColor(1., 1., 1.);
+    this->momentOverlayXTitleActor->GetTextProperty()->SetFontSize(14);
+    this->momentOverlayXTitleActor->GetTextProperty()->SetJustificationToCentered();
+    this->momentOverlayXTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->momentOverlayYTitleActor->GetTextProperty()->SetColor(1., 1., 1.);
+    this->momentOverlayYTitleActor->GetTextProperty()->SetFontSize(14);
+    this->momentOverlayYTitleActor->GetTextProperty()->SetOrientation(90.);
+    this->momentOverlayYTitleActor->GetTextProperty()->SetJustificationToCentered();
+    this->momentOverlayYTitleActor->GetTextProperty()->SetVerticalJustificationToCentered();
+    this->set2dWcsOverlayVisible(this->showWcsAxes);
 
     ren->ResetCamera();
 }
@@ -2254,6 +2387,184 @@ QString vtkWindowCube::remoteFormatAxisCoordinate(int axis, double voxelIndex) c
         return QString::number(world, 'g', 12);
     }
     return u"%1 %2"_s.arg(QString::number(world, 'g', 12), unit);
+}
+
+QString vtkWindowCube::remoteAxisTitle(int axis) const
+{
+    const QString base = axis == 0 ? u"X"_s : (axis == 1 ? u"Y"_s : u"Z"_s);
+    const QString ctype = (axis >= 0 && axis < 3) ? this->remoteDatasetCtype[axis].trimmed() : QString();
+    const QString cunit = (axis >= 0 && axis < 3) ? this->remoteDatasetCunit[axis].trimmed() : QString();
+    const QString label = ctype.isEmpty() ? base : ctype;
+    return cunit.isEmpty() ? label : u"%1 (%2)"_s.arg(label, cunit);
+}
+
+void vtkWindowCube::set2dWcsOverlayVisible(bool visible)
+{
+    const bool useLegend = this->astro && !this->astro->isSimulation();
+    this->legendSlice->SetVisibility(visible && useLegend);
+    this->legendMoment->SetVisibility(visible && useLegend);
+    this->sliceOverlayXAxis->SetVisibility(visible && !useLegend);
+    this->sliceOverlayYAxis->SetVisibility(visible && !useLegend);
+    this->sliceOverlayXTitleActor->SetVisibility(visible && !useLegend);
+    this->sliceOverlayYTitleActor->SetVisibility(visible && !useLegend);
+    this->momentOverlayXAxis->SetVisibility(visible && !useLegend);
+    this->momentOverlayYAxis->SetVisibility(visible && !useLegend);
+    this->momentOverlayXTitleActor->SetVisibility(visible && !useLegend);
+    this->momentOverlayYTitleActor->SetVisibility(visible && !useLegend);
+}
+
+void vtkWindowCube::updateSliceWcsOverlay()
+{
+    auto *renderer = this->sliceWin->GetRenderers()->GetFirstRenderer();
+    auto *imageData = this->viewingSlice()
+            ? (this->isRemoteMode
+                       ? vtkImageData::SafeDownCast(this->remoteSliceDisplaySource->GetOutputDataObject(0))
+                       : this->slice->GetOutput())
+            : nullptr;
+    const bool useLegend = this->astro && !this->astro->isSimulation();
+    this->set2dWcsOverlayVisible(this->showWcsAxes);
+    if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
+        return;
+    }
+
+    const auto visible = computeVisibleImageBounds2D(renderer, imageData);
+    if (!visible.valid) {
+        this->sliceOverlayXAxis->VisibilityOff();
+        this->sliceOverlayYAxis->VisibilityOff();
+        return;
+    }
+
+    const int *size = renderer->GetSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) {
+        return;
+    }
+
+    const std::array<double, 4> visibleBounds = { visible.xmin, visible.xmax, visible.ymin, visible.ymax };
+    const std::array<int, 2> viewportSize = { size[0], size[1] };
+    if (visibleBounds == this->lastSliceOverlayVisibleBounds
+        && viewportSize == this->lastSliceOverlayViewportSize) {
+        return;
+    }
+    this->lastSliceOverlayVisibleBounds = visibleBounds;
+    this->lastSliceOverlayViewportSize = viewportSize;
+
+    constexpr double leftMargin = 168.;
+    constexpr double axisX = 136.;
+    constexpr double bottomMargin = 58.;
+    constexpr double rightMargin = 34.;
+    constexpr double topMargin = 28.;
+    configureAxisActor(this->sliceOverlayXAxis, axisX, bottomMargin, size[0] - rightMargin,
+                       bottomMargin);
+    configureAxisActor(this->sliceOverlayYAxis, axisX, size[1] - topMargin, axisX, bottomMargin);
+    this->sliceOverlayXAxis->SetTitle("");
+    this->sliceOverlayXTitleActor->SetInput(this->remoteAxisTitle(0).toStdString().c_str());
+    this->sliceOverlayXTitleActor->SetDisplayPosition((axisX + (size[0] - rightMargin)) / 2,
+                                                      static_cast<int>(bottomMargin / 2.0) - 2);
+    this->sliceOverlayYAxis->SetTitle("");
+    this->sliceOverlayYTitleActor->SetInput(this->remoteAxisTitle(1).toStdString().c_str());
+    this->sliceOverlayYTitleActor->SetDisplayPosition(static_cast<int>(leftMargin / 3.0), size[1] / 2);
+
+    bool xOk = false;
+    bool yOk = false;
+    const double xMin = this->remoteVoxelToWcs(0, visible.xmin, &xOk);
+    const double xMax = this->remoteVoxelToWcs(0, visible.xmax, &xOk);
+    const double yMin = this->remoteVoxelToWcs(1, visible.ymin, &yOk);
+    const double yMax = this->remoteVoxelToWcs(1, visible.ymax, &yOk);
+    this->sliceOverlayXAxis->SetRange(xOk ? xMin : visible.xmin, xOk ? xMax : visible.xmax);
+    this->sliceOverlayYAxis->SetRange(yOk ? yMax : visible.ymax, yOk ? yMin : visible.ymin);
+    this->sliceOverlayXAxis->VisibilityOn();
+    this->sliceOverlayYAxis->VisibilityOn();
+    this->sliceOverlayXTitleActor->VisibilityOn();
+    this->sliceOverlayYTitleActor->VisibilityOn();
+    qDebug().noquote()
+            << QStringLiteral("[wcs-overlay] updated ticks for slice x=%1..%2 y=%3..%4 size=%5x%6 actor=%7 endpoints=(%8,%9)->(%10,%11) outer=%12")
+                       .arg(visible.xmin, 0, 'g', 12)
+                       .arg(visible.xmax, 0, 'g', 12)
+                       .arg(visible.ymin, 0, 'g', 12)
+                       .arg(visible.ymax, 0, 'g', 12)
+                       .arg(size[0])
+                       .arg(size[1])
+                       .arg(this->sliceOverlayXAxis->GetVisibility())
+                       .arg(axisX, 0, 'g', 12)
+                       .arg(size[1] - topMargin, 0, 'g', 12)
+                       .arg(axisX, 0, 'g', 12)
+                       .arg(bottomMargin, 0, 'g', 12)
+                       .arg(leftMargin, 0, 'g', 12);
+}
+
+void vtkWindowCube::updateMomentWcsOverlay()
+{
+    auto *renderer = this->momentWin->GetRenderers()->GetFirstRenderer();
+    auto *imageData = vtkImageData::SafeDownCast(this->momentDisplaySource->GetOutputDataObject(0));
+    const bool useLegend = this->astro && !this->astro->isSimulation();
+    this->set2dWcsOverlayVisible(this->showWcsAxes);
+    if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
+        return;
+    }
+
+    const auto visible = computeVisibleImageBounds2D(renderer, imageData);
+    if (!visible.valid) {
+        this->momentOverlayXAxis->VisibilityOff();
+        this->momentOverlayYAxis->VisibilityOff();
+        return;
+    }
+
+    const int *size = renderer->GetSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) {
+        return;
+    }
+
+    const std::array<double, 4> visibleBounds = { visible.xmin, visible.xmax, visible.ymin, visible.ymax };
+    const std::array<int, 2> viewportSize = { size[0], size[1] };
+    if (visibleBounds == this->lastMomentOverlayVisibleBounds
+        && viewportSize == this->lastMomentOverlayViewportSize) {
+        return;
+    }
+    this->lastMomentOverlayVisibleBounds = visibleBounds;
+    this->lastMomentOverlayViewportSize = viewportSize;
+
+    constexpr double leftMargin = 168.;
+    constexpr double axisX = 136.;
+    constexpr double bottomMargin = 58.;
+    constexpr double rightMargin = 34.;
+    constexpr double topMargin = 28.;
+    configureAxisActor(this->momentOverlayXAxis, axisX, bottomMargin, size[0] - rightMargin,
+                       bottomMargin);
+    configureAxisActor(this->momentOverlayYAxis, axisX, size[1] - topMargin, axisX, bottomMargin);
+    this->momentOverlayXAxis->SetTitle("");
+    this->momentOverlayXTitleActor->SetInput(this->remoteAxisTitle(0).toStdString().c_str());
+    this->momentOverlayXTitleActor->SetDisplayPosition((axisX + (size[0] - rightMargin)) / 2,
+                                                       static_cast<int>(bottomMargin / 2.0) - 2);
+    this->momentOverlayYAxis->SetTitle("");
+    this->momentOverlayYTitleActor->SetInput(this->remoteAxisTitle(1).toStdString().c_str());
+    this->momentOverlayYTitleActor->SetDisplayPosition(static_cast<int>(leftMargin / 3.0), size[1] / 2);
+
+    bool xOk = false;
+    bool yOk = false;
+    const double xMin = this->remoteVoxelToWcs(0, visible.xmin, &xOk);
+    const double xMax = this->remoteVoxelToWcs(0, visible.xmax, &xOk);
+    const double yMin = this->remoteVoxelToWcs(1, visible.ymin, &yOk);
+    const double yMax = this->remoteVoxelToWcs(1, visible.ymax, &yOk);
+    this->momentOverlayXAxis->SetRange(xOk ? xMin : visible.xmin, xOk ? xMax : visible.xmax);
+    this->momentOverlayYAxis->SetRange(yOk ? yMax : visible.ymax, yOk ? yMin : visible.ymin);
+    this->momentOverlayXAxis->VisibilityOn();
+    this->momentOverlayYAxis->VisibilityOn();
+    this->momentOverlayXTitleActor->VisibilityOn();
+    this->momentOverlayYTitleActor->VisibilityOn();
+    qDebug().noquote()
+            << QStringLiteral("[wcs-overlay] updated ticks for moment x=%1..%2 y=%3..%4 size=%5x%6 actor=%7 endpoints=(%8,%9)->(%10,%11) outer=%12")
+                       .arg(visible.xmin, 0, 'g', 12)
+                       .arg(visible.xmax, 0, 'g', 12)
+                       .arg(visible.ymin, 0, 'g', 12)
+                       .arg(visible.ymax, 0, 'g', 12)
+                       .arg(size[0])
+                       .arg(size[1])
+                       .arg(this->momentOverlayXAxis->GetVisibility())
+                       .arg(axisX, 0, 'g', 12)
+                       .arg(size[1] - topMargin, 0, 'g', 12)
+                       .arg(axisX, 0, 'g', 12)
+                       .arg(bottomMargin, 0, 'g', 12)
+                       .arg(leftMargin, 0, 'g', 12);
 }
 
 QString vtkWindowCube::remoteSliceCacheKey(int sliceIndex) const
