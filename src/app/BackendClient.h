@@ -166,7 +166,9 @@ public:
                                   int widthPixels) const;
     BackendImageResult requestImage(const QString &datasetId) const;
     BackendIsosurfaceResult requestIsosurface(const QString &datasetId, double threshold) const;
-    BackendMomentResult requestMoment(const QString &datasetId, int order) const;
+    BackendMomentResult requestMoment(const QString &datasetId, int order, int channelStart,
+                                      int channelEnd, bool maskEnabled,
+                                      double thresholdValue) const;
 
 private:
     QByteArray performGet(const QUrl &url, QString &error) const;

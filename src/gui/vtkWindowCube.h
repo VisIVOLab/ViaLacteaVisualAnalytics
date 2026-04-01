@@ -196,6 +196,22 @@ private:
         std::array<double, 2> imageRange;
     };
 
+    struct MomentGenerationConfig
+    {
+        int order{ 0 };
+        int channelStart{ 0 };
+        int channelEnd{ 0 };
+        bool maskEnabled{ false };
+        double thresholdValue{ 0.0 };
+    };
+
+    struct MomentProvenanceState
+    {
+        bool valid{ false };
+        QString summary;
+        QString details;
+    };
+
     Ui::vtkWindowCube *ui;
     const QString filepath;
     const bool isRemoteMode;
@@ -220,6 +236,7 @@ private:
     QPointer<QLabel> cubeOpenStateLabel;
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
+    QPointer<QLabel> momentProvenanceLabel;
     QPointer<QCheckBox> remoteRoiRefinementCheck;
     QPointer<QCheckBox> wcsAxesCheck;
     QPointer<QAction> actionWcsSexagesimal;
@@ -269,6 +286,8 @@ private:
     bool probeValid{ false };
     bool regionDragging{ false };
     bool regionValid{ false };
+    MomentGenerationConfig currentMomentConfig;
+    MomentProvenanceState momentProvenanceState;
     std::array<int, 3> probeVoxel{ -1, -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
@@ -378,6 +397,11 @@ private:
     void invalidateWcsOverlayCache();
     void applyDefaultWcsFormatForSelectedFrame();
     void requestWcsOverlayRender();
+    bool configureMomentRequest(int defaultOrder, MomentGenerationConfig &config);
+    QString describeMomentOrder(int order) const;
+    QString describeMomentScope() const;
+    QString formatMomentChannelRange(const MomentGenerationConfig &config) const;
+    void updateMomentProvenancePanel();
 
     // Slice
     vtkNew<vtkImageReslice> slice;

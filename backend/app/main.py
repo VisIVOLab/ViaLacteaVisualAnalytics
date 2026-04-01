@@ -70,6 +70,10 @@ class OpenDatasetResponse(BaseModel):
 class MomentProductRequest(BaseModel):
     dataset_id: str
     moment_order: int
+    channel_start: int = 0
+    channel_end: int = 0
+    mask_enabled: bool = False
+    threshold_value: float = 0.0
 
 
 class MomentProductResponse(BaseModel):
@@ -376,24 +380,42 @@ def _compute_isosurface_payload(cube: np.ndarray, entry: dict[str, Any], thresho
     }
 
 
-def _moment_map(cube: np.ndarray, header: fits.Header, order: int) -> np.ndarray:
+def _moment_map(
+    cube: np.ndarray,
+    header: fits.Header,
+    order: int,
+    channel_start: int,
+    channel_end: int,
+    mask_enabled: bool,
+    threshold_value: float,
+) -> np.ndarray:
     if cube.ndim != 3:
         raise ValueError("Moment products require a cube dataset.")
 
     spectral_delta = abs(float(header.get("CDELT3", 1.0)))
-    init_spectral = float(header.get("CRVAL3", 0.0)) - spectral_delta * (
+    init_spectral = float(header.get("CRVAL3", 0.0)) - float(header.get("CDELT3", 1.0)) * (
         float(header.get("CRPIX3", 1.0)) - 1.0
     )
-    spectral_values = init_spectral + spectral_delta * np.arange(cube.shape[0], dtype=np.float32)
+    z0 = max(0, min(int(channel_start), cube.shape[0] - 1))
+    z1 = max(0, min(int(channel_end), cube.shape[0] - 1))
+    if z0 > z1:
+        raise ValueError("Invalid channel range.")
 
-    finite = np.isfinite(cube)
-    safe_cube = np.where(finite, cube, np.nan)
+    subset = np.asarray(cube[z0 : z1 + 1, :, :], dtype=np.float32)
+    spectral_values = init_spectral + float(header.get("CDELT3", 1.0)) * np.arange(
+        z0, z1 + 1, dtype=np.float32
+    )
+
+    finite = np.isfinite(subset)
+    safe_cube = np.where(finite, subset, np.nan)
+    if mask_enabled:
+        safe_cube = np.where(safe_cube >= float(threshold_value), safe_cube, np.nan)
 
     if order == 0:
         return np.nansum(safe_cube * spectral_delta, axis=0, dtype=np.float32)
 
     if order == 1:
-        moment0 = _moment_map(cube, header, 0)
+        moment0 = _moment_map(cube, header, 0, z0, z1, mask_enabled, threshold_value)
         weighted = safe_cube * spectral_values[:, None, None] * spectral_delta
         numerator = np.nansum(weighted, axis=0, dtype=np.float32)
         out = np.full(moment0.shape, np.nan, dtype=np.float32)
@@ -402,14 +424,17 @@ def _moment_map(cube: np.ndarray, header: fits.Header, order: int) -> np.ndarray
         return out
 
     if order == 2:
-        moment0 = _moment_map(cube, header, 0)
-        moment1 = _moment_map(cube, header, 1)
+        moment0 = _moment_map(cube, header, 0, z0, z1, mask_enabled, threshold_value)
+        moment1 = _moment_map(cube, header, 1, z0, z1, mask_enabled, threshold_value)
         diff = spectral_values[:, None, None] - moment1[None, :, :]
         numerator = np.nansum(safe_cube * diff * diff * spectral_delta, axis=0, dtype=np.float32)
         out = np.full(moment0.shape, np.nan, dtype=np.float32)
         valid = np.isfinite(moment0) & (moment0 != 0.0)
         out[valid] = numerator[valid] / moment0[valid]
         return out
+
+    if order == 6:
+        return np.sqrt(np.nanmean(safe_cube * safe_cube, axis=0, dtype=np.float32))
 
     if order == 8:
         return np.nanmax(safe_cube, axis=0)
@@ -632,7 +657,20 @@ def moment_product(request: MomentProductRequest) -> MomentProductResponse:
     try:
         cube_path = _require_cube(request.dataset_id)
         cube, header = _load_dataset_array(cube_path)
-        image = np.asarray(_moment_map(cube, header, request.moment_order), dtype=np.float32)
+        image = np.asarray(
+            _moment_map(
+                cube,
+                header,
+                request.moment_order,
+                request.channel_start,
+                request.channel_end,
+                request.mask_enabled,
+                request.threshold_value,
+            ),
+            dtype=np.float32,
+        )
+        if not np.isfinite(image).any():
+            raise ValueError("No valid voxels found for the selected moment parameters.")
     except Exception as exc:
         return MomentProductResponse(valid=False, error=str(exc))
 

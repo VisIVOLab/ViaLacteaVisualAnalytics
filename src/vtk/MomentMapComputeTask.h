@@ -15,6 +15,10 @@ struct MomentMapComputeRequest
     QString datasetId;
     QString backendUrl;
     int momentOrder;
+    int channelStart{ 0 };
+    int channelEnd{ 0 };
+    bool maskEnabled{ false };
+    double thresholdValue{ 0.0 };
 };
 
 struct MomentMapComputeResult

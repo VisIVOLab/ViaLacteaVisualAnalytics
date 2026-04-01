@@ -68,7 +68,9 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
     }
 
     BackendClient client(request.backendUrl);
-    const auto response = client.requestMoment(request.datasetId, request.order);
+    const auto response = client.requestMoment(request.datasetId, request.order, request.channelStart,
+                                              request.channelEnd, request.maskEnabled,
+                                              request.thresholdValue);
     if (!response.valid) {
         return { nullptr, { 0., 0. }, false,
                  response.error.isEmpty() ? QStringLiteral("Remote moment request failed.")

@@ -364,12 +364,18 @@ BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetI
     return result;
 }
 
-BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int order) const
+BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int order, int channelStart,
+                                                 int channelEnd, bool maskEnabled,
+                                                 double thresholdValue) const
 {
     BackendMomentResult result;
     QString error;
     const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("moment_order"), order } });
+                                           { QStringLiteral("moment_order"), order },
+                                           { QStringLiteral("channel_start"), channelStart },
+                                           { QStringLiteral("channel_end"), channelEnd },
+                                           { QStringLiteral("mask_enabled"), maskEnabled },
+                                           { QStringLiteral("threshold_value"), thresholdValue } });
     const QByteArray payload =
             this->performPost(QUrl(this->m_baseUrl + "/products/moment"), body, error);
     if (!error.isEmpty()) {

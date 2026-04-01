@@ -65,17 +65,24 @@
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QColorDialog>
 #include <QDebug>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDoubleValidator>
+#include <QDoubleSpinBox>
 #include <QElapsedTimer>
+#include <QFormLayout>
 #include <QInputDialog>
 #include <QLabel>
 #include <QList>
 #include <QMetaObject>
 #include <QMessageBox>
 #include <QSignalBlocker>
+#include <QSpinBox>
 #include <QtConcurrentRun>
+#include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
@@ -1088,6 +1095,12 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->dataStateLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
     this->dataStateLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->statusBar()->addPermanentWidget(this->dataStateLabel);
+    this->momentProvenanceLabel = new QLabel(this);
+    this->momentProvenanceLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
+    this->momentProvenanceLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->momentProvenanceLabel);
+    this->currentMomentConfig.thresholdValue = this->lowerBound;
+    this->updateMomentProvenancePanel();
     QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
         this->showWcsAxes = checked;
         this->lastSliceOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
@@ -1420,6 +1433,29 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                          applyTimer.start();
                          this->applyMomentMapResult(
                                  { result.imageData, { result.imageRange[0], result.imageRange[1] } });
+                         const QString maskSummary = this->currentMomentConfig.maskEnabled
+                                 ? u">= %1"_s.arg(this->currentMomentConfig.thresholdValue, 0, 'g', 8)
+                                 : u"none"_s;
+                         this->momentProvenanceState.valid = true;
+                         this->momentProvenanceState.summary =
+                                 u"Moment: %1 | Ch: %2 | Mask: %3 | Scope: %4"_s
+                                         .arg(this->describeMomentOrder(this->currentMomentConfig.order))
+                                         .arg(this->formatMomentChannelRange(this->currentMomentConfig))
+                                         .arg(maskSummary)
+                                         .arg(this->describeMomentScope());
+                         this->momentProvenanceState.details =
+                                 u"Moment type: %1\nChannel range: %2\nMask: %3\nThreshold: %4\nNaN/blanking: excluded from computation\nValid-pixel policy: only finite unmasked voxels contribute\nSource scope: %5\nAxis 3 semantics: %6\nWCS frame: %7"_s
+                                         .arg(this->describeMomentOrder(this->currentMomentConfig.order))
+                                         .arg(this->formatMomentChannelRange(this->currentMomentConfig))
+                                         .arg(this->currentMomentConfig.maskEnabled ? u"enabled"_s
+                                                                                    : u"none"_s)
+                                         .arg(this->currentMomentConfig.maskEnabled
+                                                      ? QString::number(this->currentMomentConfig.thresholdValue, 'g', 8)
+                                                      : u"n/a"_s)
+                                         .arg(this->describeMomentScope())
+                                         .arg(this->spectralAxisTitle())
+                                         .arg(this->currentWcsFrameLabel());
+                         this->updateMomentProvenancePanel();
                          qDebug().noquote()
                                  << QStringLiteral("[perf][moment] UI apply: %1 ms")
                                             .arg(applyTimer.elapsed());
@@ -1550,6 +1586,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     }
     ui->lineThreshold->setText(QString::number(this->lowerBound));
     ui->lineThreshold->setValidator(new QDoubleValidator(ui->lineThreshold));
+    this->currentMomentConfig.thresholdValue = ui->lineThreshold->text().toDouble();
     ui->btnCubeColor->setIcon(QIcon(u":/icons/COLORIZE.png"_s));
     QObject::connect(ui->lineThreshold, &QLineEdit::editingFinished, this,
                      &vtkWindowCube::thresholdLineChanged);
@@ -4111,6 +4148,140 @@ QString vtkWindowCube::currentWcsFrameLabel() const
             : (frame == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s);
 }
 
+QString vtkWindowCube::describeMomentOrder(int order) const
+{
+    switch (order) {
+    case 0:
+        return u"Moment 0"_s;
+    case 1:
+        return u"Moment 1"_s;
+    case 2:
+        return u"Moment 2"_s;
+    case 6:
+        return u"Moment 6 (RMS)"_s;
+    case 8:
+        return u"Moment 8 (Max)"_s;
+    case 10:
+        return u"Moment 10 (Min)"_s;
+    default:
+        return u"Moment"_s;
+    }
+}
+
+QString vtkWindowCube::describeMomentScope() const
+{
+    if (!this->isRemoteMode) {
+        return u"Local full cube"_s;
+    }
+    return u"Remote full dataset"_s;
+}
+
+QString vtkWindowCube::formatMomentChannelRange(const MomentGenerationConfig &config) const
+{
+    return u"%1..%2"_s.arg(config.channelStart + 1).arg(config.channelEnd + 1);
+}
+
+void vtkWindowCube::updateMomentProvenancePanel()
+{
+    if (!this->momentProvenanceLabel) {
+        return;
+    }
+
+    if (!this->momentProvenanceState.valid) {
+        this->momentProvenanceLabel->setText(u"Moment: none"_s);
+        this->momentProvenanceLabel->setToolTip(
+                u"No moment map generated in this window yet."_s);
+        return;
+    }
+
+    this->momentProvenanceLabel->setText(this->momentProvenanceState.summary);
+    this->momentProvenanceLabel->setToolTip(this->momentProvenanceState.details);
+}
+
+bool vtkWindowCube::configureMomentRequest(int defaultOrder, MomentGenerationConfig &config)
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(u"Moment Map Settings"_s);
+    auto *layout = new QVBoxLayout(&dialog);
+    auto *form = new QFormLayout();
+    layout->addLayout(form);
+
+    auto *momentCombo = new QComboBox(&dialog);
+    const std::array<std::pair<int, QString>, 6> orders = {
+            std::pair{ 0, u"Moment 0: Integrated intensity"_s },
+            std::pair{ 1, u"Moment 1: Intensity-weighted coordinate"_s },
+            std::pair{ 2, u"Moment 2: Coordinate dispersion"_s },
+            std::pair{ 6, u"Moment 6: RMS"_s },
+            std::pair{ 8, u"Moment 8: Maximum"_s },
+            std::pair{ 10, u"Moment 10: Minimum"_s },
+    };
+    int defaultIndex = 0;
+    for (int i = 0; i < static_cast<int>(orders.size()); ++i) {
+        momentCombo->addItem(orders[static_cast<std::size_t>(i)].second,
+                             orders[static_cast<std::size_t>(i)].first);
+        if (orders[static_cast<std::size_t>(i)].first == defaultOrder) {
+            defaultIndex = i;
+        }
+    }
+    momentCombo->setCurrentIndex(defaultIndex);
+
+    const int totalChannels = this->isRemoteMode ? std::max(1, this->remoteDatasetDepth)
+                                                 : std::max(1, this->astro->getDimensions()[2]);
+    auto *channelStartSpin = new QSpinBox(&dialog);
+    auto *channelEndSpin = new QSpinBox(&dialog);
+    channelStartSpin->setRange(1, totalChannels);
+    channelEndSpin->setRange(1, totalChannels);
+    channelStartSpin->setValue(std::clamp(config.channelStart + 1, 1, totalChannels));
+    channelEndSpin->setValue(std::clamp(config.channelEnd > 0 ? config.channelEnd + 1 : totalChannels,
+                                        1, totalChannels));
+
+    auto *maskCheck = new QCheckBox(u"Enable threshold mask"_s, &dialog);
+    maskCheck->setChecked(config.maskEnabled);
+    auto *thresholdSpin = new QDoubleSpinBox(&dialog);
+    thresholdSpin->setRange(-1.0e30, 1.0e30);
+    thresholdSpin->setDecimals(6);
+    thresholdSpin->setValue(config.thresholdValue);
+    thresholdSpin->setEnabled(config.maskEnabled);
+    QObject::connect(maskCheck, &QCheckBox::toggled, thresholdSpin, &QWidget::setEnabled);
+
+    auto *blankingLabel = new QLabel(u"NaN/blanked voxels excluded automatically"_s, &dialog);
+    blankingLabel->setWordWrap(true);
+    auto *scopeLabel = new QLabel(this->describeMomentScope(), &dialog);
+    scopeLabel->setWordWrap(true);
+
+    form->addRow(u"Moment"_s, momentCombo);
+    form->addRow(u"Start channel"_s, channelStartSpin);
+    form->addRow(u"End channel"_s, channelEndSpin);
+    form->addRow(u"Mask"_s, maskCheck);
+    form->addRow(u"Threshold"_s, thresholdSpin);
+    form->addRow(u"NaN/blanking"_s, blankingLabel);
+    form->addRow(u"Source scope"_s, scopeLabel);
+
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return false;
+    }
+
+    const int channelStart = channelStartSpin->value() - 1;
+    const int channelEnd = channelEndSpin->value() - 1;
+    if (channelStart > channelEnd) {
+        QMessageBox::warning(this, u"Moment Map"_s,
+                             u"Start channel must be less than or equal to end channel."_s);
+        return false;
+    }
+
+    config.order = momentCombo->currentData().toInt();
+    config.channelStart = channelStart;
+    config.channelEnd = channelEnd;
+    config.maskEnabled = maskCheck->isChecked();
+    config.thresholdValue = thresholdSpin->value();
+    return true;
+}
+
 void vtkWindowCube::updateDataStatePanel()
 {
     if (!this->dataStateLabel) {
@@ -4737,6 +4908,19 @@ void vtkWindowCube::setMomentOrder(int order)
         return;
     }
 
+    MomentGenerationConfig config = this->currentMomentConfig;
+    config.order = order;
+    if (config.channelEnd <= config.channelStart) {
+        const int totalChannels = this->isRemoteMode ? std::max(1, this->remoteDatasetDepth)
+                                                     : std::max(1, this->astro->getDimensions()[2]);
+        config.channelStart = 0;
+        config.channelEnd = totalChannels - 1;
+    }
+    if (!this->configureMomentRequest(order, config)) {
+        return;
+    }
+    this->currentMomentConfig = config;
+
     const int requestId = ++this->currentMomentRequestId;
     this->momentComputeWatcher.setProperty("requestId", requestId);
     this->setMomentActionsEnabled(false);
@@ -4745,7 +4929,11 @@ void vtkWindowCube::setMomentOrder(int order)
             &computeMomentMap, MomentMapComputeRequest { this->filepath,
                                                         this->isRemoteMode ? this->remoteDatasetId : QString {},
                                                         this->isRemoteMode ? this->remoteBackendUrl : QString {},
-                                                        order }));
+                                                        config.order,
+                                                        config.channelStart,
+                                                        config.channelEnd,
+                                                        config.maskEnabled,
+                                                        config.thresholdValue }));
 }
 
 void vtkWindowCube::showPersistentStatusMessage(const QString &text, int minDurationMs)
