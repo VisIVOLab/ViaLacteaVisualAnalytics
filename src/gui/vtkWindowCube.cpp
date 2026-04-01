@@ -232,6 +232,22 @@ vtkWindowCube::SpectralAxisDescriptor inferSpectralAxisDescriptor(const QString 
     return descriptor;
 }
 
+QString formatCubeBoundsSummary(vtkImageData *imageData)
+{
+    if (!imageData) {
+        return u"unavailable"_s;
+    }
+
+    double bounds[6];
+    imageData->GetBounds(bounds);
+    return u"x=%1..%2 y=%3..%4 z=%5..%6"_s.arg(std::lround(bounds[0]))
+            .arg(std::lround(bounds[1]))
+            .arg(std::lround(bounds[2]))
+            .arg(std::lround(bounds[3]))
+            .arg(std::lround(bounds[4]))
+            .arg(std::lround(bounds[5]));
+}
+
 int inferCelestialFrameFromCtypePair(const std::array<QString, 3> &ctype)
 {
     const QString c1 = upperCtype(ctype[0]);
@@ -903,6 +919,14 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->wcsAxesCheck = new QCheckBox(u"Show WCS Axes"_s, this);
     this->wcsAxesCheck->setChecked(this->showWcsAxes);
     this->statusBar()->addPermanentWidget(this->wcsAxesCheck);
+    this->hoverReadoutLabel = new QLabel(this);
+    this->hoverReadoutLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
+    this->hoverReadoutLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->hoverReadoutLabel, 1);
+    this->dataStateLabel = new QLabel(this);
+    this->dataStateLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
+    this->dataStateLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->dataStateLabel);
     QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
         this->showWcsAxes = checked;
         this->lastSliceOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
@@ -1023,6 +1047,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->setupCubeRenderer();
     this->setupSliceRenderer();
     this->setupMomentRenderer();
+    this->updateDataStatePanel();
     QTimer::singleShot(0, this, [this]() {
         if (!this->isVisible()) {
             return;
@@ -1937,6 +1962,9 @@ void vtkWindowCube::refreshProbeOverlay()
 void vtkWindowCube::clearProbe()
 {
     this->probeValid = false;
+    if (this->hoverReadoutLabel) {
+        this->hoverReadoutLabel->clear();
+    }
     this->sliceProbeHorizontalActor->VisibilityOff();
     this->sliceProbeVerticalActor->VisibilityOff();
     this->momentProbeHorizontalActor->VisibilityOff();
@@ -1987,7 +2015,10 @@ void vtkWindowCube::updateProbeReadout(vtkImageData *imageData)
     if (this->probeFrozen) {
         message += u"  [Frozen]"_s;
     }
-    this->statusBar()->showMessage(message);
+    if (this->hoverReadoutLabel) {
+        this->hoverReadoutLabel->setText(message);
+        this->hoverReadoutLabel->setToolTip(message);
+    }
 }
 
 void vtkWindowCube::updateProbePlot()
@@ -2791,6 +2822,7 @@ void vtkWindowCube::refreshSpectralAxisUi()
     ui->lineSpectral->setStatusTip(tooltip);
     qDebug().noquote()
             << QStringLiteral("[spectral] axis3 title=%1 tooltip=%2").arg(title, tooltip);
+    this->updateDataStatePanel();
 }
 
 bool vtkWindowCube::remoteHasWcsAxis(int axis) const
@@ -2901,6 +2933,70 @@ QString vtkWindowCube::remoteOverlayAxisTitle(int axis) const
 QString vtkWindowCube::formatDegreeCoordinate(double value) const
 {
     return QString::number(value, 'f', 2);
+}
+
+QString vtkWindowCube::currentWcsFrameLabel() const
+{
+    const int frame = this->selectedWcsFrame();
+    return frame == WCS_GALACTIC ? u"Galactic"_s
+            : (frame == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s);
+}
+
+void vtkWindowCube::updateDataStatePanel()
+{
+    if (!this->dataStateLabel) {
+        return;
+    }
+
+    auto *cubeImage = vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+    const QString origin = this->isRemoteMode ? u"Remote"_s : u"Local"_s;
+    QString representation;
+    if (!this->isRemoteMode) {
+        representation = u"Full dataset"_s;
+    } else {
+        const std::array<int, 6> fullExtent = { 0,
+                                                std::max(0, this->remoteDatasetWidth - 1),
+                                                0,
+                                                std::max(0, this->remoteDatasetHeight - 1),
+                                                0,
+                                                std::max(0, this->remoteDatasetDepth - 1) };
+        switch (this->remoteCubeDisplayState) {
+        case RemoteCubeDisplayState::Preview:
+            representation = u"Preview proxy"_s;
+            break;
+        case RemoteCubeDisplayState::LoadingFullResolution:
+            representation = u"Preview -> full loading"_s;
+            break;
+        case RemoteCubeDisplayState::FullResolution:
+            representation = (this->usingHighResCube && this->currentRemoteRoi != fullExtent)
+                    ? u"ROI / subvolume"_s
+                    : u"Full resolution"_s;
+            break;
+        }
+    }
+
+    const QString loadedBounds = formatCubeBoundsSummary(cubeImage);
+    const QString datasetBounds = this->isRemoteMode
+            ? u"x=0..%1 y=0..%2 z=0..%3"_s.arg(std::max(0, this->remoteDatasetWidth - 1))
+                      .arg(std::max(0, this->remoteDatasetHeight - 1))
+                      .arg(std::max(0, this->remoteDatasetDepth - 1))
+            : (this->astro
+                       ? u"x=0..%1 y=0..%2 z=0..%3"_s.arg(std::max(0, this->astro->getDimensions()[0] - 1))
+                                 .arg(std::max(0, this->astro->getDimensions()[1] - 1))
+                                 .arg(std::max(0, this->astro->getDimensions()[2] - 1))
+                       : loadedBounds);
+    const QString note = this->isRemoteMode ? u"Probe/profile: loaded block only"_s
+                                            : u"Probe/profile: full cube"_s;
+    this->dataStateLabel->setText(
+            u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | Axis3: %6 | %7"_s.arg(origin,
+                                                                                      representation,
+                                                                                      loadedBounds,
+                                                                                      datasetBounds,
+                                                                                      this->currentWcsFrameLabel(),
+                                                                                      this->spectralAxisTitle(),
+                                                                                      note));
+    this->dataStateLabel->setToolTip(
+            u"Persistent data provenance: origin, current representation, loaded bounds, full dataset bounds, WCS frame, spectral-axis semantics, and probe/profile scope."_s);
 }
 
 QString vtkWindowCube::selectedFrameAxisTitle(int axis) const
@@ -3598,6 +3694,7 @@ void vtkWindowCube::changeLegendWCS()
             << QStringLiteral("[wcs] overlay using selected frame %1")
                        .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
                                                 : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
+    this->updateDataStatePanel();
     this->requestWcsOverlayRender();
 }
 
@@ -3705,6 +3802,7 @@ bool vtkWindowCube::isBusy() const
 void vtkWindowCube::setRemoteCubeDisplayState(RemoteCubeDisplayState state)
 {
     this->remoteCubeDisplayState = state;
+    this->updateDataStatePanel();
     if (!this->isRemoteMode) {
         return;
     }

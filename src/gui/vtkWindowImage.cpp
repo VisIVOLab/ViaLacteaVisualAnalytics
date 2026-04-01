@@ -40,6 +40,7 @@
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFileDialog>
+#include <QLabel>
 #include <QMetaObject>
 #include <QMessageBox>
 #include <QtConcurrentRun>
@@ -227,6 +228,20 @@ ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QStr
     result.valid = true;
     return result;
 }
+
+QString formatImageBoundsSummary(vtkImageData *imageData)
+{
+    if (!imageData) {
+        return u"unavailable"_s;
+    }
+
+    double bounds[6];
+    imageData->GetBounds(bounds);
+    return u"x=%1..%2 y=%3..%4"_s.arg(std::lround(bounds[0]))
+            .arg(std::lround(bounds[1]))
+            .arg(std::lround(bounds[2]))
+            .arg(std::lround(bounds[3]));
+}
 }
 
 vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
@@ -280,6 +295,14 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->wcsAxesCheck = new QCheckBox(u"Show WCS Axes"_s, this);
     this->wcsAxesCheck->setChecked(this->showWcsAxes);
     this->statusBar()->addPermanentWidget(this->wcsAxesCheck);
+    this->hoverReadoutLabel = new QLabel(this);
+    this->hoverReadoutLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
+    this->hoverReadoutLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->hoverReadoutLabel, 1);
+    this->dataStateLabel = new QLabel(this);
+    this->dataStateLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
+    this->dataStateLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->dataStateLabel);
     QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
         this->showWcsAxes = checked;
         this->lastOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
@@ -340,6 +363,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
             : new LayerListModel(this->filepath.toStdString(), this);
 
     this->setupRenderer();
+    this->updateDataStatePanel();
 
     // Setup Menu File
     QObject::connect(ui->actionAddFITS, &QAction::triggered, this, &vtkWindowImage::addLocalFile);
@@ -679,7 +703,10 @@ bool vtkWindowImage::updateProbeFromDisplayPosition(int displayX, int displayY)
     if (this->probeFrozen) {
         message += u"  [Frozen]"_s;
     }
-    this->statusBar()->showMessage(message);
+    if (this->hoverReadoutLabel) {
+        this->hoverReadoutLabel->setText(message);
+        this->hoverReadoutLabel->setToolTip(message);
+    }
     if (this->probeModeActive) {
         this->refreshProbeOverlay();
         this->updateProbeProfile();
@@ -710,6 +737,9 @@ void vtkWindowImage::refreshProbeOverlay()
 void vtkWindowImage::clearProbe()
 {
     this->probeValid = false;
+    if (this->hoverReadoutLabel) {
+        this->hoverReadoutLabel->clear();
+    }
     this->probeHorizontalActor->VisibilityOff();
     this->probeVerticalActor->VisibilityOff();
 }
@@ -834,6 +864,7 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
     if (this->probeValid) {
         this->refreshProbeOverlay();
     }
+    this->updateDataStatePanel();
     this->vtkRender();
     qDebug().noquote()
             << QStringLiteral("[perf][layer] render after apply: %1 ms").arg(timer.elapsed());
@@ -860,6 +891,7 @@ void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
     if (this->probeValid) {
         this->refreshProbeOverlay();
     }
+    this->updateDataStatePanel();
     this->vtkRender();
 }
 
@@ -1137,6 +1169,36 @@ void vtkWindowImage::requestWcsOverlayRender()
             Qt::QueuedConnection);
 }
 
+QString vtkWindowImage::currentWcsFrameLabel() const
+{
+    const int frame = this->selectedWcsFrame();
+    return frame == WCS_GALACTIC ? u"Galactic"_s
+            : (frame == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s);
+}
+
+void vtkWindowImage::updateDataStatePanel()
+{
+    if (!this->dataStateLabel) {
+        return;
+    }
+
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    const QString origin = this->isRemoteMode ? u"Remote"_s : u"Local"_s;
+    const QString representation = u"Full image"_s;
+    const QString loadedBounds = formatImageBoundsSummary(imageData);
+    const QString datasetBounds = loadedBounds;
+    const QString axis3 = u"Axis3: n/a"_s;
+    this->dataStateLabel->setText(
+            u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | %6"_s.arg(origin,
+                                                                        representation,
+                                                                        loadedBounds,
+                                                                        datasetBounds,
+                                                                        this->currentWcsFrameLabel(),
+                                                                        axis3));
+    this->dataStateLabel->setToolTip(
+            u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame."_s);
+}
+
 bool vtkWindowImage::remoteHasWcsAxis(int axis) const
 {
     return axis >= 0 && axis < 3 && std::isfinite(this->remoteDatasetCrval[axis])
@@ -1298,6 +1360,7 @@ void vtkWindowImage::changeLegendWCS()
             << QStringLiteral("[wcs] overlay using selected frame %1")
                        .arg(wcs == WCS_GALACTIC ? u"Galactic"_s
                                                 : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
+    this->updateDataStatePanel();
     this->requestWcsOverlayRender();
 }
 

@@ -203,6 +203,8 @@ private:
     QPointer<ProfileWidget> profileWidget;
     QPointer<ProfileWidget> probePlotWidget;
     QPointer<QLabel> cubeOpenStateLabel;
+    QPointer<QLabel> hoverReadoutLabel;
+    QPointer<QLabel> dataStateLabel;
     QPointer<QCheckBox> remoteRoiRefinementCheck;
     QPointer<QCheckBox> wcsAxesCheck;
     QPointer<QAction> actionWcsSexagesimal;
@@ -321,6 +323,8 @@ private:
     QString formatRemoteOverlayCoordinate(int axis, double value) const;
     QString remoteOverlayAxisTitle(int axis) const;
     QString formatDegreeCoordinate(double value) const;
+    void updateDataStatePanel();
+    QString currentWcsFrameLabel() const;
     void updateSliceWcsOverlay();
     void updateMomentWcsOverlay();
     void set2dWcsOverlayVisible(bool visible);

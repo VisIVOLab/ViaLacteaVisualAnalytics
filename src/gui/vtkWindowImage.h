@@ -26,6 +26,7 @@ class ProfileWidget;
 class AstroUtils;
 class QAction;
 class QCheckBox;
+class QLabel;
 class vtkActor;
 class vtkAxisActor2D;
 class vtkCoordinate;
@@ -92,6 +93,8 @@ private:
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
     QPointer<QCheckBox> wcsAxesCheck;
+    QPointer<QLabel> hoverReadoutLabel;
+    QPointer<QLabel> dataStateLabel;
     QPointer<QAction> actionWcsSexagesimal;
     QPointer<QAction> actionWcsDecimal;
     QPointer<QAction> actionExtractSpectrum;
@@ -142,6 +145,8 @@ private:
     void invalidateWcsOverlayCache();
     void applyDefaultWcsFormatForSelectedFrame();
     void requestWcsOverlayRender();
+    void updateDataStatePanel();
+    QString currentWcsFrameLabel() const;
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;
 
