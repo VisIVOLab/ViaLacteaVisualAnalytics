@@ -1671,7 +1671,110 @@ std::array<int, 6> vtkWindowCube::computeVisibleROI() const
                        .arg(y[1])
                        .arg(z[0])
                        .arg(z[1]);
-    return { x[0], x[1], y[0], y[1], z[0], z[1] };
+    const std::array<int, 6> viewportRoi = { x[0], x[1], y[0], y[1], z[0], z[1] };
+    if (cubeImage->GetScalarType() != VTK_FLOAT || cubeImage->GetNumberOfScalarComponents() != 1) {
+        qDebug().noquote() << QStringLiteral("[remote-roi] content roi fallback to viewport");
+        return viewportRoi;
+    }
+
+    const double visibleMin = this->currentCubeVisibleRange[0];
+    const double visibleMax = this->currentCubeVisibleRange[1];
+    const double visibleRange = visibleMax - visibleMin;
+    const double contentThreshold =
+            visibleRange > 0.0 ? (visibleMin + 0.05 * visibleRange) : visibleMin;
+
+    int extent[6];
+    cubeImage->GetExtent(extent);
+    const auto clampAxisToExtent = [&](std::array<int, 2> roi, int axis) -> std::array<int, 2> {
+        const int minExtent = extent[axis * 2];
+        const int maxExtent = extent[axis * 2 + 1];
+        roi[0] = std::clamp(roi[0], minExtent, maxExtent);
+        roi[1] = std::clamp(roi[1], minExtent, maxExtent);
+        return roi;
+    };
+
+    auto contentX = clampAxisToExtent({ viewportRoi[0], viewportRoi[1] }, 0);
+    auto contentY = clampAxisToExtent({ viewportRoi[2], viewportRoi[3] }, 1);
+    auto contentZ = clampAxisToExtent({ viewportRoi[4], viewportRoi[5] }, 2);
+
+    auto *values = static_cast<const float *>(cubeImage->GetScalarPointer());
+    const int dimX = extent[1] - extent[0] + 1;
+    const int dimY = extent[3] - extent[2] + 1;
+    const int dimZ = extent[5] - extent[4] + 1;
+    const auto linearIndex = [&](int xIdx, int yIdx, int zIdx) -> qsizetype {
+        const qsizetype localX = xIdx - extent[0];
+        const qsizetype localY = yIdx - extent[2];
+        const qsizetype localZ = zIdx - extent[4];
+        return localZ * static_cast<qsizetype>(dimX) * dimY + localY * dimX + localX;
+    };
+
+    int minContentX = contentX[1];
+    int maxContentX = contentX[0];
+    int minContentY = contentY[1];
+    int maxContentY = contentY[0];
+    int minContentZ = contentZ[1];
+    int maxContentZ = contentZ[0];
+    bool foundMeaningful = false;
+    for (int zIdx = contentZ[0]; zIdx <= contentZ[1]; ++zIdx) {
+        for (int yIdx = contentY[0]; yIdx <= contentY[1]; ++yIdx) {
+            for (int xIdx = contentX[0]; xIdx <= contentX[1]; ++xIdx) {
+                const float value = values[linearIndex(xIdx, yIdx, zIdx)];
+                if (!std::isfinite(value)
+                    || std::fabs(value - this->currentCubeInvisibleSentinel) <= 1e-6
+                    || value < contentThreshold) {
+                    continue;
+                }
+
+                foundMeaningful = true;
+                minContentX = std::min(minContentX, xIdx);
+                maxContentX = std::max(maxContentX, xIdx);
+                minContentY = std::min(minContentY, yIdx);
+                maxContentY = std::max(maxContentY, yIdx);
+                minContentZ = std::min(minContentZ, zIdx);
+                maxContentZ = std::max(maxContentZ, zIdx);
+            }
+        }
+    }
+
+    if (!foundMeaningful || minContentX > maxContentX || minContentY > maxContentY
+        || minContentZ > maxContentZ) {
+        qDebug().noquote() << QStringLiteral("[remote-roi] content roi fallback to viewport");
+        return viewportRoi;
+    }
+
+    auto padContentAxis = [](int minValue, int maxValue, int fullSize, int minBound,
+                             int maxBound) -> std::array<int, 2> {
+        const int maxIndex = std::max(0, fullSize - 1);
+        const int extentValue = std::max(1, maxValue - minValue + 1);
+        const int padding = std::max(1, static_cast<int>(std::ceil(extentValue * 0.1)));
+        return { std::max(minBound, std::max(0, minValue - padding)),
+                 std::min(maxBound, std::min(maxIndex, maxValue + padding)) };
+    };
+
+    contentX = padContentAxis(minContentX, maxContentX, this->remoteDatasetWidth, viewportRoi[0],
+                              viewportRoi[1]);
+    contentY = padContentAxis(minContentY, maxContentY, this->remoteDatasetHeight, viewportRoi[2],
+                              viewportRoi[3]);
+    contentZ = padContentAxis(minContentZ, maxContentZ, this->remoteDatasetDepth, viewportRoi[4],
+                              viewportRoi[5]);
+
+    const int minContentExtent = 4;
+    if (contentX[1] - contentX[0] + 1 < minContentExtent
+        || contentY[1] - contentY[0] + 1 < minContentExtent
+        || contentZ[1] - contentZ[0] + 1 < minContentExtent) {
+        qDebug().noquote() << QStringLiteral("[remote-roi] content roi fallback to viewport");
+        return viewportRoi;
+    }
+
+    qDebug().noquote()
+            << QStringLiteral("[remote-roi] content roi x=%1..%2 y=%3..%4 z=%5..%6")
+                       .arg(contentX[0])
+                       .arg(contentX[1])
+                       .arg(contentY[0])
+                       .arg(contentY[1])
+                       .arg(contentZ[0])
+                       .arg(contentZ[1]);
+    return { contentX[0], contentX[1], contentY[0], contentY[1], contentZ[0], contentZ[1] };
 }
 
 bool vtkWindowCube::requestHighResCube()
