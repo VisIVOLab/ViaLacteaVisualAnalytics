@@ -56,6 +56,14 @@ vtkImageSlice *LayerListModel::replaceMasterLayer(const ImageLayerLoadResult &re
     return actor;
 }
 
+vtkImageSlice *LayerListModel::updateMasterLayer(const ImageLayerLoadResult &result)
+{
+    this->beginResetModel();
+    auto actor = this->layerSet->updateMasterLayer(result);
+    this->endResetModel();
+    return actor;
+}
+
 float LayerListModel::getPixelValue(int index, int x, int y) const
 {
     return this->layerSet->pixelValue(index, x, y);

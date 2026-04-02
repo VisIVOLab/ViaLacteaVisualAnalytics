@@ -117,11 +117,15 @@ public:
    * @param angle Degree angle
    */
     void setRotation(double angle);
+    void applyLoadResult(const ImageLayerLoadResult &result);
+    bool isPreviewActive() const;
 
 private:
     void initializeDisplayPipeline();
     void updateDisplaySource();
     void rebuildPreviewImageIfNeeded(const char *context);
+    void updateImageTransform(double rotationDegrees);
+    static double logScaleEpsilon(double maxValue);
 
     bool readerBacked;
     bool previewModeActive{ false };

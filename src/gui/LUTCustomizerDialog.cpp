@@ -10,11 +10,22 @@
 #include <vtkIntArray.h>
 #include <vtkLookupTable.h>
 #include <vtkNew.h>
+#include <vtkPointData.h>
 #include <vtkTable.h>
 
 #include <QDoubleValidator>
 
+#include <algorithm>
+#include <cmath>
+#include <vector>
+
 using namespace Qt::StringLiterals;
+
+namespace {
+constexpr vtkIdType histogramTargetSamples = 250000;
+constexpr int histogramBinCount = 512;
+constexpr double logAxisEpsilon = 1e-12;
+}
 
 LUTCustomizerDialog::LUTCustomizerDialog(QWidget *parent)
     : QDialog(parent), ui(new Ui::LUTCustomizerDialog), selectedLine(nullptr)
@@ -81,23 +92,48 @@ void LUTCustomizerDialog::setupPlot()
 
 void LUTCustomizerDialog::plotHistogram()
 {
+    if (!this->dataset) {
+        return;
+    }
+
     const vtkIdType nels = this->dataset->GetNumberOfPoints();
-    const int nbins = nels / 10;
+    if (nels <= 0 || !std::isfinite(this->datasetRange[0]) || !std::isfinite(this->datasetRange[1])
+        || this->datasetRange[0] >= this->datasetRange[1]) {
+        return;
+    }
 
-    vtkNew<vtkExtractHistogram> filter;
-    filter->SetInputData(this->dataset);
-    filter->UseCustomBinRangesOn();
-    filter->SetCustomBinRanges(this->datasetRange);
-    filter->SetBinCount(nbins);
-    filter->Update();
+    auto *scalars =
+            this->dataset->GetPointData() ? this->dataset->GetPointData()->GetScalars() : nullptr;
+    if (!scalars) {
+        return;
+    }
 
-    auto bin_extents = static_cast<double *>(
-            filter->GetOutput()->GetRowData()->GetAbstractArray("bin_extents")->GetVoidPointer(0));
-    auto bin_values = static_cast<int *>(
-            filter->GetOutput()->GetRowData()->GetAbstractArray("bin_values")->GetVoidPointer(0));
+    const vtkIdType stride =
+            std::max<vtkIdType>(1, static_cast<vtkIdType>(std::ceil(
+                                           static_cast<double>(nels) / histogramTargetSamples)));
+    const double minValue = this->datasetRange[0];
+    const double maxValue = this->datasetRange[1];
+    const double binWidth = (maxValue - minValue) / static_cast<double>(histogramBinCount);
+    if (!std::isfinite(binWidth) || binWidth <= 0.0) {
+        return;
+    }
 
-    QVector<double> x(bin_extents, bin_extents + nbins);
-    QVector<double> y(bin_values, bin_values + nbins);
+    std::vector<double> bins(histogramBinCount, 0.0);
+    for (vtkIdType i = 0; i < nels; i += stride) {
+        const double value = scalars->GetComponent(i, 0);
+        if (!std::isfinite(value)) {
+            continue;
+        }
+        int bin = static_cast<int>(std::floor((value - minValue) / binWidth));
+        bin = std::clamp(bin, 0, histogramBinCount - 1);
+        bins[static_cast<std::size_t>(bin)] += 1.0;
+    }
+
+    QVector<double> x(histogramBinCount), y(histogramBinCount);
+    for (int i = 0; i < histogramBinCount; ++i) {
+        x[i] = minValue + (i + 0.5) * binWidth;
+        y[i] = bins[static_cast<std::size_t>(i)];
+    }
     ui->plot->graph()->setData(x, y, true);
     ui->plot->graph()->setBrush(Qt::blue);
     ui->plot->rescaleAxes();
@@ -118,7 +154,8 @@ void LUTCustomizerDialog::plotHistogram()
 
 void LUTCustomizerDialog::changeAxisScaling(bool logarithmic)
 {
-    if (logarithmic) {
+    const bool safeLogarithmic = logarithmic && this->datasetRange[1] > logAxisEpsilon;
+    if (safeLogarithmic) {
         ui->plot->xAxis->setScaleType(QCPAxis::stLogarithmic);
         ui->plot->xAxis->setTicker(QSharedPointer<QCPAxisTickerLog>(new QCPAxisTickerLog));
     } else {
@@ -131,6 +168,9 @@ void LUTCustomizerDialog::changeAxisScaling(bool logarithmic)
 
 void LUTCustomizerDialog::init(vtkImageData *dataset, vtkLookupTable *lut)
 {
+    if (!dataset || !lut) {
+        return;
+    }
     this->dataset = dataset;
     this->dataset->GetScalarRange(this->datasetRange);
 
@@ -205,9 +245,24 @@ void LUTCustomizerDialog::updateReferenceLines()
 
 void LUTCustomizerDialog::updateLut()
 {
+    if (!this->lut) {
+        return;
+    }
     ColorMaps::SetColorMap(this->lut, ui->comboLut->currentText().toStdString());
-    this->lut->SetTableRange(ui->lineMin->text().toDouble(), ui->lineMax->text().toDouble());
-    this->lut->SetScale(ui->comboScale->currentIndex());
+    double minValue = ui->lineMin->text().toDouble();
+    double maxValue = ui->lineMax->text().toDouble();
+    if (!std::isfinite(minValue) || !std::isfinite(maxValue) || minValue >= maxValue) {
+        return;
+    }
+    if (ui->comboScale->currentIndex() == 1) {
+        maxValue = std::max(maxValue, logAxisEpsilon);
+        minValue = std::max(minValue, logAxisEpsilon);
+        this->lut->SetScaleToLog10();
+    } else {
+        this->lut->SetScaleToLinear();
+    }
+    this->lut->SetTableRange(minValue, maxValue);
+    this->lut->Build();
     emit this->lutUpdated();
 }
 

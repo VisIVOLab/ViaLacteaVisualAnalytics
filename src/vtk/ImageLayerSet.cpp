@@ -198,6 +198,18 @@ vtkImageSlice *ImageLayerSet::replaceMasterLayer(const ImageLayerLoadResult &res
     return this->layers[this->masterIdx]->getActor();
 }
 
+vtkImageSlice *ImageLayerSet::updateMasterLayer(const ImageLayerLoadResult &result)
+{
+    if (!this->isValidIndex(this->masterIdx)) {
+        return nullptr;
+    }
+
+    this->masterFilepath = result.filepath;
+    this->layers[this->masterIdx]->applyLoadResult(result);
+    this->refreshLayerNumbers();
+    return this->layers[this->masterIdx]->getActor();
+}
+
 bool ImageLayerSet::moveLayer(int sourceIndex, int destinationRow)
 {
     const int n = this->size();

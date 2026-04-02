@@ -28,6 +28,7 @@ struct ImageLayerLoadResult
     int fullWidth{ 0 };
     int fullHeight{ 0 };
     double previewScaleFactor{ 1.0 };
+    int requestGeneration{ 0 };
 };
 
 ImageLayerLoadResult loadImageLayer(const ImageLayerLoadRequest &request);

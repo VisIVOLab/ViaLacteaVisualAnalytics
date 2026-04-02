@@ -661,10 +661,11 @@ ImageLayerLoadResult createPlaceholderRemoteLayerResult(const QString &filepath)
 
 ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QString &datasetId,
                                            const QString &datasetPath, bool previewOnly = false,
-                                           int previewMaxLongestSide = 1536)
+                                           int previewMaxLongestSide = 1536, int requestGeneration = 0)
 {
     ImageLayerLoadResult result;
     result.filepath = datasetPath.toStdString();
+    result.requestGeneration = requestGeneration;
 
     BackendClient client(backendUrl);
     const auto response = previewOnly ? client.requestImagePreview(datasetId, previewMaxLongestSide)
@@ -843,6 +844,13 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     QObject::connect(&this->remoteImageWatcher, &QFutureWatcher<ImageLayerLoadResult>::finished, this,
                      [this]() {
                          const auto result = this->remoteImageWatcher.result();
+                         if (result.requestGeneration != this->remoteLoadGeneration) {
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-image] discarded stale preview generation=%1 current=%2")
+                                                .arg(result.requestGeneration)
+                                                .arg(this->remoteLoadGeneration);
+                             return;
+                         }
                          if (!result.valid || !result.imageData) {
                              qDebug().noquote()
                                      << QStringLiteral("[remote-image] preview failed: %1")
@@ -866,6 +874,13 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     QObject::connect(&this->remoteFullImageWatcher, &QFutureWatcher<ImageLayerLoadResult>::finished, this,
                      [this]() {
                          const auto result = this->remoteFullImageWatcher.result();
+                         if (result.requestGeneration != this->remoteLoadGeneration) {
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-image] discarded stale full generation=%1 current=%2")
+                                                .arg(result.requestGeneration)
+                                                .arg(this->remoteLoadGeneration);
+                             return;
+                         }
                          if (!result.valid || !result.imageData) {
                              qDebug().noquote()
                                      << QStringLiteral("[remote-image] full-resolution load failed: %1")
@@ -879,6 +894,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                              return;
                          }
 
+                         this->transitioningToFull = false;
+                         this->suspendLutEditorUpdates = false;
                          this->applyRemoteMasterLayer(result);
                          this->clearPersistentStatusMessage();
                      });
@@ -891,6 +908,9 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->applyInitialAutoscale(this->layers->getImageData(this->layers->getMasterIndex()),
                                 this->layers->getLookupTable(this->layers->getMasterIndex()),
                                 "initial master");
+    if (!this->isRemoteMode) {
+        this->displayStateInitialized = true;
+    }
     this->updateLargeImageMode(this->layers->getImageData(this->layers->getMasterIndex()), "initial");
     this->updateDataStatePanel();
     this->updateSanityPanel();
@@ -1010,7 +1030,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
         this->showPersistentStatusMessage(u"Loading remote image preview..."_s);
         this->remoteImageWatcher.setFuture(
                 QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl,
-                                  this->remoteDatasetId, this->filepath, true, 1536));
+                                  this->remoteDatasetId, this->filepath, true, 1536,
+                                  ++this->remoteLoadGeneration));
     }
 }
 
@@ -1034,10 +1055,19 @@ void vtkWindowImage::closeEvent(QCloseEvent *event)
 void vtkWindowImage::showLUTCustomizer()
 {
     const int index = this->currentLayerIndex();
+    if (!this->layers || index < 0 || index >= this->layers->rowCount()) {
+        return;
+    }
     if (!this->lutCustomizer) {
         this->lutCustomizer = new LUTCustomizerDialog(this);
         QObject::connect(this->lutCustomizer, &LUTCustomizerDialog::lutUpdated, this,
-                         &vtkWindowImage::showCurrentLayerSettings);
+                         [this]() {
+                             this->markDisplayStateAdjusted("lut editor");
+                             this->showCurrentLayerSettings();
+                         });
+    }
+    if (this->suspendLutEditorUpdates) {
+        return;
     }
     this->lutCustomizer->init(this->layers->getImageData(index),
                               this->layers->getLookupTable(index));
@@ -1048,7 +1078,7 @@ void vtkWindowImage::showLUTCustomizer()
 
 void vtkWindowImage::updateLUTCustomizer()
 {
-    if (this->lutCustomizer) {
+    if (this->lutCustomizer && !this->suspendLutEditorUpdates) {
         const int index = this->currentLayerIndex();
         this->lutCustomizer->init(this->layers->getImageData(index),
                                   this->layers->getLookupTable(index));
@@ -2185,6 +2215,7 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
     const int masterIndex = this->layers->getMasterIndex();
     this->applyInitialAutoscale(this->layers->getImageData(masterIndex),
                                 this->layers->getLookupTable(masterIndex), "local apply");
+    this->displayStateInitialized = true;
     this->updateLargeImageMode(this->layers->getImageData(masterIndex), "local apply");
     if (this->probeValid) {
         this->refreshProbeOverlay();
@@ -2248,6 +2279,7 @@ void vtkWindowImage::applyInitialAutoscale(vtkImageData *imageData, vtkLookupTab
     }
 
     lut->SetTableRange(low, high);
+    lut->Build();
     qDebug().noquote()
             << QStringLiteral("[image-autoscale] %1 samples=%2 stride=%3 percentiles=%4..%5 range=%6..%7 raw=%8..%9")
                        .arg(QString::fromUtf8(context))
@@ -2286,23 +2318,23 @@ void vtkWindowImage::updateLargeImageMode(vtkImageData *imageData, const char *c
 
 void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
 {
-    auto *oldActor = this->layers->getMasterLayerActor();
-    auto *newActor = this->layers->replaceMasterLayer(result);
+    auto *newActor = this->layers->updateMasterLayer(result);
     if (!newActor) {
         return;
     }
 
-    if (oldActor) {
-        this->stack->RemoveImage(oldActor);
-    }
-    this->stack->AddImage(newActor);
     this->stack->SetActiveLayer(this->layers->getMasterIndex());
     this->layerController->activateLayer(this->layers->getMasterIndex());
     auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
     auto *lut = this->layers ? this->layers->getLookupTable(this->layers->getMasterIndex()) : nullptr;
     this->remoteDisplayingPreview = result.isPreview;
     this->remoteFullImageDims = { result.fullWidth, result.fullHeight };
-    this->applyInitialAutoscale(imageData, lut, "remote apply");
+    if (!this->displayStateInitialized && !this->userAdjustedDisplayState) {
+        this->applyInitialAutoscale(imageData, lut, result.isPreview ? "remote preview" : "remote full");
+        this->displayStateInitialized = true;
+    } else if (lut) {
+        lut->Build();
+    }
     this->updateLargeImageMode(imageData, "remote apply");
     auto *renderWindow = ui && ui->vtk ? ui->vtk->renderWindow() : nullptr;
     auto *renderer = renderWindow ? renderWindow->GetRenderers()->GetFirstRenderer() : nullptr;
@@ -2329,6 +2361,7 @@ void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
     }
     this->updateDataStatePanel();
     this->updateSanityPanel();
+    this->updateLUTCustomizer();
     if (renderWindow) {
         renderWindow->Render();
     }
@@ -2347,12 +2380,14 @@ void vtkWindowImage::startRemoteFullResolutionLoad()
     if (!this->isRemoteMode || this->remoteFullImageWatcher.isRunning()) {
         return;
     }
+    this->transitioningToFull = true;
+    this->suspendLutEditorUpdates = true;
     qDebug().noquote()
             << QStringLiteral("[remote-image] requesting full-resolution image dataset=%1")
                        .arg(this->remoteDatasetId);
     this->remoteFullImageWatcher.setFuture(
             QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl, this->remoteDatasetId,
-                              this->filepath, false, 1536));
+                              this->filepath, false, 1536, this->remoteLoadGeneration));
 }
 
 bool vtkWindowImage::isBusy() const
@@ -2901,6 +2936,7 @@ void vtkWindowImage::changeCurrentColorMap()
                                   .arg(ui->comboLut->currentText());
     this->layerController->setCurrentColorMap(this->currentLayerIndex(),
                                               ui->comboLut->currentText().toStdString());
+    this->markDisplayStateAdjusted("color map");
     this->vtkRender();
 }
 
@@ -2965,6 +3001,7 @@ void vtkWindowImage::changeCurrentColorScale()
                                   .arg(index)
                                   .arg(requestedLog);
     this->layerController->setCurrentLogScale(index, requestedLog);
+    this->markDisplayStateAdjusted(requestedLog ? "log scale" : "linear scale");
     this->vtkRender();
 }
 
@@ -2975,6 +3012,7 @@ void vtkWindowImage::changeCurrentLayerOpacity()
                                   .arg(this->currentLayerIndex())
                                   .arg(opacity, 0, 'g', 6);
     this->layerController->setCurrentOpacity(this->currentLayerIndex(), opacity);
+    this->markDisplayStateAdjusted("opacity");
     this->vtkRender();
 }
 
@@ -2986,6 +3024,10 @@ void vtkWindowImage::showCurrentLayerSettings()
         return;
     }
 
+    const QSignalBlocker blockCombo(ui->comboLut);
+    const QSignalBlocker blockLog(ui->radioLog);
+    const QSignalBlocker blockLinear(ui->radioLinear);
+    const QSignalBlocker blockOpacity(ui->sliderOpacity);
     ui->comboLut->setCurrentText(QString::fromStdString(state.colorMapName));
     if (state.usingLogScale) {
         ui->radioLog->setChecked(true);
@@ -2996,4 +3038,11 @@ void vtkWindowImage::showCurrentLayerSettings()
 
     this->layerController->activateLayer(index);
     this->vtkRender();
+}
+
+void vtkWindowImage::markDisplayStateAdjusted(const char *reason)
+{
+    this->userAdjustedDisplayState = true;
+    qDebug().noquote() << QStringLiteral("[image] display state adjusted reason=%1")
+                                  .arg(QString::fromUtf8(reason ? reason : "unknown"));
 }

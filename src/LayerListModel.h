@@ -47,6 +47,7 @@ public:
     vtkImageSlice *addLayer(const std::string &filepath);
     vtkImageSlice *addLayer(const ImageLayerLoadResult &result);
     vtkImageSlice *replaceMasterLayer(const ImageLayerLoadResult &result);
+    vtkImageSlice *updateMasterLayer(const ImageLayerLoadResult &result);
 
     /**
    * @param index inside the model

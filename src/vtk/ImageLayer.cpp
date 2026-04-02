@@ -112,23 +112,10 @@ ImageLayer::ImageLayer(const std::string &filepath) : readerBacked(true), filepa
 ImageLayer::ImageLayer(const ImageLayerLoadResult &result)
     : readerBacked(false), filepath(result.filepath), imageData(result.imageData)
 {
-    this->imageData->SetSpacing(result.spacing[0], result.spacing[1], result.spacing[2]);
-    this->imageData->SetOrigin(result.origin[0], result.origin[1], result.origin[2]);
-    this->scalarRange[0] = result.scalarRange[0];
-    this->scalarRange[1] = result.scalarRange[1];
-
-    this->lut->SetTableRange(this->scalarRange[0], this->scalarRange[1]);
+    this->initializeDisplayPipeline();
     this->lut->SetNanColor(1., 1., 1., 1.);
     ColorMaps::SetColorMap(this->lut);
-    this->initializeDisplayPipeline();
-    this->rebuildPreviewImageIfNeeded("remote");
-    this->updateDisplaySource();
-
-    vtkNew<vtkTransform> transform;
-    transform->Translate(result.origin[0], result.origin[1], result.origin[2]);
-    transform->RotateWXYZ(result.rotationDegrees, 0., 0., 1.);
-    transform->Translate(-result.origin[0], -result.origin[1], -result.origin[2]);
-    this->actor->SetUserTransform(transform);
+    this->applyLoadResult(result);
 }
 
 ImageLayer::~ImageLayer() = default;
@@ -155,6 +142,26 @@ void ImageLayer::updateDisplaySource()
         this->colors->SetInputData(display);
         this->colors->Update();
     }
+}
+
+void ImageLayer::updateImageTransform(double rotationDegrees)
+{
+    double bounds[6] = { 0., 0., 0., 0., 0., 0. };
+    if (this->imageData) {
+        this->imageData->GetBounds(bounds);
+    }
+
+    vtkNew<vtkTransform> transform;
+    transform->Translate(bounds[0], bounds[2], bounds[4]);
+    transform->RotateWXYZ(rotationDegrees, 0., 0., 1.);
+    transform->Translate(-bounds[0], -bounds[2], -bounds[4]);
+    this->actor->SetUserTransform(transform);
+}
+
+double ImageLayer::logScaleEpsilon(double maxValue)
+{
+    const double finiteMax = std::isfinite(maxValue) ? std::abs(maxValue) : 1.0;
+    return std::max(1e-12, finiteMax * 1e-12);
 }
 
 void ImageLayer::rebuildPreviewImageIfNeeded(const char *context)
@@ -206,16 +213,17 @@ float ImageLayer::getPixelValue(int x, int y) const
         return this->reader->GetValue(x, y);
     }
 
-    if (!this->imageData) {
+    vtkImageData *source = this->imageData ? this->imageData.GetPointer() : this->displayImageData.GetPointer();
+    if (!source) {
         return std::numeric_limits<float>::quiet_NaN();
     }
 
-    const int *dims = this->imageData->GetDimensions();
+    const int *dims = source->GetDimensions();
     if (x < 0 || y < 0 || x >= dims[0] || y >= dims[1]) {
         return std::numeric_limits<float>::quiet_NaN();
     }
 
-    return this->imageData->GetScalarComponentAsFloat(x, y, 0, 0);
+    return source->GetScalarComponentAsFloat(x, y, 0, 0);
 }
 
 vtkImageSlice *ImageLayer::getActor() const
@@ -260,18 +268,17 @@ bool ImageLayer::usingLogScale() const
 
 void ImageLayer::setLogScale(bool flag)
 {
-    double range[] = { this->scalarRange[0], this->scalarRange[1] };
+    double range[] = { this->lut->GetTableRange()[0], this->lut->GetTableRange()[1] };
     if (flag) {
-        if (range[0] <= 0. && range[1] > 0.) {
-            range[0] = range[1] * 1e-4;
-            range[0] = (range[0] < 1.) ? range[0] : 1.;
-        }
+        range[1] = std::max(range[1], logScaleEpsilon(range[1]));
+        range[0] = std::max(range[0], logScaleEpsilon(range[1]));
         this->lut->SetTableRange(range[0], range[1]);
         this->lut->SetScaleToLog10();
     } else {
         this->lut->SetScaleToLinear();
         this->lut->SetTableRange(range[0], range[1]);
     }
+    this->lut->Build();
 }
 
 std::string ImageLayer::getColorMapName() const
@@ -282,6 +289,7 @@ std::string ImageLayer::getColorMapName() const
 void ImageLayer::setColorMap(const std::string &name)
 {
     ColorMaps::SetColorMap(this->lut, name);
+    this->lut->Build();
 }
 
 void ImageLayer::setOrigin(const double *origin)
@@ -312,14 +320,56 @@ void ImageLayer::setSpacing(const double *spacing)
 
 void ImageLayer::setRotation(double angle)
 {
-    double bounds[6];
-    if (this->imageData) {
-        this->imageData->GetBounds(bounds);
-    }
+    this->updateImageTransform(angle);
+}
 
-    vtkNew<vtkTransform> transform;
-    transform->Translate(bounds[0], bounds[2], bounds[4]);
-    transform->RotateWXYZ(angle, 0., 0., 1.);
-    transform->Translate(-bounds[0], -bounds[2], -bounds[4]);
-    this->actor->SetUserTransform(transform);
+void ImageLayer::applyLoadResult(const ImageLayerLoadResult &result)
+{
+    const double previousRangeMin = this->lut->GetTableRange()[0];
+    const double previousRangeMax = this->lut->GetTableRange()[1];
+    const bool preserveScale = previousRangeMax > previousRangeMin && std::isfinite(previousRangeMin)
+            && std::isfinite(previousRangeMax);
+    const bool logScale = this->lut->UsingLogScale();
+    const double opacity = this->actor->GetProperty()->GetOpacity();
+    const std::string colorMapName = this->lut->GetObjectName();
+
+    this->readerBacked = false;
+    this->filepath = result.filepath;
+    this->imageData = result.imageData;
+    if (this->imageData) {
+        this->imageData->SetSpacing(result.spacing[0], result.spacing[1], result.spacing[2]);
+        this->imageData->SetOrigin(result.origin[0], result.origin[1], result.origin[2]);
+    }
+    this->scalarRange[0] = result.scalarRange[0];
+    this->scalarRange[1] = result.scalarRange[1];
+
+    this->rebuildPreviewImageIfNeeded(result.isPreview ? "remote preview" : "remote full");
+    this->updateDisplaySource();
+    this->updateImageTransform(result.rotationDegrees);
+
+    if (!colorMapName.empty()) {
+        ColorMaps::SetColorMap(this->lut, colorMapName);
+    }
+    this->actor->GetProperty()->SetOpacity(opacity);
+
+    double minValue = preserveScale ? previousRangeMin : this->scalarRange[0];
+    double maxValue = preserveScale ? previousRangeMax : this->scalarRange[1];
+    if (!std::isfinite(minValue) || !std::isfinite(maxValue) || minValue >= maxValue) {
+        minValue = this->scalarRange[0];
+        maxValue = this->scalarRange[1];
+    }
+    if (logScale) {
+        maxValue = std::max(maxValue, logScaleEpsilon(maxValue));
+        minValue = std::max(minValue, logScaleEpsilon(maxValue));
+        this->lut->SetScaleToLog10();
+    } else {
+        this->lut->SetScaleToLinear();
+    }
+    this->lut->SetTableRange(minValue, maxValue);
+    this->lut->Build();
+}
+
+bool ImageLayer::isPreviewActive() const
+{
+    return this->previewModeActive;
 }

@@ -113,6 +113,11 @@ private:
     const QString remoteDegenerateAxesSummary;
     bool remoteDisplayingPreview{ false };
     std::array<int, 2> remoteFullImageDims{ 0, 0 };
+    bool transitioningToFull{ false };
+    bool suspendLutEditorUpdates{ false };
+    bool displayStateInitialized{ false };
+    bool userAdjustedDisplayState{ false };
+    int remoteLoadGeneration{ 0 };
     std::unique_ptr<AstroUtils> astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
@@ -250,6 +255,7 @@ private:
     void applyLoadedLayer(const ImageLayerLoadResult &result);
     void applyRemoteMasterLayer(const ImageLayerLoadResult &result);
     void startRemoteFullResolutionLoad();
+    void markDisplayStateAdjusted(const char *reason);
     bool isBusy() const;
     void showPersistentStatusMessage(const QString &text, int minDurationMs = 400);
     void clearPersistentStatusMessage();

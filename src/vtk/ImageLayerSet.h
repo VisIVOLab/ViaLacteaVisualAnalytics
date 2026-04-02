@@ -45,6 +45,7 @@ public:
     vtkImageSlice *addLayer(const std::string &filepath);
     vtkImageSlice *addLayer(const ImageLayerLoadResult &result);
     vtkImageSlice *replaceMasterLayer(const ImageLayerLoadResult &result);
+    vtkImageSlice *updateMasterLayer(const ImageLayerLoadResult &result);
     bool moveLayer(int sourceIndex, int destinationRow);
 
 private:
