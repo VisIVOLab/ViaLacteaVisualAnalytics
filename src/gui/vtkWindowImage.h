@@ -172,6 +172,7 @@ private:
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> regionPolygonVertices;
+    std::vector<std::array<double, 2>> savedLinearDisplayRanges;
     std::vector<std::array<double, 2>> catalogueOverlayPixels;
     std::vector<int> catalogueOverlayLabelIndices;
     QStringList catalogueOverlayLabels;
@@ -182,6 +183,8 @@ private:
                                                     std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN() };
     std::array<int, 2> lastOverlayViewportSize{ -1, -1 };
+    int lastRenderedWcsFrame{ std::numeric_limits<int>::min() };
+    int lastRenderedWcsFormat{ -1 };
     vtkNew<vtkLineSource> probeHorizontalLine;
     vtkNew<vtkLineSource> probeVerticalLine;
     vtkNew<vtkActor> probeHorizontalActor;
@@ -229,6 +232,7 @@ private:
     void applyDefaultWcsFormatForSelectedFrame();
     void applyInitialAutoscale(vtkImageData *imageData, vtkLookupTable *lut, const char *context);
     void requestWcsOverlayRender();
+    void refreshWcsOverlayImmediately();
     void updateDataStatePanel();
     void updateSanityPanel();
     QString currentWcsFrameLabel() const;

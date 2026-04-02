@@ -119,6 +119,41 @@ double percentileFromSorted(const std::vector<double> &values, double percentile
     return values[lowerIndex] * (1.0 - weight) + values[upperIndex] * weight;
 }
 
+double sampledPositiveFloor(vtkImageData *imageData, qint64 targetSamples = 250000)
+{
+    if (!imageData) {
+        return 0.0;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    const int width = extent[1] - extent[0] + 1;
+    const int height = extent[3] - extent[2] + 1;
+    if (width <= 0 || height <= 0) {
+        return 0.0;
+    }
+
+    const qint64 pixels = static_cast<qint64>(width) * static_cast<qint64>(height);
+    const int stride =
+            std::max(1, static_cast<int>(std::ceil(std::sqrt(static_cast<double>(pixels) / targetSamples))));
+    std::vector<double> positives;
+    positives.reserve(static_cast<std::size_t>(std::min<qint64>(pixels / stride, 32768)));
+    for (int y = extent[2]; y <= extent[3]; y += stride) {
+        for (int x = extent[0]; x <= extent[1]; x += stride) {
+            const double value = imageData->GetScalarComponentAsDouble(x, y, 0, 0);
+            if (std::isfinite(value) && value > 0.0) {
+                positives.push_back(value);
+            }
+        }
+    }
+
+    if (positives.empty()) {
+        return 0.0;
+    }
+    std::sort(positives.begin(), positives.end());
+    return std::max(1e-12, percentileFromSorted(positives, 1.0));
+}
+
 void hideCustomWcsOverlay(vtkAxisActor2D *xAxis, vtkAxisActor2D *yAxis, vtkTextActor *xTitle,
                           vtkTextActor *yTitle,
                           const std::vector<vtkSmartPointer<vtkTextActor>> &xTicks,
@@ -936,7 +971,11 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
         this->wcsFormatExplicitlyChosen = true;
         this->useSexagesimalWcsFormat = action == this->actionWcsSexagesimal;
         this->invalidateWcsOverlayCache();
-        this->requestWcsOverlayRender();
+        qDebug().noquote()
+                << QStringLiteral("[wcs] format changed mode=%1")
+                           .arg(this->useSexagesimalWcsFormat ? QStringLiteral("sexagesimal")
+                                                              : QStringLiteral("decimal"));
+        this->refreshWcsOverlayImmediately();
     });
     this->applyDefaultWcsFormatForSelectedFrame();
 
@@ -1058,6 +1097,9 @@ void vtkWindowImage::showLUTCustomizer()
     if (!this->layers || index < 0 || index >= this->layers->rowCount()) {
         return;
     }
+    qDebug().noquote() << QStringLiteral("[lut] open request index=%1 existing=%2")
+                                  .arg(index)
+                                  .arg(this->lutCustomizer != nullptr);
     if (!this->lutCustomizer) {
         this->lutCustomizer = new LUTCustomizerDialog(this);
         QObject::connect(this->lutCustomizer, &LUTCustomizerDialog::lutUpdated, this,
@@ -1066,14 +1108,23 @@ void vtkWindowImage::showLUTCustomizer()
                              this->showCurrentLayerSettings();
                          });
     }
-    if (this->suspendLutEditorUpdates) {
-        return;
-    }
-    this->lutCustomizer->init(this->layers->getImageData(index),
-                              this->layers->getLookupTable(index));
     this->lutCustomizer->show();
     this->lutCustomizer->raise();
     this->lutCustomizer->activateWindow();
+    qDebug().noquote() << QStringLiteral("[lut] dialog shown/raised");
+    if (this->suspendLutEditorUpdates) {
+        return;
+    }
+    QPointer<LUTCustomizerDialog> dialog = this->lutCustomizer;
+    auto *dataset = this->layers->getImageData(index);
+    auto *lut = this->layers->getLookupTable(index);
+    QTimer::singleShot(0, this, [this, dialog, dataset, lut]() {
+        if (!dialog || this->suspendLutEditorUpdates || !dataset || !lut) {
+            return;
+        }
+        qDebug().noquote() << QStringLiteral("[lut] deferred init started");
+        dialog->init(dataset, lut);
+    });
 }
 
 void vtkWindowImage::updateLUTCustomizer()
@@ -2512,11 +2563,16 @@ void vtkWindowImage::updateWcsOverlay()
 
     const std::array<double, 4> visibleBounds = { visible.xmin, visible.xmax, visible.ymin, visible.ymax };
     const std::array<int, 2> viewportSize = { size[0], size[1] };
-    if (visibleBounds == this->lastOverlayVisibleBounds && viewportSize == this->lastOverlayViewportSize) {
+    const int currentFrame = this->selectedWcsFrame();
+    const int currentFormat = this->useSexagesimalWcsFormat ? 1 : 0;
+    if (visibleBounds == this->lastOverlayVisibleBounds && viewportSize == this->lastOverlayViewportSize
+        && currentFrame == this->lastRenderedWcsFrame && currentFormat == this->lastRenderedWcsFormat) {
         return;
     }
     this->lastOverlayVisibleBounds = visibleBounds;
     this->lastOverlayViewportSize = viewportSize;
+    this->lastRenderedWcsFrame = currentFrame;
+    this->lastRenderedWcsFormat = currentFormat;
 
     constexpr double leftMargin = 168.;
     constexpr double axisX = 136.;
@@ -2653,6 +2709,8 @@ void vtkWindowImage::invalidateWcsOverlayCache()
                                        std::numeric_limits<double>::quiet_NaN(),
                                        std::numeric_limits<double>::quiet_NaN() };
     this->lastOverlayViewportSize = { -1, -1 };
+    this->lastRenderedWcsFrame = std::numeric_limits<int>::min();
+    this->lastRenderedWcsFormat = -1;
 }
 
 void vtkWindowImage::applyDefaultWcsFormatForSelectedFrame()
@@ -2686,6 +2744,26 @@ void vtkWindowImage::requestWcsOverlayRender()
                 ui->vtk->update();
             },
             Qt::QueuedConnection);
+}
+
+void vtkWindowImage::refreshWcsOverlayImmediately()
+{
+    if (!ui || !ui->vtk || !ui->vtk->renderWindow()) {
+        return;
+    }
+    this->updateWcsOverlay();
+    if (this->probeValid) {
+        auto *interactor = ui->vtk->renderWindow()->GetInteractor();
+        const int *position = interactor ? interactor->GetEventPosition() : nullptr;
+        if (position) {
+            this->updateProbeFromDisplayPosition(position[0], position[1]);
+        } else {
+            this->refreshProbeOverlay();
+        }
+    }
+    ui->vtk->renderWindow()->Render();
+    ui->vtk->update();
+    this->requestWcsOverlayRender();
 }
 
 QString vtkWindowImage::currentWcsFrameLabel() const
@@ -2926,7 +3004,7 @@ void vtkWindowImage::changeLegendWCS()
                                                 : (wcs == WCS_J2000 ? u"FK5"_s : u"Ecliptic"_s));
     this->updateDataStatePanel();
     this->updateSanityPanel();
-    this->requestWcsOverlayRender();
+    this->refreshWcsOverlayImmediately();
 }
 
 void vtkWindowImage::changeCurrentColorMap()
@@ -2972,29 +3050,65 @@ void vtkWindowImage::changeCurrentColorScale()
     const double *lutRange = lut->GetTableRange();
     const double rangeMin = lutRange ? lutRange[0] : 0.0;
     const double rangeMax = lutRange ? lutRange[1] : 0.0;
+    if (static_cast<int>(this->savedLinearDisplayRanges.size()) <= index) {
+        this->savedLinearDisplayRanges.resize(static_cast<std::size_t>(index + 1),
+                                              { std::numeric_limits<double>::quiet_NaN(),
+                                                std::numeric_limits<double>::quiet_NaN() });
+    }
     qDebug().noquote()
             << QStringLiteral("[image] color scale state index=%1 range=%2..%3")
                        .arg(index)
                        .arg(rangeMin, 0, 'g', 12)
                        .arg(rangeMax, 0, 'g', 12);
 
-    if (requestedLog && (!std::isfinite(rangeMin) || !std::isfinite(rangeMax) || rangeMin <= 0.0
-                         || rangeMax <= 0.0 || rangeMin >= rangeMax)) {
-        qWarning().noquote()
-                << QStringLiteral("[image] log scale rejected index=%1 range=%2..%3 -> fallback linear")
+    if (requestedLog) {
+        if (!lut->UsingLogScale()) {
+            this->savedLinearDisplayRanges[static_cast<std::size_t>(index)] = { rangeMin, rangeMax };
+        }
+        const double positiveFloor = sampledPositiveFloor(imageData, initialAutoscaleTargetSamples);
+        if (positiveFloor <= 0.0 || !std::isfinite(positiveFloor)) {
+            qWarning().noquote()
+                    << QStringLiteral("[image] log scale rejected index=%1 raw_range=%2..%3 no positive samples")
+                               .arg(index)
+                               .arg(rangeMin, 0, 'g', 12)
+                               .arg(rangeMax, 0, 'g', 12);
+            if (ui && ui->radioLinear) {
+                const QSignalBlocker blockLog(ui->radioLog);
+                const QSignalBlocker blockLinear(ui->radioLinear);
+                ui->radioLinear->setChecked(true);
+                ui->radioLog->setChecked(false);
+            }
+            this->statusBar()->showMessage(
+                    u"Log scale requires at least some positive values in the visible range."_s, 3000);
+            this->layerController->setCurrentLogScale(index, false);
+            this->vtkRender();
+            return;
+        }
+
+        const double adjustedMax =
+                std::max({ rangeMax, positiveFloor * 10.0, positiveFloor * (1.0 + 1e-6) });
+        lut->SetTableRange(positiveFloor, adjustedMax);
+        lut->Build();
+        qDebug().noquote()
+                << QStringLiteral("[image] log scale applied index=%1 raw_range=%2..%3 positive_floor=%4 adjusted=%5..%6 clamped=%7")
                            .arg(index)
                            .arg(rangeMin, 0, 'g', 12)
-                           .arg(rangeMax, 0, 'g', 12);
-        if (ui && ui->radioLinear) {
-            const QSignalBlocker blockLog(ui->radioLog);
-            const QSignalBlocker blockLinear(ui->radioLinear);
-            ui->radioLinear->setChecked(true);
-            ui->radioLog->setChecked(false);
+                           .arg(rangeMax, 0, 'g', 12)
+                           .arg(positiveFloor, 0, 'g', 12)
+                           .arg(positiveFloor, 0, 'g', 12)
+                           .arg(adjustedMax, 0, 'g', 12)
+                           .arg(rangeMin <= 0.0);
+    } else if (lut->UsingLogScale()) {
+        const auto saved = this->savedLinearDisplayRanges[static_cast<std::size_t>(index)];
+        if (std::isfinite(saved[0]) && std::isfinite(saved[1]) && saved[0] < saved[1]) {
+            lut->SetTableRange(saved[0], saved[1]);
+            lut->Build();
+            qDebug().noquote()
+                    << QStringLiteral("[image] linear scale restore index=%1 restored=%2..%3")
+                               .arg(index)
+                               .arg(saved[0], 0, 'g', 12)
+                               .arg(saved[1], 0, 'g', 12);
         }
-        this->statusBar()->showMessage(u"Log scale requires strictly positive display range."_s, 3000);
-        this->layerController->setCurrentLogScale(index, false);
-        this->vtkRender();
-        return;
     }
 
     qDebug().noquote() << QStringLiteral("[image] color scale accepted index=%1 log=%2")

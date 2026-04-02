@@ -14,6 +14,8 @@
 #include <vtkTable.h>
 
 #include <QDoubleValidator>
+#include <QElapsedTimer>
+#include <QDebug>
 
 #include <algorithm>
 #include <cmath>
@@ -25,6 +27,39 @@ namespace {
 constexpr vtkIdType histogramTargetSamples = 250000;
 constexpr int histogramBinCount = 512;
 constexpr double logAxisEpsilon = 1e-12;
+
+double sampledPositiveFloor(vtkImageData *dataset)
+{
+    if (!dataset) {
+        return 0.0;
+    }
+    auto *scalars =
+            dataset->GetPointData() ? dataset->GetPointData()->GetScalars() : nullptr;
+    const vtkIdType nels = dataset->GetNumberOfPoints();
+    if (!scalars || nels <= 0) {
+        return 0.0;
+    }
+
+    const vtkIdType stride =
+            std::max<vtkIdType>(1, static_cast<vtkIdType>(std::ceil(
+                                           static_cast<double>(nels) / histogramTargetSamples)));
+    std::vector<double> positives;
+    positives.reserve(static_cast<std::size_t>(std::min<vtkIdType>(nels / stride, 32768)));
+    for (vtkIdType i = 0; i < nels; i += stride) {
+        const double value = scalars->GetComponent(i, 0);
+        if (std::isfinite(value) && value > 0.0) {
+            positives.push_back(value);
+        }
+    }
+    if (positives.empty()) {
+        return 0.0;
+    }
+    std::sort(positives.begin(), positives.end());
+    const std::size_t index =
+            std::min<std::size_t>(positives.size() - 1,
+                                  static_cast<std::size_t>(std::floor((positives.size() - 1) * 0.01)));
+    return std::max(logAxisEpsilon, positives[index]);
+}
 }
 
 LUTCustomizerDialog::LUTCustomizerDialog(QWidget *parent)
@@ -92,6 +127,9 @@ void LUTCustomizerDialog::setupPlot()
 
 void LUTCustomizerDialog::plotHistogram()
 {
+    QElapsedTimer timer;
+    timer.start();
+    qDebug().noquote() << QStringLiteral("[lut] histogram update started");
     if (!this->dataset) {
         return;
     }
@@ -150,14 +188,19 @@ void LUTCustomizerDialog::plotHistogram()
     this->refLineMax->end->setCoords(lutRange[1], ui->plot->yAxis->range().upper);
 
     this->changeAxisScaling(this->lut->UsingLogScale());
+    qDebug().noquote()
+            << QStringLiteral("[lut] histogram update completed ms=%1").arg(timer.elapsed());
 }
 
 void LUTCustomizerDialog::changeAxisScaling(bool logarithmic)
 {
-    const bool safeLogarithmic = logarithmic && this->datasetRange[1] > logAxisEpsilon;
+    const double positiveFloor = sampledPositiveFloor(this->dataset);
+    const bool safeLogarithmic = logarithmic && positiveFloor > 0.0;
     if (safeLogarithmic) {
         ui->plot->xAxis->setScaleType(QCPAxis::stLogarithmic);
         ui->plot->xAxis->setTicker(QSharedPointer<QCPAxisTickerLog>(new QCPAxisTickerLog));
+        const double upper = std::max(this->datasetRange[1], positiveFloor * 10.0);
+        ui->plot->xAxis->setRange(positiveFloor, upper);
     } else {
         ui->plot->xAxis->setScaleType(QCPAxis::stLinear);
         ui->plot->xAxis->setTicker(QSharedPointer<QCPAxisTicker>(new QCPAxisTicker));
@@ -255,8 +298,12 @@ void LUTCustomizerDialog::updateLut()
         return;
     }
     if (ui->comboScale->currentIndex() == 1) {
-        maxValue = std::max(maxValue, logAxisEpsilon);
-        minValue = std::max(minValue, logAxisEpsilon);
+        const double positiveFloor = sampledPositiveFloor(this->dataset);
+        if (positiveFloor <= 0.0) {
+            return;
+        }
+        maxValue = std::max(maxValue, positiveFloor);
+        minValue = std::max(minValue, positiveFloor);
         this->lut->SetScaleToLog10();
     } else {
         this->lut->SetScaleToLinear();
