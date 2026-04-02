@@ -2,7 +2,38 @@
 
 #include "fitswcs.h"
 
+#include <cmath>
 #include <cstdio>
+
+#include <QStringList>
+
+namespace {
+QString formatAxisName(const char *ctype, int axisIndex)
+{
+    const QString ctypeString = QString::fromUtf8(ctype).trimmed();
+    return ctypeString.isEmpty() ? QStringLiteral("AXIS%1").arg(axisIndex + 1) : ctypeString;
+}
+
+QString formatAxisValueLabel(const char *ctype, double value)
+{
+    const QString axisType = QString::fromUtf8(ctype).trimmed().toUpper();
+    if (axisType == QStringLiteral("STOKES") && std::isfinite(value)) {
+        switch (static_cast<int>(std::lround(value))) {
+        case 1:
+            return QStringLiteral("I");
+        case 2:
+            return QStringLiteral("Q");
+        case 3:
+            return QStringLiteral("U");
+        case 4:
+            return QStringLiteral("V");
+        default:
+            break;
+        }
+    }
+    return QString::number(value, 'g', 10);
+}
+}
 
 AstroUtils::AstroUtils(const std::string &filepath)
     : filepath{ filepath },
@@ -134,6 +165,45 @@ const double *AstroUtils::getReferencePixels() const
     return this->crpix;
 }
 
+int AstroUtils::getAxisCount() const
+{
+    return this->naxis;
+}
+
+int AstroUtils::getActiveAxisCount() const
+{
+    int active = 0;
+    for (int axis = 0; axis < this->naxis; ++axis) {
+        if (this->naxes[axis] > 1) {
+            ++active;
+        }
+    }
+    return active;
+}
+
+QString AstroUtils::degenerateAxesSummary() const
+{
+    QStringList entries;
+    for (int axis = 0; axis < this->naxis; ++axis) {
+        if (this->naxes[axis] != 1) {
+            continue;
+        }
+        const QString axisName = formatAxisName(this->ctype[axis], axis);
+        QString entry = QStringLiteral("%1=%2").arg(axisName, formatAxisValueLabel(this->ctype[axis], this->crval[axis]));
+        const QString unit = QString::fromUtf8(this->cunit[axis]).trimmed();
+        if (!unit.isEmpty() && axisName.toUpper() != QStringLiteral("STOKES")) {
+            entry += QStringLiteral(" %1").arg(unit);
+        }
+        entry += QStringLiteral(" (1)");
+        entries.push_back(entry);
+    }
+
+    if (entries.isEmpty()) {
+        return {};
+    }
+    return QStringLiteral("Collapsed axes: %1").arg(entries.join(QStringLiteral(", ")));
+}
+
 double AstroUtils::getInitialSpectralValue() const
 {
     return this->crval[2] - this->cdelt[2] * (crpix[2] - 1);
@@ -167,12 +237,12 @@ bool AstroUtils::overlap(const std::string &filepath) const
 
 bool AstroUtils::isImage() const
 {
-    return this->naxis == 2;
+    return this->getActiveAxisCount() == 2;
 }
 
 bool AstroUtils::isCube() const
 {
-    return this->naxis > 2;
+    return this->getActiveAxisCount() == 3;
 }
 
 bool AstroUtils::hasStokes() const

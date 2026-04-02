@@ -33,6 +33,7 @@ class vtkAxisActor2D;
 class vtkCoordinate;
 class vtkImageStack;
 class vtkLegendScaleActorWCS;
+class vtkLookupTable;
 class vtkCellArray;
 class vtkContourTriangulator;
 class vtkLineSource;
@@ -60,7 +61,7 @@ public:
                    const std::array<QString, 3> &remoteCunit,
                    const std::array<double, 3> &remoteCrval,
                    const std::array<double, 3> &remoteCrpix,
-                   const std::array<double, 3> &remoteCdelt,
+                   const std::array<double, 3> &remoteCdelt, const QString &remoteDegenerateAxesSummary,
                    QWidget *parent = nullptr);
     ~vtkWindowImage();
     void closeEvent(QCloseEvent *event) override;
@@ -85,6 +86,8 @@ private slots:
     void toggleProbeFreeze();
     void finishRegionInteraction();
     void setProbeModeActive(bool active);
+    void beginImageInteraction();
+    void endImageInteraction();
 
 public:
     enum class RegionMode
@@ -107,6 +110,9 @@ private:
     const std::array<double, 3> remoteDatasetCrval;
     const std::array<double, 3> remoteDatasetCrpix;
     const std::array<double, 3> remoteDatasetCdelt;
+    const QString remoteDegenerateAxesSummary;
+    bool remoteDisplayingPreview{ false };
+    std::array<int, 2> remoteFullImageDims{ 0, 0 };
     std::unique_ptr<AstroUtils> astro;
     QPointer<LUTCustomizerDialog> lutCustomizer;
     QPointer<ProfileWidget> profileWidget;
@@ -126,6 +132,7 @@ private:
     QPointer<QAction> actionClearCatalogueOverlay;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
+    QFutureWatcher<ImageLayerLoadResult> remoteFullImageWatcher;
     QTimer statusMessageClearTimer;
     QElapsedTimer statusMessageElapsed;
     int statusMessageMinDurationMs{ 0 };
@@ -153,6 +160,8 @@ private:
     bool regionDragging{ false };
     bool regionValid{ false };
     bool catalogueOverlayLoaded{ false };
+    bool largeImageModeActive{ false };
+    bool suspendHeavyOverlayUpdates{ false };
     bool ignoreNextPolygonRelease{ false };
     std::array<int, 2> probeVoxel{ -1, -1 };
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
@@ -213,6 +222,7 @@ private:
     void ensureOverlayTickActors(vtkRenderer *renderer);
     void invalidateWcsOverlayCache();
     void applyDefaultWcsFormatForSelectedFrame();
+    void applyInitialAutoscale(vtkImageData *imageData, vtkLookupTable *lut, const char *context);
     void requestWcsOverlayRender();
     void updateDataStatePanel();
     void updateSanityPanel();
@@ -223,6 +233,7 @@ private:
     void clearRegion();
     void analyzeCurrentRegion();
     bool finalizePolygonRegion();
+    void updateLargeImageMode(vtkImageData *imageData, const char *context);
     void loadCatalogueOverlay();
     void clearCatalogueOverlay();
     void setCatalogueOverlayVisible(bool visible);
@@ -238,6 +249,7 @@ private:
     std::unique_ptr<ImageLayerController> layerController;
     void applyLoadedLayer(const ImageLayerLoadResult &result);
     void applyRemoteMasterLayer(const ImageLayerLoadResult &result);
+    void startRemoteFullResolutionLoad();
     bool isBusy() const;
     void showPersistentStatusMessage(const QString &text, int minDurationMs = 400);
     void clearPersistentStatusMessage();

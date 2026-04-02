@@ -55,9 +55,11 @@ class OpenDatasetResponse(BaseModel):
     error: str
     dataset_id: str = ""
     kind: str = ""
+    active_axes: int = 0
     width: int = 0
     height: int = 0
     depth: int = 0
+    degenerate_axes_summary: str = ""
     spacing: list[float] = [1.0, 1.0, 1.0]
     origin: list[float] = [0.0, 0.0, 0.0]
     ctype: list[str] = ["", "", ""]
@@ -168,12 +170,23 @@ class ImageFullRequest(BaseModel):
     dataset_id: str
 
 
+class ImagePreviewRequest(BaseModel):
+    dataset_id: str
+    max_longest_side: int = 1536
+
+
 class ImageFullResponse(BaseModel):
     valid: bool
     error: str
     width: int = 0
     height: int = 0
+    full_width: int = 0
+    full_height: int = 0
     scalar_type: str = ""
+    range_min: float = 0.0
+    range_max: float = 0.0
+    is_preview: bool = False
+    preview_scale_factor: float = 1.0
     compression: str = ""
     data_base64: str = ""
 
@@ -217,6 +230,45 @@ def _load_dataset_array(path: Path) -> tuple[np.ndarray, fits.Header]:
         array = array[0]
 
     return array, header
+
+
+def _axis_name(header: fits.Header, axis_index: int) -> str:
+    value = str(header.get(f"CTYPE{axis_index}", "")).strip()
+    return value or f"AXIS{axis_index}"
+
+
+def _axis_value_label(header: fits.Header, axis_index: int) -> str:
+    value = float(header.get(f"CRVAL{axis_index}", 0.0))
+    axis_name = _axis_name(header, axis_index).upper()
+    if axis_name == "STOKES":
+        mapping = {1: "I", 2: "Q", 3: "U", 4: "V"}
+        rounded = int(round(value))
+        return mapping.get(rounded, f"{value:g}")
+    return f"{value:g}"
+
+
+def _fits_axis_metadata(header: fits.Header) -> dict[str, Any]:
+    naxis = int(header.get("NAXIS", 0))
+    axis_sizes = [int(header.get(f"NAXIS{i}", 1)) for i in range(1, naxis + 1)]
+    active_axes = [index for index, size in enumerate(axis_sizes, start=1) if size > 1]
+    degenerate_axes = [index for index, size in enumerate(axis_sizes, start=1) if size == 1]
+    entries: list[str] = []
+    for axis_index in degenerate_axes:
+        axis_name = _axis_name(header, axis_index)
+        axis_value = _axis_value_label(header, axis_index)
+        unit = str(header.get(f"CUNIT{axis_index}", "")).strip()
+        entry = f"{axis_name}={axis_value}"
+        if unit and axis_name.upper() != "STOKES":
+            entry += f" {unit}"
+        entry += " (1)"
+        entries.append(entry)
+
+    return {
+        "naxis": naxis,
+        "axis_sizes": axis_sizes,
+        "active_axes": len(active_axes),
+        "degenerate_axes_summary": f"Collapsed axes: {', '.join(entries)}" if entries else "",
+    }
 
 
 def _dataset_geometry(array: np.ndarray, header: fits.Header) -> dict[str, Any]:
@@ -266,12 +318,22 @@ def _dataset_geometry(array: np.ndarray, header: fits.Header) -> dict[str, Any]:
 
 def _detect_kind(path: Path) -> tuple[str, dict[str, Any]]:
     array, header = _load_dataset_array(path)
+    axis_meta = _fits_axis_metadata(header)
     geometry = _dataset_geometry(array, header)
-    if array.ndim == 2:
+    active_axes = axis_meta["active_axes"]
+    logger.info(
+        "[fits] active_axes=%s degenerate_axes=%s -> %s",
+        active_axes,
+        max(0, axis_meta["naxis"] - active_axes),
+        "2D image" if active_axes == 2 else ("cube" if active_axes == 3 else "fallback image"),
+    )
+    geometry["active_axes"] = active_axes
+    geometry["degenerate_axes_summary"] = axis_meta["degenerate_axes_summary"]
+    if active_axes == 2:
         return "image", geometry
-    if array.ndim == 3:
+    if active_axes == 3:
         return "cube", geometry
-    raise ValueError("Unsupported FITS dimensionality.")
+    return "image", geometry
 
 
 def _dataset_entry(dataset_id: str) -> dict[str, Any]:
@@ -315,6 +377,33 @@ def _encode_array_compressed(array: np.ndarray) -> tuple[str, str]:
 def _encode_int_array_compressed(array: np.ndarray) -> tuple[str, str]:
     raw = np.ascontiguousarray(array, dtype=np.int32).tobytes()
     return "qt-zlib", base64.b64encode(_qt_zlib_compress(raw)).decode("ascii")
+
+
+def _build_image_preview(image: np.ndarray, max_longest_side: int) -> tuple[np.ndarray, float]:
+    if image.ndim != 2:
+        raise ValueError("Preview generation requires a 2D image.")
+
+    height, width = int(image.shape[0]), int(image.shape[1])
+    longest = max(width, height)
+    limit = max(64, int(max_longest_side))
+    if longest <= limit:
+        return np.ascontiguousarray(image, dtype=np.float32), 1.0
+
+    scale = float(limit) / float(longest)
+    preview_width = max(1, int(round(width * scale)))
+    preview_height = max(1, int(round(height * scale)))
+    x_indices = np.clip(
+        np.floor((np.arange(preview_width, dtype=np.float64) + 0.5) * (width / preview_width)).astype(np.int64),
+        0,
+        width - 1,
+    )
+    y_indices = np.clip(
+        np.floor((np.arange(preview_height, dtype=np.float64) + 0.5) * (height / preview_height)).astype(np.int64),
+        0,
+        height - 1,
+    )
+    preview = np.ascontiguousarray(image[np.ix_(y_indices, x_indices)], dtype=np.float32)
+    return preview, float(longest) / float(max(preview.shape[0], preview.shape[1]))
 
 
 def _compute_isosurface_payload(cube: np.ndarray, entry: dict[str, Any], threshold: float) -> dict[str, Any]:
@@ -639,9 +728,11 @@ def open_dataset(request: OpenDatasetRequest) -> OpenDatasetResponse:
         error="",
         dataset_id=dataset_id,
         kind=kind,
+        active_axes=int(geometry.get("active_axes", 0)),
         width=geometry["width"],
         height=geometry["height"],
         depth=geometry["depth"],
+        degenerate_axes_summary=str(geometry.get("degenerate_axes_summary", "")),
         spacing=geometry["spacing"],
         origin=geometry["origin"],
         ctype=geometry["ctype"],
@@ -864,16 +955,69 @@ def image_full(request: ImageFullRequest) -> ImageFullResponse:
         if image.ndim != 2:
             raise ValueError("Remote image endpoint requires 2D FITS data.")
         image = np.ascontiguousarray(image, dtype=np.float32)
+        logger.info("[remote-image] full request dataset_id=%s dims=%sx%s", request.dataset_id, image.shape[1], image.shape[0])
     except Exception as exc:
         return ImageFullResponse(valid=False, error=str(exc))
 
+    range_min, range_max = _finite_range(image)
     compression, data_base64 = _encode_array_compressed(image)
     return ImageFullResponse(
         valid=True,
         error="",
         width=int(image.shape[1]),
         height=int(image.shape[0]),
+        full_width=int(image.shape[1]),
+        full_height=int(image.shape[0]),
         scalar_type="float32",
+        range_min=range_min,
+        range_max=range_max,
+        is_preview=False,
+        preview_scale_factor=1.0,
+        compression=compression,
+        data_base64=data_base64,
+    )
+
+
+@app.post("/image/preview", response_model=ImageFullResponse)
+def image_preview(request: ImagePreviewRequest) -> ImageFullResponse:
+    try:
+        entry = _dataset_entry(request.dataset_id)
+        if entry["kind"] != "image":
+            raise ValueError("Image preview endpoint requires an image dataset.")
+        image_path = Path(entry["path"])
+        image, _ = _load_dataset_array(image_path)
+        if image.ndim != 2:
+            raise ValueError("Remote image preview endpoint requires 2D FITS data.")
+        full_width = int(image.shape[1])
+        full_height = int(image.shape[0])
+        preview, scale_factor = _build_image_preview(image, request.max_longest_side)
+        is_preview = preview.shape != image.shape
+        logger.info(
+            "[remote-image] preview request dataset_id=%s original=%sx%s preview=%sx%s scale=%s",
+            request.dataset_id,
+            full_width,
+            full_height,
+            int(preview.shape[1]),
+            int(preview.shape[0]),
+            scale_factor,
+        )
+    except Exception as exc:
+        return ImageFullResponse(valid=False, error=str(exc))
+
+    range_min, range_max = _finite_range(preview)
+    compression, data_base64 = _encode_array_compressed(preview)
+    return ImageFullResponse(
+        valid=True,
+        error="",
+        width=int(preview.shape[1]),
+        height=int(preview.shape[0]),
+        full_width=full_width,
+        full_height=full_height,
+        scalar_type="float32",
+        range_min=range_min,
+        range_max=range_max,
+        is_preview=is_preview,
+        preview_scale_factor=scale_factor,
         compression=compression,
         data_base64=data_base64,
     )

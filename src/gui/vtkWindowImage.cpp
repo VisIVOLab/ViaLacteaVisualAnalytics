@@ -67,6 +67,10 @@ constexpr int overlayTickCount = 5;
 constexpr double polygonClosureTolerance = 3.0;
 constexpr double catalogueMarkerHalfSize = 3.0;
 constexpr int maxCatalogueLabelCount = 200;
+constexpr qint64 largeImagePixelThreshold = 25000000;
+constexpr int initialAutoscaleTargetSamples = 250000;
+constexpr double initialAutoscaleLowPercent = 1.0;
+constexpr double initialAutoscaleHighPercent = 99.5;
 
 struct VisibleImageBounds2D
 {
@@ -76,6 +80,73 @@ struct VisibleImageBounds2D
     double ymin{ 0. };
     double ymax{ 0. };
 };
+
+bool isImageExtentUsable(vtkImageData *imageData)
+{
+    if (!imageData) {
+        return false;
+    }
+    int extent[6];
+    imageData->GetExtent(extent);
+    return extent[1] > extent[0] && extent[3] > extent[2];
+}
+
+qint64 imagePixelCount(vtkImageData *imageData)
+{
+    if (!imageData) {
+        return 0;
+    }
+    int extent[6];
+    imageData->GetExtent(extent);
+    const qint64 width = std::max(0, extent[1] - extent[0] + 1);
+    const qint64 height = std::max(0, extent[3] - extent[2] + 1);
+    return width * height;
+}
+
+double percentileFromSorted(const std::vector<double> &values, double percentile)
+{
+    if (values.empty()) {
+        return 0.0;
+    }
+    const double clamped = std::clamp(percentile, 0.0, 100.0);
+    const double rank = (clamped / 100.0) * static_cast<double>(values.size() - 1);
+    const auto lowerIndex = static_cast<std::size_t>(std::floor(rank));
+    const auto upperIndex = static_cast<std::size_t>(std::ceil(rank));
+    if (lowerIndex == upperIndex) {
+        return values[lowerIndex];
+    }
+    const double weight = rank - static_cast<double>(lowerIndex);
+    return values[lowerIndex] * (1.0 - weight) + values[upperIndex] * weight;
+}
+
+void hideCustomWcsOverlay(vtkAxisActor2D *xAxis, vtkAxisActor2D *yAxis, vtkTextActor *xTitle,
+                          vtkTextActor *yTitle,
+                          const std::vector<vtkSmartPointer<vtkTextActor>> &xTicks,
+                          const std::vector<vtkSmartPointer<vtkTextActor>> &yTicks)
+{
+    if (xAxis) {
+        xAxis->VisibilityOff();
+    }
+    if (yAxis) {
+        yAxis->VisibilityOff();
+    }
+    if (xTitle) {
+        xTitle->VisibilityOff();
+    }
+    if (yTitle) {
+        yTitle->VisibilityOff();
+    }
+    for (const auto &actor : xTicks) {
+        if (actor) {
+            actor->VisibilityOff();
+        }
+    }
+    for (const auto &actor : yTicks) {
+        if (actor) {
+            actor->VisibilityOff();
+        }
+    }
+}
 
 struct RegionStatistics
 {
@@ -589,13 +660,15 @@ ImageLayerLoadResult createPlaceholderRemoteLayerResult(const QString &filepath)
 }
 
 ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QString &datasetId,
-                                           const QString &datasetPath)
+                                           const QString &datasetPath, bool previewOnly = false,
+                                           int previewMaxLongestSide = 1536)
 {
     ImageLayerLoadResult result;
     result.filepath = datasetPath.toStdString();
 
     BackendClient client(backendUrl);
-    const auto response = client.requestImage(datasetId);
+    const auto response = previewOnly ? client.requestImagePreview(datasetId, previewMaxLongestSide)
+                                      : client.requestImage(datasetId);
     if (!response.valid) {
         result.errorMessage = response.error.isEmpty() ? "Remote image request failed."
                                                        : response.error.toStdString();
@@ -617,15 +690,33 @@ ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QStr
     vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
     image->SetExtent(0, response.width - 1, 0, response.height - 1, 0, 0);
     image->SetOrigin(0., 0., 0.);
-    image->SetSpacing(1., 1., 1.);
+    double spacingX = 1.0;
+    double spacingY = 1.0;
+    if (response.isPreview && response.width > 1 && response.height > 1 && response.fullWidth > 1
+        && response.fullHeight > 1) {
+        spacingX = static_cast<double>(response.fullWidth - 1) / static_cast<double>(response.width - 1);
+        spacingY = static_cast<double>(response.fullHeight - 1) / static_cast<double>(response.height - 1);
+    }
+    image->SetSpacing(spacingX, spacingY, 1.);
     image->AllocateScalars(VTK_FLOAT, 1);
     std::memcpy(image->GetScalarPointer(), response.data.constData(),
                 static_cast<std::size_t>(expectedBytes));
 
-    const double *range = image->GetScalarRange();
     result.imageData = image;
-    result.scalarRange = { range[0], range[1] };
+    result.scalarRange = { response.rangeMin, response.rangeMax };
+    result.isPreview = response.isPreview;
+    result.fullWidth = response.fullWidth;
+    result.fullHeight = response.fullHeight;
+    result.previewScaleFactor = response.previewScaleFactor;
     result.valid = true;
+    qDebug().noquote()
+            << QStringLiteral("[remote-image] fetched mode=%1 dims=%2x%3 full=%4x%5 scale=%6")
+                       .arg(result.isPreview ? QStringLiteral("preview") : QStringLiteral("full"))
+                       .arg(response.width)
+                       .arg(response.height)
+                       .arg(response.fullWidth)
+                       .arg(response.fullHeight)
+                       .arg(response.previewScaleFactor, 0, 'f', 3);
     return result;
 }
 
@@ -653,6 +744,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
                      { 0.0, 0.0, 0.0 },
                      { 1.0, 1.0, 1.0 },
                      { 1.0, 1.0, 1.0 },
+                     {},
                      parent)
 {
 }
@@ -663,7 +755,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                                const std::array<QString, 3> &remoteCunit,
                                const std::array<double, 3> &remoteCrval,
                                const std::array<double, 3> &remoteCrpix,
-                               const std::array<double, 3> &remoteCdelt, QWidget *parent)
+                               const std::array<double, 3> &remoteCdelt,
+                               const QString &remoteDegenerateAxesSummary, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowImage),
       filepath(filepath),
@@ -675,6 +768,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
       remoteDatasetCrval(remoteCrval),
       remoteDatasetCrpix(remoteCrpix),
       remoteDatasetCdelt(remoteCdelt),
+      remoteDegenerateAxesSummary(remoteDegenerateAxesSummary),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -750,11 +844,38 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                      [this]() {
                          const auto result = this->remoteImageWatcher.result();
                          if (!result.valid || !result.imageData) {
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-image] preview failed: %1")
+                                                .arg(QString::fromStdString(result.errorMessage));
+                             this->showPersistentStatusMessage(result.errorMessage.empty()
+                                                                       ? u"Preview unavailable; loading full-resolution remote image..."_s
+                                                                       : u"Remote preview failed; loading full resolution..."_s);
+                             this->startRemoteFullResolutionLoad();
+                             return;
+                         }
+
+                         this->applyRemoteMasterLayer(result);
+                         if (result.isPreview) {
+                             this->showPersistentStatusMessage(
+                                     u"Remote preview ready; loading full-resolution image..."_s, 0);
+                             this->startRemoteFullResolutionLoad();
+                         } else {
+                             this->clearPersistentStatusMessage();
+                         }
+                     });
+    QObject::connect(&this->remoteFullImageWatcher, &QFutureWatcher<ImageLayerLoadResult>::finished, this,
+                     [this]() {
+                         const auto result = this->remoteFullImageWatcher.result();
+                         if (!result.valid || !result.imageData) {
+                             qDebug().noquote()
+                                     << QStringLiteral("[remote-image] full-resolution load failed: %1")
+                                                .arg(QString::fromStdString(result.errorMessage));
                              this->persistentStatusActive = false;
                              this->statusMessageClearTimer.stop();
                              this->statusBar()->showMessage(result.errorMessage.empty()
-                                                                    ? u"Could not load remote image."_s
-                                                                    : QString::fromStdString(result.errorMessage));
+                                                                    ? u"Could not load full-resolution remote image."_s
+                                                                    : QString::fromStdString(result.errorMessage),
+                                                            4000);
                              return;
                          }
 
@@ -767,6 +888,10 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
             : new LayerListModel(this->filepath.toStdString(), this);
 
     this->setupRenderer();
+    this->applyInitialAutoscale(this->layers->getImageData(this->layers->getMasterIndex()),
+                                this->layers->getLookupTable(this->layers->getMasterIndex()),
+                                "initial master");
+    this->updateLargeImageMode(this->layers->getImageData(this->layers->getMasterIndex()), "initial");
     this->updateDataStatePanel();
     this->updateSanityPanel();
 
@@ -882,10 +1007,10 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
 
     if (this->isRemoteMode) {
         ui->actionAddFITS->setEnabled(false);
-        this->showPersistentStatusMessage(u"Loading remote image..."_s);
+        this->showPersistentStatusMessage(u"Loading remote image preview..."_s);
         this->remoteImageWatcher.setFuture(
                 QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl,
-                                  this->remoteDatasetId, this->filepath));
+                                  this->remoteDatasetId, this->filepath, true, 1536));
     }
 }
 
@@ -970,7 +1095,11 @@ void vtkWindowImage::setupRenderer()
     win->GetInteractor()->AddObserver(vtkCommand::MouseMoveEvent, this,
                                       &vtkWindowImage::mouseCallback);
     win->GetInteractor()->AddObserver(vtkCommand::LeftButtonPressEvent, this,
+                                      &vtkWindowImage::beginImageInteraction);
+    win->GetInteractor()->AddObserver(vtkCommand::LeftButtonPressEvent, this,
                                       &vtkWindowImage::toggleProbeFreeze);
+    win->GetInteractor()->AddObserver(vtkCommand::LeftButtonReleaseEvent, this,
+                                      &vtkWindowImage::endImageInteraction);
     win->GetInteractor()->AddObserver(vtkCommand::LeftButtonReleaseEvent, this,
                                       &vtkWindowImage::finishRegionInteraction);
     win->GetInteractor()->AddObserver(vtkCommand::RightButtonPressEvent, this,
@@ -1124,6 +1253,10 @@ void vtkWindowImage::mouseCallback()
         return;
     }
 
+    if (this->suspendHeavyOverlayUpdates) {
+        return;
+    }
+
     if (this->probeModeActive && this->probeFrozen) {
         return;
     }
@@ -1138,6 +1271,29 @@ void vtkWindowImage::mouseCallback()
             ui->vtk->renderWindow()->Render();
         }
     }
+}
+
+void vtkWindowImage::beginImageInteraction()
+{
+    if (!this->largeImageModeActive) {
+        return;
+    }
+    if (this->probeModeActive || this->regionMode != RegionMode::None) {
+        return;
+    }
+    this->suspendHeavyOverlayUpdates = true;
+    qDebug().noquote() << QStringLiteral("[large-image] begin interactive drag; suspending hover/overlay updates");
+}
+
+void vtkWindowImage::endImageInteraction()
+{
+    if (!this->suspendHeavyOverlayUpdates) {
+        return;
+    }
+    this->suspendHeavyOverlayUpdates = false;
+    qDebug().noquote() << QStringLiteral("[large-image] end interactive drag; refreshing overlays");
+    this->invalidateWcsOverlayCache();
+    this->requestWcsOverlayRender();
 }
 
 void vtkWindowImage::toggleProbeFreeze()
@@ -1809,6 +1965,9 @@ void vtkWindowImage::rebuildCatalogueOverlay()
 
 void vtkWindowImage::updateCatalogueOverlayLabels()
 {
+    if (this->suspendHeavyOverlayUpdates) {
+        return;
+    }
     if (!this->catalogueOverlayLoaded || !this->actionShowCatalogueOverlay
         || !this->actionShowCatalogueOverlay->isChecked()) {
         return;
@@ -2023,6 +2182,10 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
     QElapsedTimer timer;
     timer.start();
     this->stack->AddImage(this->layers->addLayer(result));
+    const int masterIndex = this->layers->getMasterIndex();
+    this->applyInitialAutoscale(this->layers->getImageData(masterIndex),
+                                this->layers->getLookupTable(masterIndex), "local apply");
+    this->updateLargeImageMode(this->layers->getImageData(masterIndex), "local apply");
     if (this->probeValid) {
         this->refreshProbeOverlay();
     }
@@ -2031,6 +2194,94 @@ void vtkWindowImage::applyLoadedLayer(const ImageLayerLoadResult &result)
     this->vtkRender();
     qDebug().noquote()
             << QStringLiteral("[perf][layer] render after apply: %1 ms").arg(timer.elapsed());
+}
+
+void vtkWindowImage::applyInitialAutoscale(vtkImageData *imageData, vtkLookupTable *lut,
+                                           const char *context)
+{
+    if (!imageData || !lut) {
+        return;
+    }
+
+    int extent[6];
+    imageData->GetExtent(extent);
+    const int width = extent[1] - extent[0] + 1;
+    const int height = extent[3] - extent[2] + 1;
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    const qint64 pixels = static_cast<qint64>(width) * static_cast<qint64>(height);
+    const int stride =
+            std::max(1, static_cast<int>(std::ceil(std::sqrt(static_cast<double>(pixels)
+                                                             / initialAutoscaleTargetSamples))));
+
+    std::vector<double> samples;
+    samples.reserve(static_cast<std::size_t>(
+            std::min<qint64>(pixels, static_cast<qint64>(initialAutoscaleTargetSamples))));
+    for (int y = extent[2]; y <= extent[3]; y += stride) {
+        for (int x = extent[0]; x <= extent[1]; x += stride) {
+            const double value = imageData->GetScalarComponentAsDouble(x, y, 0, 0);
+            if (std::isfinite(value)) {
+                samples.push_back(value);
+            }
+        }
+    }
+
+    if (samples.empty()) {
+        return;
+    }
+
+    std::sort(samples.begin(), samples.end());
+    double low = percentileFromSorted(samples, initialAutoscaleLowPercent);
+    double high = percentileFromSorted(samples, initialAutoscaleHighPercent);
+
+    const double *rawRange = imageData->GetScalarRange();
+    const double rawMin = rawRange ? rawRange[0] : low;
+    const double rawMax = rawRange ? rawRange[1] : high;
+    if (!std::isfinite(low) || !std::isfinite(high) || low >= high) {
+        low = rawMin;
+        high = rawMax;
+    }
+    if (!std::isfinite(low) || !std::isfinite(high) || low >= high) {
+        return;
+    }
+
+    lut->SetTableRange(low, high);
+    qDebug().noquote()
+            << QStringLiteral("[image-autoscale] %1 samples=%2 stride=%3 percentiles=%4..%5 range=%6..%7 raw=%8..%9")
+                       .arg(QString::fromUtf8(context))
+                       .arg(samples.size())
+                       .arg(stride)
+                       .arg(initialAutoscaleLowPercent, 0, 'f', 1)
+                       .arg(initialAutoscaleHighPercent, 0, 'f', 1)
+                       .arg(low, 0, 'g', 12)
+                       .arg(high, 0, 'g', 12)
+                       .arg(rawMin, 0, 'g', 12)
+                       .arg(rawMax, 0, 'g', 12);
+}
+
+void vtkWindowImage::updateLargeImageMode(vtkImageData *imageData, const char *context)
+{
+    const qint64 pixels = imagePixelCount(imageData);
+    const bool large = pixels >= largeImagePixelThreshold;
+    this->largeImageModeActive = large;
+    if (!imageData) {
+        return;
+    }
+    int extent[6];
+    imageData->GetExtent(extent);
+    const qint64 width = std::max(0, extent[1] - extent[0] + 1);
+    const qint64 height = std::max(0, extent[3] - extent[2] + 1);
+    const double estimatedMb = static_cast<double>(pixels) * sizeof(float) / (1024.0 * 1024.0);
+    qDebug().noquote()
+            << QStringLiteral("[image] %1 dims=%2x%3 pixels=%4 est_float_mb=%5 large_mode=%6")
+                       .arg(QString::fromUtf8(context))
+                       .arg(width)
+                       .arg(height)
+                       .arg(pixels)
+                       .arg(estimatedMb, 0, 'f', 1)
+                       .arg(large);
 }
 
 void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
@@ -2047,21 +2298,67 @@ void vtkWindowImage::applyRemoteMasterLayer(const ImageLayerLoadResult &result)
     this->stack->AddImage(newActor);
     this->stack->SetActiveLayer(this->layers->getMasterIndex());
     this->layerController->activateLayer(this->layers->getMasterIndex());
-    auto *renderer = ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer();
+    auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
+    auto *lut = this->layers ? this->layers->getLookupTable(this->layers->getMasterIndex()) : nullptr;
+    this->remoteDisplayingPreview = result.isPreview;
+    this->remoteFullImageDims = { result.fullWidth, result.fullHeight };
+    this->applyInitialAutoscale(imageData, lut, "remote apply");
+    this->updateLargeImageMode(imageData, "remote apply");
+    auto *renderWindow = ui && ui->vtk ? ui->vtk->renderWindow() : nullptr;
+    auto *renderer = renderWindow ? renderWindow->GetRenderers()->GetFirstRenderer() : nullptr;
+    const bool validExtent = isImageExtentUsable(imageData);
+    qDebug().noquote()
+            << QStringLiteral("[remote-image] apply extents x=%1..%2 y=%3..%4 valid=%5")
+                       .arg(imageData ? imageData->GetExtent()[0] : -1)
+                       .arg(imageData ? imageData->GetExtent()[1] : -1)
+                       .arg(imageData ? imageData->GetExtent()[2] : -1)
+                       .arg(imageData ? imageData->GetExtent()[3] : -1)
+                       .arg(validExtent);
     if (renderer) {
         renderer->ResetCamera();
+        renderer->ResetCameraClippingRange();
+    }
+    this->invalidateWcsOverlayCache();
+    if (!validExtent) {
+        hideCustomWcsOverlay(this->overlayXAxis, this->overlayYAxis, this->overlayXTitleActor,
+                             this->overlayYTitleActor, this->overlayXTickActors,
+                             this->overlayYTickActors);
     }
     if (this->probeValid) {
         this->refreshProbeOverlay();
     }
     this->updateDataStatePanel();
     this->updateSanityPanel();
-    this->vtkRender();
+    if (renderWindow) {
+        renderWindow->Render();
+    }
+    this->requestWcsOverlayRender();
+    qDebug().noquote()
+            << QStringLiteral("[remote-image] applied mode=%1 display=%2x%3 full=%4x%5")
+                       .arg(result.isPreview ? QStringLiteral("preview") : QStringLiteral("full"))
+                       .arg(imageData ? imageData->GetDimensions()[0] : 0)
+                       .arg(imageData ? imageData->GetDimensions()[1] : 0)
+                       .arg(result.fullWidth)
+                       .arg(result.fullHeight);
+}
+
+void vtkWindowImage::startRemoteFullResolutionLoad()
+{
+    if (!this->isRemoteMode || this->remoteFullImageWatcher.isRunning()) {
+        return;
+    }
+    qDebug().noquote()
+            << QStringLiteral("[remote-image] requesting full-resolution image dataset=%1")
+                       .arg(this->remoteDatasetId);
+    this->remoteFullImageWatcher.setFuture(
+            QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl, this->remoteDatasetId,
+                              this->filepath, false, 1536));
 }
 
 bool vtkWindowImage::isBusy() const
 {
-    return this->layerLoadWatcher.isRunning() || this->remoteImageWatcher.isRunning();
+    return this->layerLoadWatcher.isRunning() || this->remoteImageWatcher.isRunning()
+            || this->remoteFullImageWatcher.isRunning();
 }
 
 void vtkWindowImage::showPersistentStatusMessage(const QString &text, int minDurationMs)
@@ -2097,6 +2394,9 @@ void vtkWindowImage::setLayerImportEnabled(bool enabled)
 
 void vtkWindowImage::updateWcsOverlay()
 {
+    if (this->suspendHeavyOverlayUpdates) {
+        return;
+    }
     if (!this->wcsOverlayInitialized) {
         qDebug().noquote() << QStringLiteral("[wcs-overlay] vtkWindowImage not initialized yet");
         return;
@@ -2126,6 +2426,19 @@ void vtkWindowImage::updateWcsOverlay()
                            .arg(reinterpret_cast<quintptr>(imageData), 0, 16);
         return;
     }
+    if (!isImageExtentUsable(imageData)) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] remote image extent not ready x=%1..%2 y=%3..%4")
+                           .arg(imageData ? imageData->GetExtent()[0] : -1)
+                           .arg(imageData ? imageData->GetExtent()[1] : -1)
+                           .arg(imageData ? imageData->GetExtent()[2] : -1)
+                           .arg(imageData ? imageData->GetExtent()[3] : -1);
+        this->invalidateWcsOverlayCache();
+        hideCustomWcsOverlay(this->overlayXAxis, this->overlayYAxis, this->overlayXTitleActor,
+                             this->overlayYTitleActor, this->overlayXTickActors,
+                             this->overlayYTickActors);
+        return;
+    }
     const bool useLegend = this->astro && !this->astro->isSimulation();
     this->setWcsOverlayVisible(this->showWcsAxes);
     if (!this->showWcsAxes || useLegend || !renderer || !imageData) {
@@ -2142,11 +2455,18 @@ void vtkWindowImage::updateWcsOverlay()
     }
 
     const auto visible = computeVisibleImageBounds2D(renderer, imageData);
-    if (!visible.valid) {
-        this->overlayXAxis->VisibilityOff();
-        this->overlayYAxis->VisibilityOff();
-        this->overlayXTitleActor->VisibilityOff();
-        this->overlayYTitleActor->VisibilityOff();
+    if (!visible.valid || std::abs(visible.xmax - visible.xmin) < 1.0
+        || std::abs(visible.ymax - visible.ymin) < 1.0) {
+        qDebug().noquote()
+                << QStringLiteral("[wcs-overlay] visible bounds not ready x=%1..%2 y=%3..%4")
+                           .arg(visible.xmin, 0, 'g', 12)
+                           .arg(visible.xmax, 0, 'g', 12)
+                           .arg(visible.ymin, 0, 'g', 12)
+                           .arg(visible.ymax, 0, 'g', 12);
+        this->invalidateWcsOverlayCache();
+        hideCustomWcsOverlay(this->overlayXAxis, this->overlayYAxis, this->overlayXTitleActor,
+                             this->overlayYTitleActor, this->overlayXTickActors,
+                             this->overlayYTickActors);
         return;
     }
 
@@ -2348,19 +2668,33 @@ void vtkWindowImage::updateDataStatePanel()
 
     auto *imageData = this->layers ? this->layers->getImageData(this->layers->getMasterIndex()) : nullptr;
     const QString origin = this->isRemoteMode ? u"Remote"_s : u"Local"_s;
-    const QString representation = u"Full image"_s;
+    const QString representation = this->isRemoteMode
+            ? (this->remoteDisplayingPreview ? u"Preview image"_s : u"Full image"_s)
+            : u"Full image"_s;
     const QString loadedBounds = formatImageBoundsSummary(imageData);
-    const QString datasetBounds = loadedBounds;
+    const QString datasetBounds = (this->isRemoteMode && this->remoteFullImageDims[0] > 0
+                                   && this->remoteFullImageDims[1] > 0)
+            ? u"x=0..%1 y=0..%2"_s.arg(this->remoteFullImageDims[0] - 1).arg(this->remoteFullImageDims[1] - 1)
+            : loadedBounds;
     const QString axis3 = u"Axis3: n/a"_s;
+    const QString degenerateSummary =
+            this->isRemoteMode ? this->remoteDegenerateAxesSummary
+                               : (this->astro ? this->astro->degenerateAxesSummary() : QString());
     this->dataStateLabel->setText(
-            u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | %6"_s.arg(origin,
-                                                                        representation,
-                                                                        loadedBounds,
-                                                                        datasetBounds,
-                                                                        this->currentWcsFrameLabel(),
-                                                                        axis3));
+            u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | %6%7"_s.arg(origin,
+                                                                          representation,
+                                                                          loadedBounds,
+                                                                          datasetBounds,
+                                                                          this->currentWcsFrameLabel(),
+                                                                          axis3,
+                                                                          degenerateSummary.isEmpty()
+                                                                                  ? QString()
+                                                                                  : u" | Collapsed axes"_s));
     this->dataStateLabel->setToolTip(
-            u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame."_s);
+            degenerateSummary.isEmpty()
+                    ? u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame."_s
+                    : u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame.\n%1"_s
+                              .arg(degenerateSummary));
 }
 
 void vtkWindowImage::updateSanityPanel()
@@ -2562,6 +2896,9 @@ void vtkWindowImage::changeLegendWCS()
 
 void vtkWindowImage::changeCurrentColorMap()
 {
+    qDebug().noquote() << QStringLiteral("[image] color map change index=%1 map=%2")
+                                  .arg(this->currentLayerIndex())
+                                  .arg(ui->comboLut->currentText());
     this->layerController->setCurrentColorMap(this->currentLayerIndex(),
                                               ui->comboLut->currentText().toStdString());
     this->vtkRender();
@@ -2569,13 +2906,74 @@ void vtkWindowImage::changeCurrentColorMap()
 
 void vtkWindowImage::changeCurrentColorScale()
 {
-    this->layerController->setCurrentLogScale(this->currentLayerIndex(), ui->radioLog->isChecked());
+    const int index = this->currentLayerIndex();
+    const bool requestedLog = ui && ui->radioLog && ui->radioLog->isChecked();
+    qDebug().noquote() << QStringLiteral("[image] color scale request index=%1 log=%2 large_mode=%3")
+                                  .arg(index)
+                                  .arg(requestedLog)
+                                  .arg(this->largeImageModeActive);
+
+    if (!this->layers || !this->layerController || index < 0 || index >= this->layers->rowCount()) {
+        qWarning().noquote()
+                << QStringLiteral("[image] color scale rejected invalid state index=%1 rows=%2 layers=%3 controller=%4")
+                           .arg(index)
+                           .arg(this->layers ? this->layers->rowCount() : -1)
+                           .arg(reinterpret_cast<quintptr>(this->layers), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(this->layerController.get()), 0, 16);
+        return;
+    }
+
+    auto *imageData = this->layers->getImageData(index);
+    auto *lut = this->layers->getLookupTable(index);
+    if (!imageData || !lut) {
+        qWarning().noquote()
+                << QStringLiteral("[image] color scale rejected missing objects image=%1 lut=%2")
+                           .arg(reinterpret_cast<quintptr>(imageData), 0, 16)
+                           .arg(reinterpret_cast<quintptr>(lut), 0, 16);
+        return;
+    }
+
+    const double *lutRange = lut->GetTableRange();
+    const double rangeMin = lutRange ? lutRange[0] : 0.0;
+    const double rangeMax = lutRange ? lutRange[1] : 0.0;
+    qDebug().noquote()
+            << QStringLiteral("[image] color scale state index=%1 range=%2..%3")
+                       .arg(index)
+                       .arg(rangeMin, 0, 'g', 12)
+                       .arg(rangeMax, 0, 'g', 12);
+
+    if (requestedLog && (!std::isfinite(rangeMin) || !std::isfinite(rangeMax) || rangeMin <= 0.0
+                         || rangeMax <= 0.0 || rangeMin >= rangeMax)) {
+        qWarning().noquote()
+                << QStringLiteral("[image] log scale rejected index=%1 range=%2..%3 -> fallback linear")
+                           .arg(index)
+                           .arg(rangeMin, 0, 'g', 12)
+                           .arg(rangeMax, 0, 'g', 12);
+        if (ui && ui->radioLinear) {
+            const QSignalBlocker blockLog(ui->radioLog);
+            const QSignalBlocker blockLinear(ui->radioLinear);
+            ui->radioLinear->setChecked(true);
+            ui->radioLog->setChecked(false);
+        }
+        this->statusBar()->showMessage(u"Log scale requires strictly positive display range."_s, 3000);
+        this->layerController->setCurrentLogScale(index, false);
+        this->vtkRender();
+        return;
+    }
+
+    qDebug().noquote() << QStringLiteral("[image] color scale accepted index=%1 log=%2")
+                                  .arg(index)
+                                  .arg(requestedLog);
+    this->layerController->setCurrentLogScale(index, requestedLog);
     this->vtkRender();
 }
 
 void vtkWindowImage::changeCurrentLayerOpacity()
 {
     const double opacity = ui->sliderOpacity->sliderPosition() / 100.;
+    qDebug().noquote() << QStringLiteral("[image] opacity change index=%1 opacity=%2")
+                                  .arg(this->currentLayerIndex())
+                                  .arg(opacity, 0, 'g', 6);
     this->layerController->setCurrentOpacity(this->currentLayerIndex(), opacity);
     this->vtkRender();
 }

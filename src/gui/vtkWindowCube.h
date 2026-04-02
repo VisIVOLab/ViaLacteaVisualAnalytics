@@ -116,7 +116,8 @@ public:
                   const std::array<QString, 3> &remoteCunit,
                   const std::array<double, 3> &remoteCrval,
                   const std::array<double, 3> &remoteCrpix,
-                  const std::array<double, 3> &remoteCdelt, QWidget *parent = nullptr);
+                  const std::array<double, 3> &remoteCdelt,
+                  const QString &remoteDegenerateAxesSummary, QWidget *parent = nullptr);
     ~vtkWindowCube() override;
     void closeEvent(QCloseEvent *event) override;
 
@@ -233,6 +234,7 @@ private:
     const std::array<double, 3> remoteDatasetCrval;
     const std::array<double, 3> remoteDatasetCrpix;
     const std::array<double, 3> remoteDatasetCdelt;
+    const QString remoteDegenerateAxesSummary;
     std::unique_ptr<AstroUtils> astro;
 
     QPointer<LUTCustomizerDialog> lutCustomizer;

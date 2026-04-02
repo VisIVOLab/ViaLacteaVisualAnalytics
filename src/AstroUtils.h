@@ -3,6 +3,8 @@
 
 #include <fitsio.h>
 
+#include <QString>
+
 #include <string>
 
 struct WorldCoor;
@@ -77,6 +79,21 @@ public:
    * @return CRPIX values
    */
     const double *getReferencePixels() const;
+
+    /**
+   * @return FITS NAXIS keyword value
+   */
+    int getAxisCount() const;
+
+    /**
+   * @return number of axes with NAXISn > 1
+   */
+    int getActiveAxisCount() const;
+
+    /**
+   * @return summary of collapsed/singleton axes
+   */
+    QString degenerateAxesSummary() const;
 
     /**
    * @return Spectral value at first slice

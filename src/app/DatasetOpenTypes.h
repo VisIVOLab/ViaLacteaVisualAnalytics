@@ -10,6 +10,8 @@ struct DatasetOpenInfo
     QString filepath;
     DatasetKind kind{ DatasetKind::Unknown };
     QString errorMessage;
+    int activeAxes{ 0 };
+    QString degenerateAxesSummary;
 
     bool isValid() const
     {

@@ -13,6 +13,7 @@ class vtkImageData;
 class vtkImageSlice;
 class vtkLookupTable;
 class vtkTrivialProducer;
+class vtkImageMapToColors;
 
 /**
  * Layer represented in vtkWindowImage
@@ -118,14 +119,21 @@ public:
     void setRotation(double angle);
 
 private:
+    void initializeDisplayPipeline();
+    void updateDisplaySource();
+    void rebuildPreviewImageIfNeeded(const char *context);
+
     bool readerBacked;
+    bool previewModeActive{ false };
     double scalarRange[2];
     std::string filepath;
     vtkSmartPointer<vtkImageData> imageData;
+    vtkSmartPointer<vtkImageData> displayImageData;
     vtkNew<vtkFITSReader> reader;
     vtkNew<vtkTrivialProducer> source;
     vtkNew<vtkLookupTable> lut;
     vtkNew<vtkImageSlice> actor;
+    vtkSmartPointer<vtkImageMapToColors> colors;
 };
 
 #endif

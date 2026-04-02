@@ -173,9 +173,15 @@ void MainWindow::openRemoteData()
 
     if (opened.kind != u"cube"_s) {
         if (opened.kind == u"image"_s) {
+            qDebug().noquote()
+                    << QStringLiteral("[fits] active_axes=%1 -> opening as 2D image | %2")
+                               .arg(opened.activeAxes)
+                               .arg(opened.degenerateAxesSummary.isEmpty()
+                                            ? QStringLiteral("no collapsed axes")
+                                            : opened.degenerateAxesSummary);
             auto *win = new vtkWindowImage(remotePath, client.baseUrl(), opened.datasetId,
                                            opened.ctype, opened.cunit, opened.crval, opened.crpix,
-                                           opened.cdelt, this);
+                                           opened.cdelt, opened.degenerateAxesSummary, this);
             win->show();
             win->raise();
             win->activateWindow();
@@ -186,10 +192,16 @@ void MainWindow::openRemoteData()
         return;
     }
 
+    qDebug().noquote()
+            << QStringLiteral("[fits] active_axes=%1 -> opening as cube | %2")
+                       .arg(opened.activeAxes)
+                       .arg(opened.degenerateAxesSummary.isEmpty()
+                                    ? QStringLiteral("no collapsed axes")
+                                    : opened.degenerateAxesSummary);
     auto *win = new vtkWindowCube(remotePath, client.baseUrl(), opened.datasetId, opened.width,
                                   opened.height, opened.depth, opened.spacing, opened.origin,
                                   opened.ctype, opened.cunit, opened.crval, opened.crpix,
-                                  opened.cdelt, this);
+                                  opened.cdelt, opened.degenerateAxesSummary, this);
     win->show();
     win->raise();
     win->activateWindow();

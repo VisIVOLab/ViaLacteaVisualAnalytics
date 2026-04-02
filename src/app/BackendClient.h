@@ -38,9 +38,11 @@ struct BackendOpenDatasetResult
     QString error;
     QString datasetId;
     QString kind;
+    int activeAxes{ 0 };
     int width{ 0 };
     int height{ 0 };
     int depth{ 0 };
+    QString degenerateAxesSummary;
     std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
     std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
     std::array<QString, 3> ctype{ QString(), QString(), QString() };
@@ -127,7 +129,13 @@ struct BackendImageResult
     QString error;
     int width{ 0 };
     int height{ 0 };
+    int fullWidth{ 0 };
+    int fullHeight{ 0 };
     QString scalarType;
+    double rangeMin{ 0. };
+    double rangeMax{ 0. };
+    bool isPreview{ false };
+    double previewScaleFactor{ 1.0 };
     QByteArray data;
 };
 
@@ -164,6 +172,7 @@ public:
     BackendCubePvResult requestPv(const QString &datasetId,
                                   const std::vector<std::array<int, 2>> &vertices,
                                   int widthPixels) const;
+    BackendImageResult requestImagePreview(const QString &datasetId, int maxLongestSide) const;
     BackendImageResult requestImage(const QString &datasetId) const;
     BackendIsosurfaceResult requestIsosurface(const QString &datasetId, double threshold) const;
     BackendMomentResult requestMoment(const QString &datasetId, int order, int channelStart,

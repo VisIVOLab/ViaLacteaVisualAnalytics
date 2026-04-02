@@ -131,9 +131,11 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path) const
     result.error = object.value("error").toString();
     result.datasetId = object.value("dataset_id").toString();
     result.kind = object.value("kind").toString();
+    result.activeAxes = object.value("active_axes").toInt();
     result.width = object.value("width").toInt();
     result.height = object.value("height").toInt();
     result.depth = object.value("depth").toInt();
+    result.degenerateAxesSummary = object.value("degenerate_axes_summary").toString();
     const QJsonArray spacing = object.value("spacing").toArray();
     const QJsonArray origin = object.value("origin").toArray();
     const QJsonArray ctype = object.value("ctype").toArray();
@@ -322,7 +324,46 @@ BackendImageResult BackendClient::requestImage(const QString &datasetId) const
     result.error = object.value("error").toString();
     result.width = object.value("width").toInt();
     result.height = object.value("height").toInt();
+    result.fullWidth = object.value("full_width").toInt(result.width);
+    result.fullHeight = object.value("full_height").toInt(result.height);
     result.scalarType = object.value("scalar_type").toString();
+    result.rangeMin = object.value("range_min").toDouble();
+    result.rangeMax = object.value("range_max").toDouble();
+    result.isPreview = object.value("is_preview").toBool(false);
+    result.previewScaleFactor = object.value("preview_scale_factor").toDouble(1.0);
+    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
+                                      result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
+    return result;
+}
+
+BackendImageResult BackendClient::requestImagePreview(const QString &datasetId, int maxLongestSide) const
+{
+    BackendImageResult result;
+    QString error;
+    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
+                                           { QStringLiteral("max_longest_side"), maxLongestSide } });
+    const QByteArray payload =
+            this->performPost(QUrl(this->m_baseUrl + "/image/preview"), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value("valid").toBool(false);
+    result.error = object.value("error").toString();
+    result.width = object.value("width").toInt();
+    result.height = object.value("height").toInt();
+    result.fullWidth = object.value("full_width").toInt(result.width);
+    result.fullHeight = object.value("full_height").toInt(result.height);
+    result.scalarType = object.value("scalar_type").toString();
+    result.rangeMin = object.value("range_min").toDouble();
+    result.rangeMax = object.value("range_max").toDouble();
+    result.isPreview = object.value("is_preview").toBool(false);
+    result.previewScaleFactor = object.value("preview_scale_factor").toDouble(1.0);
     result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
                                       result.error);
     if (!result.error.isEmpty()) {

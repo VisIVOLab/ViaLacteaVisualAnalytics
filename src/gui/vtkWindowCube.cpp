@@ -1349,6 +1349,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                     { 0.0, 0.0, 0.0 },
                     { 1.0, 1.0, 1.0 },
                     { 1.0, 1.0, 1.0 },
+                    {},
                     parent)
 {
 }
@@ -1361,7 +1362,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              const std::array<QString, 3> &remoteCunit,
                              const std::array<double, 3> &remoteCrval,
                              const std::array<double, 3> &remoteCrpix,
-                             const std::array<double, 3> &remoteCdelt, QWidget *parent)
+                             const std::array<double, 3> &remoteCdelt,
+                             const QString &remoteDegenerateAxesSummary, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowCube),
       filepath(filepath),
@@ -1378,6 +1380,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
       remoteDatasetCrval(remoteCrval),
       remoteDatasetCrpix(remoteCrpix),
       remoteDatasetCdelt(remoteCdelt),
+      remoteDegenerateAxesSummary(remoteDegenerateAxesSummary),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -5488,6 +5491,9 @@ void vtkWindowCube::updateDataStatePanel()
                        : loadedBounds);
     const QString note = this->isRemoteMode ? u"Probe/profile: loaded block only"_s
                                             : u"Probe/profile: full cube"_s;
+    const QString degenerateSummary =
+            this->isRemoteMode ? this->remoteDegenerateAxesSummary
+                               : (this->astro ? this->astro->degenerateAxesSummary() : QString());
     QString text = u"%1 | %2 | Loaded: %3 | Dataset: %4 | WCS: %5 | Axis3: %6"_s.arg(origin,
                                                                                          representation,
                                                                                          loadedBounds,
@@ -5497,10 +5503,16 @@ void vtkWindowCube::updateDataStatePanel()
     if (this->isRemoteMode) {
         text += u" | Refine: %1"_s.arg(refinement);
     }
+    if (!degenerateSummary.isEmpty()) {
+        text += u" | Collapsed axes"_s;
+    }
     text += u" | %1"_s.arg(note);
     this->dataStateLabel->setText(text);
     this->dataStateLabel->setToolTip(
-            u"Persistent data provenance: origin, current representation, loaded bounds, full dataset bounds, WCS frame, spectral-axis semantics, remote refinement strategy, and probe/profile scope."_s);
+            degenerateSummary.isEmpty()
+                    ? u"Persistent data provenance: origin, current representation, loaded bounds, full dataset bounds, WCS frame, spectral-axis semantics, remote refinement strategy, and probe/profile scope."_s
+                    : u"Persistent data provenance: origin, current representation, loaded bounds, full dataset bounds, WCS frame, spectral-axis semantics, remote refinement strategy, and probe/profile scope.\n%1"_s
+                              .arg(degenerateSummary));
 }
 
 QString vtkWindowCube::selectedFrameAxisTitle(int axis) const
