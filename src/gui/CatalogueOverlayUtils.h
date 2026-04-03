@@ -12,8 +12,27 @@
 
 struct CatalogueOverlayEntry
 {
+    enum class Frame
+    {
+        Sky,
+        Image,
+    };
+
+    enum class Shape
+    {
+        Marker,
+        Ellipse,
+    };
+
+    Frame frame{ Frame::Sky };
+    Shape shape{ Shape::Marker };
     double raDeg{ 0.0 };
     double decDeg{ 0.0 };
+    double pixelX{ 0.0 };
+    double pixelY{ 0.0 };
+    double radiusX{ 0.0 };
+    double radiusY{ 0.0 };
+    double angleDeg{ 0.0 };
     QString label;
 };
 
@@ -131,6 +150,9 @@ inline CatalogueOverlayParseResult parseDs9(const QString &path)
     const QRegularExpression circleRe(
             QStringLiteral("^circle\\s*\\(\\s*([^,\\)]+)\\s*,\\s*([^,\\)]+)\\s*,\\s*([^\\)]+)\\)"),
             QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpression ellipseRe(
+            QStringLiteral("^ellipse\\s*\\(\\s*([^,\\)]+)\\s*,\\s*([^,\\)]+)\\s*,\\s*([^,\\)]+)\\s*,\\s*([^,\\)]+)\\s*,\\s*([^\\)]+)\\)"),
+            QRegularExpression::CaseInsensitiveOption);
     const QRegularExpression textRe(QStringLiteral("text\\s*=\\s*\\{([^}]*)\\}"),
                                     QRegularExpression::CaseInsensitiveOption);
 
@@ -172,54 +194,80 @@ inline CatalogueOverlayParseResult parseDs9(const QString &path)
             continue;
         }
 
-        if (currentFrame != QStringLiteral("fk5") && currentFrame != QStringLiteral("icrs")) {
+        if (currentFrame != QStringLiteral("fk5") && currentFrame != QStringLiteral("icrs")
+            && currentFrame != QStringLiteral("image")) {
             ++result.skippedEntries;
             continue;
         }
 
         const auto pointMatch = pointRe.match(line);
         const auto circleMatch = circleRe.match(line);
+        const auto ellipseMatch = ellipseRe.match(line);
         QString label;
         const auto textMatch = textRe.match(rawLine);
         if (textMatch.hasMatch()) {
             label = textMatch.captured(1).trimmed();
         }
 
-        bool okRa = false;
-        bool okDec = false;
-        double ra = 0.0;
-        double dec = 0.0;
-        if (pointMatch.hasMatch()) {
-            ra = pointMatch.captured(1).trimmed().toDouble(&okRa);
-            dec = pointMatch.captured(2).trimmed().toDouble(&okDec);
-        } else if (circleMatch.hasMatch()) {
-            ra = circleMatch.captured(1).trimmed().toDouble(&okRa);
-            dec = circleMatch.captured(2).trimmed().toDouble(&okDec);
-        } else {
-            ++result.skippedEntries;
-            continue;
-        }
-
-        if (!okRa || !okDec) {
-            ++result.skippedEntries;
-            continue;
-        }
-
         CatalogueOverlayEntry entry;
-        entry.raDeg = ra;
-        entry.decDeg = dec;
         entry.label = label;
+        if (currentFrame == QStringLiteral("image")) {
+            bool okX = false;
+            bool okY = false;
+            if (!ellipseMatch.hasMatch()) {
+                ++result.skippedEntries;
+                continue;
+            }
+            entry.frame = CatalogueOverlayEntry::Frame::Image;
+            entry.shape = CatalogueOverlayEntry::Shape::Ellipse;
+            entry.pixelX = ellipseMatch.captured(1).trimmed().toDouble(&okX) - 1.0;
+            entry.pixelY = ellipseMatch.captured(2).trimmed().toDouble(&okY) - 1.0;
+            bool okR1 = false;
+            bool okR2 = false;
+            bool okAngle = false;
+            entry.radiusX = ellipseMatch.captured(3).trimmed().toDouble(&okR1);
+            entry.radiusY = ellipseMatch.captured(4).trimmed().toDouble(&okR2);
+            entry.angleDeg = ellipseMatch.captured(5).trimmed().toDouble(&okAngle);
+            if (!okX || !okY || !okR1 || !okR2 || !okAngle) {
+                ++result.skippedEntries;
+                continue;
+            }
+        } else {
+            bool okRa = false;
+            bool okDec = false;
+            double ra = 0.0;
+            double dec = 0.0;
+            entry.frame = CatalogueOverlayEntry::Frame::Sky;
+            entry.shape = CatalogueOverlayEntry::Shape::Marker;
+            if (pointMatch.hasMatch()) {
+                ra = pointMatch.captured(1).trimmed().toDouble(&okRa);
+                dec = pointMatch.captured(2).trimmed().toDouble(&okDec);
+            } else if (circleMatch.hasMatch()) {
+                ra = circleMatch.captured(1).trimmed().toDouble(&okRa);
+                dec = circleMatch.captured(2).trimmed().toDouble(&okDec);
+            } else {
+                ++result.skippedEntries;
+                continue;
+            }
+
+            if (!okRa || !okDec) {
+                ++result.skippedEntries;
+                continue;
+            }
+            entry.raDeg = ra;
+            entry.decDeg = dec;
+        }
         result.entries.push_back(entry);
     }
 
     if (result.entries.empty()) {
         result.errorMessage =
-                QStringLiteral("No supported fk5/icrs point or circle entries were found in the DS9 file.");
+                QStringLiteral("No supported fk5/icrs point/circle or image ellipse entries were found in the DS9 file.");
         return result;
     }
 
     result.valid = true;
-    result.frameLabel = QStringLiteral("DS9 fk5/icrs (RA/DEC degrees)");
+    result.frameLabel = QStringLiteral("DS9 regions");
     result.sourceLabel = QFileInfo(path).fileName();
     return result;
 }

@@ -26,6 +26,7 @@
 #include <vtkInteractorStyleUser.h>
 #include <vtkLineSource.h>
 #include <vtkLookupTable.h>
+#include <vtkMath.h>
 #include <vtkNew.h>
 #include <vtkPoints.h>
 #include <vtkCellArray.h>
@@ -152,6 +153,27 @@ double sampledPositiveFloor(vtkImageData *imageData, qint64 targetSamples = 2500
     }
     std::sort(positives.begin(), positives.end());
     return std::max(1e-12, percentileFromSorted(positives, 1.0));
+}
+
+std::vector<std::array<double, 2>> buildEllipsePolyline(double centerX, double centerY, double radiusX,
+                                                        double radiusY, double angleDeg, int samples = 96)
+{
+    std::vector<std::array<double, 2>> polyline;
+    if (radiusX <= 0.0 || radiusY <= 0.0 || samples < 8) {
+        return polyline;
+    }
+    polyline.reserve(static_cast<std::size_t>(samples + 1));
+    const double angleRad = angleDeg * vtkMath::Pi() / 180.0;
+    const double cosA = std::cos(angleRad);
+    const double sinA = std::sin(angleRad);
+    for (int i = 0; i <= samples; ++i) {
+        const double t = (2.0 * vtkMath::Pi() * static_cast<double>(i)) / static_cast<double>(samples);
+        const double ex = radiusX * std::cos(t);
+        const double ey = radiusY * std::sin(t);
+        polyline.push_back(
+                { centerX + ex * cosA - ey * sinA, centerY + ex * sinA + ey * cosA });
+    }
+    return polyline;
 }
 
 void hideCustomWcsOverlay(vtkAxisActor2D *xAxis, vtkAxisActor2D *yAxis, vtkTextActor *xTitle,
@@ -1897,22 +1919,51 @@ void vtkWindowImage::loadCatalogueOverlay()
     }
 
     if ((!this->isRemoteMode && !this->astro) || (this->isRemoteMode && !this->remoteHasCelestialAxes())) {
+        const bool hasImageEntries = std::any_of(
+                parsed.entries.cbegin(), parsed.entries.cend(), [](const CatalogueOverlayEntry &entry) {
+                    return entry.frame == CatalogueOverlayEntry::Frame::Image;
+                });
+        if (hasImageEntries) {
+            // Image-frame DS9 entries do not require WCS.
+        } else {
         QMessageBox::warning(this, u"Catalogue Overlay"_s,
                              u"Catalogue overlay requires celestial WCS information."_s);
         return;
+        }
     }
 
     this->catalogueOverlayPixels.clear();
+    this->catalogueOverlayPolylines.clear();
     this->catalogueOverlayLabels.clear();
     this->catalogueOverlayLabelIndices.clear();
     int skippedProjection = 0;
     for (const CatalogueOverlayEntry &entry : parsed.entries) {
-        std::array<double, 2> pixel{ 0.0, 0.0 };
-        if (!this->catalogueWorldToPixel(entry.raDeg, entry.decDeg, pixel)) {
-            ++skippedProjection;
-            continue;
+        std::array<double, 2> anchor{ 0.0, 0.0 };
+        if (entry.frame == CatalogueOverlayEntry::Frame::Image) {
+            anchor = { entry.pixelX, entry.pixelY };
+            if (entry.shape == CatalogueOverlayEntry::Shape::Ellipse) {
+                auto ellipse = buildEllipsePolyline(entry.pixelX, entry.pixelY, entry.radiusX, entry.radiusY,
+                                                    entry.angleDeg);
+                if (ellipse.empty()) {
+                    ++skippedProjection;
+                    continue;
+                }
+                this->catalogueOverlayPolylines.push_back(std::move(ellipse));
+            }
+        } else {
+            if (!this->catalogueWorldToPixel(entry.raDeg, entry.decDeg, anchor)) {
+                ++skippedProjection;
+                continue;
+            }
+
+            this->catalogueOverlayPolylines.push_back(
+                    { { anchor[0] - catalogueMarkerHalfSize, anchor[1] },
+                      { anchor[0] + catalogueMarkerHalfSize, anchor[1] } });
+            this->catalogueOverlayPolylines.push_back(
+                    { { anchor[0], anchor[1] - catalogueMarkerHalfSize },
+                      { anchor[0], anchor[1] + catalogueMarkerHalfSize } });
         }
-        this->catalogueOverlayPixels.push_back(pixel);
+        this->catalogueOverlayPixels.push_back(anchor);
         this->catalogueOverlayLabels.push_back(entry.label);
     }
 
@@ -1952,6 +2003,7 @@ void vtkWindowImage::clearCatalogueOverlay()
 {
     this->catalogueOverlayLoaded = false;
     this->catalogueOverlayPixels.clear();
+    this->catalogueOverlayPolylines.clear();
     this->catalogueOverlayLabels.clear();
     this->catalogueOverlayLabelIndices.clear();
     this->catalogueOverlaySummary.clear();
@@ -1996,23 +2048,17 @@ void vtkWindowImage::rebuildCatalogueOverlay()
     this->catalogueOverlayPoints->Reset();
     this->catalogueOverlayCells->Reset();
     this->catalogueOverlayLabelIndices.clear();
+    for (const auto &polyline : this->catalogueOverlayPolylines) {
+        if (polyline.size() < 2) {
+            continue;
+        }
+        this->catalogueOverlayCells->InsertNextCell(static_cast<vtkIdType>(polyline.size()));
+        for (const auto &point : polyline) {
+            const vtkIdType id = this->catalogueOverlayPoints->InsertNextPoint(point[0], point[1], 0.0);
+            this->catalogueOverlayCells->InsertCellPoint(id);
+        }
+    }
     for (std::size_t i = 0; i < this->catalogueOverlayPixels.size(); ++i) {
-        const double x = this->catalogueOverlayPixels[i][0];
-        const double y = this->catalogueOverlayPixels[i][1];
-        const vtkIdType p0 =
-                this->catalogueOverlayPoints->InsertNextPoint(x - catalogueMarkerHalfSize, y, 0.0);
-        const vtkIdType p1 =
-                this->catalogueOverlayPoints->InsertNextPoint(x + catalogueMarkerHalfSize, y, 0.0);
-        const vtkIdType p2 =
-                this->catalogueOverlayPoints->InsertNextPoint(x, y - catalogueMarkerHalfSize, 0.0);
-        const vtkIdType p3 =
-                this->catalogueOverlayPoints->InsertNextPoint(x, y + catalogueMarkerHalfSize, 0.0);
-        this->catalogueOverlayCells->InsertNextCell(2);
-        this->catalogueOverlayCells->InsertCellPoint(p0);
-        this->catalogueOverlayCells->InsertCellPoint(p1);
-        this->catalogueOverlayCells->InsertNextCell(2);
-        this->catalogueOverlayCells->InsertCellPoint(p2);
-        this->catalogueOverlayCells->InsertCellPoint(p3);
         if (!this->catalogueOverlayLabels.value(static_cast<qsizetype>(i)).trimmed().isEmpty()
             && static_cast<int>(this->catalogueOverlayLabelIndices.size()) < maxCatalogueLabelCount) {
             this->catalogueOverlayLabelIndices.push_back(static_cast<int>(i));

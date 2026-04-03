@@ -174,6 +174,7 @@ private:
     std::vector<std::array<int, 2>> regionPolygonVertices;
     std::vector<std::array<double, 2>> savedLinearDisplayRanges;
     std::vector<std::array<double, 2>> catalogueOverlayPixels;
+    std::vector<std::vector<std::array<double, 2>>> catalogueOverlayPolylines;
     std::vector<int> catalogueOverlayLabelIndices;
     QStringList catalogueOverlayLabels;
     QString catalogueOverlaySummary;
