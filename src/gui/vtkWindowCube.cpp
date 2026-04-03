@@ -102,6 +102,9 @@ constexpr int overlayTickCount = 5;
 constexpr double polygonClosureTolerance = 3.0;
 constexpr double catalogueMarkerHalfSize = 3.0;
 constexpr int maxCatalogueLabelCount = 200;
+constexpr int smartCatalogueLabelMaxVisible = 24;
+constexpr double smartCatalogueLabelMinPixelsPerUnit = 2.5;
+constexpr double catalogueHoverDisplayThresholdPx = 10.0;
 
 std::vector<std::array<double, 2>> buildEllipsePolyline(double centerX, double centerY, double radiusX,
                                                         double radiusY, double angleDeg, int samples = 96)
@@ -132,6 +135,12 @@ struct VisibleImageBounds2D
     double ymin{ 0. };
     double ymax{ 0. };
 };
+
+bool pointInVisibleBounds(const std::array<double, 2> &point, const VisibleImageBounds2D &visible)
+{
+    return visible.valid && point[0] >= visible.xmin && point[0] <= visible.xmax && point[1] >= visible.ymin
+            && point[1] <= visible.ymax;
+}
 
 struct RemotePvFetchResult
 {
@@ -1940,14 +1949,21 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     ui->menuTools->addSeparator();
     this->actionLoadCatalogueOverlay = ui->menuTools->addAction(u"Load Catalogue Overlay"_s);
     this->actionShowCatalogueOverlay = ui->menuTools->addAction(u"Show Catalogue Overlay"_s);
+    this->actionShowCatalogueLabels = ui->menuTools->addAction(u"Show Catalogue Labels"_s);
     this->actionClearCatalogueOverlay = ui->menuTools->addAction(u"Clear Catalogue Overlay"_s);
     this->actionShowCatalogueOverlay->setCheckable(true);
+    this->actionShowCatalogueLabels->setCheckable(true);
     this->actionShowCatalogueOverlay->setEnabled(false);
+    this->actionShowCatalogueLabels->setEnabled(false);
+    this->actionShowCatalogueLabels->setChecked(true);
     this->actionClearCatalogueOverlay->setEnabled(false);
     QObject::connect(this->actionLoadCatalogueOverlay, &QAction::triggered, this,
                      &vtkWindowCube::loadCatalogueOverlay);
     QObject::connect(this->actionShowCatalogueOverlay, &QAction::toggled, this,
                      &vtkWindowCube::setCatalogueOverlayVisible);
+    QObject::connect(this->actionShowCatalogueLabels, &QAction::toggled, this,
+                     [this](bool) { this->updateCatalogueOverlayLabels(); this->sliceWin->Render();
+                                    this->momentWin->Render(); });
     QObject::connect(this->actionClearCatalogueOverlay, &QAction::triggered, this,
                      &vtkWindowCube::clearCatalogueOverlay);
 
@@ -3662,6 +3678,10 @@ void vtkWindowCube::loadCatalogueOverlay()
         this->actionShowCatalogueOverlay->setEnabled(true);
         this->actionShowCatalogueOverlay->setChecked(true);
     }
+    if (this->actionShowCatalogueLabels) {
+        this->actionShowCatalogueLabels->setEnabled(true);
+        this->actionShowCatalogueLabels->setChecked(true);
+    }
     if (this->actionClearCatalogueOverlay) {
         this->actionClearCatalogueOverlay->setEnabled(true);
     }
@@ -3710,6 +3730,11 @@ void vtkWindowCube::clearCatalogueOverlay()
         this->actionShowCatalogueOverlay->setChecked(false);
         this->actionShowCatalogueOverlay->setEnabled(false);
     }
+    if (this->actionShowCatalogueLabels) {
+        const QSignalBlocker blocker(this->actionShowCatalogueLabels);
+        this->actionShowCatalogueLabels->setChecked(true);
+        this->actionShowCatalogueLabels->setEnabled(false);
+    }
     if (this->actionClearCatalogueOverlay) {
         this->actionClearCatalogueOverlay->setEnabled(false);
     }
@@ -3722,14 +3747,15 @@ void vtkWindowCube::setCatalogueOverlayVisible(bool visible)
     const bool effectiveVisible = visible && this->catalogueOverlayLoaded;
     this->sliceCatalogueOverlayActor->SetVisibility(effectiveVisible ? 1 : 0);
     this->momentCatalogueOverlayActor->SetVisibility(effectiveVisible ? 1 : 0);
-    for (const auto &actor : this->sliceCatalogueOverlayLabelActors) {
-        actor->SetVisibility(effectiveVisible ? 1 : 0);
-    }
-    for (const auto &actor : this->momentCatalogueOverlayLabelActors) {
-        actor->SetVisibility(effectiveVisible ? 1 : 0);
-    }
     if (effectiveVisible) {
         this->updateCatalogueOverlayLabels();
+    } else {
+        for (const auto &actor : this->sliceCatalogueOverlayLabelActors) {
+            actor->SetVisibility(0);
+        }
+        for (const auto &actor : this->momentCatalogueOverlayLabelActors) {
+            actor->SetVisibility(0);
+        }
     }
     this->sliceWin->Render();
     this->momentWin->Render();
@@ -3799,6 +3825,12 @@ void vtkWindowCube::updateCatalogueOverlayLabels()
 {
     if (!this->catalogueOverlayLoaded || !this->actionShowCatalogueOverlay
         || !this->actionShowCatalogueOverlay->isChecked()) {
+        for (const auto &actor : this->sliceCatalogueOverlayLabelActors) {
+            actor->SetVisibility(0);
+        }
+        for (const auto &actor : this->momentCatalogueOverlayLabelActors) {
+            actor->SetVisibility(0);
+        }
         return;
     }
 
@@ -3807,23 +3839,75 @@ void vtkWindowCube::updateCatalogueOverlayLabels()
                 if (!renderer) {
                     return;
                 }
+                auto *imageData =
+                        vtkImageData::SafeDownCast(this->cubeDisplaySource->GetOutputDataObject(0));
+                const auto visible = computeVisibleImageBounds2D(
+                        renderer, imageData);
+                const int *size = renderer->GetSize();
+                const double pixelsPerUnitX =
+                        (visible.valid && size && (visible.xmax - visible.xmin) > 0.0)
+                        ? static_cast<double>(size[0]) / (visible.xmax - visible.xmin)
+                        : 0.0;
+                const double pixelsPerUnitY =
+                        (visible.valid && size && (visible.ymax - visible.ymin) > 0.0)
+                        ? static_cast<double>(size[1]) / (visible.ymax - visible.ymin)
+                        : 0.0;
+                int visibleSources = 0;
+                for (const auto &point : this->catalogueOverlayPixels) {
+                    if (pointInVisibleBounds(point, visible)) {
+                        ++visibleSources;
+                    }
+                }
+                const bool labelsEnabled =
+                        this->actionShowCatalogueLabels && this->actionShowCatalogueLabels->isChecked();
+                const bool smartVisible = labelsEnabled && visibleSources <= smartCatalogueLabelMaxVisible
+                        && std::max(pixelsPerUnitX, pixelsPerUnitY) >= smartCatalogueLabelMinPixelsPerUnit;
+
                 vtkNew<vtkCoordinate> coordinate;
                 coordinate->SetCoordinateSystemToWorld();
+                int hoveredIndex = -1;
+                double hoveredDistance2 = std::numeric_limits<double>::max();
+                auto *interactor = renderer->GetRenderWindow() ? renderer->GetRenderWindow()->GetInteractor() : nullptr;
+                const int *eventPos = interactor ? interactor->GetEventPosition() : nullptr;
+                if (eventPos) {
+                    for (std::size_t i = 0; i < this->catalogueOverlayPixels.size(); ++i) {
+                        coordinate->SetValue(this->catalogueOverlayPixels[i][0],
+                                             this->catalogueOverlayPixels[i][1], 0.0);
+                        int *display = coordinate->GetComputedDisplayValue(renderer);
+                        if (!display) {
+                            continue;
+                        }
+                        const double dx = static_cast<double>(display[0] - eventPos[0]);
+                        const double dy = static_cast<double>(display[1] - eventPos[1]);
+                        const double dist2 = dx * dx + dy * dy;
+                        if (dist2 < hoveredDistance2) {
+                            hoveredDistance2 = dist2;
+                            hoveredIndex = static_cast<int>(i);
+                        }
+                    }
+                    if (hoveredDistance2 > catalogueHoverDisplayThresholdPx * catalogueHoverDisplayThresholdPx) {
+                        hoveredIndex = -1;
+                    }
+                }
                 for (std::size_t i = 0; i < actors.size()
                                          && i < this->catalogueOverlayLabelIndices.size();
                      ++i) {
                     const int pointIndex = this->catalogueOverlayLabelIndices[i];
                     if (pointIndex < 0
                         || static_cast<std::size_t>(pointIndex) >= this->catalogueOverlayPixels.size()) {
+                        actors[i]->SetVisibility(0);
                         continue;
                     }
                     coordinate->SetValue(this->catalogueOverlayPixels[pointIndex][0],
                                          this->catalogueOverlayPixels[pointIndex][1], 0.0);
                     int *display = coordinate->GetComputedDisplayValue(renderer);
                     if (!display) {
+                        actors[i]->SetVisibility(0);
                         continue;
                     }
                     actors[i]->SetDisplayPosition(display[0] + 4, display[1] + 4);
+                    const bool showThis = pointIndex == hoveredIndex || smartVisible;
+                    actors[i]->SetVisibility(showThis ? 1 : 0);
                 }
             };
 

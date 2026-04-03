@@ -257,6 +257,7 @@ private:
     QPointer<QAction> actionExtractPvDiagram;
     QPointer<QAction> actionLoadCatalogueOverlay;
     QPointer<QAction> actionShowCatalogueOverlay;
+    QPointer<QAction> actionShowCatalogueLabels;
     QPointer<QAction> actionClearCatalogueOverlay;
     QFutureWatcher<CubeOpenStageResult> cubeOpenWatcher;
     QFutureWatcher<RemoteCubePreviewResult> remotePreviewWatcher;

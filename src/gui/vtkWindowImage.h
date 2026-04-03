@@ -134,6 +134,7 @@ private:
     QPointer<QAction> actionAnnulusRegion;
     QPointer<QAction> actionLoadCatalogueOverlay;
     QPointer<QAction> actionShowCatalogueOverlay;
+    QPointer<QAction> actionShowCatalogueLabels;
     QPointer<QAction> actionClearCatalogueOverlay;
     QFutureWatcher<ImageLayerLoadResult> layerLoadWatcher;
     QFutureWatcher<ImageLayerLoadResult> remoteImageWatcher;
