@@ -15,6 +15,7 @@
 // VTK forward declarations
 class vtkActor;
 class vtkBillboardTextActor3D;
+class vtkCubeAxesActor;
 class vtkGenericOpenGLRenderWindow;
 class vtkGlyph3D;
 class vtkIntArray;
@@ -66,7 +67,7 @@ private:
     static std::array<double, 3> morphologyColor(const QString &morph, int fallbackIndex);
 
     // ── Interaction ─────────────────────────────────────────────────────────
-    // Called by the VTK mouse observer (MouseMove / LeftButtonPress).
+    // Called by the VTK mouse observer (MouseMove / LeftButton Press+Release).
     void onMouseEvent(unsigned long eid);
     // Projects all source points to display space; returns index of nearest
     // within hoverThresholdPx, or -1.
@@ -118,12 +119,19 @@ private:
     // Billboard text labels (world-space, camera-facing)
     std::vector<vtkSmartPointer<vtkBillboardTextActor3D>> labelActors;
 
-    // Orientation axes widget
+    // Orientation axes corner widget
     vtkNew<vtkOrientationMarkerWidget> axesWidget;
+    // Data-space bounding-box axes
+    vtkNew<vtkCubeAxesActor> cubeAxesActor;
 
     // Interaction state
     int hoveredIndex{ -1 };
     int selectedIndex{ -1 };
+    // Left-button drag tracking (to distinguish click from camera rotate)
+    bool leftButtonDown{ false };
+    int pressX{ 0 };
+    int pressY{ 0 };
+    static constexpr int clickDragThresholdPx = 5;
 
     static constexpr double hoverThresholdPx = 14.0;
 };

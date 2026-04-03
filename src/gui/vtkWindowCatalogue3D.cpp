@@ -11,6 +11,7 @@
 #include <vtkCallbackCommand.h>
 #include <vtkCamera.h>
 #include <vtkCellArray.h>
+#include <vtkCubeAxesActor.h>
 #include <vtkCoordinate.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkGlyph3D.h>
@@ -18,6 +19,7 @@
 #include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
+#include <vtkPointData.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
@@ -173,15 +175,15 @@ void vtkWindowCatalogue3D::setupRenderer()
 
     // ── Mouse observers ───────────────────────────────────────────────────────
     auto cb = vtkSmartPointer<vtkCallbackCommand>::New();
-    cb->SetCallback([](vtkObject *caller, unsigned long eid, void *clientData, void *) {
-        auto *self = static_cast<vtkWindowCatalogue3D *>(clientData);
-        self->onMouseEvent(eid);
+    cb->SetCallback([](vtkObject *, unsigned long eid, void *clientData, void *) {
+        static_cast<vtkWindowCatalogue3D *>(clientData)->onMouseEvent(eid);
     });
     cb->SetClientData(this);
 
     auto *inter = ui->vtk->interactor();
-    inter->AddObserver(vtkCommand::MouseMoveEvent, cb);
-    inter->AddObserver(vtkCommand::LeftButtonPressEvent, cb);
+    inter->AddObserver(vtkCommand::MouseMoveEvent,         cb);
+    inter->AddObserver(vtkCommand::LeftButtonPressEvent,   cb);
+    inter->AddObserver(vtkCommand::LeftButtonReleaseEvent, cb);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -307,6 +309,28 @@ void vtkWindowCatalogue3D::buildScene()
     selectActor->VisibilityOff();
     renderer->AddActor(selectActor);
 
+    // ── Bounding-box coordinate axes ──────────────────────────────────────────
+    const double bounds[6] = { xMin, xMax, yMin, yMax, zMin, zMax };
+    cubeAxesActor->SetBounds(bounds);
+    cubeAxesActor->SetCamera(renderer->GetActiveCamera());
+    cubeAxesActor->SetXTitle("X (Mpc)");
+    cubeAxesActor->SetYTitle("Y (Mpc)");
+    cubeAxesActor->SetZTitle("Z (Mpc)");
+    cubeAxesActor->SetXUnits("");
+    cubeAxesActor->SetYUnits("");
+    cubeAxesActor->SetZUnits("");
+    // Axis colours: red / green / blue
+    for (int axis = 0; axis < 3; ++axis) {
+        cubeAxesActor->GetTitleTextProperty(axis)->SetColor(
+                axis == 0 ? 1.0 : 0.5, axis == 1 ? 1.0 : 0.5, axis == 2 ? 1.0 : 0.5);
+        cubeAxesActor->GetLabelTextProperty(axis)->SetColor(0.8, 0.8, 0.8);
+    }
+    cubeAxesActor->SetFlyModeToOuterEdges();
+    cubeAxesActor->DrawXGridlinesOff();
+    cubeAxesActor->DrawYGridlinesOff();
+    cubeAxesActor->DrawZGridlinesOff();
+    renderer->AddActor(cubeAxesActor);
+
     renderer->ResetCamera();
     renderWindow->Render();
 }
@@ -333,19 +357,33 @@ void vtkWindowCatalogue3D::buildLabels()
 
 void vtkWindowCatalogue3D::onMouseEvent(unsigned long eid)
 {
-    if (entries.empty())
-        return;
-
     int x = 0, y = 0;
     ui->vtk->interactor()->GetEventPosition(x, y);
 
-    if (eid == vtkCommand::MouseMoveEvent) {
-        setHoveredSource(pickNearestSource(x, y));
-    } else {
-        // LeftButtonPressEvent → toggle selection
-        const int idx = pickNearestSource(x, y);
-        setSelectedSource(idx == selectedIndex ? -1 : idx);
+    if (eid == vtkCommand::LeftButtonPressEvent) {
+        leftButtonDown = true;
+        pressX = x;
+        pressY = y;
+        // Let the interactor style handle camera rotation — no early return needed.
+        return;
     }
+
+    if (eid == vtkCommand::LeftButtonReleaseEvent) {
+        leftButtonDown = false;
+        // Treat as a click only when the pointer hasn't moved significantly.
+        const int dx = x - pressX;
+        const int dy = y - pressY;
+        if (dx * dx + dy * dy <= clickDragThresholdPx * clickDragThresholdPx
+            && !entries.empty()) {
+            const int idx = pickNearestSource(x, y);
+            setSelectedSource(idx == selectedIndex ? -1 : idx);
+        }
+        return;
+    }
+
+    // MouseMoveEvent: update hover only when no button is held (pure hover).
+    if (!leftButtonDown && !entries.empty())
+        setHoveredSource(pickNearestSource(x, y));
 }
 
 int vtkWindowCatalogue3D::pickNearestSource(int displayX, int displayY) const
