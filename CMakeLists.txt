@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(VisIVOVisualAnalytics
-        VERSION 0.0.1
+        VERSION 0.1.0
         LANGUAGES CXX C
 )
 
@@ -21,10 +21,10 @@ foreach (module IN LISTS qt_components)
     list(APPEND qt_modules "Qt::${module}")
 endforeach ()
 
-find_package(Qt6 6.10.0 CONFIG REQUIRED COMPONENTS ${qt_components})
+find_package(Qt6 6.11.0 CONFIG REQUIRED COMPONENTS ${qt_components})
 message(STATUS "Using Qt v${Qt6_VERSION}")
 
-find_package(VTK 9.5.0 CONFIG REQUIRED COMPONENTS
+find_package(VTK 9.6.0 CONFIG REQUIRED COMPONENTS
         CommonColor
         FiltersModeling
         FiltersStatistics
