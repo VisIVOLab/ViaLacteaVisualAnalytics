@@ -10,6 +10,7 @@
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "WebViewProcess.h"
+#include "vtkWindowCatalogue3D.h"
 #include "vtkWindowCube.h"
 #include "vtkWindowImage.h"
 
@@ -45,6 +46,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Setup Menu File
     QObject::connect(ui->actionOpenFile, &QAction::triggered, this, &MainWindow::openLocalData);
+    QObject::connect(ui->actionOpenCatalogue3D, &QAction::triggered, this,
+                     &MainWindow::openCatalogue3D);
     QObject::connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
 
     // Setup Menu Edit
@@ -138,6 +141,21 @@ void MainWindow::openLocalData()
         return;
     }
 
+    win->show();
+    win->raise();
+    win->activateWindow();
+}
+
+void MainWindow::openCatalogue3D()
+{
+    const QString filepath = QFileDialog::getOpenFileName(
+            this, u"Open 3D Catalogue (CSV)"_s, QString(),
+            u"CSV Catalogues (*.csv);;All files (*)"_s);
+    if (filepath.isEmpty())
+        return;
+
+    auto *win = new vtkWindowCatalogue3D(filepath, this);
+    win->setAttribute(Qt::WA_DeleteOnClose);
     win->show();
     win->raise();
     win->activateWindow();

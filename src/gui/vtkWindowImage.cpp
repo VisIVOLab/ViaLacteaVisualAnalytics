@@ -3,6 +3,7 @@
 
 #include "AstroUtils.h"
 #include "app/BackendClient.h"
+#include "CatalogueTableModel.h"
 #include "ColorMaps.h"
 #include "CatalogueOverlayUtils.h"
 #include "ImageLayerController.h"
@@ -43,17 +44,22 @@
 
 #include <QActionGroup>
 #include <QAction>
+#include <QAbstractItemView>
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QDebug>
+#include <QDockWidget>
 #include <QElapsedTimer>
 #include <QFileDialog>
+#include <QHeaderView>
 #include <QInputDialog>
+#include <QItemSelectionModel>
 #include <QLabel>
 #include <QMetaObject>
 #include <QMessageBox>
 #include <QSignalBlocker>
 #include <QStringList>
+#include <QTableView>
 #include <QtConcurrentRun>
 
 #include <algorithm>
@@ -183,6 +189,18 @@ bool pointInVisibleBounds(const std::array<double, 2> &point, const VisibleImage
 {
     return visible.valid && point[0] >= visible.xmin && point[0] <= visible.xmax && point[1] >= visible.ymin
             && point[1] <= visible.ymax;
+}
+
+QString catalogueFrameName(CatalogueOverlayEntry::Frame frame)
+{
+    return frame == CatalogueOverlayEntry::Frame::Image ? QStringLiteral("image")
+                                                        : QStringLiteral("sky");
+}
+
+QString catalogueShapeName(CatalogueOverlayEntry::Shape shape)
+{
+    return shape == CatalogueOverlayEntry::Shape::Ellipse ? QStringLiteral("ellipse")
+                                                          : QStringLiteral("marker");
 }
 
 void hideCustomWcsOverlay(vtkAxisActor2D *xAxis, vtkAxisActor2D *yAxis, vtkTextActor *xTitle,
@@ -868,6 +886,11 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->sanityLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
     this->sanityLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->statusBar()->addPermanentWidget(this->sanityLabel);
+    this->catalogueInfoLabel = new QLabel(this);
+    this->catalogueInfoLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
+    this->catalogueInfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->catalogueInfoLabel);
+    this->updateCatalogueInfoPanel();
     QObject::connect(this->wcsAxesCheck, &QCheckBox::toggled, this, [this](bool checked) {
         this->showWcsAxes = checked;
         this->lastOverlayVisibleBounds = { std::numeric_limits<double>::quiet_NaN(),
@@ -1061,6 +1084,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                      [this](bool) { this->updateCatalogueOverlayLabels(); this->vtkRender(); });
     QObject::connect(this->actionClearCatalogueOverlay, &QAction::triggered, this,
                      &vtkWindowImage::clearCatalogueOverlay);
+    this->ensureCatalogueDock();
 
     // Setup Buttons
     ui->btnSources->setIcon(QIcon(u":/icons/RECT_SELECT.png"_s));
@@ -1341,6 +1365,24 @@ void vtkWindowImage::setupRenderer()
     this->catalogueOverlayActor->GetProperty()->SetLineWidth(1.5);
     this->catalogueOverlayActor->VisibilityOff();
     ren->AddActor(this->catalogueOverlayActor);
+    this->catalogueHoverOverlayData->SetPoints(this->catalogueHoverOverlayPoints);
+    this->catalogueHoverOverlayData->SetLines(this->catalogueHoverOverlayCells);
+    vtkNew<vtkPolyDataMapper> catalogueHoverMapper;
+    catalogueHoverMapper->SetInputData(this->catalogueHoverOverlayData);
+    this->catalogueHoverOverlayActor->SetMapper(catalogueHoverMapper);
+    this->catalogueHoverOverlayActor->GetProperty()->SetColor(1.0, 0.95, 0.45);
+    this->catalogueHoverOverlayActor->GetProperty()->SetLineWidth(2.5);
+    this->catalogueHoverOverlayActor->VisibilityOff();
+    ren->AddActor(this->catalogueHoverOverlayActor);
+    this->catalogueSelectionOverlayData->SetPoints(this->catalogueSelectionOverlayPoints);
+    this->catalogueSelectionOverlayData->SetLines(this->catalogueSelectionOverlayCells);
+    vtkNew<vtkPolyDataMapper> catalogueSelectionMapper;
+    catalogueSelectionMapper->SetInputData(this->catalogueSelectionOverlayData);
+    this->catalogueSelectionOverlayActor->SetMapper(catalogueSelectionMapper);
+    this->catalogueSelectionOverlayActor->GetProperty()->SetColor(0.15, 0.95, 1.0);
+    this->catalogueSelectionOverlayActor->GetProperty()->SetLineWidth(3.2);
+    this->catalogueSelectionOverlayActor->VisibilityOff();
+    ren->AddActor(this->catalogueSelectionOverlayActor);
     this->overlayXAxis->GetTitleTextProperty()->SetFontSize(16);
     this->overlayXAxis->GetTitleTextProperty()->SetBold(false);
     this->overlayYAxis->GetTitleTextProperty()->SetFontSize(16);
@@ -1383,6 +1425,7 @@ void vtkWindowImage::mouseCallback()
     if (!position) {
         return;
     }
+    this->refreshCatalogueOverlayInteraction(position[0], position[1], false);
     this->updateProbeFromDisplayPosition(position[0], position[1]);
     if (this->regionMode != RegionMode::None && this->regionDragging) {
         if (this->updateRegionFromDisplayPosition(position[0], position[1])) {
@@ -1423,6 +1466,14 @@ void vtkWindowImage::toggleProbeFreeze()
     const int *position = ui->vtk->renderWindow()->GetInteractor()->GetEventPosition();
     if (!position) {
         return;
+    }
+
+    if (this->catalogueOverlayLoaded && this->regionMode == RegionMode::None) {
+        this->refreshCatalogueOverlayInteraction(position[0], position[1], true);
+        if (this->selectedCatalogueSourceIndex >= 0) {
+            ui->vtk->renderWindow()->Render();
+            return;
+        }
     }
 
     if (this->regionMode != RegionMode::None) {
@@ -1947,13 +1998,20 @@ void vtkWindowImage::loadCatalogueOverlay()
         }
     }
 
+    this->catalogueOverlayEntries.clear();
     this->catalogueOverlayPixels.clear();
     this->catalogueOverlayPolylines.clear();
+    this->catalogueOverlaySourceFirstPolyline.clear();
+    this->catalogueOverlaySourcePolylineCount.clear();
     this->catalogueOverlayLabels.clear();
     this->catalogueOverlayLabelIndices.clear();
+    this->hoveredCatalogueSourceIndex = -1;
+    this->selectedCatalogueSourceIndex = -1;
     int skippedProjection = 0;
     for (const CatalogueOverlayEntry &entry : parsed.entries) {
+        CatalogueOverlayEntry storedEntry = entry;
         std::array<double, 2> anchor{ 0.0, 0.0 };
+        const int firstPolyline = static_cast<int>(this->catalogueOverlayPolylines.size());
         if (entry.frame == CatalogueOverlayEntry::Frame::Image) {
             anchor = { entry.pixelX, entry.pixelY };
             if (entry.shape == CatalogueOverlayEntry::Shape::Ellipse) {
@@ -1978,7 +2036,13 @@ void vtkWindowImage::loadCatalogueOverlay()
                     { { anchor[0], anchor[1] - catalogueMarkerHalfSize },
                       { anchor[0], anchor[1] + catalogueMarkerHalfSize } });
         }
+        storedEntry.pixelX = anchor[0];
+        storedEntry.pixelY = anchor[1];
+        this->catalogueOverlayEntries.push_back(storedEntry);
         this->catalogueOverlayPixels.push_back(anchor);
+        this->catalogueOverlaySourceFirstPolyline.push_back(firstPolyline);
+        this->catalogueOverlaySourcePolylineCount.push_back(
+                static_cast<int>(this->catalogueOverlayPolylines.size()) - firstPolyline);
         this->catalogueOverlayLabels.push_back(entry.label);
     }
 
@@ -1993,6 +2057,8 @@ void vtkWindowImage::loadCatalogueOverlay()
             u"%1 sources from %2 (%3)"_s.arg(this->catalogueOverlayPixels.size())
                     .arg(parsed.sourceLabel, parsed.frameLabel);
     this->rebuildCatalogueOverlay();
+    this->refreshCatalogueTable();
+    this->updateCatalogueInfoPanel();
     if (this->actionShowCatalogueOverlay) {
         this->actionShowCatalogueOverlay->setEnabled(true);
         this->actionShowCatalogueOverlay->setChecked(true);
@@ -2022,13 +2088,24 @@ void vtkWindowImage::clearCatalogueOverlay()
 {
     this->catalogueOverlayLoaded = false;
     this->catalogueOverlayPixels.clear();
+    this->catalogueOverlayEntries.clear();
     this->catalogueOverlayPolylines.clear();
+    this->catalogueOverlaySourceFirstPolyline.clear();
+    this->catalogueOverlaySourcePolylineCount.clear();
     this->catalogueOverlayLabels.clear();
     this->catalogueOverlayLabelIndices.clear();
     this->catalogueOverlaySummary.clear();
+    this->hoveredCatalogueSourceIndex = -1;
+    this->selectedCatalogueSourceIndex = -1;
     this->catalogueOverlayPoints->Reset();
     this->catalogueOverlayCells->Reset();
     this->catalogueOverlayData->Modified();
+    this->catalogueHoverOverlayPoints->Reset();
+    this->catalogueHoverOverlayCells->Reset();
+    this->catalogueHoverOverlayData->Modified();
+    this->catalogueSelectionOverlayPoints->Reset();
+    this->catalogueSelectionOverlayCells->Reset();
+    this->catalogueSelectionOverlayData->Modified();
     if (auto *renderer = ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer()) {
         for (const auto &actor : this->catalogueOverlayLabelActors) {
             renderer->RemoveViewProp(actor);
@@ -2036,6 +2113,8 @@ void vtkWindowImage::clearCatalogueOverlay()
     }
     this->catalogueOverlayLabelActors.clear();
     this->catalogueOverlayActor->VisibilityOff();
+    this->catalogueHoverOverlayActor->VisibilityOff();
+    this->catalogueSelectionOverlayActor->VisibilityOff();
     if (this->actionShowCatalogueOverlay) {
         const QSignalBlocker blocker(this->actionShowCatalogueOverlay);
         this->actionShowCatalogueOverlay->setChecked(false);
@@ -2049,6 +2128,8 @@ void vtkWindowImage::clearCatalogueOverlay()
     if (this->actionClearCatalogueOverlay) {
         this->actionClearCatalogueOverlay->setEnabled(false);
     }
+    this->refreshCatalogueTable();
+    this->updateCatalogueInfoPanel();
     ui->vtk->renderWindow()->Render();
 }
 
@@ -2062,6 +2143,8 @@ void vtkWindowImage::setCatalogueOverlayVisible(bool visible)
         for (const auto &actor : this->catalogueOverlayLabelActors) {
             actor->SetVisibility(0);
         }
+        this->catalogueHoverOverlayActor->VisibilityOff();
+        this->catalogueSelectionOverlayActor->VisibilityOff();
     }
     if (ui && ui->vtk && ui->vtk->renderWindow()) {
         ui->vtk->renderWindow()->Render();
@@ -2112,6 +2195,16 @@ void vtkWindowImage::rebuildCatalogueOverlay()
         renderer->AddViewProp(actor);
         this->catalogueOverlayLabelActors.push_back(actor);
     }
+    this->rebuildCatalogueHighlightOverlay(this->catalogueHoverOverlayPoints,
+                                           this->catalogueHoverOverlayCells,
+                                           this->catalogueHoverOverlayData,
+                                           this->hoveredCatalogueSourceIndex);
+    this->rebuildCatalogueHighlightOverlay(this->catalogueSelectionOverlayPoints,
+                                           this->catalogueSelectionOverlayCells,
+                                           this->catalogueSelectionOverlayData,
+                                           this->selectedCatalogueSourceIndex);
+    this->catalogueHoverOverlayActor->SetVisibility(this->hoveredCatalogueSourceIndex >= 0 ? 1 : 0);
+    this->catalogueSelectionOverlayActor->SetVisibility(this->selectedCatalogueSourceIndex >= 0 ? 1 : 0);
     this->updateCatalogueOverlayLabels();
 }
 
@@ -2125,6 +2218,8 @@ void vtkWindowImage::updateCatalogueOverlayLabels()
         for (const auto &actor : this->catalogueOverlayLabelActors) {
             actor->SetVisibility(0);
         }
+        this->catalogueHoverOverlayActor->VisibilityOff();
+        this->catalogueSelectionOverlayActor->VisibilityOff();
         return;
     }
     auto *renderer = ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer();
@@ -2153,31 +2248,16 @@ void vtkWindowImage::updateCatalogueOverlayLabels()
     const bool smartVisible = labelsEnabled && visibleSources <= smartCatalogueLabelMaxVisible
             && std::max(pixelsPerUnitX, pixelsPerUnitY) >= smartCatalogueLabelMinPixelsPerUnit;
 
-    int hoveredIndex = -1;
-    double hoveredDistance2 = std::numeric_limits<double>::max();
     auto *interactor = ui->vtk->renderWindow()->GetInteractor();
     const int *eventPos = interactor ? interactor->GetEventPosition() : nullptr;
     vtkNew<vtkCoordinate> coordinate;
     coordinate->SetCoordinateSystemToWorld();
-    if (eventPos) {
-        for (std::size_t i = 0; i < this->catalogueOverlayPixels.size(); ++i) {
-            coordinate->SetValue(this->catalogueOverlayPixels[i][0], this->catalogueOverlayPixels[i][1], 0.0);
-            int *display = coordinate->GetComputedDisplayValue(renderer);
-            if (!display) {
-                continue;
-            }
-            const double dx = static_cast<double>(display[0] - eventPos[0]);
-            const double dy = static_cast<double>(display[1] - eventPos[1]);
-            const double dist2 = dx * dx + dy * dy;
-            if (dist2 < hoveredDistance2) {
-                hoveredDistance2 = dist2;
-                hoveredIndex = static_cast<int>(i);
-            }
-        }
-        if (hoveredDistance2 > catalogueHoverDisplayThresholdPx * catalogueHoverDisplayThresholdPx) {
-            hoveredIndex = -1;
-        }
+    if (eventPos && this->hoveredCatalogueSourceIndex < 0) {
+        double distancePx = 0.0;
+        this->hoveredCatalogueSourceIndex =
+                this->catalogueSourceIndexNearDisplayPosition(eventPos[0], eventPos[1], renderer, &distancePx);
     }
+    const bool showHoveredLabel = this->hoveredCatalogueSourceIndex >= 0;
 
     for (std::size_t i = 0; i < this->catalogueOverlayLabelActors.size()
                              && i < this->catalogueOverlayLabelIndices.size();
@@ -2195,9 +2275,297 @@ void vtkWindowImage::updateCatalogueOverlayLabels()
             continue;
         }
         this->catalogueOverlayLabelActors[i]->SetDisplayPosition(display[0] + 4, display[1] + 4);
-        const bool showThis = pointIndex == hoveredIndex || smartVisible;
+        const bool showThis = smartVisible || (showHoveredLabel && pointIndex == this->hoveredCatalogueSourceIndex)
+                || pointIndex == this->selectedCatalogueSourceIndex;
         this->catalogueOverlayLabelActors[i]->SetVisibility(showThis ? 1 : 0);
     }
+    this->catalogueHoverOverlayActor->SetVisibility(
+            this->hoveredCatalogueSourceIndex >= 0 && this->hoveredCatalogueSourceIndex != this->selectedCatalogueSourceIndex
+                    ? 1
+                    : 0);
+    this->catalogueSelectionOverlayActor->SetVisibility(this->selectedCatalogueSourceIndex >= 0 ? 1 : 0);
+}
+
+void vtkWindowImage::refreshCatalogueOverlayInteraction(int displayX, int displayY, bool fromClick)
+{
+    if (!this->catalogueOverlayLoaded || !this->actionShowCatalogueOverlay
+        || !this->actionShowCatalogueOverlay->isChecked()) {
+        return;
+    }
+
+    auto *renderer = ui && ui->vtk && ui->vtk->renderWindow()
+            ? ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer()
+            : nullptr;
+    if (!renderer) {
+        return;
+    }
+
+    double hoverDistance = 0.0;
+    const int hoveredIndex =
+            this->catalogueSourceIndexNearDisplayPosition(displayX, displayY, renderer, &hoverDistance);
+    if (hoveredIndex != this->hoveredCatalogueSourceIndex) {
+        qDebug().noquote() << QStringLiteral("[catalogue:image] hover index=%1 distance_px=%2")
+                                      .arg(hoveredIndex)
+                                      .arg(hoverDistance, 0, 'f', 2);
+        this->hoveredCatalogueSourceIndex = hoveredIndex;
+        this->rebuildCatalogueHighlightOverlay(this->catalogueHoverOverlayPoints,
+                                               this->catalogueHoverOverlayCells,
+                                               this->catalogueHoverOverlayData,
+                                               this->hoveredCatalogueSourceIndex);
+    }
+
+    if (fromClick) {
+        qDebug().noquote() << QStringLiteral("[catalogue:image] select index=%1").arg(hoveredIndex);
+        this->setSelectedCatalogueSourceIndex(hoveredIndex);
+    }
+
+    this->updateCatalogueOverlayLabels();
+}
+
+int vtkWindowImage::catalogueSourceIndexNearDisplayPosition(int displayX, int displayY,
+                                                            vtkRenderer *renderer,
+                                                            double *distancePx) const
+{
+    if (distancePx) {
+        *distancePx = std::numeric_limits<double>::quiet_NaN();
+    }
+    if (!renderer) {
+        return -1;
+    }
+
+    vtkNew<vtkCoordinate> coordinate;
+    coordinate->SetCoordinateSystemToWorld();
+    int nearestIndex = -1;
+    double nearestDistance2 = std::numeric_limits<double>::max();
+    for (std::size_t i = 0; i < this->catalogueOverlayPixels.size(); ++i) {
+        coordinate->SetValue(this->catalogueOverlayPixels[i][0], this->catalogueOverlayPixels[i][1], 0.0);
+        int *display = coordinate->GetComputedDisplayValue(renderer);
+        if (!display) {
+            continue;
+        }
+        const double dx = static_cast<double>(display[0] - displayX);
+        const double dy = static_cast<double>(display[1] - displayY);
+        const double dist2 = dx * dx + dy * dy;
+        if (dist2 < nearestDistance2) {
+            nearestDistance2 = dist2;
+            nearestIndex = static_cast<int>(i);
+        }
+    }
+
+    if (nearestDistance2 > catalogueHoverDisplayThresholdPx * catalogueHoverDisplayThresholdPx) {
+        nearestIndex = -1;
+    }
+    if (distancePx) {
+        *distancePx = nearestIndex >= 0 ? std::sqrt(nearestDistance2) : std::numeric_limits<double>::quiet_NaN();
+    }
+    return nearestIndex;
+}
+
+void vtkWindowImage::rebuildCatalogueHighlightOverlay(vtkPoints *points, vtkCellArray *cells, vtkPolyData *data,
+                                                      int sourceIndex)
+{
+    if (!points || !cells || !data) {
+        return;
+    }
+    points->Reset();
+    cells->Reset();
+
+    if (sourceIndex >= 0 && static_cast<std::size_t>(sourceIndex) < this->catalogueOverlayEntries.size()
+        && static_cast<std::size_t>(sourceIndex) < this->catalogueOverlaySourceFirstPolyline.size()
+        && static_cast<std::size_t>(sourceIndex) < this->catalogueOverlaySourcePolylineCount.size()) {
+        const int first = this->catalogueOverlaySourceFirstPolyline[sourceIndex];
+        const int count = this->catalogueOverlaySourcePolylineCount[sourceIndex];
+        for (int polylineIndex = first; polylineIndex < first + count; ++polylineIndex) {
+            if (polylineIndex < 0
+                || static_cast<std::size_t>(polylineIndex) >= this->catalogueOverlayPolylines.size()) {
+                continue;
+            }
+            const auto &polyline = this->catalogueOverlayPolylines[polylineIndex];
+            if (polyline.size() < 2) {
+                continue;
+            }
+            cells->InsertNextCell(static_cast<vtkIdType>(polyline.size()));
+            for (const auto &point : polyline) {
+                const vtkIdType id = points->InsertNextPoint(point[0], point[1], 0.0);
+                cells->InsertCellPoint(id);
+            }
+        }
+    }
+
+    data->SetPoints(points);
+    data->SetLines(cells);
+    data->Modified();
+}
+
+void vtkWindowImage::updateCatalogueInfoPanel()
+{
+    if (!this->catalogueInfoLabel) {
+        return;
+    }
+    if (this->selectedCatalogueSourceIndex < 0
+        || static_cast<std::size_t>(this->selectedCatalogueSourceIndex) >= this->catalogueOverlayEntries.size()) {
+        this->catalogueInfoLabel->setText(u"Source: none"_s);
+        this->catalogueInfoLabel->setToolTip(u"No source selected"_s);
+        return;
+    }
+
+    const QString summary = this->catalogueSourceSummary(this->selectedCatalogueSourceIndex);
+    this->catalogueInfoLabel->setText(summary);
+    this->catalogueInfoLabel->setToolTip(summary);
+}
+
+QString vtkWindowImage::catalogueSourceSummary(int sourceIndex) const
+{
+    if (sourceIndex < 0 || static_cast<std::size_t>(sourceIndex) >= this->catalogueOverlayEntries.size()
+        || static_cast<std::size_t>(sourceIndex) >= this->catalogueOverlayPixels.size()) {
+        return QStringLiteral("Source: none");
+    }
+
+    const CatalogueOverlayEntry &entry = this->catalogueOverlayEntries[sourceIndex];
+    const auto &pixel = this->catalogueOverlayPixels[sourceIndex];
+    QString summary = u"Source %1"_s.arg(sourceIndex + 1);
+    if (!entry.label.trimmed().isEmpty()) {
+        summary += u" [%1]"_s.arg(entry.label.trimmed());
+    }
+    summary += u" | %1 | %2 | x=%3 y=%4"_s.arg(catalogueShapeName(entry.shape),
+                                               catalogueFrameName(entry.frame))
+                       .arg(pixel[0], 0, 'f', 2)
+                       .arg(pixel[1], 0, 'f', 2);
+    if (entry.frame == CatalogueOverlayEntry::Frame::Sky) {
+        summary += u" | RA=%1 deg DEC=%2 deg"_s.arg(entry.raDeg, 0, 'f', 6).arg(entry.decDeg, 0, 'f', 6);
+    }
+    if (entry.shape == CatalogueOverlayEntry::Shape::Ellipse) {
+        summary += u" | rx=%1 ry=%2 ang=%3"_s.arg(entry.radiusX, 0, 'f', 2)
+                           .arg(entry.radiusY, 0, 'f', 2)
+                           .arg(entry.angleDeg, 0, 'f', 1);
+    }
+    return summary;
+}
+
+void vtkWindowImage::ensureCatalogueDock()
+{
+    if (this->catalogueDock) {
+        return;
+    }
+
+    this->catalogueDock = new QDockWidget(u"Catalogue"_s, this);
+    this->catalogueDock->setObjectName(u"CatalogueDockImage"_s);
+    this->catalogueTableView = new QTableView(this->catalogueDock);
+    this->catalogueTableModel = new CatalogueTableModel(this->catalogueDock);
+    this->catalogueTableView->setModel(this->catalogueTableModel);
+    this->catalogueTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    this->catalogueTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    this->catalogueTableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    this->catalogueTableView->setSortingEnabled(false);
+    this->catalogueTableView->verticalHeader()->setVisible(false);
+    this->catalogueTableView->horizontalHeader()->setStretchLastSection(true);
+    this->catalogueDock->setWidget(this->catalogueTableView);
+    this->addDockWidget(Qt::RightDockWidgetArea, this->catalogueDock);
+    this->catalogueDock->hide();
+
+    QObject::connect(this, &vtkWindowImage::catalogueSourceSelectionChanged, this,
+                     &vtkWindowImage::syncCatalogueTableSelection);
+    QObject::connect(this->catalogueTableView->selectionModel(), &QItemSelectionModel::currentRowChanged,
+                     this, [this](const QModelIndex &current) {
+        if (this->syncingCatalogueSelection) {
+            return;
+        }
+        this->setSelectedCatalogueSourceIndex(current.isValid() ? current.row() : -1);
+    });
+    QObject::connect(this->catalogueTableView, &QTableView::doubleClicked, this,
+                     [this](const QModelIndex &index) {
+        if (index.isValid()) {
+            this->setSelectedCatalogueSourceIndex(index.row());
+            this->centerViewOnCatalogueSource(index.row());
+        }
+    });
+    this->refreshCatalogueTable();
+}
+
+void vtkWindowImage::refreshCatalogueTable()
+{
+    if (!this->catalogueTableModel) {
+        return;
+    }
+    this->catalogueTableModel->setEntries(&this->catalogueOverlayEntries);
+    if (this->catalogueDock) {
+        this->catalogueDock->setVisible(!this->catalogueOverlayEntries.empty());
+    }
+    if (this->catalogueTableView) {
+        this->catalogueTableView->resizeColumnsToContents();
+    }
+    this->syncCatalogueTableSelection(this->selectedCatalogueSourceIndex);
+}
+
+void vtkWindowImage::setSelectedCatalogueSourceIndex(int index)
+{
+    if (index < 0 || static_cast<std::size_t>(index) >= this->catalogueOverlayEntries.size()) {
+        index = -1;
+    }
+    if (this->selectedCatalogueSourceIndex == index) {
+        this->updateCatalogueInfoPanel();
+        emit this->catalogueSourceSelectionChanged(index);
+        return;
+    }
+
+    this->selectedCatalogueSourceIndex = index;
+    this->rebuildCatalogueHighlightOverlay(this->catalogueSelectionOverlayPoints,
+                                           this->catalogueSelectionOverlayCells,
+                                           this->catalogueSelectionOverlayData,
+                                           this->selectedCatalogueSourceIndex);
+    this->updateCatalogueInfoPanel();
+    this->updateCatalogueOverlayLabels();
+    if (ui && ui->vtk && ui->vtk->renderWindow()) {
+        ui->vtk->renderWindow()->Render();
+    }
+    emit this->catalogueSourceSelectionChanged(index);
+}
+
+void vtkWindowImage::centerViewOnCatalogueSource(int index, double zoomFactor)
+{
+    if (index < 0 || static_cast<std::size_t>(index) >= this->catalogueOverlayPixels.size()) {
+        return;
+    }
+    auto *renderer = ui && ui->vtk && ui->vtk->renderWindow()
+            ? ui->vtk->renderWindow()->GetRenderers()->GetFirstRenderer()
+            : nullptr;
+    auto *camera = renderer ? renderer->GetActiveCamera() : nullptr;
+    if (!renderer || !camera) {
+        return;
+    }
+
+    const auto &pixel = this->catalogueOverlayPixels[index];
+    double focal[3];
+    double position[3];
+    camera->GetFocalPoint(focal);
+    camera->GetPosition(position);
+    const double dz = position[2] - focal[2];
+    camera->SetFocalPoint(pixel[0], pixel[1], 0.0);
+    camera->SetPosition(pixel[0], pixel[1], dz);
+    if (camera->GetParallelProjection() && zoomFactor > 1.0) {
+        camera->SetParallelScale(camera->GetParallelScale() / zoomFactor);
+    }
+    renderer->ResetCameraClippingRange();
+    ui->vtk->renderWindow()->Render();
+}
+
+void vtkWindowImage::syncCatalogueTableSelection(int index)
+{
+    if (!this->catalogueTableView || !this->catalogueTableView->selectionModel()
+        || !this->catalogueTableModel) {
+        return;
+    }
+
+    this->syncingCatalogueSelection = true;
+    if (index < 0 || index >= this->catalogueTableModel->rowCount()) {
+        this->catalogueTableView->clearSelection();
+    } else {
+        const QModelIndex modelIndex = this->catalogueTableModel->index(index, 0);
+        this->catalogueTableView->selectionModel()->setCurrentIndex(
+                modelIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+        this->catalogueTableView->scrollTo(modelIndex, QAbstractItemView::PositionAtCenter);
+    }
+    this->syncingCatalogueSelection = false;
 }
 
 bool vtkWindowImage::catalogueWorldToPixel(double raDeg, double decDeg, std::array<double, 2> &pixel) const

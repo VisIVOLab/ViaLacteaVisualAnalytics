@@ -77,6 +77,8 @@ set(PROJECT_SOURCES
         src/gui/RemoteMomentWindow.h
         src/gui/AboutDialog.cpp
         src/gui/AboutDialog.h
+        src/gui/CatalogueTableModel.cpp
+        src/gui/CatalogueTableModel.h
         src/gui/CubeViewController.cpp
         src/gui/CubeViewController.h
         src/gui/DatasetWindowFactory.cpp
@@ -93,6 +95,8 @@ set(PROJECT_SOURCES
         src/gui/PvDiagramWidget.h
         src/gui/SettingsDialog.cpp
         src/gui/SettingsDialog.h
+        src/gui/vtkWindowCatalogue3D.cpp
+        src/gui/vtkWindowCatalogue3D.h
         src/gui/vtkWindowCube.cpp
         src/gui/vtkWindowCube.h
         src/gui/vtkWindowImage.cpp
@@ -105,6 +109,7 @@ set(PROJECT_UI
         ui/MainWindow.ui
         ui/ProfileWidget.ui
         ui/SettingsDialog.ui
+        ui/vtkWindowCatalogue3D.ui
         ui/vtkWindowCube.ui
         ui/vtkWindowImage.ui
 )

@@ -2,6 +2,7 @@
 #define vtkWindowCube_H
 
 #include "AstroUtils.h"
+#include "CatalogueOverlayUtils.h"
 #include "CubeOpenPreviewTask.h"
 #include "MomentMapComputeTask.h"
 
@@ -26,10 +27,13 @@
 class CubeViewController;
 class QAction;
 class QCheckBox;
+class CatalogueTableModel;
+class QDockWidget;
 class QLabel;
 class LUTCustomizerDialog;
 class ProfileWidget;
 class PvDiagramWidget;
+class QTableView;
 class vtkAxisActor2D;
 class vtkActor;
 class vtkColorTransferFunction;
@@ -156,6 +160,10 @@ private slots:
     void extractSpectrumAtCurrentProbe();
     void setPvModeActive(bool active);
     void setProbeModeActive(bool active);
+    void syncCatalogueTableSelection(int index);
+
+signals:
+    void catalogueSourceSelectionChanged(int index);
 
 public:
     enum class RemoteCubeDisplayState
@@ -246,6 +254,11 @@ private:
     QPointer<QLabel> dataStateLabel;
     QPointer<QLabel> sanityLabel;
     QPointer<QLabel> momentProvenanceLabel;
+    QPointer<QLabel> catalogueInfoLabel;
+    QPointer<QDockWidget> catalogueDock;
+    QPointer<QTableView> catalogueTableView;
+    QPointer<CatalogueTableModel> catalogueTableModel;
+    bool syncingCatalogueSelection{ false };
     QPointer<QCheckBox> remoteRoiRefinementCheck;
     QPointer<QCheckBox> wcsAxesCheck;
     QPointer<QAction> actionWcsSexagesimal;
@@ -311,11 +324,16 @@ private:
     std::array<int, 2> regionAnchorVoxel{ -1, -1 };
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> regionPolygonVertices;
+    std::vector<CatalogueOverlayEntry> catalogueOverlayEntries;
     std::vector<std::array<double, 2>> catalogueOverlayPixels;
     std::vector<std::vector<std::array<double, 2>>> catalogueOverlayPolylines;
+    std::vector<int> catalogueOverlaySourceFirstPolyline;
+    std::vector<int> catalogueOverlaySourcePolylineCount;
     std::vector<int> catalogueOverlayLabelIndices;
     QStringList catalogueOverlayLabels;
     QString catalogueOverlaySummary;
+    int hoveredCatalogueSourceIndex{ -1 };
+    int selectedCatalogueSourceIndex{ -1 };
     double regionAnnulusInnerRadius{ 0.0 };
     std::array<int, 2> pvCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> pvPolylineVertices;
@@ -363,6 +381,17 @@ private:
     void setCatalogueOverlayVisible(bool visible);
     void rebuildCatalogueOverlay();
     void updateCatalogueOverlayLabels();
+    void refreshCatalogueOverlayInteraction(int displayX, int displayY, bool fromClick);
+    int catalogueSourceIndexNearDisplayPosition(int displayX, int displayY,
+                                                vtkRenderer *renderer, double *distancePx = nullptr) const;
+    void rebuildCatalogueHighlightOverlay(vtkPoints *points, vtkCellArray *cells, vtkPolyData *data,
+                                          int sourceIndex);
+    void updateCatalogueInfoPanel();
+    QString catalogueSourceSummary(int sourceIndex) const;
+    void ensureCatalogueDock();
+    void refreshCatalogueTable();
+    void setSelectedCatalogueSourceIndex(int index);
+    void centerViewOnCatalogueSource(int index, double zoomFactor = 2.5);
     bool catalogueWorldToPixel(double raDeg, double decDeg, std::array<double, 2> &pixel) const;
     void updateProbeReadout(vtkImageData *imageData);
     void updateProbePlot();
@@ -454,6 +483,8 @@ private:
     vtkNew<vtkActor> sliceProbeHorizontalActor;
     vtkNew<vtkActor> sliceProbeVerticalActor;
     vtkNew<vtkActor> sliceCatalogueOverlayActor;
+    vtkNew<vtkActor> sliceCatalogueHoverOverlayActor;
+    vtkNew<vtkActor> sliceCatalogueSelectionOverlayActor;
     vtkNew<vtkLineSource> sliceRegionTopLine;
     vtkNew<vtkLineSource> sliceRegionBottomLine;
     vtkNew<vtkLineSource> sliceRegionLeftLine;
@@ -491,6 +522,12 @@ private:
     vtkNew<vtkCellArray> slicePvLowerCells;
     vtkNew<vtkPolyData> slicePvLowerData;
     vtkNew<vtkActor> slicePvLowerActor;
+    vtkNew<vtkPoints> catalogueHoverOverlayPoints;
+    vtkNew<vtkCellArray> catalogueHoverOverlayCells;
+    vtkNew<vtkPolyData> catalogueHoverOverlayData;
+    vtkNew<vtkPoints> catalogueSelectionOverlayPoints;
+    vtkNew<vtkCellArray> catalogueSelectionOverlayCells;
+    vtkNew<vtkPolyData> catalogueSelectionOverlayData;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceCatalogueOverlayLabelActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayXTickActors;
     std::vector<vtkSmartPointer<vtkTextActor>> sliceOverlayYTickActors;
@@ -536,6 +573,8 @@ private:
     vtkNew<vtkActor> momentProbeHorizontalActor;
     vtkNew<vtkActor> momentProbeVerticalActor;
     vtkNew<vtkActor> momentCatalogueOverlayActor;
+    vtkNew<vtkActor> momentCatalogueHoverOverlayActor;
+    vtkNew<vtkActor> momentCatalogueSelectionOverlayActor;
     vtkNew<vtkLineSource> momentRegionTopLine;
     vtkNew<vtkLineSource> momentRegionBottomLine;
     vtkNew<vtkLineSource> momentRegionLeftLine;

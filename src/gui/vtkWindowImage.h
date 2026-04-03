@@ -1,6 +1,7 @@
 #ifndef vtkWindowImage_h
 #define vtkWindowImage_h
 
+#include "CatalogueOverlayUtils.h"
 #include "ImageLayerLoadTask.h"
 
 #include <vtkNew.h>
@@ -24,10 +25,13 @@ class ImageLayerImportService;
 class LayerListModel;
 class LUTCustomizerDialog;
 class ProfileWidget;
+class CatalogueTableModel;
 class AstroUtils;
 class QAction;
 class QCheckBox;
+class QDockWidget;
 class QLabel;
+class QTableView;
 class vtkActor;
 class vtkAxisActor2D;
 class vtkCoordinate;
@@ -88,6 +92,10 @@ private slots:
     void setProbeModeActive(bool active);
     void beginImageInteraction();
     void endImageInteraction();
+    void syncCatalogueTableSelection(int index);
+
+signals:
+    void catalogueSourceSelectionChanged(int index);
 
 public:
     enum class RegionMode
@@ -125,6 +133,11 @@ private:
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
     QPointer<QLabel> sanityLabel;
+    QPointer<QLabel> catalogueInfoLabel;
+    QPointer<QDockWidget> catalogueDock;
+    QPointer<QTableView> catalogueTableView;
+    QPointer<CatalogueTableModel> catalogueTableModel;
+    bool syncingCatalogueSelection{ false };
     QPointer<QAction> actionWcsSexagesimal;
     QPointer<QAction> actionWcsDecimal;
     QPointer<QAction> actionExtractSpectrum;
@@ -174,11 +187,16 @@ private:
     std::array<int, 2> regionCurrentVoxel{ -1, -1 };
     std::vector<std::array<int, 2>> regionPolygonVertices;
     std::vector<std::array<double, 2>> savedLinearDisplayRanges;
+    std::vector<CatalogueOverlayEntry> catalogueOverlayEntries;
     std::vector<std::array<double, 2>> catalogueOverlayPixels;
     std::vector<std::vector<std::array<double, 2>>> catalogueOverlayPolylines;
+    std::vector<int> catalogueOverlaySourceFirstPolyline;
+    std::vector<int> catalogueOverlaySourcePolylineCount;
     std::vector<int> catalogueOverlayLabelIndices;
     QStringList catalogueOverlayLabels;
     QString catalogueOverlaySummary;
+    int hoveredCatalogueSourceIndex{ -1 };
+    int selectedCatalogueSourceIndex{ -1 };
     double regionAnnulusInnerRadius{ 0.0 };
     std::array<double, 4> lastOverlayVisibleBounds{ std::numeric_limits<double>::quiet_NaN(),
                                                     std::numeric_limits<double>::quiet_NaN(),
@@ -220,6 +238,14 @@ private:
     vtkNew<vtkCellArray> catalogueOverlayCells;
     vtkNew<vtkPolyData> catalogueOverlayData;
     vtkNew<vtkActor> catalogueOverlayActor;
+    vtkNew<vtkPoints> catalogueHoverOverlayPoints;
+    vtkNew<vtkCellArray> catalogueHoverOverlayCells;
+    vtkNew<vtkPolyData> catalogueHoverOverlayData;
+    vtkNew<vtkActor> catalogueHoverOverlayActor;
+    vtkNew<vtkPoints> catalogueSelectionOverlayPoints;
+    vtkNew<vtkCellArray> catalogueSelectionOverlayCells;
+    vtkNew<vtkPolyData> catalogueSelectionOverlayData;
+    vtkNew<vtkActor> catalogueSelectionOverlayActor;
     std::vector<vtkSmartPointer<vtkTextActor>> catalogueOverlayLabelActors;
     void setupRenderer();
     void mouseCallback();
@@ -250,6 +276,17 @@ private:
     void setCatalogueOverlayVisible(bool visible);
     void rebuildCatalogueOverlay();
     void updateCatalogueOverlayLabels();
+    void refreshCatalogueOverlayInteraction(int displayX, int displayY, bool fromClick);
+    int catalogueSourceIndexNearDisplayPosition(int displayX, int displayY,
+                                                vtkRenderer *renderer, double *distancePx = nullptr) const;
+    void rebuildCatalogueHighlightOverlay(vtkPoints *points, vtkCellArray *cells, vtkPolyData *data,
+                                          int sourceIndex);
+    void updateCatalogueInfoPanel();
+    QString catalogueSourceSummary(int sourceIndex) const;
+    void ensureCatalogueDock();
+    void refreshCatalogueTable();
+    void setSelectedCatalogueSourceIndex(int index);
+    void centerViewOnCatalogueSource(int index, double zoomFactor = 2.5);
     bool catalogueWorldToPixel(double raDeg, double decDeg, std::array<double, 2> &pixel) const;
     QString formatLocalProbeCoordinate(int axis, const std::array<int, 2> &voxel) const;
     QString selectedFrameAxisTitle(int axis) const;

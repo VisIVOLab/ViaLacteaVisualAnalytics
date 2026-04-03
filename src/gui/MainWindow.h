@@ -41,6 +41,11 @@ private slots:
     void openRemoteData();
 
     /**
+   * Show a QFileDialog to open a CSV catalogue in the 3D viewer
+   */
+    void openCatalogue3D();
+
+    /**
    * Show the Settings Dialog
    */
     void openSettingsDialog();
