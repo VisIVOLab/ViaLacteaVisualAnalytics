@@ -44,6 +44,7 @@ private slots:
    * Show a QFileDialog to open a CSV catalogue in the 3D viewer
    */
     void openCatalogue3D();
+    void openVbt();
 
     /**
    * Show the Settings Dialog

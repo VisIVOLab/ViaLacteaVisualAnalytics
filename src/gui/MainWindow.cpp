@@ -9,10 +9,12 @@
 #include "RemoteFileBrowserDialog.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
+#include "VbtTableLoader.h"
 #include "WebViewProcess.h"
 #include "vtkWindowCatalogue3D.h"
 #include "vtkWindowCube.h"
 #include "vtkWindowImage.h"
+#include "vtkWindowVbt.h"
 
 #include <QButtonGroup>
 #include <QCloseEvent>
@@ -46,6 +48,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Setup Menu File
     QObject::connect(ui->actionOpenFile, &QAction::triggered, this, &MainWindow::openLocalData);
+    QObject::connect(ui->actionOpenVbt, &QAction::triggered, this, &MainWindow::openVbt);
     QObject::connect(ui->actionOpenCatalogue3D, &QAction::triggered, this,
                      &MainWindow::openCatalogue3D);
     QObject::connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
@@ -156,6 +159,27 @@ void MainWindow::openCatalogue3D()
 
     auto *win = new vtkWindowCatalogue3D(filepath, this);
     win->setAttribute(Qt::WA_DeleteOnClose);
+    win->show();
+    win->raise();
+    win->activateWindow();
+}
+
+void MainWindow::openVbt()
+{
+    const QString headerPath = QFileDialog::getOpenFileName(
+            this, u"Open VBT header"_s, QString(),
+            u"VisIVO Binary Table header (*.bin.head);;All files (*)"_s);
+    if (headerPath.isEmpty()) {
+        return;
+    }
+
+    const VbtTableData table = VbtTableLoader::load(headerPath);
+    if (!table.valid) {
+        QMessageBox::critical(this, u"Could not open VBT"_s, table.errorMessage);
+        return;
+    }
+
+    auto *win = new vtkWindowVbt(table, this);
     win->show();
     win->raise();
     win->activateWindow();
