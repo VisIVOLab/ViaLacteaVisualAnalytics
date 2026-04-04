@@ -17,7 +17,6 @@
 // VTK forward declarations
 class vtkActor;
 class vtkBillboardTextActor3D;
-class vtkAxesActor;
 class vtkCubeAxesActor;
 class vtkCubeSource;
 class vtkGenericOpenGLRenderWindow;
@@ -172,7 +171,6 @@ private:
 
     // Orientation axes corner widget
     vtkNew<vtkOrientationMarkerWidget> axesWidget;
-    vtkNew<vtkAxesActor> sceneAxesActor;
     vtkNew<vtkCubeAxesActor> cubeAxesActor;
     std::vector<vtkSmartPointer<vtkActor>> shellActors;
     QPointer<QDockWidget> catalogueDock;

@@ -12,7 +12,6 @@
 #include <vtkBillboardTextActor3D.h>
 #include <vtkCallbackCommand.h>
 #include <vtkCamera.h>
-#include <vtkCaptionActor2D.h>
 #include <vtkCellArray.h>
 #include <vtkCubeSource.h>
 #include <vtkCubeAxesActor.h>
@@ -224,13 +223,18 @@ void vtkWindowCatalogue3D::setupRenderer()
 {
     // Attach render window to the Qt VTK widget.
     ui->vtk->setRenderWindow(renderWindow.Get());
+    ui->vtk->setEnableTouchEventProcessing(false);
+    qInfo() << "[catalogue3d] widget type:" << ui->vtk->metaObject()->className()
+            << "touch-processing disabled to match vtkWindowCube";
 
     renderer->SetBackground(0.06, 0.06, 0.12);
     renderWindow->AddRenderer(renderer);
 
-    // Trackball camera – standard 3D navigation.
+    // Trackball camera – standard 3D navigation, matching the cube viewer approach:
+    // use the stock VTK style and keep catalogue logic in separate observers.
     auto style = vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New();
     ui->vtk->interactor()->SetInteractorStyle(style);
+    qInfo() << "[catalogue3d] installed interactor style:" << style->GetClassName();
 
     // Orientation axes widget (bottom-left corner, non-interactive).
     vtkNew<vtkAxesActor> axesActor;
@@ -251,12 +255,9 @@ void vtkWindowCatalogue3D::setupRenderer()
     inter->AddObserver(vtkCommand::MouseMoveEvent,         cb);
     inter->AddObserver(vtkCommand::LeftButtonPressEvent,   cb);
     inter->AddObserver(vtkCommand::LeftButtonReleaseEvent, cb);
-
-    this->sceneAxesActor->SetTotalLength(1.0, 1.0, 1.0);
-    this->sceneAxesActor->GetXAxisCaptionActor2D()->GetCaptionTextProperty()->SetColor(0.9, 0.4, 0.4);
-    this->sceneAxesActor->GetYAxisCaptionActor2D()->GetCaptionTextProperty()->SetColor(0.4, 0.9, 0.4);
-    this->sceneAxesActor->GetZAxisCaptionActor2D()->GetCaptionTextProperty()->SetColor(0.4, 0.6, 0.95);
-    renderer->AddActor(this->sceneAxesActor);
+    inter->AddObserver(vtkCommand::LeftButtonDoubleClickEvent, cb);
+    qInfo() << "[catalogue3d] observer registration complete;"
+            << "hover observer is separate from camera interaction";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -424,10 +425,6 @@ void vtkWindowCatalogue3D::buildScene()
     selectActor->GetProperty()->SetLineWidth(2.2);
     selectActor->VisibilityOff();
     renderer->AddActor(selectActor);
-
-    this->sceneAxesActor->SetTotalLength(diag * 0.2, diag * 0.2, diag * 0.2);
-    this->sceneAxesActor->SetPosition(0.0, 0.0, 0.0);
-    this->sceneAxesActor->SetVisibility(this->chkShowAxes && this->chkShowAxes->isChecked() ? 1 : 0);
 
     // ── Bounding-box coordinate axes ──────────────────────────────────────────
     const double bounds[6] = { xMin, xMax, yMin, yMax, zMin, zMax };
@@ -605,11 +602,21 @@ void vtkWindowCatalogue3D::onMouseEvent(unsigned long eid)
     int x = 0, y = 0;
     ui->vtk->interactor()->GetEventPosition(x, y);
 
+    if (eid == vtkCommand::LeftButtonDoubleClickEvent) {
+        const int idx = entries.empty() ? -1 : pickNearestSource(x, y);
+        qInfo() << "[catalogue3d] double-click observer fired, picked source:" << idx;
+        if (idx >= 0) {
+            setSelectedSource(idx);
+            centerOnSource(idx);
+        }
+        return;
+    }
+
     if (eid == vtkCommand::LeftButtonPressEvent) {
         leftButtonDown = true;
         pressX = x;
         pressY = y;
-        // Let the interactor style handle camera rotation — no early return needed.
+        qInfo() << "[catalogue3d] left press observed; camera remains owned by VTK style";
         return;
     }
 
@@ -626,9 +633,13 @@ void vtkWindowCatalogue3D::onMouseEvent(unsigned long eid)
         return;
     }
 
-    // MouseMoveEvent: update hover only when no button is held (pure hover).
-    if (!leftButtonDown && !entries.empty())
+    // MouseMoveEvent: passive motion is hover-only. Drag behavior is left to the VTK style.
+    if (!leftButtonDown && !entries.empty()) {
+        qInfo() << "[catalogue3d] passive mouse move -> hover observer";
         setHoveredSource(pickNearestSource(x, y));
+    } else if (leftButtonDown) {
+        qInfo() << "[catalogue3d] drag mouse move observed -> camera interaction path";
+    }
 }
 
 int vtkWindowCatalogue3D::pickNearestSource(int displayX, int displayY) const
@@ -815,7 +826,6 @@ void vtkWindowCatalogue3D::updateSizeMode()
 
 void vtkWindowCatalogue3D::toggleSceneAxes(bool checked)
 {
-    this->sceneAxesActor->SetVisibility(checked ? 1 : 0);
     this->axesWidget->SetEnabled(checked ? 1 : 0);
     this->renderWindow->Render();
 }
