@@ -26,6 +26,8 @@ struct Catalogue3DEntry
     QString morphology; // e.g. "halo", "relic", "mini-halo"
     double majorAxisArcmin{ 0.0 };
     double minorAxisArcmin{ 0.0 };
+    double llsMajorKpc{ 0.0 };
+    double llsMinorKpc{ 0.0 };
     double fluxMJy{ 0.0 };
     // 3D Cartesian scene coordinates (Mpc)
     double sceneX{ 0.0 };
@@ -105,6 +107,26 @@ inline QString colString(const QStringList &cols, int idx)
     return cols.at(idx).trimmed();
 }
 
+inline void parseSizePair(const QString &raw, double &minorValue, double &majorValue)
+{
+    minorValue = 0.0;
+    majorValue = 0.0;
+    const QRegularExpression re(QStringLiteral("([+-]?\\d+(?:\\.\\d+)?)\\s*x\\s*([+-]?\\d+(?:\\.\\d+)?)"),
+                                QRegularExpression::CaseInsensitiveOption);
+    const auto match = re.match(raw);
+    if (!match.hasMatch()) {
+        return;
+    }
+    bool okMinor = false;
+    bool okMajor = false;
+    const double first = match.captured(1).toDouble(&okMinor);
+    const double second = match.captured(2).toDouble(&okMajor);
+    if (okMinor && okMajor) {
+        minorValue = std::min(first, second);
+        majorValue = std::max(first, second);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Coordinate parsing
 //
@@ -172,7 +194,7 @@ inline void fillCartesian(Catalogue3DEntry &e)
     if (e.distanceMpc <= 0.0 && e.redshift > 0.0)
         e.distanceMpc = e.redshift * cOverH0;
     if (e.distanceMpc <= 0.0)
-        e.distanceMpc = 1.0; // place on unit sphere as fallback
+        e.distanceMpc = 300.0; // fixed-depth fallback for catalogues without z/d
 
     constexpr double pi = 3.14159265358979323846;
     const double ra  = e.raDeg  * pi / 180.0;
@@ -274,6 +296,17 @@ inline Catalogue3DParseResult parseFile(const QString &path)
         "DIFFUSEFLUXDENSITY",                   // Diffuse_Flux Density S_… → DIFFUSEFLUXDENSITY…
         "DIFFUSEFLUXDENSITYS128GHZMJY",
         "FLUXDENSITYS128GHZ",
+        "FLUXDENSITYS128GHZTOTALMJY",
+    });
+
+    const int iMajorAxis = detail::findCol(headers, {
+        "MAJORAXIS", "MAJAXIS", "BMAJ", "THETAMAJ", "MAJORAXISARCMIN", "MAJORAXISARCMIN"
+    });
+    const int iMinorAxis = detail::findCol(headers, {
+        "MINORAXIS", "MINAXIS", "BMIN", "THETAMIN", "MINORAXISARCMIN", "MINORAXISARCmin"
+    });
+    const int iLls = detail::findCol(headers, {
+        "LLS", "LLSKPC", "SIZE", "SIZELLSAXISMINXMAJKPCXKPC", "SIZEFULLEXTENT", "LARGESTLINEARSIZE"
     });
 
     const int iName = detail::findCol(headers, {
@@ -329,6 +362,13 @@ inline Catalogue3DParseResult parseFile(const QString &path)
 
         if (iFlux >= 0)
             e.fluxMJy = detail::colDouble(cols, iFlux);
+        if (iMajorAxis >= 0)
+            e.majorAxisArcmin = detail::colDouble(cols, iMajorAxis);
+        if (iMinorAxis >= 0)
+            e.minorAxisArcmin = detail::colDouble(cols, iMinorAxis);
+        if (iLls >= 0) {
+            detail::parseSizePair(detail::colString(cols, iLls), e.llsMinorKpc, e.llsMajorKpc);
+        }
 
         detail::fillCartesian(e);
         result.entries.push_back(e);

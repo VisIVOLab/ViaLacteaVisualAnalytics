@@ -79,6 +79,8 @@ set(PROJECT_SOURCES
         src/gui/AboutDialog.h
         src/gui/CatalogueTableModel.cpp
         src/gui/CatalogueTableModel.h
+        src/gui/Catalogue3DTableModel.cpp
+        src/gui/Catalogue3DTableModel.h
         src/gui/CubeViewController.cpp
         src/gui/CubeViewController.h
         src/gui/DatasetWindowFactory.cpp

@@ -6,8 +6,10 @@
 #include <vtkNew.h>
 #include <vtkSmartPointer.h>
 
+#include <QDockWidget>
 #include <QMainWindow>
 #include <QMap>
+#include <QPointer>
 #include <QStringList>
 
 #include <vector>
@@ -15,18 +17,26 @@
 // VTK forward declarations
 class vtkActor;
 class vtkBillboardTextActor3D;
+class vtkAxesActor;
 class vtkCubeAxesActor;
+class vtkCubeSource;
 class vtkGenericOpenGLRenderWindow;
+class vtkFloatArray;
 class vtkGlyph3D;
 class vtkIntArray;
 class vtkLookupTable;
 class vtkOrientationMarkerWidget;
 class vtkPoints;
 class vtkPolyData;
+class vtkPolyDataAlgorithm;
 class vtkPolyDataMapper;
 class vtkRenderer;
 class vtkSphereSource;
-
+class vtkAppendPolyData;
+class QCheckBox;
+class QComboBox;
+class QTableView;
+class Catalogue3DTableModel;
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class vtkWindowCatalogue3D;
@@ -54,12 +64,42 @@ private slots:
     void toggleMorphColors(bool checked);
     void scaleChanged(int value);
     void resetCamera();
+    void updateGeometryMode();
+    void updateSizeMode();
+    void toggleSceneAxes(bool checked);
+    void toggleBoundingBox(bool checked);
+    void toggleShells(bool checked);
+    void syncTableSelection(int index);
+
+signals:
+    void sourceSelectionChanged(int index);
 
 private:
+    enum class GeometryMode
+    {
+        Ellipsoid,
+        Sphere,
+        Point,
+        Cross,
+    };
+
+    enum class SizeMode
+    {
+        Fixed,
+        MajorAxis,
+        Lls,
+        Flux,
+    };
+
     // ── Setup ──────────────────────────────────────────────────────────────
     void setupRenderer();
     void buildScene();
     void buildLabels();
+    void buildShells();
+    void updateGlyphPipeline();
+    void updateGlyphScales();
+    void ensureCatalogueDock();
+    void refreshCatalogueTable();
 
     // ── Morphology LUT ─────────────────────────────────────────────────────
     void buildMorphologyLut();
@@ -74,6 +114,7 @@ private:
     int pickNearestSource(int displayX, int displayY) const;
     void setHoveredSource(int idx);
     void setSelectedSource(int idx);
+    void centerOnSource(int idx, double zoomFactor = 3.0);
 
     // ── UI helpers ──────────────────────────────────────────────────────────
     void updateInfoPanel();
@@ -91,6 +132,11 @@ private:
     QMap<QString, int> morphologyIndexOf;
     // Default glyph radius derived from bounding box of all sources.
     double defaultGlyphRadius{ 1.0 };
+    double maxDistanceMpc{ 1.0 };
+    double sizeNormalizationValue{ 1.0 };
+    GeometryMode geometryMode{ GeometryMode::Ellipsoid };
+    SizeMode sizeMode{ SizeMode::Fixed };
+    double fixedFallbackDistanceMpc{ 300.0 };
 
     // ── VTK rendering ───────────────────────────────────────────────────────
     vtkNew<vtkGenericOpenGLRenderWindow> renderWindow;
@@ -99,12 +145,17 @@ private:
     // Main source cloud (vtkGlyph3D batch)
     vtkNew<vtkPoints> sourcePoints;
     vtkNew<vtkIntArray> morphScalars; // one int per source → LUT index
+    vtkNew<vtkFloatArray> glyphScaleVectors;
     vtkNew<vtkPolyData> sourcesPolyData;
     vtkNew<vtkSphereSource> sphereSource;
+    vtkNew<vtkCubeSource> pointCubeSource;
+    vtkNew<vtkAppendPolyData> crossSource;
     vtkNew<vtkGlyph3D> glyphs;
     vtkNew<vtkPolyDataMapper> glyphMapper;
     vtkNew<vtkActor> glyphActor;
     vtkNew<vtkLookupTable> morphologyLut;
+    vtkNew<vtkPolyDataMapper> pointsMapper;
+    vtkNew<vtkActor> pointsActor;
 
     // Hover highlight (wireframe, yellow)
     vtkNew<vtkSphereSource> hoverSphere;
@@ -121,8 +172,19 @@ private:
 
     // Orientation axes corner widget
     vtkNew<vtkOrientationMarkerWidget> axesWidget;
-    // Data-space bounding-box axes
+    vtkNew<vtkAxesActor> sceneAxesActor;
     vtkNew<vtkCubeAxesActor> cubeAxesActor;
+    std::vector<vtkSmartPointer<vtkActor>> shellActors;
+    QPointer<QDockWidget> catalogueDock;
+    QPointer<QTableView> catalogueTableView;
+    QPointer<Catalogue3DTableModel> catalogueTableModel;
+    QPointer<QComboBox> comboGeometry;
+    QPointer<QComboBox> comboSizeMode;
+    QPointer<QComboBox> comboFrame;
+    QPointer<QCheckBox> chkShowAxes;
+    QPointer<QCheckBox> chkShowBoundingBox;
+    QPointer<QCheckBox> chkShowShells;
+    bool syncingTableSelection{ false };
 
     // Interaction state
     int hoveredIndex{ -1 };
