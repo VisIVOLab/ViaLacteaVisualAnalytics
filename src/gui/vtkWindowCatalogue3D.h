@@ -217,6 +217,8 @@ private:
     int selectedIndex{ -1 };
     // Left-button drag tracking (to distinguish click from camera rotate)
     bool leftButtonDown{ false };
+    bool leftClickCandidate{ false };
+    int pressPickIndex{ -1 };
     int pressX{ 0 };
     int pressY{ 0 };
     static constexpr int clickDragThresholdPx = 5;

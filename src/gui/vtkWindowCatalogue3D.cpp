@@ -873,17 +873,28 @@ void vtkWindowCatalogue3D::onMouseEvent(unsigned long eid)
         const int idx = entries.empty() ? -1 : pickNearestSource(x, y);
         qInfo() << "[catalogue3d] double-click observer fired, picked source:" << idx;
         if (idx >= 0) {
-            setSelectedSource(idx);
-            centerOnSource(idx);
+            const int newSelection = (idx == selectedIndex) ? -1 : idx;
+            qInfo() << "[catalogue3d] double-click selection index:" << newSelection
+                    << "(no zoom action executed)";
+            setSelectedSource(newSelection);
+        } else {
+            qInfo() << "[catalogue3d] double-click miss; clearing selection"
+                    << "(no zoom action executed)";
+            setSelectedSource(-1);
         }
+        this->leftClickCandidate = false;
         return;
     }
 
     if (eid == vtkCommand::LeftButtonPressEvent) {
         leftButtonDown = true;
+        leftClickCandidate = true;
         pressX = x;
         pressY = y;
+        pressPickIndex = entries.empty() ? -1 : pickNearestSource(x, y);
         qInfo() << "[catalogue3d] left press observed; camera remains owned by VTK style";
+        qInfo() << "[catalogue3d] left press position:" << pressX << pressY
+                << "press-pick-index:" << pressPickIndex;
         return;
     }
 
@@ -892,14 +903,29 @@ void vtkWindowCatalogue3D::onMouseEvent(unsigned long eid)
         // Treat as a click only when the pointer hasn't moved significantly.
         const int dx = x - pressX;
         const int dy = y - pressY;
-        if (dx * dx + dy * dy <= clickDragThresholdPx * clickDragThresholdPx
-            && !entries.empty()) {
-            const int idx = pickNearestSource(x, y);
-            qInfo() << "[catalogue3d] click selection hit index:" << idx;
-            setSelectedSource(idx == selectedIndex ? -1 : idx);
-        } else if (dx * dx + dy * dy <= clickDragThresholdPx * clickDragThresholdPx) {
-            qInfo() << "[catalogue3d] click selection miss on empty scene";
+        qInfo() << "[catalogue3d] left release position:" << x << y
+                << "click-candidate dx/dy:" << dx << dy;
+        const bool isClick = this->leftClickCandidate
+                && (dx * dx + dy * dy <= clickDragThresholdPx * clickDragThresholdPx);
+        this->leftClickCandidate = false;
+        if (isClick && !entries.empty()) {
+            qInfo() << "[catalogue3d] click accepted with threshold:" << clickDragThresholdPx;
+            int idx = this->pressPickIndex;
+            if (idx < 0) {
+                idx = pickNearestSource(x, y);
+            }
+            qInfo() << "[catalogue3d] click selection hit/miss index:" << idx;
+            if (idx >= 0) {
+                setSelectedSource(idx == selectedIndex ? -1 : idx);
+            } else {
+                qInfo() << "[catalogue3d] selection cleared by empty click";
+                setSelectedSource(-1);
+            }
+        } else if (isClick) {
+            qInfo() << "[catalogue3d] click accepted on empty scene; selection cleared";
             setSelectedSource(-1);
+        } else {
+            qInfo() << "[catalogue3d] drag rejected for selection";
         }
         return;
     }
