@@ -62,6 +62,26 @@ def _write_fits_image(path: str) -> None:
     hdu.writeto(path, overwrite=True)
 
 
+def _write_malformed_unit_fits_image(path: str) -> None:
+    data = np.ones((32, 32), dtype=np.float32)
+    hdu = fits.PrimaryHDU(data)
+    h = hdu.header
+    h["NAXIS"] = 2
+    h["NAXIS1"] = 32
+    h["NAXIS2"] = 32
+    h["CTYPE1"] = "RA---NCP"
+    h["CTYPE2"] = "DEC--NCP"
+    h["CRVAL1"] = 83.0
+    h["CRVAL2"] = -5.0
+    h["CRPIX1"] = 16.0
+    h["CRPIX2"] = 16.0
+    h["CDELT1"] = -2.777e-4
+    h["CDELT2"] = 2.777e-4
+    h["CUNIT1"] = "km/s"
+    h["CUNIT2"] = "deg"
+    hdu.writeto(path, overwrite=True)
+
+
 def _write_fits_cube(path: str) -> None:
     """Write a 32×64×64 float32 spectral cube with WCS headers."""
     rng = np.random.default_rng(7)
@@ -99,6 +119,13 @@ def _write_fits_cube(path: str) -> None:
 def synthetic_fits_image(tmp_path_factory) -> Path:
     p = tmp_path_factory.mktemp("fits") / "test_image.fits"
     _write_fits_image(str(p))
+    return p
+
+
+@pytest.fixture(scope="session")
+def malformed_unit_fits_image(tmp_path_factory) -> Path:
+    p = tmp_path_factory.mktemp("fits") / "test_image_bad_cunit.fits"
+    _write_malformed_unit_fits_image(str(p))
     return p
 
 

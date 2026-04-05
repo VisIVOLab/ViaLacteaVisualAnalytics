@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from astropy.io import fits
+from astropy import units as u
 from astropy.wcs import WCS
+
+logger = logging.getLogger("visivo.fits")
 
 
 @dataclass(frozen=True)
@@ -37,16 +41,75 @@ class ScientificFitsDataset:
             shape = hdul[0].shape
         self.header = header
         self.shape = tuple(shape) if shape is not None else ()
-        self.wcs = WCS(header)
         self.naxis = int(header.get("NAXIS", 0))
         self.axis_sizes = [int(header.get(f"NAXIS{i}", 1)) for i in range(1, self.naxis + 1)]
         self.active_axes = [axis for axis, size in enumerate(self.axis_sizes, start=1) if size > 1]
         self.degenerate_axes = [axis for axis, size in enumerate(self.axis_sizes, start=1) if size == 1]
+        self.client_axis_to_fits_axis = {idx + 1: axis for idx, axis in enumerate(self.active_axes)}
+        self.sanitized_header = self._sanitize_header_for_wcs(header)
+        self.wcs = self._build_wcs(self.sanitized_header)
         self.bunit = str(header.get("BUNIT", "")).strip()
         self.beam = BeamMetadata(
             major=float(header["BMAJ"]) if "BMAJ" in header else None,
             minor=float(header["BMIN"]) if "BMIN" in header else None,
             pa=float(header["BPA"]) if "BPA" in header else None,
+        )
+        self._log_axis_debug()
+
+    @staticmethod
+    def _is_celestial_ctype(ctype: str) -> bool:
+        token = (ctype or "").strip().upper()
+        if not token:
+            return False
+        celestial_prefixes = ("RA--", "DEC-", "GLON", "GLAT", "ELON", "ELAT", "HLON", "HLAT", "SLON", "SLAT", "TLON", "TLAT")
+        return token.startswith(celestial_prefixes)
+
+    @staticmethod
+    def _is_angular_unit(unit: str) -> bool:
+        raw = (unit or "").strip()
+        if not raw:
+            return True
+        try:
+            parsed = u.Unit(raw)
+        except Exception:
+            return False
+        physical_type = str(parsed.physical_type)
+        return physical_type == "angle"
+
+    def _sanitize_header_for_wcs(self, header: fits.Header) -> fits.Header:
+        sanitized = header.copy()
+        for axis in range(1, self.naxis + 1):
+            ctype = str(header.get(f"CTYPE{axis}", "")).strip()
+            cunit_key = f"CUNIT{axis}"
+            cunit = str(header.get(cunit_key, "")).strip()
+            if self._is_celestial_ctype(ctype) and not self._is_angular_unit(cunit):
+                logger.warning(
+                    "Malformed FITS WCS: CTYPE%s='%s' with CUNIT%s='%s'. Overriding to 'deg' for compatibility.",
+                    axis,
+                    ctype,
+                    axis,
+                    cunit,
+                )
+                sanitized[cunit_key] = "deg"
+        return sanitized
+
+    def _build_wcs(self, header: fits.Header) -> WCS | None:
+        try:
+            return WCS(header, relax=True, fix=True)
+        except Exception as exc:
+            logger.warning("[fits] WCS build failed for path=%s: %s. Falling back to degraded metadata-only mode.", self.path, exc)
+            return None
+
+    def _log_axis_debug(self) -> None:
+        ctype = [str(self.header.get(f"CTYPE{i}", "")).strip() for i in range(1, self.naxis + 1)]
+        cunit = [str(self.header.get(f"CUNIT{i}", "")).strip() for i in range(1, self.naxis + 1)]
+        logger.info(
+            "[fits] path=%s ctype=%s cunit=%s active_axes=%s client_axis_to_fits_axis=%s",
+            self.path,
+            ctype,
+            cunit,
+            self.active_axes,
+            self.client_axis_to_fits_axis,
         )
 
     def open_memmap(self):
@@ -120,12 +183,46 @@ class ScientificFitsDataset:
             raise ValueError("Scientific cube helpers require at least three active FITS axes.")
         return self.active_axes[-1]
 
+    def _linear_axis_coordinates(self, fits_axis: int, start: int, end: int) -> np.ndarray:
+        crpix = float(self.sanitized_header.get(f"CRPIX{fits_axis}", 1.0))
+        crval = float(self.sanitized_header.get(f"CRVAL{fits_axis}", 0.0))
+        cdelt = float(self.sanitized_header.get(f"CDELT{fits_axis}", 1.0))
+        pixels = np.arange(start, end + 1, dtype=np.float64)
+        return crval + (pixels + 1.0 - crpix) * cdelt
+
     def spectral_axis_metadata(self, channel_start: int, channel_end: int) -> dict[str, Any]:
         spectral_fits_axis = self.cube_numpy_spectral_fits_axis()
+        axis_label = str(self.header.get(f"CTYPE{spectral_fits_axis}", f"AXIS{spectral_fits_axis}")).strip()
+        axis_unit = str(self.sanitized_header.get(f"CUNIT{spectral_fits_axis}", self.header.get(f"CUNIT{spectral_fits_axis}", ""))).strip()
+
+        if self.wcs is None:
+            logger.warning(
+                "[fits] degraded spectral metadata path=%s fits_axis=%s axis_label=%s axis_unit=%s",
+                self.path,
+                spectral_fits_axis,
+                axis_label,
+                axis_unit or "-",
+            )
+            return {
+                "coordinates": self._linear_axis_coordinates(spectral_fits_axis, channel_start, channel_end),
+                "axis_type": axis_label,
+                "axis_unit": axis_unit,
+                "axis_label": axis_label,
+                "fits_axis": spectral_fits_axis,
+                "world_axis": max(0, spectral_fits_axis - 1),
+            }
+
         pixel_naxis = int(self.wcs.pixel_n_dim)
         world_naxis = int(self.wcs.world_n_dim)
         if pixel_naxis <= 0 or world_naxis <= 0:
-            raise ValueError("FITS WCS is not available for spectral-coordinate computation.")
+            return {
+                "coordinates": self._linear_axis_coordinates(spectral_fits_axis, channel_start, channel_end),
+                "axis_type": axis_label,
+                "axis_unit": axis_unit,
+                "axis_label": axis_label,
+                "fits_axis": spectral_fits_axis,
+                "world_axis": max(0, spectral_fits_axis - 1),
+            }
 
         axis_types = [ptype or "" for ptype in (self.wcs.world_axis_physical_types or [])]
         correlation = np.asarray(self.wcs.axis_correlation_matrix, dtype=bool)
@@ -162,16 +259,23 @@ class ScientificFitsDataset:
         reference_pixels[spectral_pixel_index] = np.arange(
             channel_start, channel_end + 1, dtype=np.float64
         )
-        world_values = self.wcs.pixel_to_world_values(*reference_pixels)
-        coordinates = np.asarray(world_values[spectral_world_index], dtype=np.float64)
-        if coordinates.ndim != 1 or coordinates.size != (channel_end - channel_start + 1):
-            coordinates = np.ravel(coordinates).astype(np.float64, copy=False)
+        try:
+            world_values = self.wcs.pixel_to_world_values(*reference_pixels)
+            coordinates = np.asarray(world_values[spectral_world_index], dtype=np.float64)
+            if coordinates.ndim != 1 or coordinates.size != (channel_end - channel_start + 1):
+                coordinates = np.ravel(coordinates).astype(np.float64, copy=False)
+        except Exception as exc:
+            logger.warning(
+                "[fits] WCS spectral conversion failed path=%s fits_axis=%s error=%s. Falling back to linear header coordinates.",
+                self.path,
+                spectral_fits_axis,
+                exc,
+            )
+            coordinates = self._linear_axis_coordinates(spectral_fits_axis, channel_start, channel_end)
 
         axis_type = axis_types[spectral_world_index] if spectral_world_index < len(axis_types) else ""
-        axis_unit = ""
         if hasattr(self.wcs, "world_axis_units") and spectral_world_index < len(self.wcs.world_axis_units):
-            axis_unit = self.wcs.world_axis_units[spectral_world_index] or ""
-        axis_label = str(self.header.get(f"CTYPE{spectral_fits_axis}", f"AXIS{spectral_fits_axis}")).strip()
+            axis_unit = self.wcs.world_axis_units[spectral_world_index] or axis_unit
         return {
             "coordinates": coordinates,
             "axis_type": axis_type or axis_label,

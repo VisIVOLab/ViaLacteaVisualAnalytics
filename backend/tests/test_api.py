@@ -184,6 +184,21 @@ async def test_open_nonexistent_file(client: AsyncClient, auth_headers: dict) ->
     assert resp.json()["valid"] is False
 
 
+@pytest.mark.asyncio
+async def test_open_malformed_celestial_unit_fits(
+    client: AsyncClient, auth_headers: dict, malformed_unit_fits_image
+) -> None:
+    resp = await client.post(
+        "/v1/datasets/open",
+        json={"path": str(malformed_unit_fits_image)},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is True
+    assert data["kind"] == "image"
+
+
 # ── Session isolation ─────────────────────────────────────────────────────────
 
 
@@ -467,6 +482,26 @@ async def test_cube_pv_too_few_vertices(client: AsyncClient, opened_cube: dict) 
         headers=opened_cube["headers"],
     )
     assert resp.json()["valid"] is False
+
+
+@pytest.mark.asyncio
+async def test_isosurface_product(client: AsyncClient, opened_cube: dict) -> None:
+    pytest.importorskip("vtk")
+    resp = await client.post(
+        "/v1/products/isosurface",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "threshold": 1.0,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is True, data["error"]
+    assert data["num_points"] > 0
+    assert data["num_polys"] > 0
+    assert data["points_base64"] != ""
+    assert data["polys_base64"] != ""
 
 
 # ── Image endpoints ───────────────────────────────────────────────────────────

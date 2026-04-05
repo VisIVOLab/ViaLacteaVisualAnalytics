@@ -291,14 +291,29 @@ def worker_isosurface(path: str, width: int, height: int, depth: int, threshold:
     except ImportError as exc:
         raise RuntimeError(f"VTK Python bindings are required: {exc}") from exc
 
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("Isosurface endpoint requires a 3D cube.")
         cube = np.ascontiguousarray(data, dtype=np.float32)
     finally:
         hdul.close()
+
+    actual_depth, actual_height, actual_width = cube.shape
+    if (width, height, depth) != (actual_width, actual_height, actual_depth):
+        logger.info(
+            "[isosurface] geometry override path=%s requested=(%s,%s,%s) actual=(%s,%s,%s)",
+            dataset.path,
+            width,
+            height,
+            depth,
+            actual_width,
+            actual_height,
+            actual_depth,
+        )
+        width, height, depth = actual_width, actual_height, actual_depth
 
     cube_bytes = cube.tobytes()
     image_import = vtk.vtkImageImport()
