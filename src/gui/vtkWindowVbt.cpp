@@ -5,6 +5,7 @@
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCellArray.h>
+#include <vtkCubeAxesActor.h>
 #include <vtkDoubleArray.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkInteractorStyleTrackballCamera.h>
@@ -17,14 +18,19 @@
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkScalarBarActor.h>
+#include <vtkTextProperty.h>
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDockWidget>
+#include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QPushButton>
 #include <QSlider>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -77,11 +83,41 @@ void vtkWindowVbt::setupUi()
     if (this->comboColorField->count() > 1) {
         this->comboColorField->setCurrentIndex(1);
     }
+    this->comboColormap = new QComboBox(displayGroup);
+    for (const auto &name : ColorMaps::GetColorMapNames()) {
+        this->comboColormap->addItem(QString::fromStdString(name));
+    }
+    this->comboColormap->setCurrentText(QString::fromStdString(ColorMaps::DefaultColorMap));
+    this->comboBackground = new QComboBox(displayGroup);
+    this->comboBackground->addItems({ u"Black"_s, u"Dark gray"_s, u"White"_s });
     this->sliderPointSize = new QSlider(Qt::Horizontal, displayGroup);
     this->sliderPointSize->setRange(1, 12);
     this->sliderPointSize->setValue(3);
+    this->checkShowBox = new QCheckBox(u"Show box"_s, displayGroup);
+    this->checkShowBox->setChecked(true);
+    this->checkShowLut = new QCheckBox(u"Show LUT"_s, displayGroup);
+    this->checkShowLut->setChecked(true);
+    this->checkShowOrientation = new QCheckBox(u"Show orientation"_s, displayGroup);
+    this->checkShowOrientation->setChecked(true);
+    this->spinRangeMin = new QDoubleSpinBox(displayGroup);
+    this->spinRangeMax = new QDoubleSpinBox(displayGroup);
+    this->spinRangeMin->setDecimals(6);
+    this->spinRangeMax->setDecimals(6);
+    this->spinRangeMin->setRange(-1e30, 1e30);
+    this->spinRangeMax->setRange(-1e30, 1e30);
+    this->buttonAutoscale = new QPushButton(u"Autoscale"_s, displayGroup);
+    this->buttonResetView = new QPushButton(u"Reset View"_s, displayGroup);
     displayLayout->addRow(u"Color"_s, this->comboColorField);
+    displayLayout->addRow(u"Colormap"_s, this->comboColormap);
+    displayLayout->addRow(u"Range min"_s, this->spinRangeMin);
+    displayLayout->addRow(u"Range max"_s, this->spinRangeMax);
+    displayLayout->addRow(u"Background"_s, this->comboBackground);
     displayLayout->addRow(u"Point size"_s, this->sliderPointSize);
+    displayLayout->addRow(this->checkShowBox);
+    displayLayout->addRow(this->checkShowLut);
+    displayLayout->addRow(this->checkShowOrientation);
+    displayLayout->addRow(this->buttonAutoscale);
+    displayLayout->addRow(this->buttonResetView);
     panelLayout->addWidget(displayGroup);
 
     auto *summaryGroup = new QGroupBox(u"Summary"_s, panel);
@@ -111,12 +147,49 @@ void vtkWindowVbt::setupUi()
 
     QObject::connect(this->comboColorField, &QComboBox::currentIndexChanged, this,
                      [this](int) { this->updateColorMapping(); });
+    QObject::connect(this->comboColormap, &QComboBox::currentIndexChanged, this,
+                     [this](int) { this->updateColorMapping(); });
+    QObject::connect(this->comboBackground, &QComboBox::currentIndexChanged, this,
+                     [this](int) { this->applyBackground(); });
     QObject::connect(this->sliderPointSize, &QSlider::valueChanged, this, [this](int value) {
         if (this->actor) {
             this->actor->GetProperty()->SetPointSize(value);
             this->renderWindow->Render();
             this->updateSummary();
         }
+    });
+    QObject::connect(this->checkShowBox, &QCheckBox::toggled, this, [this](bool checked) {
+        this->boxActor->SetVisibility(checked ? 1 : 0);
+        this->renderWindow->Render();
+    });
+    QObject::connect(this->checkShowLut, &QCheckBox::toggled, this, [this](bool) {
+        this->updateScalarBar();
+        this->renderWindow->Render();
+    });
+    QObject::connect(this->checkShowOrientation, &QCheckBox::toggled, this, [this](bool checked) {
+        this->axesWidget->SetEnabled(checked ? 1 : 0);
+        this->renderWindow->Render();
+    });
+    QObject::connect(this->buttonAutoscale, &QPushButton::clicked, this, [this]() {
+        this->setScalarRange(this->dataScalarMin, this->dataScalarMax);
+        this->updateColorMapping();
+    });
+    QObject::connect(this->buttonResetView, &QPushButton::clicked, this, [this]() {
+        this->resetView();
+    });
+    QObject::connect(this->spinRangeMin, &QDoubleSpinBox::valueChanged, this, [this](double) {
+        if (this->updatingRangeControls) {
+            return;
+        }
+        this->setScalarRange(this->spinRangeMin->value(), this->spinRangeMax->value());
+        this->updateColorMapping();
+    });
+    QObject::connect(this->spinRangeMax, &QDoubleSpinBox::valueChanged, this, [this](double) {
+        if (this->updatingRangeControls) {
+            return;
+        }
+        this->setScalarRange(this->spinRangeMin->value(), this->spinRangeMax->value());
+        this->updateColorMapping();
     });
 }
 
@@ -136,6 +209,28 @@ void vtkWindowVbt::setupRenderer()
     this->axesWidget->SetViewport(0.0, 0.0, 0.14, 0.14);
     this->axesWidget->EnabledOn();
     this->axesWidget->InteractiveOff();
+
+    this->scalarBar->SetLookupTable(this->scalarLut.Get());
+    this->scalarBar->SetMaximumWidthInPixels(100);
+    this->scalarBar->SetPosition(0.88, 0.1);
+    this->scalarBar->GetTitleTextProperty()->SetColor(1.0, 1.0, 1.0);
+    this->scalarBar->GetLabelTextProperty()->SetColor(1.0, 1.0, 1.0);
+    this->scalarBar->VisibilityOff();
+    this->renderer->AddViewProp(this->scalarBar.Get());
+
+    this->boxActor->SetCamera(this->renderer->GetActiveCamera());
+    this->boxActor->SetXTitle("X");
+    this->boxActor->SetYTitle("Y");
+    this->boxActor->SetZTitle("Z");
+    this->boxActor->SetFlyModeToOuterEdges();
+    this->boxActor->DrawXGridlinesOff();
+    this->boxActor->DrawYGridlinesOff();
+    this->boxActor->DrawZGridlinesOff();
+    for (int axis = 0; axis < 3; ++axis) {
+        this->boxActor->GetTitleTextProperty(axis)->SetColor(0.85, 0.85, 0.85);
+        this->boxActor->GetLabelTextProperty(axis)->SetColor(0.75, 0.75, 0.75);
+    }
+    this->renderer->AddActor(this->boxActor.Get());
 }
 
 void vtkWindowVbt::buildPointCloud()
@@ -171,8 +266,8 @@ void vtkWindowVbt::buildPointCloud()
     this->actor->GetProperty()->SetPointSize(this->sliderPointSize->value());
     this->actor->GetProperty()->SetColor(0.8, 0.85, 1.0);
     this->renderer->AddActor(this->actor.Get());
-    this->renderer->ResetCamera();
-    this->renderWindow->Render();
+    this->updateBoundsContext();
+    this->resetView();
 }
 
 QString vtkWindowVbt::activeColorFieldName() const
@@ -185,6 +280,33 @@ QString vtkWindowVbt::activeColorFieldName() const
             : this->comboColorField->currentText();
 }
 
+QString vtkWindowVbt::activeColormapName() const
+{
+    return this->comboColormap ? this->comboColormap->currentText()
+                               : QString::fromStdString(ColorMaps::DefaultColorMap);
+}
+
+void vtkWindowVbt::setScalarRange(double minValue, double maxValue)
+{
+    if (!(minValue < maxValue)) {
+        minValue = this->dataScalarMin;
+        maxValue = this->dataScalarMax;
+        if (!(minValue < maxValue)) {
+            maxValue = minValue + 1.0;
+        }
+    }
+    this->activeScalarMin = minValue;
+    this->activeScalarMax = maxValue;
+    this->updatingRangeControls = true;
+    if (this->spinRangeMin) {
+        this->spinRangeMin->setValue(minValue);
+    }
+    if (this->spinRangeMax) {
+        this->spinRangeMax->setValue(maxValue);
+    }
+    this->updatingRangeControls = false;
+}
+
 void vtkWindowVbt::updateColorMapping()
 {
     if (!this->comboColorField) {
@@ -195,6 +317,7 @@ void vtkWindowVbt::updateColorMapping()
     if (!data.isValid() || data.toString().isEmpty()) {
         this->mapper->ScalarVisibilityOff();
         this->actor->GetProperty()->SetColor(0.8, 0.85, 1.0);
+        this->updateScalarBar();
         this->renderWindow->Render();
         this->updateSummary();
         return;
@@ -204,6 +327,7 @@ void vtkWindowVbt::updateColorMapping()
     const int fieldIndex = data.toInt(&okIndex);
     if (!okIndex || fieldIndex < 0 || fieldIndex >= static_cast<int>(this->table.columns.size())) {
         this->mapper->ScalarVisibilityOff();
+        this->updateScalarBar();
         this->renderWindow->Render();
         this->updateSummary();
         return;
@@ -221,26 +345,83 @@ void vtkWindowVbt::updateColorMapping()
     if (!(minValue < maxValue)) {
         maxValue = minValue + 1.0;
     }
+    this->dataScalarMin = minValue;
+    this->dataScalarMax = maxValue;
+    if (!(this->activeScalarMin < this->activeScalarMax)
+        || this->activeScalarMin < minValue || this->activeScalarMax > maxValue) {
+        this->setScalarRange(minValue, maxValue);
+    }
     this->pointScalars->Modified();
     this->polyData->GetPointData()->SetScalars(this->pointScalars.Get());
-    this->scalarLut->SetTableRange(minValue, maxValue);
+    ColorMaps::SetColorMap(this->scalarLut.Get(), this->activeColormapName().toStdString());
+    this->scalarLut->SetTableRange(this->activeScalarMin, this->activeScalarMax);
     this->scalarLut->Build();
     this->mapper->SetLookupTable(this->scalarLut.Get());
-    this->mapper->SetScalarRange(minValue, maxValue);
+    this->mapper->SetScalarRange(this->activeScalarMin, this->activeScalarMax);
     this->mapper->ScalarVisibilityOn();
+    this->updateScalarBar();
     this->renderWindow->Render();
     this->updateSummary();
+}
+
+void vtkWindowVbt::updateScalarBar()
+{
+    const bool visible = this->mapper->GetScalarVisibility()
+            && this->checkShowLut && this->checkShowLut->isChecked();
+    this->scalarBar->SetVisibility(visible ? 1 : 0);
+    if (visible) {
+        this->scalarBar->SetTitle(this->activeColorFieldName().toUtf8().constData());
+        const bool darkBackground = !this->comboBackground || this->comboBackground->currentText() != u"White"_s;
+        const double textColor = darkBackground ? 1.0 : 0.1;
+        this->scalarBar->GetTitleTextProperty()->SetColor(textColor, textColor, textColor);
+        this->scalarBar->GetLabelTextProperty()->SetColor(textColor, textColor, textColor);
+    }
+}
+
+void vtkWindowVbt::updateBoundsContext()
+{
+    double bounds[6] = { 0., 0., 0., 0., 0., 0. };
+    this->polyData->GetBounds(bounds);
+    this->boxActor->SetBounds(bounds);
+    this->boxActor->SetVisibility(this->checkShowBox && this->checkShowBox->isChecked() ? 1 : 0);
+}
+
+void vtkWindowVbt::applyBackground()
+{
+    if (!this->comboBackground) {
+        return;
+    }
+    const QString background = this->comboBackground->currentText();
+    if (background == u"White"_s) {
+        this->renderer->SetBackground(0.98, 0.98, 0.98);
+    } else if (background == u"Dark gray"_s) {
+        this->renderer->SetBackground(0.16, 0.17, 0.19);
+    } else {
+        this->renderer->SetBackground(0.06, 0.06, 0.1);
+    }
+    this->updateScalarBar();
+    this->renderWindow->Render();
+}
+
+void vtkWindowVbt::resetView()
+{
+    this->renderer->ResetCamera();
+    this->renderer->ResetCameraClippingRange();
+    this->renderWindow->Render();
 }
 
 void vtkWindowVbt::updateSummary()
 {
     if (this->summaryLabel) {
         this->summaryLabel->setText(
-                QStringLiteral("Rows: %1\nFields: %2\nScalar type: %3\nActive color: %4\nPoint size: %5")
+                QStringLiteral("Rows: %1\nFields: %2\nScalar type: %3\nActive color: %4\nColormap: %5\nRange: [%6, %7]\nPoint size: %8")
                         .arg(this->table.header.rowCount)
                         .arg(this->table.header.fieldCount)
                         .arg(VbtTableLoader::scalarTypeName(this->table.header.scalarType))
                         .arg(this->activeColorFieldName())
+                        .arg(this->activeColormapName())
+                        .arg(this->activeScalarMin, 0, 'g', 6)
+                        .arg(this->activeScalarMax, 0, 'g', 6)
                         .arg(this->sliderPointSize ? this->sliderPointSize->value() : 0));
     }
     if (this->metadataLabel) {

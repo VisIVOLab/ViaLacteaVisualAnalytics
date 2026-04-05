@@ -107,6 +107,8 @@ set(PROJECT_SOURCES
         src/gui/vtkWindowImage.h
         src/gui/vtkWindowVbt.cpp
         src/gui/vtkWindowVbt.h
+        src/gui/vtkWindowVbtVolume.cpp
+        src/gui/vtkWindowVbtVolume.h
 )
 
 set(PROJECT_UI

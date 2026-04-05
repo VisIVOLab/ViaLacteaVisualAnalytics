@@ -15,6 +15,7 @@
 #include "vtkWindowCube.h"
 #include "vtkWindowImage.h"
 #include "vtkWindowVbt.h"
+#include "vtkWindowVbtVolume.h"
 
 #include <QButtonGroup>
 #include <QCloseEvent>
@@ -179,7 +180,12 @@ void MainWindow::openVbt()
         return;
     }
 
-    auto *win = new vtkWindowVbt(table, this);
+    QWidget *win = nullptr;
+    if (table.header.kind == VbtDatasetKind::Volume) {
+        win = new vtkWindowVbtVolume(table, this);
+    } else {
+        win = new vtkWindowVbt(table, this);
+    }
     win->show();
     win->raise();
     win->activateWindow();

@@ -2,6 +2,7 @@
 
 #include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QSysInfo>
 #include <QTextStream>
 
@@ -27,6 +28,11 @@ T maybeSwapValue(const char *ptr, bool swapBytes)
 QString normalizedFieldName(const QString &fieldName)
 {
     return fieldName.trimmed().toLower();
+}
+
+QStringList splitTokens(const QString &line)
+{
+    return line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
 }
 
 } // namespace
@@ -70,9 +76,9 @@ VbtTableData load(const QString &headerPath)
     }
 
     const QString typeLine = lines.at(0).toLower();
-    if (typeLine == QStringLiteral("f")) {
+    if (typeLine == QStringLiteral("f") || typeLine == QStringLiteral("float")) {
         result.header.scalarType = VbtScalarType::Float32;
-    } else if (typeLine == QStringLiteral("d")) {
+    } else if (typeLine == QStringLiteral("d") || typeLine == QStringLiteral("double")) {
         result.header.scalarType = VbtScalarType::Float64;
     } else {
         result.errorMessage = QStringLiteral("Unsupported VBT scalar type: %1").arg(lines.at(0));
@@ -81,19 +87,59 @@ VbtTableData load(const QString &headerPath)
 
     bool okFieldCount = false;
     const int fieldCount = lines.at(1).toInt(&okFieldCount);
-    bool okRowCount = false;
-    const qlonglong rowCount = lines.at(2).toLongLong(&okRowCount);
-    if (!okFieldCount || fieldCount <= 0 || !okRowCount || rowCount <= 0) {
-        result.errorMessage = QStringLiteral("Malformed VBT header: invalid field or row count.");
+    if (!okFieldCount || fieldCount <= 0) {
+        result.errorMessage = QStringLiteral("Malformed VBT header: invalid field count.");
         return result;
     }
     result.header.fieldCount = fieldCount;
-    result.header.rowCount = rowCount;
+
+    const QStringList rowTokens = splitTokens(lines.at(2));
+    if (rowTokens.size() == 1) {
+        bool okRowCount = false;
+        const qlonglong rowCount = rowTokens.at(0).toLongLong(&okRowCount);
+        if (!okRowCount || rowCount <= 0) {
+            result.errorMessage = QStringLiteral("Malformed VBT header: invalid row count.");
+            return result;
+        }
+        result.header.kind = VbtDatasetKind::Point;
+        result.header.rowCount = rowCount;
+    } else if (rowTokens.size() == 7) {
+        bool okCount = false;
+        bool okNx = false;
+        bool okNy = false;
+        bool okNz = false;
+        bool okSx = false;
+        bool okSy = false;
+        bool okSz = false;
+        const qlonglong voxelCount = rowTokens.at(0).toLongLong(&okCount);
+        const int nx = rowTokens.at(1).toInt(&okNx);
+        const int ny = rowTokens.at(2).toInt(&okNy);
+        const int nz = rowTokens.at(3).toInt(&okNz);
+        const double sx = rowTokens.at(4).toDouble(&okSx);
+        const double sy = rowTokens.at(5).toDouble(&okSy);
+        const double sz = rowTokens.at(6).toDouble(&okSz);
+        if (!okCount || !okNx || !okNy || !okNz || voxelCount <= 0 || nx <= 0 || ny <= 0
+            || nz <= 0 || !okSx || !okSy || !okSz) {
+            result.errorMessage = QStringLiteral("Malformed VBT volume header: invalid dimensions or spacing.");
+            return result;
+        }
+        if (static_cast<qlonglong>(nx) * ny * nz != voxelCount) {
+            result.errorMessage = QStringLiteral("Malformed VBT volume header: voxel count does not match dimensions.");
+            return result;
+        }
+        result.header.kind = VbtDatasetKind::Volume;
+        result.header.rowCount = voxelCount;
+        result.header.dimensions = { nx, ny, nz };
+        result.header.spacing = { sx, sy, sz };
+    } else {
+        result.errorMessage = QStringLiteral("Malformed VBT header: unsupported row/dimension line.");
+        return result;
+    }
 
     const QString endianLine = lines.at(3).toLower();
-    if (endianLine == QStringLiteral("l")) {
+    if (endianLine == QStringLiteral("l") || endianLine == QStringLiteral("little")) {
         result.header.endian = VbtEndian::Little;
-    } else if (endianLine == QStringLiteral("b")) {
+    } else if (endianLine == QStringLiteral("b") || endianLine == QStringLiteral("big")) {
         result.header.endian = VbtEndian::Big;
     } else {
         result.errorMessage = QStringLiteral("Unsupported VBT endian flag: %1").arg(lines.at(3));
@@ -146,43 +192,45 @@ VbtTableData load(const QString &headerPath)
         result.errorMessage = QStringLiteral("Failed to read complete VBT binary payload.");
         return result;
     }
+    result.rawBinary = raw;
 
     const bool hostLittleEndian = QSysInfo::ByteOrder == QSysInfo::LittleEndian;
     const bool fileLittleEndian = result.header.endian == VbtEndian::Little;
     const bool swapBytes = hostLittleEndian != fileLittleEndian;
 
-    result.columns.assign(static_cast<std::size_t>(fieldCount),
-                          std::vector<double>(static_cast<std::size_t>(rowCount), 0.0));
+    if (result.header.kind == VbtDatasetKind::Point) {
+        result.columns.assign(static_cast<std::size_t>(fieldCount),
+                              std::vector<double>(static_cast<std::size_t>(result.header.rowCount), 0.0));
 
-    const char *ptr = raw.constData();
-    for (std::int64_t row = 0; row < result.header.rowCount; ++row) {
-        for (int field = 0; field < result.header.fieldCount; ++field) {
-            double value = 0.0;
-            if (result.header.scalarType == VbtScalarType::Float64) {
-                value = maybeSwapValue<double>(ptr, swapBytes);
-            } else {
-                value = maybeSwapValue<float>(ptr, swapBytes);
+        const char *ptr = raw.constData();
+        for (std::int64_t row = 0; row < result.header.rowCount; ++row) {
+            for (int field = 0; field < result.header.fieldCount; ++field) {
+                double value = 0.0;
+                if (result.header.scalarType == VbtScalarType::Float64) {
+                    value = maybeSwapValue<double>(ptr, swapBytes);
+                } else {
+                    value = maybeSwapValue<float>(ptr, swapBytes);
+                }
+                result.columns[static_cast<std::size_t>(field)][static_cast<std::size_t>(row)] = value;
+                ptr += scalarSize;
             }
-            result.columns[static_cast<std::size_t>(field)][static_cast<std::size_t>(row)] = value;
-            ptr += scalarSize;
         }
-    }
-
-    for (int field = 0; field < result.header.fieldNames.size(); ++field) {
-        const QString name = normalizedFieldName(result.header.fieldNames.at(field));
-        if (name == QStringLiteral("x")) {
-            result.xIndex = field;
-        } else if (name == QStringLiteral("y")) {
-            result.yIndex = field;
-        } else if (name == QStringLiteral("z")) {
-            result.zIndex = field;
+        for (int field = 0; field < result.header.fieldNames.size(); ++field) {
+            const QString name = normalizedFieldName(result.header.fieldNames.at(field));
+            if (name == QStringLiteral("x")) {
+                result.xIndex = field;
+            } else if (name == QStringLiteral("y")) {
+                result.yIndex = field;
+            } else if (name == QStringLiteral("z")) {
+                result.zIndex = field;
+            }
         }
-    }
 
-    if (result.xIndex < 0 || result.yIndex < 0 || result.zIndex < 0) {
-        result.errorMessage = QStringLiteral(
-                "This first VBT viewer version only supports point tables with X, Y, Z columns.");
-        return result;
+        if (result.xIndex < 0 || result.yIndex < 0 || result.zIndex < 0) {
+            result.errorMessage = QStringLiteral(
+                    "This first VBT viewer version only supports point tables with X, Y, Z columns.");
+            return result;
+        }
     }
 
     result.valid = true;
