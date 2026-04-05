@@ -85,16 +85,11 @@ struct BackendMomentResult
     QString scalarType;
     double rangeMin{ 0. };
     double rangeMax{ 0. };
-    QString spectralAxisType;
-    QString spectralAxisUnit;
-    QString momentUnit;
-    QString bunit;
-    QByteArray data;
-    // Scientific metadata propagated from the server-side WCS pipeline.
-    QString momentUnit;       // e.g. "Jy/beam Hz", "km/s", "km^2/s^2"
-    QString bunit;            // raw BUNIT from the FITS header
     QString spectralAxisType; // CTYPE3 value, e.g. "FREQ", "VRAD"
     QString spectralAxisUnit; // CUNIT3 value, e.g. "Hz", "km/s"
+    QString momentUnit;       // e.g. "Jy/beam Hz", "km/s", "km^2/s^2"
+    QString bunit;            // raw BUNIT from the FITS header
+    QByteArray data;
 };
 
 struct BackendTaskCreateResult

@@ -1359,8 +1359,6 @@ RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &data
     }
 
     // Populate physical arcsecond positions when the backend returns them.
-    const qsizetype expectedPositionsBytes =
-            static_cast<qsizetype>(response.numSamples) * static_cast<qsizetype>(sizeof(float));
     if (!response.positionsArcsec.isEmpty()
         && response.positionsArcsec.size() == expectedPositionsBytes) {
         const auto *rawArcsec =
