@@ -247,6 +247,8 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path)
     for (const QJsonValue &value : wcsSanitizedAxes) {
         result.wcsSanitizedAxes.push_back(value.toInt());
     }
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
 
     const QJsonArray spacing = object.value(QStringLiteral("spacing")).toArray();
     const QJsonArray origin = object.value(QStringLiteral("origin")).toArray();

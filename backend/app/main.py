@@ -155,6 +155,8 @@ class OpenDatasetResponse(BaseModel):
     wcs_status: str = "ok"
     wcs_warning_message: str = ""
     wcs_sanitized_axes: list[int] = []
+    spectral_axis_type: str = ""
+    spectral_axis_unit: str = ""
     spacing: list[float] = [1.0, 1.0, 1.0]
     origin: list[float] = [0.0, 0.0, 0.0]
     ctype: list[str] = ["", "", ""]
@@ -576,6 +578,8 @@ async def open_dataset(
         wcs_status=str(geometry.get("wcs_status", "ok")),
         wcs_warning_message=str(geometry.get("wcs_warning_message", "")),
         wcs_sanitized_axes=list(geometry.get("wcs_sanitized_axes", [])),
+        spectral_axis_type=str(geometry.get("spectral_axis_type", "")),
+        spectral_axis_unit=str(geometry.get("spectral_axis_unit", "")),
         spacing=geometry["spacing"],
         origin=geometry["origin"],
         ctype=geometry["ctype"],

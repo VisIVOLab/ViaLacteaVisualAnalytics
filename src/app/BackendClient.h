@@ -58,6 +58,8 @@ struct BackendOpenDatasetResult
     QString wcsStatus{ QStringLiteral("ok") };
     QString wcsWarningMessage;
     QList<int> wcsSanitizedAxes;
+    QString spectralAxisType;
+    QString spectralAxisUnit;
     std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
     std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
     std::array<QString, 3> ctype{ QString(), QString(), QString() };

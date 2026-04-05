@@ -252,6 +252,7 @@ void MainWindow::openRemoteData()
                                   opened.height, opened.depth, opened.spacing, opened.origin,
                                   opened.ctype, opened.cunit, opened.crval, opened.crpix,
                                   opened.cdelt, opened.degenerateAxesSummary,
+                                  opened.spectralAxisType, opened.spectralAxisUnit,
                                   opened.wcsStatus, opened.wcsWarningMessage,
                                   client.sessionId(), client.token(), this);
     win->show();

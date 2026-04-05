@@ -192,6 +192,15 @@ class ScientificFitsDataset:
             height = squeezed[1] if len(squeezed) > 1 else 1
             depth = 1
             kind = "image"
+        spectral_axis_type = ""
+        spectral_axis_unit = ""
+        if kind == "cube" and len(self.active_axes) >= 3:
+            try:
+                spectral = self.spectral_axis_metadata(0, 0)
+                spectral_axis_type = str(spectral.get("axis_type", "") or "")
+                spectral_axis_unit = str(spectral.get("axis_unit", "") or "")
+            except Exception as exc:
+                logger.warning("[fits] spectral metadata unavailable for path=%s: %s", self.path, exc)
         return {
             "kind": kind,
             "active_axes": len(self.active_axes),
@@ -199,6 +208,8 @@ class ScientificFitsDataset:
             "wcs_status": self.wcs_status,
             "wcs_warning_message": self.wcs_warning_message,
             "wcs_sanitized_axes": list(self.wcs_sanitized_axes),
+            "spectral_axis_type": spectral_axis_type,
+            "spectral_axis_unit": spectral_axis_unit,
             "width": width,
             "height": height,
             "depth": depth,

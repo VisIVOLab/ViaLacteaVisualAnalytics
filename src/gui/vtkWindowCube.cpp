@@ -1433,6 +1433,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                     {},
                     {},
                     {},
+                    {},
+                    {},
                     parent)
 {
 }
@@ -1447,6 +1449,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              const std::array<double, 3> &remoteCrpix,
                              const std::array<double, 3> &remoteCdelt,
                              const QString &remoteDegenerateAxesSummary,
+                             const QString &remoteSpectralAxisType,
+                             const QString &remoteSpectralAxisUnit,
                              const QString &remoteWcsStatus,
                              const QString &remoteWcsWarningMessage,
                              const QString &remoteSessionId,
@@ -1470,6 +1474,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
       remoteDatasetCrpix(remoteCrpix),
       remoteDatasetCdelt(remoteCdelt),
       remoteDegenerateAxesSummary(remoteDegenerateAxesSummary),
+      remoteSpectralAxisType(remoteSpectralAxisType),
+      remoteSpectralAxisUnit(remoteSpectralAxisUnit),
       remoteWcsStatus(remoteWcsStatus),
       remoteWcsWarningMessage(remoteWcsWarningMessage),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
@@ -5624,6 +5630,26 @@ double vtkWindowCube::remoteSliceCoordinate(int sliceIndex) const
 vtkWindowCube::SpectralAxisDescriptor vtkWindowCube::spectralAxisDescriptor() const
 {
     if (this->isRemoteMode) {
+        const bool hasBackendSpectralMetadata = !this->remoteSpectralAxisType.trimmed().isEmpty()
+                || !this->remoteSpectralAxisUnit.trimmed().isEmpty();
+        if (hasBackendSpectralMetadata) {
+            auto descriptor =
+                    inferSpectralAxisDescriptor(this->remoteSpectralAxisType,
+                                               !this->remoteSpectralAxisUnit.trimmed().isEmpty()
+                                                       ? this->remoteSpectralAxisUnit
+                                                       : this->remoteDatasetCunit[2],
+                                               true);
+            descriptor.trusted = true;
+            descriptor.inferred = false;
+            descriptor.physical = true;
+            descriptor.sourceLabel = this->remoteDatasetCtype[2].trimmed().isEmpty()
+                    ? this->remoteSpectralAxisType.trimmed()
+                    : this->remoteDatasetCtype[2].trimmed();
+            if (descriptor.label.trimmed().isEmpty()) {
+                descriptor.label = u"Spectral"_s;
+            }
+            return descriptor;
+        }
         return inferSpectralAxisDescriptor(this->remoteDatasetCtype[2], this->remoteDatasetCunit[2],
                                            this->remoteHasWcsAxis(2));
     }
@@ -5686,7 +5712,7 @@ QString vtkWindowCube::spectralAxisTitle() const
     if (descriptor.unit.isEmpty() || descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
         return descriptor.label;
     }
-    return u"%1 [%2]"_s.arg(descriptor.label, descriptor.unit);
+    return u"%1 (%2)"_s.arg(descriptor.label, descriptor.unit);
 }
 
 QString vtkWindowCube::spectralAxisTooltip() const
@@ -5695,6 +5721,8 @@ QString vtkWindowCube::spectralAxisTooltip() const
     QString trust;
     if (descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
         trust = u"Fallback to channel index."_s;
+    } else if (this->isRemoteMode && !this->remoteSpectralAxisType.trimmed().isEmpty()) {
+        trust = u"Inferred from backend WCS."_s;
     } else if (descriptor.trusted) {
         trust = u"Trusted from FITS spectral metadata."_s;
     } else if (descriptor.inferred) {
@@ -5710,6 +5738,7 @@ QString vtkWindowCube::spectralAxisTooltip() const
 
 void vtkWindowCube::refreshSpectralAxisUi()
 {
+    const auto descriptor = this->spectralAxisDescriptor();
     const QString title = this->spectralAxisTitle();
     const QString tooltip = this->spectralAxisTooltip();
     ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(title));
@@ -5717,7 +5746,13 @@ void vtkWindowCube::refreshSpectralAxisUi()
     ui->lineSpectral->setToolTip(tooltip);
     ui->lineSpectral->setStatusTip(tooltip);
     qDebug().noquote()
-            << QStringLiteral("[spectral] axis3 title=%1 tooltip=%2").arg(title, tooltip);
+            << QStringLiteral("[spectral] axis3 title=%1 unit=%2 source=%3")
+                       .arg(descriptor.label,
+                            descriptor.unit.isEmpty() ? QStringLiteral("unknown units")
+                                                      : descriptor.unit,
+                            (this->isRemoteMode && !this->remoteSpectralAxisType.trimmed().isEmpty())
+                                    ? QStringLiteral("backend_wcs")
+                                    : descriptor.sourceLabel);
     this->updateDataStatePanel();
     this->updateSanityPanel();
 }

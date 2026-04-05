@@ -122,6 +122,8 @@ public:
                   const std::array<double, 3> &remoteCrpix,
                   const std::array<double, 3> &remoteCdelt,
                   const QString &remoteDegenerateAxesSummary,
+                  const QString &remoteSpectralAxisType = QString(),
+                  const QString &remoteSpectralAxisUnit = QString(),
                   const QString &remoteWcsStatus = QStringLiteral("ok"),
                   const QString &remoteWcsWarningMessage = QString(),
                   const QString &remoteSessionId = QString(),
@@ -249,6 +251,8 @@ private:
     const std::array<double, 3> remoteDatasetCrpix;
     const std::array<double, 3> remoteDatasetCdelt;
     const QString remoteDegenerateAxesSummary;
+    const QString remoteSpectralAxisType;
+    const QString remoteSpectralAxisUnit;
     const QString remoteWcsStatus;
     const QString remoteWcsWarningMessage;
     std::unique_ptr<AstroUtils> astro;
