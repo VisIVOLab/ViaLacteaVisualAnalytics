@@ -204,13 +204,39 @@ inline bool parseCoord(const QString &raw, double &outDeg, bool isRA)
     return parseSexagesimal(s, outDeg, isRA);
 }
 
-// Hubble approximation: d_Mpc = z * c / H0  (H0 = 70 km/s/Mpc)
-inline constexpr double cOverH0 = 4285.7; // Mpc
+// Comoving distance in flat ΛCDM (Planck18: H0=67.74, Ω_m=0.3089, Ω_Λ=0.6911).
+// Uses a simple 1000-step trapezoidal integration of 1/E(z), where
+// E(z) = sqrt(Ω_m·(1+z)³ + Ω_Λ). Accurate to <0.1% for z ≤ 10.
+// The linear Hubble approximation (c/H0 · z) is only valid for z ≪ 1 and
+// diverges by 40–60% at z~2 — making it wrong for Euclid-scale catalogues.
+inline double comovingDistanceMpc(double z)
+{
+    if (z <= 0.0)
+        return 0.0;
+    constexpr double H0      = 67.74;    // km/s/Mpc (Planck18)
+    constexpr double cKms    = 2.998e5;  // speed of light in km/s
+    constexpr double DH      = cKms / H0; // Hubble distance in Mpc (~4426 Mpc)
+    constexpr double Omega_m = 0.3089;
+    constexpr double Omega_L = 0.6911;
+    constexpr int    N       = 1000;     // trapezoidal steps
+
+    auto E_inv = [&](double zp) -> double {
+        const double factor = Omega_m * (1.0 + zp) * (1.0 + zp) * (1.0 + zp) + Omega_L;
+        return (factor > 0.0) ? 1.0 / std::sqrt(factor) : 0.0;
+    };
+
+    const double dz = z / static_cast<double>(N);
+    double integral = 0.5 * (E_inv(0.0) + E_inv(z));
+    for (int i = 1; i < N; ++i)
+        integral += E_inv(dz * static_cast<double>(i));
+    integral *= dz;
+    return DH * integral;
+}
 
 inline void fillCartesian(Catalogue3DEntry &e)
 {
     if (e.distanceMpc <= 0.0 && e.redshift > 0.0)
-        e.distanceMpc = e.redshift * cOverH0;
+        e.distanceMpc = comovingDistanceMpc(e.redshift);
     if (e.distanceMpc <= 0.0)
         e.distanceMpc = 300.0; // fixed-depth fallback for catalogues without z/d
 

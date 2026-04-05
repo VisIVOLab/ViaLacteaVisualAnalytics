@@ -13,7 +13,6 @@
 #include <QProcessEnvironment>
 #include <QDebug>
 #include <QStandardPaths>
-#include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
@@ -619,7 +618,15 @@ BackendTaskStatusResult BackendClient::waitForTaskCompletion(const BackendTaskCr
                                                  : QStringLiteral("false"));
 
     for (int attempt = 0; attempt < maxPollAttempts; ++attempt) {
-        QThread::msleep(pollIntervalMs);
+        // Use a local QEventLoop driven by a single-shot QTimer instead of
+        // QThread::msleep so the thread can process queued Qt events while
+        // waiting. This prevents the thread pool slot from being locked in an
+        // unconditional sleep system call during long-running polls.
+        {
+            QEventLoop waitLoop;
+            QTimer::singleShot(pollIntervalMs, &waitLoop, &QEventLoop::quit);
+            waitLoop.exec();
+        }
         const auto taskStatus = this->requestTaskStatus(createResult.taskId);
         if (!taskStatus.valid && !taskStatus.status.isEmpty()
             && taskStatus.status != QStringLiteral("failed")) {

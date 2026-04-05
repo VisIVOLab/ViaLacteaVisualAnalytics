@@ -329,6 +329,28 @@ class ScientificFitsDataset:
             "world_axis": spectral_world_index,
         }
 
+    def spatial_pixel_scale_arcsec(self) -> float:
+        """Return the mean spatial pixel scale in arcseconds.
+
+        Uses astropy.wcs.utils.proj_plane_pixel_scales on the celestial
+        sub-WCS when available (handles rotated and skewed projections).
+        Falls back to |CDELT1| × 3600 in degrees when WCS is not usable.
+        """
+        if self.wcs is not None:
+            try:
+                from astropy.wcs.utils import proj_plane_pixel_scales
+                celestial = self.wcs.celestial
+                if celestial is not None and celestial.pixel_n_dim >= 2:
+                    scales_deg = proj_plane_pixel_scales(celestial)
+                    # proj_plane_pixel_scales returns values in the same units
+                    # as the WCS axes; celestial sub-WCS always has angular units
+                    # (degrees by default from astropy).
+                    return float(np.mean(np.abs(scales_deg))) * 3600.0
+            except Exception as exc:
+                logger.warning("[fits] proj_plane_pixel_scales failed for path=%s: %s. Using CDELT1 fallback.", self.path, exc)
+        cdelt1_deg = abs(float(self.header.get("CDELT1", 1.0)))
+        return cdelt1_deg * 3600.0
+
     def provenance_context(self) -> dict[str, Any]:
         return {
             "path": self.path,

@@ -818,6 +818,33 @@ async def cube_pv(
     return CubePvResponse(valid=True, error="", **result)
 
 
+async def _progress_ticker(task_id: str, start: float = 0.05, end: float = 0.90, interval_s: float = 5.0) -> None:
+    """
+    Slowly increment task progress from *start* to *end* at *interval_s* second intervals.
+
+    This gives the polling client visible forward progress during long-running
+    ProcessPoolExecutor operations where the worker cannot report back intermediate
+    state. The ticker is cancelled by the _runner coroutine as soon as the real
+    result arrives.
+
+    With the defaults (start=0.05, end=0.90, interval=5s, step≈4.25%):
+      - A 30s computation reaches ~45% before completing.
+      - A 120s computation reaches ~90% (cap) after 100s, then jumps to 100%.
+    """
+    step = max(0.01, (end - start) / 20.0)  # ≈20 ticks from start to end
+    progress = start
+    try:
+        while progress < end:
+            await asyncio.sleep(interval_s)
+            progress = min(end, progress + step)
+            record = TASKS.get(task_id)
+            if record is None or record.status != "running":
+                return
+            TASKS.update(task_id, progress=progress)
+    except asyncio.CancelledError:
+        pass
+
+
 @app.post("/v1/tasks/moment", response_model=TaskCreateResponse, tags=["tasks"])
 async def create_moment_task(
     request: MomentProductRequest,
@@ -835,8 +862,10 @@ async def create_moment_task(
     TASKS.update(task.task_id, status="running", progress=0.05)
 
     async def _runner() -> None:
+        ticker = asyncio.create_task(_progress_ticker(task.task_id))
         try:
             result, cache_hit = await _moment_product_payload(entry, request)
+            ticker.cancel()
             TASKS.update(
                 task.task_id,
                 status="completed",
@@ -845,8 +874,10 @@ async def create_moment_task(
                 cache_hit=cache_hit,
             )
         except asyncio.CancelledError:
+            ticker.cancel()
             TASKS.update(task.task_id, status="cancelled", progress=0.0, error="Cancelled by client.")
         except Exception as exc:  # pragma: no cover - exercised at runtime
+            ticker.cancel()
             TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
 
     handle = asyncio.create_task(_runner())
@@ -871,8 +902,10 @@ async def create_pv_task(
     TASKS.update(task.task_id, status="running", progress=0.05)
 
     async def _runner() -> None:
+        ticker = asyncio.create_task(_progress_ticker(task.task_id))
         try:
             result, cache_hit = await _pv_product_payload(entry, request)
+            ticker.cancel()
             TASKS.update(
                 task.task_id,
                 status="completed",
@@ -881,8 +914,10 @@ async def create_pv_task(
                 cache_hit=cache_hit,
             )
         except asyncio.CancelledError:
+            ticker.cancel()
             TASKS.update(task.task_id, status="cancelled", progress=0.0, error="Cancelled by client.")
         except Exception as exc:  # pragma: no cover - exercised at runtime
+            ticker.cancel()
             TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
 
     handle = asyncio.create_task(_runner())

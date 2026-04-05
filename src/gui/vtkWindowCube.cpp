@@ -1885,16 +1885,24 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                          const QString maskSummary = this->currentMomentConfig.maskEnabled
                                  ? u">= %1"_s.arg(this->currentMomentConfig.thresholdValue, 0, 'g', 8)
                                  : u"none"_s;
+                         const QString unitLabel = result.momentUnit.isEmpty()
+                                 ? u"—"_s
+                                 : result.momentUnit;
                          this->momentProvenanceState.valid = true;
                          this->momentProvenanceState.summary =
-                                 u"Moment: %1 | Ch: %2 | Mask: %3 | Scope: %4"_s
+                                 u"Moment: %1 | Unit: %2 | Ch: %3 | Mask: %4 | Scope: %5"_s
                                          .arg(this->describeMomentOrder(this->currentMomentConfig.order))
+                                         .arg(unitLabel)
                                          .arg(this->formatMomentChannelRange(this->currentMomentConfig))
                                          .arg(maskSummary)
                                          .arg(this->describeMomentScope());
                          this->momentProvenanceState.details =
-                                 u"Moment type: %1\nChannel range: %2\nMask: %3\nThreshold: %4\nNaN/blanking: excluded from computation\nValid-pixel policy: only finite unmasked voxels contribute\nSource scope: %5\nAxis 3 semantics: %6\nWCS frame: %7"_s
+                                 u"Moment type: %1\nUnit: %2\nBUNIT: %3\nSpectral axis: %4 [%5]\nChannel range: %6\nMask: %7\nThreshold: %8\nNaN/blanking: excluded from computation\nValid-pixel policy: only finite unmasked voxels contribute\nSource scope: %9\nAxis 3 semantics: %10\nWCS frame: %11"_s
                                          .arg(this->describeMomentOrder(this->currentMomentConfig.order))
+                                         .arg(unitLabel)
+                                         .arg(result.bunit.isEmpty() ? u"—"_s : result.bunit)
+                                         .arg(result.spectralAxisType.isEmpty() ? u"—"_s : result.spectralAxisType)
+                                         .arg(result.spectralAxisUnit.isEmpty() ? u"—"_s : result.spectralAxisUnit)
                                          .arg(this->formatMomentChannelRange(this->currentMomentConfig))
                                          .arg(this->currentMomentConfig.maskEnabled ? u"enabled"_s
                                                                                     : u"none"_s)
@@ -1909,6 +1917,15 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                                  << QStringLiteral("[perf][moment] UI apply: %1 ms")
                                             .arg(applyTimer.elapsed());
                          this->clearPersistentStatusMessage();
+
+                         // Show a transient WCS warning when the moment was
+                         // computed with a sanitized or degraded WCS.
+                         if (!result.wcsStatus.isEmpty() && result.wcsStatus != u"ok"_s) {
+                             const QString warnText = result.wcsWarningMessage.isEmpty()
+                                     ? u"Moment WCS: %1"_s.arg(result.wcsStatus)
+                                     : u"Moment WCS (%1): %2"_s.arg(result.wcsStatus, result.wcsWarningMessage);
+                             this->statusBar()->showMessage(warnText, 8000);
+                         }
                      });
     QObject::connect(&this->isosurfaceWatcher, &QFutureWatcher<AsyncIsosurfaceResult>::finished,
                      this, [this]() {

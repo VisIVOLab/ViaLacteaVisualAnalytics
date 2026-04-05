@@ -433,6 +433,7 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
         # the full spectral depth, but avoids eager loading the entire cube volume.
         cube = np.asarray(data[:, slab_y0 : slab_y1 + 1, slab_x0 : slab_x1 + 1], dtype=np.float32)
         spectral = dataset.spectral_axis_metadata(0, depth - 1)
+        pixel_scale_arcsec = dataset.spatial_pixel_scale_arcsec()
         logger.info(
             "[pv] slab read path=%s full_depth=%s slab_x=%s..%s slab_y=%s..%s width_pixels=%s samples=%s spectral=%s[%s]",
             dataset.path,
