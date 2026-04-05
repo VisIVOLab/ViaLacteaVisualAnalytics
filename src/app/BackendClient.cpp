@@ -1,23 +1,31 @@
 #include "BackendClient.h"
 
+#include <QByteArray>
+#include <QDir>
 #include <QEventLoop>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QProcessEnvironment>
+#include <QStandardPaths>
 #include <QUrl>
 #include <QUrlQuery>
 
+// ── Private helpers ───────────────────────────────────────────────────────────
+
 namespace {
-QByteArray decodeCompressedPayload(const QByteArray &encoded, const QString &compression, QString &error)
+
+QByteArray decodeCompressedPayload(const QByteArray &encoded, const QString &compression,
+                                   QString &error)
 {
     const QByteArray raw = QByteArray::fromBase64(encoded);
     if (compression.isEmpty() || compression == QStringLiteral("none")) {
         return raw;
     }
-
     if (compression == QStringLiteral("qt-zlib")) {
         const QByteArray uncompressed = qUncompress(raw);
         if (uncompressed.isEmpty()) {
@@ -25,33 +33,114 @@ QByteArray decodeCompressedPayload(const QByteArray &encoded, const QString &com
         }
         return uncompressed;
     }
-
     error = QStringLiteral("Unsupported backend compression: %1").arg(compression);
     return {};
 }
+
+} // namespace
+
+// ── Construction ──────────────────────────────────────────────────────────────
+
+BackendClient::BackendClient(QString baseUrl, QString token)
+    : m_baseUrl(std::move(baseUrl)), m_token(std::move(token))
+{
+    // R1: Auto-resolve token from env / file if not provided explicitly.
+    if (m_token.isEmpty()) {
+        m_token = BackendClient::readTokenFile();
+    }
 }
 
-BackendClient::BackendClient(QString baseUrl) : m_baseUrl(std::move(baseUrl))
-{
-}
+// ── Accessors ─────────────────────────────────────────────────────────────────
 
 QString BackendClient::baseUrl() const
 {
-    return this->m_baseUrl;
+    return m_baseUrl;
 }
+
+void BackendClient::setBaseUrl(const QString &url)
+{
+    m_baseUrl = url;
+}
+
+QString BackendClient::token() const
+{
+    return m_token;
+}
+
+void BackendClient::setToken(const QString &token)
+{
+    m_token = token;
+}
+
+QString BackendClient::sessionId() const
+{
+    return m_sessionId;
+}
+
+void BackendClient::setSessionId(const QString &sessionId)
+{
+    m_sessionId = sessionId;
+}
+
+// ── Static helpers ────────────────────────────────────────────────────────────
+
+QString BackendClient::readTokenFile()
+{
+    // Priority 1: environment variable (set by launch script or user shell).
+    const QString envToken =
+            QProcessEnvironment::systemEnvironment().value(QStringLiteral("VISIVO_TOKEN"));
+    if (!envToken.isEmpty()) {
+        return envToken.trimmed();
+    }
+
+    // Priority 2: ~/.visivo_token written by the Python backend at startup.
+    const QString tokenPath =
+            QDir(QStandardPaths::writableLocation(QStandardPaths::HomeLocation))
+                    .absoluteFilePath(QStringLiteral(".visivo_token"));
+    QFile tokenFile(tokenPath);
+    if (tokenFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        const QString token = QString::fromUtf8(tokenFile.readAll()).trimmed();
+        tokenFile.close();
+        return token;
+    }
+
+    return {};
+}
+
+// ── Request builder ───────────────────────────────────────────────────────────
+
+QNetworkRequest BackendClient::buildRequest(const QUrl &url) const
+{
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+
+    // R1: Authentication header.
+    if (!m_token.isEmpty()) {
+        request.setRawHeader(QByteArrayLiteral("X-Visivo-Token"), m_token.toUtf8());
+    }
+
+    // R3: Session isolation header.
+    if (!m_sessionId.isEmpty()) {
+        request.setRawHeader(QByteArrayLiteral("X-Visivo-Session"), m_sessionId.toUtf8());
+    }
+
+    return request;
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
 
 BackendHealthResult BackendClient::health() const
 {
     BackendHealthResult result;
     QString error;
-    const QByteArray payload = this->performGet(QUrl(this->m_baseUrl + "/health"), error);
+    // R8: /v1/ prefix on all routes.
+    const QByteArray payload = performGet(QUrl(m_baseUrl + QStringLiteral("/v1/health")), error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.ok = object.value("ok").toBool(false);
+    result.ok = object.value(QStringLiteral("ok")).toBool(false);
     if (!result.ok) {
         result.error = QStringLiteral("Backend health check failed.");
     }
@@ -62,32 +151,30 @@ BackendListFilesResult BackendClient::listFiles(const QString &path) const
 {
     BackendListFilesResult result;
     QString error;
-    QUrl url(this->m_baseUrl + "/files/list");
+    QUrl url(m_baseUrl + QStringLiteral("/v1/files/list"));
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("path"), path);
     url.setQuery(query);
-    const QByteArray payload = this->performGet(url, error);
+    const QByteArray payload = performGet(url, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.currentPath = object.value("current_path").toString();
-    const QJsonArray entries = object.value("entries").toArray();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.currentPath = object.value(QStringLiteral("current_path")).toString();
+    const QJsonArray entries = object.value(QStringLiteral("entries")).toArray();
     result.entries.reserve(static_cast<std::size_t>(entries.size()));
     for (const QJsonValue &value : entries) {
-        const QJsonObject entryObject = value.toObject();
-        result.entries.push_back({ entryObject.value("name").toString(),
-                                   entryObject.value("path").toString(),
-                                   entryObject.value("type").toString(),
-                                   entryObject.value("size").toInteger(),
-                                   entryObject.value("modified_time").toString(),
-                                   entryObject.value("is_fits").toBool(false) });
+        const QJsonObject e = value.toObject();
+        result.entries.push_back({ e.value(QStringLiteral("name")).toString(),
+                                   e.value(QStringLiteral("path")).toString(),
+                                   e.value(QStringLiteral("type")).toString(),
+                                   e.value(QStringLiteral("size")).toInteger(),
+                                   e.value(QStringLiteral("modified_time")).toString(),
+                                   e.value(QStringLiteral("is_fits")).toBool(false) });
     }
-
     return result;
 }
 
@@ -95,54 +182,61 @@ BackendFileHeaderResult BackendClient::fileHeader(const QString &path) const
 {
     BackendFileHeaderResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("path"), path } });
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("path"), path } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/files/header"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/files/header")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    const QJsonArray cards = object.value("cards").toArray();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    const QJsonArray cards = object.value(QStringLiteral("cards")).toArray();
     result.cards.reserve(cards.size());
-    for (const QJsonValue &value : cards) {
-        result.cards.push_back(value.toString());
+    for (const QJsonValue &v : cards) {
+        result.cards.push_back(v.toString());
     }
     return result;
 }
 
-BackendOpenDatasetResult BackendClient::openDataset(const QString &path) const
+BackendOpenDatasetResult BackendClient::openDataset(const QString &path)
 {
     BackendOpenDatasetResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("path"), path } });
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("path"), path } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/datasets/open"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/datasets/open")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.datasetId = object.value("dataset_id").toString();
-    result.kind = object.value("kind").toString();
-    result.activeAxes = object.value("active_axes").toInt();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.depth = object.value("depth").toInt();
-    result.degenerateAxesSummary = object.value("degenerate_axes_summary").toString();
-    const QJsonArray spacing = object.value("spacing").toArray();
-    const QJsonArray origin = object.value("origin").toArray();
-    const QJsonArray ctype = object.value("ctype").toArray();
-    const QJsonArray cunit = object.value("cunit").toArray();
-    const QJsonArray crval = object.value("crval").toArray();
-    const QJsonArray crpix = object.value("crpix").toArray();
-    const QJsonArray cdelt = object.value("cdelt").toArray();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.datasetId = object.value(QStringLiteral("dataset_id")).toString();
+    result.sessionId = object.value(QStringLiteral("session_id")).toString();
+
+    // R3: Persist the session_id so subsequent requests use the same session.
+    if (result.valid && !result.sessionId.isEmpty()) {
+        m_sessionId = result.sessionId;
+    }
+
+    result.kind = object.value(QStringLiteral("kind")).toString();
+    result.activeAxes = object.value(QStringLiteral("active_axes")).toInt();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.depth = object.value(QStringLiteral("depth")).toInt();
+    result.degenerateAxesSummary =
+            object.value(QStringLiteral("degenerate_axes_summary")).toString();
+
+    const QJsonArray spacing = object.value(QStringLiteral("spacing")).toArray();
+    const QJsonArray origin = object.value(QStringLiteral("origin")).toArray();
+    const QJsonArray ctype = object.value(QStringLiteral("ctype")).toArray();
+    const QJsonArray cunit = object.value(QStringLiteral("cunit")).toArray();
+    const QJsonArray crval = object.value(QStringLiteral("crval")).toArray();
+    const QJsonArray crpix = object.value(QStringLiteral("crpix")).toArray();
+    const QJsonArray cdelt = object.value(QStringLiteral("cdelt")).toArray();
     for (int i = 0; i < 3; ++i) {
         if (i < spacing.size()) {
             result.spacing[static_cast<std::size_t>(i)] = spacing.at(i).toDouble(1.0);
@@ -169,29 +263,30 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path) const
     return result;
 }
 
-BackendCubePreviewResult BackendClient::requestPreview(const QString &datasetId, int downsample) const
+BackendCubePreviewResult BackendClient::requestPreview(const QString &datasetId,
+                                                       int downsample) const
 {
     BackendCubePreviewResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("downsample"), downsample } });
-    const QByteArray payload = this->performPost(QUrl(this->m_baseUrl + "/cube/preview"), body, error);
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("downsample"), downsample } });
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/cube/preview")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.depth = object.value("depth").toInt();
-    result.scalarType = object.value("scalar_type").toString();
-    result.rangeMin = object.value("range_min").toDouble();
-    result.rangeMax = object.value("range_max").toDouble();
-    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                      result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.depth = object.value(QStringLiteral("depth")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
+    result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
@@ -203,59 +298,59 @@ BackendCubeSliceResult BackendClient::requestSlice(const QString &datasetId, con
 {
     BackendCubeSliceResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("axis"), axis },
-                                           { QStringLiteral("index"), index } });
-    const QByteArray payload = this->performPost(QUrl(this->m_baseUrl + "/cube/slice"), body, error);
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("axis"), axis },
+                                          { QStringLiteral("index"), index } });
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/cube/slice")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.scalarType = object.value("scalar_type").toString();
-    result.rangeMin = object.value("range_min").toDouble();
-    result.rangeMax = object.value("range_max").toDouble();
-    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                      result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
+    result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
     return result;
 }
 
-BackendCubeSubvolumeResult BackendClient::requestSubvolume(const QString &datasetId, int x0, int x1,
-                                                           int y0, int y1, int z0, int z1) const
+BackendCubeSubvolumeResult BackendClient::requestSubvolume(const QString &datasetId, int x0,
+                                                           int x1, int y0, int y1, int z0,
+                                                           int z1) const
 {
     BackendCubeSubvolumeResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("x0"), x0 },
-                                           { QStringLiteral("x1"), x1 },
-                                           { QStringLiteral("y0"), y0 },
-                                           { QStringLiteral("y1"), y1 },
-                                           { QStringLiteral("z0"), z0 },
-                                           { QStringLiteral("z1"), z1 } });
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("x0"), x0 },
+                                          { QStringLiteral("x1"), x1 },
+                                          { QStringLiteral("y0"), y0 },
+                                          { QStringLiteral("y1"), y1 },
+                                          { QStringLiteral("z0"), z0 },
+                                          { QStringLiteral("z1"), z1 } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/cube/subvolume"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/cube/subvolume")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.depth = object.value("depth").toInt();
-    result.scalarType = object.value("scalar_type").toString();
-    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                      result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.depth = object.value(QStringLiteral("depth")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
@@ -269,37 +364,34 @@ BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
     BackendCubePvResult result;
     QString error;
     QJsonArray vertexArray;
-    for (const auto &vertex : vertices) {
-        vertexArray.append(QJsonArray{ vertex[0], vertex[1] });
+    for (const auto &v : vertices) {
+        vertexArray.append(QJsonArray{ v[0], v[1] });
     }
-
     const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
                                           { QStringLiteral("vertices"), vertexArray },
                                           { QStringLiteral("width_pixels"), widthPixels } });
-    const QByteArray payload = this->performPost(QUrl(this->m_baseUrl + "/cube/pv"), body, error);
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/cube/pv")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.numSamples = object.value("num_samples").toInt();
-    result.depth = object.value("depth").toInt();
-    result.scalarType = object.value("scalar_type").toString();
-    result.computedOn = object.value("computed_on").toString();
-    result.widthPixels = object.value("width_pixels").toInt(1);
-    result.vertexCount = object.value("vertex_count").toInt();
-    result.totalLength = object.value("total_length").toDouble();
-    result.validSamples = object.value("valid_samples").toInt();
-    result.positions =
-            this->decodePayload(object, QStringLiteral("positions_base64"), QStringLiteral("compression"),
-                                result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.numSamples = object.value(QStringLiteral("num_samples")).toInt();
+    result.depth = object.value(QStringLiteral("depth")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.computedOn = object.value(QStringLiteral("computed_on")).toString();
+    result.widthPixels = object.value(QStringLiteral("width_pixels")).toInt(1);
+    result.vertexCount = object.value(QStringLiteral("vertex_count")).toInt();
+    result.totalLength = object.value(QStringLiteral("total_length")).toDouble();
+    result.validSamples = object.value(QStringLiteral("valid_samples")).toInt();
+    result.positions = decodePayload(object, QStringLiteral("positions_base64"),
+                                     QStringLiteral("compression"), result.error);
     if (result.error.isEmpty()) {
-        result.data =
-                this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                    result.error);
+        result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                    QStringLiteral("compression"), result.error);
     }
     if (!result.error.isEmpty()) {
         result.valid = false;
@@ -311,61 +403,62 @@ BackendImageResult BackendClient::requestImage(const QString &datasetId) const
 {
     BackendImageResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId } });
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/image/full"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/image/full")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.fullWidth = object.value("full_width").toInt(result.width);
-    result.fullHeight = object.value("full_height").toInt(result.height);
-    result.scalarType = object.value("scalar_type").toString();
-    result.rangeMin = object.value("range_min").toDouble();
-    result.rangeMax = object.value("range_max").toDouble();
-    result.isPreview = object.value("is_preview").toBool(false);
-    result.previewScaleFactor = object.value("preview_scale_factor").toDouble(1.0);
-    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                      result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.fullWidth = object.value(QStringLiteral("full_width")).toInt(result.width);
+    result.fullHeight = object.value(QStringLiteral("full_height")).toInt(result.height);
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
+    result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.isPreview = object.value(QStringLiteral("is_preview")).toBool(false);
+    result.previewScaleFactor =
+            object.value(QStringLiteral("preview_scale_factor")).toDouble(1.0);
+    result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
     return result;
 }
 
-BackendImageResult BackendClient::requestImagePreview(const QString &datasetId, int maxLongestSide) const
+BackendImageResult BackendClient::requestImagePreview(const QString &datasetId,
+                                                      int maxLongestSide) const
 {
     BackendImageResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("max_longest_side"), maxLongestSide } });
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("max_longest_side"), maxLongestSide } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/image/preview"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/image/preview")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.fullWidth = object.value("full_width").toInt(result.width);
-    result.fullHeight = object.value("full_height").toInt(result.height);
-    result.scalarType = object.value("scalar_type").toString();
-    result.rangeMin = object.value("range_min").toDouble();
-    result.rangeMax = object.value("range_max").toDouble();
-    result.isPreview = object.value("is_preview").toBool(false);
-    result.previewScaleFactor = object.value("preview_scale_factor").toDouble(1.0);
-    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                      result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.fullWidth = object.value(QStringLiteral("full_width")).toInt(result.width);
+    result.fullHeight = object.value(QStringLiteral("full_height")).toInt(result.height);
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
+    result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.isPreview = object.value(QStringLiteral("is_preview")).toBool(false);
+    result.previewScaleFactor =
+            object.value(QStringLiteral("preview_scale_factor")).toDouble(1.0);
+    result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
@@ -377,27 +470,24 @@ BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetI
 {
     BackendIsosurfaceResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("threshold"), threshold } });
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("threshold"), threshold } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/products/isosurface"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/products/isosurface")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.numPoints = object.value("num_points").toInt();
-    result.numPolys = object.value("num_polys").toInt();
-    result.pointsData =
-            this->decodePayload(object, QStringLiteral("points_base64"), QStringLiteral("compression"),
-                                result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.numPoints = object.value(QStringLiteral("num_points")).toInt();
+    result.numPolys = object.value(QStringLiteral("num_polys")).toInt();
+    result.pointsData = decodePayload(object, QStringLiteral("points_base64"),
+                                      QStringLiteral("compression"), result.error);
     if (result.error.isEmpty()) {
-        result.polysData =
-                this->decodePayload(object, QStringLiteral("polys_base64"), QStringLiteral("compression"),
-                                    result.error);
+        result.polysData = decodePayload(object, QStringLiteral("polys_base64"),
+                                         QStringLiteral("compression"), result.error);
     }
     if (!result.error.isEmpty()) {
         result.valid = false;
@@ -405,53 +495,47 @@ BackendIsosurfaceResult BackendClient::requestIsosurface(const QString &datasetI
     return result;
 }
 
-BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int order, int channelStart,
-                                                 int channelEnd, bool maskEnabled,
-                                                 double thresholdValue) const
+BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int order,
+                                                 int channelStart, int channelEnd,
+                                                 bool maskEnabled, double thresholdValue) const
 {
     BackendMomentResult result;
     QString error;
-    const QJsonDocument body(QJsonObject { { QStringLiteral("dataset_id"), datasetId },
-                                           { QStringLiteral("moment_order"), order },
-                                           { QStringLiteral("channel_start"), channelStart },
-                                           { QStringLiteral("channel_end"), channelEnd },
-                                           { QStringLiteral("mask_enabled"), maskEnabled },
-                                           { QStringLiteral("threshold_value"), thresholdValue } });
+    const QJsonDocument body(
+            QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                         { QStringLiteral("moment_order"), order },
+                         { QStringLiteral("channel_start"), channelStart },
+                         { QStringLiteral("channel_end"), channelEnd },
+                         { QStringLiteral("mask_enabled"), maskEnabled },
+                         { QStringLiteral("threshold_value"), thresholdValue } });
     const QByteArray payload =
-            this->performPost(QUrl(this->m_baseUrl + "/products/moment"), body, error);
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/products/moment")), body, error);
     if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
-
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value("valid").toBool(false);
-    result.error = object.value("error").toString();
-    result.width = object.value("width").toInt();
-    result.height = object.value("height").toInt();
-    result.scalarType = object.value("scalar_type").toString();
-    result.rangeMin = object.value("range_min").toDouble();
-    result.rangeMax = object.value("range_max").toDouble();
-    result.data = this->decodePayload(object, QStringLiteral("data_base64"), QStringLiteral("compression"),
-                                      result.error);
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.width = object.value(QStringLiteral("width")).toInt();
+    result.height = object.value(QStringLiteral("height")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
+    result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
     return result;
 }
 
-QByteArray BackendClient::decodePayload(const QJsonObject &object, const QString &base64Field,
-                                        const QString &compressionField, QString &error)
-{
-    return decodeCompressedPayload(object.value(base64Field).toString().toUtf8(),
-                                   object.value(compressionField).toString(), error);
-}
+// ── Low-level HTTP ────────────────────────────────────────────────────────────
 
 QByteArray BackendClient::performGet(const QUrl &url, QString &error) const
 {
     QNetworkAccessManager nam;
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QNetworkRequest request = buildRequest(url);
 
     QEventLoop loop;
     QNetworkReply *reply = nam.get(request);
@@ -462,21 +546,21 @@ QByteArray BackendClient::performGet(const QUrl &url, QString &error) const
     if (reply->error() != QNetworkReply::NoError) {
         error = reply->errorString();
     } else {
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const int status =
+                reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 400) {
             error = QString::fromUtf8(data);
         }
     }
-
     reply->deleteLater();
     return data;
 }
 
-QByteArray BackendClient::performPost(const QUrl &url, const QJsonDocument &body, QString &error) const
+QByteArray BackendClient::performPost(const QUrl &url, const QJsonDocument &body,
+                                      QString &error) const
 {
     QNetworkAccessManager nam;
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QNetworkRequest request = buildRequest(url);
 
     QEventLoop loop;
     QNetworkReply *reply = nam.post(request, body.toJson(QJsonDocument::Compact));
@@ -487,12 +571,19 @@ QByteArray BackendClient::performPost(const QUrl &url, const QJsonDocument &body
     if (reply->error() != QNetworkReply::NoError) {
         error = reply->errorString();
     } else {
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const int status =
+                reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 400) {
             error = QString::fromUtf8(data);
         }
     }
-
     reply->deleteLater();
     return data;
+}
+
+QByteArray BackendClient::decodePayload(const QJsonObject &object, const QString &base64Field,
+                                        const QString &compressionField, QString &error)
+{
+    return decodeCompressedPayload(object.value(base64Field).toString().toUtf8(),
+                                   object.value(compressionField).toString(), error);
 }

@@ -25,7 +25,7 @@ class RemoteMomentWindow : public QMainWindow
 
 public:
     RemoteMomentWindow(const QString &backendUrl, const QString &datasetId, const QString &datasetPath,
-                       QWidget *parent = nullptr);
+                       const QString &sessionId = QString(), QWidget *parent = nullptr);
     ~RemoteMomentWindow() override;
 
 protected:
@@ -39,6 +39,7 @@ private:
     QString backendUrl;
     QString datasetId;
     QString datasetPath;
+    QString sessionId;
     QPointer<QVTKOpenGLNativeWidget> vtkWidget;
     QFutureWatcher<MomentMapComputeResult> watcher;
     QTimer statusMessageClearTimer;

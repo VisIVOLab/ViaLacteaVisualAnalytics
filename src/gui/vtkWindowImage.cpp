@@ -745,13 +745,15 @@ ImageLayerLoadResult createPlaceholderRemoteLayerResult(const QString &filepath)
 
 ImageLayerLoadResult fetchRemoteImageLayer(const QString &backendUrl, const QString &datasetId,
                                            const QString &datasetPath, bool previewOnly = false,
-                                           int previewMaxLongestSide = 1536, int requestGeneration = 0)
+                                           int previewMaxLongestSide = 1536, int requestGeneration = 0,
+                                           const QString &sessionId = QString())
 {
     ImageLayerLoadResult result;
     result.filepath = datasetPath.toStdString();
     result.requestGeneration = requestGeneration;
 
     BackendClient client(backendUrl);
+    client.setSessionId(sessionId);
     const auto response = previewOnly ? client.requestImagePreview(datasetId, previewMaxLongestSide)
                                       : client.requestImage(datasetId);
     if (!response.valid) {
@@ -841,13 +843,15 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                                const std::array<double, 3> &remoteCrval,
                                const std::array<double, 3> &remoteCrpix,
                                const std::array<double, 3> &remoteCdelt,
-                               const QString &remoteDegenerateAxesSummary, QWidget *parent)
+                               const QString &remoteDegenerateAxesSummary,
+                               const QString &remoteSessionId, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowImage),
       filepath(filepath),
       isRemoteMode(!datasetId.isEmpty()),
       remoteBackendUrl(backendUrl),
       remoteDatasetId(datasetId),
+      remoteSessionId(remoteSessionId),
       remoteDatasetCtype(remoteCtype),
       remoteDatasetCunit(remoteCunit),
       remoteDatasetCrval(remoteCrval),
@@ -1131,7 +1135,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
         this->remoteImageWatcher.setFuture(
                 QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl,
                                   this->remoteDatasetId, this->filepath, true, 1536,
-                                  ++this->remoteLoadGeneration));
+                                  ++this->remoteLoadGeneration, this->remoteSessionId));
     }
 }
 
@@ -2929,7 +2933,8 @@ void vtkWindowImage::startRemoteFullResolutionLoad()
                        .arg(this->remoteDatasetId);
     this->remoteFullImageWatcher.setFuture(
             QtConcurrent::run(&fetchRemoteImageLayer, this->remoteBackendUrl, this->remoteDatasetId,
-                              this->filepath, false, 1536, this->remoteLoadGeneration));
+                              this->filepath, false, 1536, this->remoteLoadGeneration,
+                              this->remoteSessionId));
 }
 
 bool vtkWindowImage::isBusy() const

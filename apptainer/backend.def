@@ -1,0 +1,95 @@
+Bootstrap: docker
+From: python:3.12-slim
+
+%labels
+    Maintainer VisIVOLab <visivo@inaf.it>
+    Version    1.0.0
+    Description VisIVO Backend – astrophysical data visualization server
+
+%help
+    Apptainer/Singularity image for the VisIVO backend (FastAPI + astropy + VTK).
+
+    ── Quick start ──────────────────────────────────────────────────────────────
+    # Build
+    apptainer build backend.sif apptainer/backend.def
+
+    # Run (token auto-generated and printed to stdout)
+    apptainer run --bind /path/to/data:/data backend.sif
+
+    # Run with a fixed token (recommended for scripted deployments)
+    VISIVO_TOKEN=mysecrettoken apptainer run --bind /path/to/data:/data backend.sif
+
+    # Run on a non-standard port
+    PORT=9000 apptainer run backend.sif
+
+    ── HPC / SLURM ──────────────────────────────────────────────────────────────
+    Use scripts/launch_backend_slurm.sh to submit a SLURM job that starts this
+    container on a compute node and prints the SSH tunnel command.
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    # Worker processes for CPU-bound FITS/VTK operations (default: nproc)
+    export VISIVO_WORKERS=${VISIVO_WORKERS:-0}
+    # Session idle-timeout in seconds (default 30 min)
+    export VISIVO_SESSION_TTL=${VISIVO_SESSION_TTL:-1800}
+
+%post
+    set -e
+
+    # ── System deps ──────────────────────────────────────────────────────────
+    apt-get update -qq
+    apt-get install -y --no-install-recommends \
+        gcc \
+        libffi-dev \
+        libssl-dev \
+        && rm -rf /var/lib/apt/lists/*
+
+    # ── Python deps ──────────────────────────────────────────────────────────
+    pip install --no-cache-dir --upgrade pip
+
+    # Install backend requirements from the embedded copy (see %files).
+    pip install --no-cache-dir \
+        "fastapi>=0.115" \
+        "uvicorn[standard]>=0.30" \
+        "astropy>=6.1" \
+        "numpy>=2.0" \
+        "vtk>=9.4"
+
+    # ── Copy application source ───────────────────────────────────────────────
+    mkdir -p /app
+    cp -r /tmp/backend_src/* /app/
+
+    # ── Sanity check ─────────────────────────────────────────────────────────
+    python -c "import fastapi, astropy, numpy; print('Import OK')"
+
+%files
+    # Copy the backend source into the build context.
+    # Apptainer resolves paths relative to the definition file directory.
+    ../backend /tmp/backend_src
+
+%runscript
+    #!/bin/bash
+    HOST="${VISIVO_HOST:-0.0.0.0}"
+    PORT="${PORT:-8000}"
+    WORKERS="${VISIVO_WORKERS:-$(nproc)}"
+
+    echo "[VisIVO] Starting backend on ${HOST}:${PORT} with ${WORKERS} worker(s)"
+
+    exec uvicorn app.main:app \
+        --host "${HOST}" \
+        --port "${PORT}" \
+        --workers 1 \
+        --log-level info \
+        --app-dir /app
+
+%test
+    python -c "
+import sys
+sys.path.insert(0, '/app')
+from app.auth import TOKEN
+from app.sessions import REGISTRY
+print(f'[test] Auth module OK. Token length: {len(TOKEN)}')
+print(f'[test] Sessions module OK.')
+print('[test] All checks passed.')
+"

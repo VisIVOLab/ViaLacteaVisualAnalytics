@@ -37,6 +37,7 @@ struct BackendOpenDatasetResult
     bool valid{ false };
     QString error;
     QString datasetId;
+    QString sessionId;   // R3: echo as X-Visivo-Session in subsequent requests
     QString kind;
     int activeAxes{ 0 };
     int width{ 0 };
@@ -153,17 +154,70 @@ class QJsonDocument;
 class QJsonObject;
 class QUrl;
 
+/**
+ * HTTP client for the VisIVO FastAPI backend.
+ *
+ * Changes vs original:
+ *   R1  – Every request carries the X-Visivo-Token header (auth).
+ *   R3  – openDataset() stores the returned session_id; all subsequent
+ *          requests carry X-Visivo-Session so the backend can isolate
+ *          per-session state.
+ *   R8  – All URL paths are prefixed with /v1/.
+ *
+ * The token is resolved in this priority order:
+ *   1. setToken() call (e.g. from Settings dialog)
+ *   2. VISIVO_TOKEN environment variable
+ *   3. Content of ~/.visivo_token (written by the backend at startup)
+ */
 class BackendClient
 {
 public:
-    explicit BackendClient(QString baseUrl = QStringLiteral("http://127.0.0.1:8000"));
+    /**
+     * @param baseUrl  Backend base URL, e.g. "http://compute-node42:8000"
+     * @param token    Auth token.  If empty, readTokenFile() is attempted.
+     */
+    explicit BackendClient(QString baseUrl = QStringLiteral("http://127.0.0.1:8000"),
+                           QString token = QString());
+
+    // ── Accessors ─────────────────────────────────────────────────────────────
 
     QString baseUrl() const;
+    void setBaseUrl(const QString &url);
+
+    /** Current auth token.  Empty means no authentication is sent. */
+    QString token() const;
+    void setToken(const QString &token);
+
+    /**
+     * Session ID returned by the last successful openDataset() call.
+     * Sent as X-Visivo-Session on every subsequent request.
+     */
+    QString sessionId() const;
+    void setSessionId(const QString &sessionId);
+
+    // ── Static helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Try to read the auth token from:
+     *   1. VISIVO_TOKEN environment variable
+     *   2. ~/.visivo_token (file written by the backend at startup)
+     * Returns an empty string if neither source is available.
+     */
+    static QString readTokenFile();
+
+    // ── API calls ─────────────────────────────────────────────────────────────
 
     BackendHealthResult health() const;
     BackendListFilesResult listFiles(const QString &path) const;
     BackendFileHeaderResult fileHeader(const QString &path) const;
-    BackendOpenDatasetResult openDataset(const QString &path) const;
+
+    /**
+     * Open a FITS dataset on the backend.
+     * On success the returned sessionId is automatically stored in this client
+     * so all subsequent calls carry the correct X-Visivo-Session header.
+     */
+    BackendOpenDatasetResult openDataset(const QString &path);
+
     BackendCubePreviewResult requestPreview(const QString &datasetId, int downsample) const;
     BackendCubeSliceResult requestSlice(const QString &datasetId, const QString &axis,
                                         int index) const;
@@ -180,12 +234,18 @@ public:
                                       double thresholdValue) const;
 
 private:
+    /** Build a QNetworkRequest with auth + session headers pre-applied. */
+    QNetworkRequest buildRequest(const QUrl &url) const;
+
     QByteArray performGet(const QUrl &url, QString &error) const;
     QByteArray performPost(const QUrl &url, const QJsonDocument &body, QString &error) const;
+
     static QByteArray decodePayload(const QJsonObject &object, const QString &base64Field,
                                     const QString &compressionField, QString &error);
 
     QString m_baseUrl;
+    QString m_token;
+    QString m_sessionId;
 };
 
 #endif

@@ -94,6 +94,31 @@ public:
    */
     void setSearchOnImportFlag(bool flag);
 
+    // ── Backend (R1, R8) ──────────────────────────────────────────────────────
+
+    /**
+   * @return The VisIVO backend base URL (e.g. "http://127.0.0.1:8000")
+   */
+    QString getBackendUrl() const;
+
+    /**
+   * Set the VisIVO backend base URL
+   * @param url Backend URL without trailing slash
+   */
+    void setBackendUrl(const QString &url);
+
+    /**
+   * @return The VisIVO backend auth token.
+   * Empty means the token should be read from ~/.visivo_token or VISIVO_TOKEN env.
+   */
+    QString getBackendToken() const;
+
+    /**
+   * Persist the backend auth token to settings.
+   * @param token The bearer token string
+   */
+    void setBackendToken(const QString &token);
+
 public slots:
     /**
    * Reload settings from file
@@ -125,6 +150,10 @@ private:
     static const std::pair<QString, QVariant> MaxGlyphs;
     static const std::pair<QString, QVariant> VLKBUrl;
     static const std::pair<QString, QVariant> VLKBSearch;
+
+    // Backend settings (R1, R8)
+    static const std::pair<QString, QVariant> BackendUrl;
+    static const std::pair<QString, QVariant> BackendToken;
 };
 
 #endif

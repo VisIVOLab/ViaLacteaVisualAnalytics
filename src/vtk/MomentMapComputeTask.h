@@ -14,6 +14,7 @@ struct MomentMapComputeRequest
     QString filepath;
     QString datasetId;
     QString backendUrl;
+    QString sessionId;
     int momentOrder;
     int channelStart{ 0 };
     int channelEnd{ 0 };

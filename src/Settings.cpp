@@ -43,6 +43,8 @@ void Settings::resetDefaults()
     this->settings->setValue(Settings::MaxGlyphs.first, Settings::MaxGlyphs.second);
     this->settings->setValue(Settings::VLKBUrl.first, Settings::VLKBUrl.second);
     this->settings->setValue(Settings::VLKBSearch.first, Settings::VLKBSearch.second);
+    this->settings->setValue(Settings::BackendUrl.first, Settings::BackendUrl.second);
+    this->settings->setValue(Settings::BackendToken.first, Settings::BackendToken.second);
 
     emit this->updated();
 }
@@ -158,4 +160,36 @@ bool Settings::getSearchOnImportFlag() const
 void Settings::setSearchOnImportFlag(bool flag)
 {
     this->settings->setValue(Settings::VLKBSearch.first, flag);
+}
+
+//----------------------------------------------------------------------------
+// Backend (R1, R8)
+//----------------------------------------------------------------------------
+const std::pair<QString, QVariant> Settings::BackendUrl = {
+    u"Backend/url"_s, u"http://127.0.0.1:8000"_s
+};
+
+QString Settings::getBackendUrl() const
+{
+    const QString url = this->settings->value(Settings::BackendUrl.first).toString();
+    return url.isEmpty() ? Settings::BackendUrl.second.toString() : url;
+}
+
+void Settings::setBackendUrl(const QString &url)
+{
+    this->settings->setValue(Settings::BackendUrl.first, url);
+}
+
+// Token default is empty: BackendClient will auto-resolve from env / ~/.visivo_token.
+const std::pair<QString, QVariant> Settings::BackendToken = { u"Backend/token"_s, u""_s };
+
+QString Settings::getBackendToken() const
+{
+    return this->settings->value(Settings::BackendToken.first,
+                                  Settings::BackendToken.second).toString();
+}
+
+void Settings::setBackendToken(const QString &token)
+{
+    this->settings->setValue(Settings::BackendToken.first, token);
 }

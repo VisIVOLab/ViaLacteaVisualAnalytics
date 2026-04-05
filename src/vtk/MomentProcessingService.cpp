@@ -68,6 +68,7 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
     }
 
     BackendClient client(request.backendUrl);
+    client.setSessionId(request.sessionId);
     const auto response = client.requestMoment(request.datasetId, request.order, request.channelStart,
                                               request.channelEnd, request.maskEnabled,
                                               request.thresholdValue);
