@@ -387,6 +387,22 @@ async def _run(fn, *args) -> Any:
     return await loop.run_in_executor(_POOL, fn, *args)
 
 
+async def _run_with_limit(session: Session, fn, *args) -> Any:
+    """Like _run(), but enforces per-session concurrent task limit (HTTP 429 on overflow)."""
+    if not session.try_acquire_task_slot():
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "Too many concurrent compute tasks for this session. "
+                "Wait for a running task to finish before submitting another."
+            ),
+        )
+    try:
+        return await _run(fn, *args)
+    finally:
+        session.release_task_slot()
+
+
 def _require_dataset(session: Session, dataset_id: str) -> dict[str, Any]:
     entry = session.datasets.get(dataset_id)
     if not entry:
@@ -603,7 +619,8 @@ async def moment_product(
     from .compute import worker_moment
     try:
         path = _require_cube_path(session, request.dataset_id)
-        result = await _run(
+        result = await _run_with_limit(
+            session,
             worker_moment,
             path,
             request.moment_order,
@@ -629,7 +646,8 @@ async def cube_noise(
     from .compute import worker_noise_estimate
     try:
         path = _require_cube_path(session, request.dataset_id)
-        result = await _run(
+        result = await _run_with_limit(
+            session,
             worker_noise_estimate,
             path,
             request.x0, request.x1,
@@ -665,7 +683,8 @@ async def isosurface_product(
         if cached is not None:
             logger.debug("[isosurface] cache hit dataset_id=%s threshold=%s", request.dataset_id, request.threshold)
             return IsosurfaceProductResponse(valid=True, error="", **cached)
-        result = await _run(
+        result = await _run_with_limit(
+            session,
             worker_isosurface,
             entry["path"],
             int(entry["width"]),
@@ -691,7 +710,7 @@ async def cube_preview(
     from .compute import worker_cube_preview
     try:
         path = _require_cube_path(session, request.dataset_id)
-        result = await _run(worker_cube_preview, path, request.downsample)
+        result = await _run_with_limit(session, worker_cube_preview, path, request.downsample)
     except HTTPException:
         raise
     except Exception as exc:
@@ -710,7 +729,7 @@ async def cube_slice(
         path = _require_cube_path(session, request.dataset_id)
         if request.axis.lower() != "z":
             raise HTTPException(422, "Only axis='z' is currently supported.")
-        result = await _run(worker_cube_slice, path, request.index)
+        result = await _run_with_limit(session, worker_cube_slice, path, request.index)
     except HTTPException:
         raise
     except Exception as exc:
@@ -727,7 +746,8 @@ async def cube_subvolume(
     from .compute import worker_cube_subvolume
     try:
         path = _require_cube_path(session, request.dataset_id)
-        result = await _run(
+        result = await _run_with_limit(
+            session,
             worker_cube_subvolume,
             path,
             request.x0, request.x1,
@@ -750,7 +770,8 @@ async def cube_pv(
     from .compute import worker_pv
     try:
         path = _require_cube_path(session, request.dataset_id)
-        result = await _run(
+        result = await _run_with_limit(
+            session,
             worker_pv,
             path,
             request.vertices,
@@ -775,7 +796,7 @@ async def image_full(
         entry = _require_dataset(session, request.dataset_id)
         if entry["kind"] != "image":
             return ImageFullResponse(valid=False, error="Image endpoint requires an image dataset.")
-        result = await _run(worker_image_full, entry["path"])
+        result = await _run_with_limit(session, worker_image_full, entry["path"])
     except HTTPException:
         raise
     except Exception as exc:
@@ -794,9 +815,88 @@ async def image_preview(
         entry = _require_dataset(session, request.dataset_id)
         if entry["kind"] != "image":
             raise HTTPException(422, "Image preview endpoint requires an image dataset.")
-        result = await _run(worker_image_preview, entry["path"], request.max_longest_side)
+        result = await _run_with_limit(session, worker_image_preview, entry["path"], request.max_longest_side)
     except HTTPException:
         raise
     except Exception as exc:
         return ImageFullResponse(valid=False, error=str(exc))
     return ImageFullResponse(valid=True, error="", **result)
+
+
+# ── Cosmology ─────────────────────────────────────────────────────────────────
+
+_COSMOLOGY_MODELS: dict[str, Any] = {}
+
+
+def _load_cosmology_models() -> dict[str, Any]:
+    """Lazy-load astropy cosmology presets; returns an empty dict if astropy is absent."""
+    if _COSMOLOGY_MODELS:
+        return _COSMOLOGY_MODELS
+    try:
+        import astropy.cosmology as _ac
+        for _name in ("Planck18", "Planck15", "Planck13", "WMAP9"):
+            if hasattr(_ac, _name):
+                _COSMOLOGY_MODELS[_name] = getattr(_ac, _name)
+    except ImportError:
+        logger.warning("[startup] astropy not available – /v1/cosmology/distance will return 503.")
+    return _COSMOLOGY_MODELS
+
+
+_load_cosmology_models()
+
+
+class CosmologyDistanceRequest(BaseModel):
+    z: float
+    model: str = "Planck18"
+
+
+class CosmologyDistanceResponse(BaseModel):
+    valid: bool
+    error: str
+    z: float = 0.0
+    model: str = ""
+    comoving_Mpc: float = 0.0
+    luminosity_Mpc: float = 0.0
+    proper_motion_kpc_per_arcsec: float = 0.0
+
+
+@app.post("/v1/cosmology/distance", response_model=CosmologyDistanceResponse, tags=["cosmology"])
+async def cosmology_distance(
+    request: CosmologyDistanceRequest,
+    _: None = _auth,
+) -> CosmologyDistanceResponse:
+    """Compute comoving distance, luminosity distance, and proper-motion scale for a given redshift.
+
+    The ``model`` parameter selects the background cosmology; supported values are
+    ``Planck18`` (default), ``Planck15``, ``Planck13``, and ``WMAP9``.
+    """
+    models = _load_cosmology_models()
+    if not models:
+        return CosmologyDistanceResponse(
+            valid=False, error="astropy is not installed on this server. Cosmology endpoint unavailable."
+        )
+    if request.model not in models:
+        return CosmologyDistanceResponse(
+            valid=False,
+            error=f"Unknown cosmology model '{request.model}'. Available: {sorted(models.keys())}",
+        )
+    z = float(request.z)
+    if z < 0.0:
+        return CosmologyDistanceResponse(valid=False, error="Redshift z must be >= 0.")
+    try:
+        cosmo = models[request.model]
+        comoving_mpc = float(cosmo.comoving_distance(z).to("Mpc").value)
+        luminosity_mpc = float(cosmo.luminosity_distance(z).to("Mpc").value)
+        # kpc_proper_per_arcmin → divide by 60 to get kpc/arcsec
+        kpc_per_arcsec = float(cosmo.kpc_proper_per_arcmin(z).value / 60.0) if z > 0.0 else 0.0
+    except Exception as exc:
+        return CosmologyDistanceResponse(valid=False, error=str(exc))
+    return CosmologyDistanceResponse(
+        valid=True,
+        error="",
+        z=z,
+        model=request.model,
+        comoving_Mpc=comoving_mpc,
+        luminosity_Mpc=luminosity_mpc,
+        proper_motion_kpc_per_arcsec=kpc_per_arcsec,
+    )

@@ -24,6 +24,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+_MAX_CONCURRENT_TASKS = int(os.environ.get("VISIVO_MAX_CONCURRENT_TASKS", "3"))
+
 logger = logging.getLogger("visivo.sessions")
 
 _TTL_SECONDS = int(os.environ.get("VISIVO_SESSION_TTL", "1800"))
@@ -39,12 +41,28 @@ class Session:
         self.datasets: dict[str, dict[str, Any]] = {}
         self.created_at: float = time.monotonic()
         self.last_accessed: float = time.monotonic()
+        # Per-session concurrency limit (HPC safety)
+        self._active_tasks: int = 0
+        self._task_lock: threading.Lock = threading.Lock()
 
     def touch(self) -> None:
         self.last_accessed = time.monotonic()
 
     def idle_seconds(self) -> float:
         return time.monotonic() - self.last_accessed
+
+    def try_acquire_task_slot(self) -> bool:
+        """Atomically increment active-task counter if below the limit.
+        Returns True if the slot was acquired, False if the session is at capacity."""
+        with self._task_lock:
+            if self._active_tasks >= _MAX_CONCURRENT_TASKS:
+                return False
+            self._active_tasks += 1
+            return True
+
+    def release_task_slot(self) -> None:
+        with self._task_lock:
+            self._active_tasks = max(0, self._active_tasks - 1)
 
 
 class SessionRegistry:
