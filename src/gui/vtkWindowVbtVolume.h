@@ -5,11 +5,14 @@
 
 #include <vtkNew.h>
 #include <vtkColorTransferFunction.h>
+#include <vtkCubeAxesActor.h>
 #include <vtkGenericOpenGLRenderWindow.h>
+#include <vtkImageData.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkPiecewiseFunction.h>
 #include <vtkRenderer.h>
+#include <vtkScalarBarActor.h>
 #include <vtkSmartVolumeMapper.h>
 #include <vtkVolume.h>
 #include <vtkVolumeProperty.h>
@@ -38,6 +41,11 @@ private:
     void setupRenderer();
     void rebuildVolumeData();
     void updateSummary();
+    void updateBoundsContext();
+    void updateScalarBar();
+    void resetView();
+    void applyKnownGoodVisibleFallback(double minValue, double maxValue, const double bounds[6]);
+    static double percentileFromSortedSample(const std::vector<double> &values, double fraction);
 
     VbtTableData table;
 
@@ -56,7 +64,10 @@ private:
     vtkNew<vtkVolume> volumeActor;
     vtkNew<vtkColorTransferFunction> colorTransfer;
     vtkNew<vtkPiecewiseFunction> opacityTransfer;
+    vtkNew<vtkCubeAxesActor> boxActor;
+    vtkNew<vtkScalarBarActor> scalarBar;
     vtkNew<vtkOrientationMarkerWidget> axesWidget;
+    vtkSmartPointer<vtkImageData> currentImageData;
 };
 
 #endif
