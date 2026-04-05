@@ -83,5 +83,14 @@ class TaskRegistry:
             record.last_touched_monotonic = time.monotonic()
             return record
 
+    def stats(self) -> dict[str, Any]:
+        with self._lock:
+            self._evict_expired_locked()
+            return {
+                "entries": len(self._tasks),
+                "ttl_enabled": True,
+                "ttl_seconds": self._ttl_seconds,
+            }
+
 
 TASKS = TaskRegistry()

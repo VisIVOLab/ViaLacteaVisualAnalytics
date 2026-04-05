@@ -72,6 +72,11 @@ async def test_health_ok(client: AsyncClient, auth_headers: dict) -> None:
     assert data["ok"] is True
     assert "workers" in data
     assert "active_sessions" in data
+    assert "product_cache_entries" in data
+    assert "product_cache_capacity" in data
+    assert "task_registry_entries" in data
+    assert "task_ttl_enabled" in data
+    assert "task_ttl_seconds" in data
     assert "X-Request-ID" in resp.headers  # R8: request-id header present
 
 

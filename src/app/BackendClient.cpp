@@ -142,6 +142,13 @@ BackendHealthResult BackendClient::health() const
     }
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
     result.ok = object.value(QStringLiteral("ok")).toBool(false);
+    result.workers = object.value(QStringLiteral("workers")).toInt();
+    result.activeSessions = object.value(QStringLiteral("active_sessions")).toInt();
+    result.productCacheEntries = object.value(QStringLiteral("product_cache_entries")).toInt();
+    result.productCacheCapacity = object.value(QStringLiteral("product_cache_capacity")).toInt();
+    result.taskRegistryEntries = object.value(QStringLiteral("task_registry_entries")).toInt();
+    result.taskTtlEnabled = object.value(QStringLiteral("task_ttl_enabled")).toBool(false);
+    result.taskTtlSeconds = object.value(QStringLiteral("task_ttl_seconds")).toInt();
     if (!result.ok) {
         result.error = QStringLiteral("Backend health check failed.");
     }
@@ -508,7 +515,6 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
                                                  int channelStart, int channelEnd,
                                                  bool maskEnabled, double thresholdValue) const
 {
-    BackendMomentResult result;
     QString error;
     const QJsonDocument body(
             QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
@@ -520,10 +526,89 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     const QByteArray payload =
             performPost(QUrl(m_baseUrl + QStringLiteral("/v1/products/moment")), body, error);
     if (!error.isEmpty()) {
+        BackendMomentResult result;
+        result.error = error;
+        return result;
+    }
+    return parseMomentResultObject(QJsonDocument::fromJson(payload).object());
+}
+
+BackendTaskCreateResult BackendClient::createMomentTask(const QString &datasetId, int order,
+                                                        int channelStart, int channelEnd,
+                                                        bool maskEnabled,
+                                                        double thresholdValue) const
+{
+    BackendTaskCreateResult result;
+    QString error;
+    const QJsonDocument body(
+            QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                         { QStringLiteral("moment_order"), order },
+                         { QStringLiteral("channel_start"), channelStart },
+                         { QStringLiteral("channel_end"), channelEnd },
+                         { QStringLiteral("mask_enabled"), maskEnabled },
+                         { QStringLiteral("threshold_value"), thresholdValue } });
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/tasks/moment")), body, error);
+    if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.taskId = object.value(QStringLiteral("task_id")).toString();
+    result.status = object.value(QStringLiteral("status")).toString();
+    result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
+    return result;
+}
+
+BackendTaskStatusResult BackendClient::requestTaskStatus(const QString &taskId) const
+{
+    BackendTaskStatusResult result;
+    QString error;
+    const QByteArray payload =
+            performGet(QUrl(m_baseUrl + QStringLiteral("/v1/tasks/") + taskId), error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.taskId = object.value(QStringLiteral("task_id")).toString();
+    result.operation = object.value(QStringLiteral("operation")).toString();
+    result.status = object.value(QStringLiteral("status")).toString();
+    result.progress = object.value(QStringLiteral("progress")).toDouble();
+    result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
+    result.resultObject = object.value(QStringLiteral("result")).toObject();
+    return result;
+}
+
+// ── Low-level HTTP ────────────────────────────────────────────────────────────
+
+std::chrono::milliseconds BackendClient::requestTimeoutFor(const QUrl &url) const
+{
+    const QString path = url.path();
+    if (path.endsWith(QStringLiteral("/health"))
+        || path.endsWith(QStringLiteral("/files/list"))
+        || path.endsWith(QStringLiteral("/files/header"))) {
+        return std::chrono::milliseconds(5000);
+    }
+    if (path.endsWith(QStringLiteral("/datasets/open"))) {
+        return std::chrono::milliseconds(10000);
+    }
+    if (path.endsWith(QStringLiteral("/tasks/moment")) || path.contains(QStringLiteral("/tasks/"))) {
+        return std::chrono::milliseconds(10000);
+    }
+    if (path.endsWith(QStringLiteral("/cube/slice")) || path.endsWith(QStringLiteral("/image/preview"))) {
+        return std::chrono::milliseconds(30000);
+    }
+    return std::chrono::milliseconds(120000);
+}
+
+BackendMomentResult BackendClient::parseMomentResultObject(const QJsonObject &object)
+{
+    BackendMomentResult result;
     result.valid = object.value(QStringLiteral("valid")).toBool(false);
     result.error = object.value(QStringLiteral("error")).toString();
     result.width = object.value(QStringLiteral("width")).toInt();
@@ -541,25 +626,6 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
         result.valid = false;
     }
     return result;
-}
-
-// ── Low-level HTTP ────────────────────────────────────────────────────────────
-
-std::chrono::milliseconds BackendClient::requestTimeoutFor(const QUrl &url) const
-{
-    const QString path = url.path();
-    if (path.endsWith(QStringLiteral("/health"))
-        || path.endsWith(QStringLiteral("/files/list"))
-        || path.endsWith(QStringLiteral("/files/header"))) {
-        return std::chrono::milliseconds(5000);
-    }
-    if (path.endsWith(QStringLiteral("/datasets/open"))) {
-        return std::chrono::milliseconds(10000);
-    }
-    if (path.endsWith(QStringLiteral("/cube/slice")) || path.endsWith(QStringLiteral("/image/preview"))) {
-        return std::chrono::milliseconds(30000);
-    }
-    return std::chrono::milliseconds(120000);
 }
 
 QByteArray BackendClient::performGet(const QUrl &url, QString &error) const

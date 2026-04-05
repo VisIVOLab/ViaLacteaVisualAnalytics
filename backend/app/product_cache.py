@@ -81,7 +81,6 @@ class ProductCache:
             return {
                 "entries": len(self._entries),
                 "max_entries": self._max_entries,
-                "keys": list(self._entries.keys()),
             }
 
 

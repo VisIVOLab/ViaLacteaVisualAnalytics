@@ -469,11 +469,17 @@ _auth = Depends(verify_token)
 
 @app.get("/v1/health", tags=["meta"])
 async def health(_: None = _auth) -> dict:
+    cache_stats = PRODUCT_CACHE.stats()
+    task_stats = TASKS.stats()
     return {
         "ok": True,
         "workers": _WORKERS,
         "active_sessions": REGISTRY.stats()["active_sessions"],
-        "product_cache": PRODUCT_CACHE.stats(),
+        "product_cache_entries": cache_stats["entries"],
+        "product_cache_capacity": cache_stats["max_entries"],
+        "task_registry_entries": task_stats["entries"],
+        "task_ttl_enabled": task_stats["ttl_enabled"],
+        "task_ttl_seconds": task_stats["ttl_seconds"],
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 

@@ -2,6 +2,7 @@
 #define BackendClient_h
 
 #include <QByteArray>
+#include <QJsonObject>
 #include <QList>
 #include <QNetworkRequest>
 #include <QString>
@@ -25,6 +26,13 @@ struct BackendHealthResult
 {
     bool ok{ false };
     QString error;
+    int workers{ 0 };
+    int activeSessions{ 0 };
+    int productCacheEntries{ 0 };
+    int productCacheCapacity{ 0 };
+    int taskRegistryEntries{ 0 };
+    bool taskTtlEnabled{ false };
+    int taskTtlSeconds{ 0 };
 };
 
 struct BackendListFilesResult
@@ -80,6 +88,27 @@ struct BackendMomentResult
     QString momentUnit;
     QString bunit;
     QByteArray data;
+};
+
+struct BackendTaskCreateResult
+{
+    bool valid{ false };
+    QString error;
+    QString taskId;
+    QString status;
+    bool cacheHit{ false };
+};
+
+struct BackendTaskStatusResult
+{
+    bool valid{ false };
+    QString error;
+    QString taskId;
+    QString operation;
+    QString status;
+    double progress{ 0.0 };
+    bool cacheHit{ false };
+    QJsonObject resultObject;
 };
 
 struct BackendCubePreviewResult
@@ -242,6 +271,11 @@ public:
     BackendMomentResult requestMoment(const QString &datasetId, int order, int channelStart,
                                       int channelEnd, bool maskEnabled,
                                       double thresholdValue) const;
+    BackendTaskCreateResult createMomentTask(const QString &datasetId, int order, int channelStart,
+                                             int channelEnd, bool maskEnabled,
+                                             double thresholdValue) const;
+    BackendTaskStatusResult requestTaskStatus(const QString &taskId) const;
+    static BackendMomentResult parseMomentResultObject(const QJsonObject &object);
 
 private:
     /** Build a QNetworkRequest with auth + session headers pre-applied. */
