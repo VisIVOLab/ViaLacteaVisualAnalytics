@@ -19,12 +19,11 @@ from __future__ import annotations
 import base64
 import logging
 import zlib
-from pathlib import Path
 from typing import Any
 
 import numpy as np
-from astropy.io import fits
-from astropy.wcs import WCS
+
+from .fits_dataset import ScientificFitsDataset
 
 logger = logging.getLogger("visivo.compute")
 
@@ -59,133 +58,6 @@ def _finite_range(array: np.ndarray) -> tuple[float, float]:
     if not finite.any():
         return 0.0, 0.0
     return float(np.nanmin(array)), float(np.nanmax(array))
-
-
-# ── FITS I/O helpers ──────────────────────────────────────────────────────────
-
-
-def _open_fits_memmap(path: str):
-    """
-    Open a FITS file in read-only memory-mapped mode.
-
-    Returns the (HDUList, primary HDU data array) without materialising it.
-    The caller is responsible for closing the HDUList.  Use as a context manager
-    or call hdul.close() explicitly.
-
-    The returned data object is a numpy memmap array – slicing it reads only
-    the requested region from disk (R4 lazy I/O).
-    """
-    hdul = fits.open(path, memmap=True, mode="readonly")
-    data = hdul[0].data
-    if data is None:
-        hdul.close()
-        raise ValueError("FITS file contains no primary image data.")
-    return hdul, data
-
-
-def _squeeze_to_3d(data: np.ndarray) -> np.ndarray:
-    """Remove length-1 axes until ndim <= 3, matching the original logic."""
-    arr = np.squeeze(data)
-    while arr.ndim > 3:
-        arr = arr[0]
-    return arr
-
-
-def _active_fits_axes(header: fits.Header) -> list[int]:
-    naxis = int(header.get("NAXIS", 0))
-    return [axis for axis in range(1, naxis + 1) if int(header.get(f"NAXIS{axis}", 1)) > 1]
-
-
-def _cube_numpy_spectral_fits_axis(header: fits.Header) -> int:
-    """
-    Map the cube spectral/channel index used by the current client/backend cube path
-    to the corresponding FITS pixel axis.
-
-    The current cube semantics treat numpy axis 0 as the spectral/depth axis.
-    For FITS image cubes this matches the highest-numbered active FITS axis after
-    dropping degenerate axes, which is also how the current 3D data path is opened.
-    """
-    active_axes = _active_fits_axes(header)
-    if len(active_axes) < 3:
-        raise ValueError("Scientific cube helpers require at least three active FITS axes.")
-    return active_axes[-1]
-
-
-def _build_spectral_coordinate_metadata(
-    header: fits.Header, channel_start: int, channel_end: int
-) -> dict[str, Any]:
-    """
-    Compute physical spectral coordinates for the selected channel range using astropy.wcs.WCS.
-
-    This avoids using raw CDELT3/CRVAL3/CRPIX3 directly, which is not scientifically safe
-    for general FITS spectral axes.
-    """
-    spectral_fits_axis = _cube_numpy_spectral_fits_axis(header)
-    wcs = WCS(header)
-    pixel_naxis = int(wcs.pixel_n_dim)
-    world_naxis = int(wcs.world_n_dim)
-    if pixel_naxis <= 0 or world_naxis <= 0:
-        raise ValueError("FITS WCS is not available for spectral-coordinate computation.")
-
-    axis_types = [ptype or "" for ptype in (wcs.world_axis_physical_types or [])]
-    correlation = np.asarray(wcs.axis_correlation_matrix, dtype=bool)
-    spectral_pixel_index = spectral_fits_axis - 1
-
-    spectral_world_index = None
-    preferred_world_indices = [
-        idx
-        for idx, ptype in enumerate(axis_types)
-        if ptype.startswith("em.") or "spect" in ptype or "freq" in ptype or "velo" in ptype
-    ]
-    for world_index in preferred_world_indices:
-        if (
-            world_index < correlation.shape[0]
-            and spectral_pixel_index < correlation.shape[1]
-            and correlation[world_index, spectral_pixel_index]
-        ):
-            spectral_world_index = world_index
-            break
-    if spectral_world_index is None:
-        for world_index in range(min(correlation.shape[0], world_naxis)):
-            if spectral_pixel_index < correlation.shape[1] and correlation[world_index, spectral_pixel_index]:
-                spectral_world_index = world_index
-                break
-    if spectral_world_index is None:
-        spectral_world_index = min(world_naxis - 1, spectral_pixel_index)
-
-    reference_pixels = []
-    for pixel_axis in range(pixel_naxis):
-        crpix = float(header.get(f"CRPIX{pixel_axis + 1}", 1.0))
-        reference_pixels.append(np.full(channel_end - channel_start + 1, crpix - 1.0, dtype=np.float64))
-    reference_pixels[spectral_pixel_index] = np.arange(
-        channel_start, channel_end + 1, dtype=np.float64
-    )
-    world_values = wcs.pixel_to_world_values(*reference_pixels)
-    spectral_coordinates = np.asarray(world_values[spectral_world_index], dtype=np.float64)
-    if spectral_coordinates.ndim != 1 or spectral_coordinates.size != (channel_end - channel_start + 1):
-        spectral_coordinates = np.ravel(spectral_coordinates).astype(np.float64, copy=False)
-
-    axis_type = axis_types[spectral_world_index] if spectral_world_index < len(axis_types) else ""
-    axis_unit = ""
-    if hasattr(wcs, "world_axis_units") and spectral_world_index < len(wcs.world_axis_units):
-        axis_unit = wcs.world_axis_units[spectral_world_index] or ""
-    axis_label = str(header.get(f"CTYPE{spectral_fits_axis}", f"AXIS{spectral_fits_axis}")).strip()
-    logger.info(
-        "[moment] spectral axis fits_axis=%s world_axis=%s type=%s unit=%s channels=%s..%s",
-        spectral_fits_axis,
-        spectral_world_index,
-        axis_type or axis_label,
-        axis_unit or "-",
-        channel_start,
-        channel_end,
-    )
-    return {
-        "coordinates": spectral_coordinates,
-        "axis_type": axis_type or axis_label,
-        "axis_unit": axis_unit,
-        "axis_label": axis_label,
-        "fits_axis": spectral_fits_axis,
-    }
 
 
 def _integrated_spacing(coords: np.ndarray) -> np.ndarray:
@@ -226,9 +98,10 @@ def worker_cube_slice(path: str, z_index: int) -> dict[str, Any]:
     With memmap=True astropy reads only the bytes for the requested plane
     from disk – O(width * height * 4 bytes) I/O regardless of cube depth.
     """
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("Slice endpoint requires a 3D cube.")
         if z_index < 0 or z_index >= data.shape[0]:
@@ -257,9 +130,10 @@ def worker_cube_slice(path: str, z_index: int) -> dict[str, Any]:
 def worker_cube_subvolume(
     path: str, x0: int, x1: int, y0: int, y1: int, z0: int, z1: int
 ) -> dict[str, Any]:
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("Subvolume endpoint requires a 3D cube.")
         depth, height, width = data.shape
@@ -351,17 +225,17 @@ def worker_moment(
     With memmap=True the slice read is O(nchannels * ny * nx) – not the
     full cube size.
     """
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        header = hdul[0].header.copy()
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("Moment products require a cube dataset.")
         z0 = max(0, min(int(channel_start), data.shape[0] - 1))
         z1 = max(0, min(int(channel_end), data.shape[0] - 1))
         if z0 > z1:
             raise ValueError("Invalid channel range.")
-        spectral = _build_spectral_coordinate_metadata(header, z0, z1)
+        spectral = dataset.spectral_axis_metadata(z0, z1)
         subset = np.asarray(data[z0 : z1 + 1, :, :], dtype=np.float32)
         image = _moment_map_from_array(
             subset,
@@ -370,8 +244,16 @@ def worker_moment(
             mask_enabled,
             threshold_value,
         )
-        bunit = str(header.get("BUNIT", "")).strip()
+        bunit = dataset.bunit
         moment_unit = _moment_result_unit(order, bunit, str(spectral["axis_unit"]))
+        logger.info(
+            "[moment] provenance path=%s bunit=%s beam=(%s,%s,%s)",
+            dataset.path,
+            bunit or "-",
+            dataset.beam.major,
+            dataset.beam.minor,
+            dataset.beam.pa,
+        )
     finally:
         hdul.close()
 
@@ -492,9 +374,10 @@ def _local_normal(pts: list[tuple[int, int]], i: int) -> tuple[float, float]:
 
 
 def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[str, Any]:
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("PV extraction requires a 3D cube.")
 
@@ -521,8 +404,10 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
         # Materialise only the spatial slab needed by the PV path. This still reads
         # the full spectral depth, but avoids eager loading the entire cube volume.
         cube = np.asarray(data[:, slab_y0 : slab_y1 + 1, slab_x0 : slab_x1 + 1], dtype=np.float32)
+        spectral = dataset.spectral_axis_metadata(0, depth - 1)
         logger.info(
-            "[pv] slab read full_depth=%s slab_x=%s..%s slab_y=%s..%s width_pixels=%s samples=%s",
+            "[pv] slab read path=%s full_depth=%s slab_x=%s..%s slab_y=%s..%s width_pixels=%s samples=%s spectral=%s[%s]",
+            dataset.path,
             depth,
             slab_x0,
             slab_x1,
@@ -530,6 +415,8 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
             slab_y1,
             width_pixels,
             len(sampled),
+            spectral["axis_type"],
+            spectral["axis_unit"] or "-",
         )
     finally:
         hdul.close()
@@ -582,6 +469,12 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
         "vertex_count": len(cleaned),
         "total_length": float(total_length),
         "valid_samples": valid_samples,
+        "spectral_axis_type": str(spectral["axis_type"]),
+        "spectral_axis_unit": str(spectral["axis_unit"]),
+        "bunit": dataset.bunit,
+        "beam_major": dataset.beam.major,
+        "beam_minor": dataset.beam.minor,
+        "beam_pa": dataset.beam.pa,
     }
 
 
@@ -608,9 +501,10 @@ def _build_preview(image: np.ndarray, max_side: int) -> tuple[np.ndarray, float]
 
 
 def worker_image_full(path: str) -> dict[str, Any]:
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 2:
             raise ValueError("Image endpoint requires a 2D FITS dataset.")
         image = np.asarray(data, dtype=np.float32)
@@ -635,9 +529,10 @@ def worker_image_full(path: str) -> dict[str, Any]:
 
 
 def worker_image_preview(path: str, max_longest_side: int) -> dict[str, Any]:
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 2:
             raise ValueError("Image preview endpoint requires a 2D FITS dataset.")
         full_h, full_w = int(data.shape[0]), int(data.shape[1])
@@ -665,9 +560,10 @@ def worker_image_preview(path: str, max_longest_side: int) -> dict[str, Any]:
 
 
 def worker_cube_preview(path: str, downsample: int) -> dict[str, Any]:
-    hdul, raw = _open_fits_memmap(path)
+    dataset = ScientificFitsDataset(path)
+    hdul, raw = dataset.open_memmap()
     try:
-        data = _squeeze_to_3d(raw)
+        data = dataset.squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("Cube preview requires a 3D cube.")
         stride = max(1, int(downsample))
