@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import threading
@@ -30,6 +31,8 @@ class TaskRecord:
     error: str = ""
     cache_hit: bool = False
     last_touched_monotonic: float = field(default_factory=time.monotonic, repr=False)
+    # Stored by the task runner so callers can request cancellation.
+    asyncio_handle: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
 
 class TaskRegistry:
@@ -82,6 +85,27 @@ class TaskRegistry:
             record.updated_at = _now_iso()
             record.last_touched_monotonic = time.monotonic()
             return record
+
+    def cancel(self, task_id: str) -> bool:
+        """Request cancellation of a running task.
+
+        Returns True if the task was found and a cancellation was requested,
+        False if the task does not exist or has already finished.
+        """
+        with self._lock:
+            record = self._tasks.get(task_id)
+            if record is None:
+                return False
+            if record.status not in ("pending", "running"):
+                return False
+            handle = record.asyncio_handle
+            record.status = "cancelled"
+            record.updated_at = _now_iso()
+            record.last_touched_monotonic = time.monotonic()
+        if handle is not None and not handle.done():
+            handle.cancel()
+            logger.info("[tasks] cancel requested task_id=%s operation=%s", task_id, record.operation)
+        return True
 
     def stats(self) -> dict[str, Any]:
         with self._lock:

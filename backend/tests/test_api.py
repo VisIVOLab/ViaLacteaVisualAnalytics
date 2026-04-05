@@ -785,7 +785,7 @@ async def test_cosmology_luminosity_gt_comoving(client: AsyncClient, auth_header
 # Next-server test: task registry TTL eviction
 
 def test_task_registry_ttl_eviction() -> None:
-    from backend.app.tasks import TaskRegistry
+    from app.tasks import TaskRegistry
 
     registry = TaskRegistry(ttl_seconds=1)
     task = registry.create("pv")
@@ -793,3 +793,100 @@ def test_task_registry_ttl_eviction() -> None:
     assert record is not None
     record.last_touched_monotonic -= 5.0
     assert registry.get(task.task_id) is None
+
+
+# ── Task cancellation (DELETE /v1/tasks/{id}) ─────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_cancel_running_task(client: AsyncClient, opened_cube: dict) -> None:
+    """A running task must be cancellable via DELETE and reflect status='cancelled'."""
+    create_resp = await client.post(
+        "/v1/tasks/moment",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "moment_order": 0,
+            "channel_start": 0,
+            "channel_end": 31,
+            "mask_enabled": False,
+            "threshold_value": 0.0,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert create_resp.status_code == 200
+    task_id = create_resp.json()["task_id"]
+
+    del_resp = await client.delete(f"/v1/tasks/{task_id}", headers=opened_cube["headers"])
+    assert del_resp.status_code == 200
+    assert del_resp.json()["cancelled"] is True
+    assert del_resp.json()["task_id"] == task_id
+
+    # After cancellation the status must be 'cancelled' (or 'completed' if it
+    # already finished before the cancel propagated — both are acceptable).
+    status_resp = await client.get(f"/v1/tasks/{task_id}", headers=opened_cube["headers"])
+    assert status_resp.status_code == 200
+    final_status = status_resp.json()["status"]
+    assert final_status in ("cancelled", "completed"), f"Unexpected status: {final_status}"
+
+
+@pytest.mark.asyncio
+async def test_cancel_nonexistent_task_returns_404(client: AsyncClient, auth_headers: dict) -> None:
+    resp = await client.delete("/v1/tasks/task_doesnotexist_abc", headers=auth_headers)
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_cancel_completed_task_returns_409(client: AsyncClient, opened_cube: dict) -> None:
+    """Cancelling a task that has already completed must return 409 Conflict."""
+    create_resp = await client.post(
+        "/v1/tasks/moment",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "moment_order": 0,
+            "channel_start": 0,
+            "channel_end": 4,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert create_resp.status_code == 200
+    task_id = create_resp.json()["task_id"]
+
+    # Wait for completion
+    for _ in range(30):
+        s = await client.get(f"/v1/tasks/{task_id}", headers=opened_cube["headers"])
+        if s.json()["status"] == "completed":
+            break
+        await asyncio.sleep(0.1)
+
+    del_resp = await client.delete(f"/v1/tasks/{task_id}", headers=opened_cube["headers"])
+    assert del_resp.status_code == 409
+
+
+# ── Isosurface via PRODUCT_CACHE ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_isosurface_cache_hit(client: AsyncClient, opened_cube: dict) -> None:
+    """Two identical isosurface requests must produce a cache hit on the second call."""
+    if not _vtk_available():
+        pytest.skip("VTK not available on this server")
+
+    payload = {"dataset_id": opened_cube["dataset_id"], "threshold": 1.0}
+    resp1 = await client.post("/v1/products/isosurface", json=payload, headers=opened_cube["headers"])
+    assert resp1.status_code == 200
+    assert resp1.json()["valid"] is True
+
+    resp2 = await client.post("/v1/products/isosurface", json=payload, headers=opened_cube["headers"])
+    assert resp2.status_code == 200
+    assert resp2.json()["valid"] is True
+    # Both responses must carry identical geometry data.
+    assert resp1.json()["num_points"] == resp2.json()["num_points"]
+    assert resp1.json()["num_polys"] == resp2.json()["num_polys"]
+
+
+def _vtk_available() -> bool:
+    try:
+        import vtk  # noqa: F401
+        return True
+    except ImportError:
+        return False

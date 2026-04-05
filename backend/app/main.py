@@ -20,9 +20,6 @@ prepend /v1/ to every request URL (Settings dialog → backend URL field).
 from __future__ import annotations
 
 import asyncio
-import collections
-import hashlib
-import json
 import logging
 import os
 import threading
@@ -85,38 +82,6 @@ app = FastAPI(
 
 _FITS_SUFFIXES = {".fits", ".fit", ".fts"}
 
-# ── Isosurface LRU cache ─────────────────────────────────────────────────────
-
-
-class _LRUCache:
-    """Thread-safe LRU cache keyed by SHA-256 hash of JSON-serialised params."""
-
-    def __init__(self, max_size: int = 32) -> None:
-        self._cache: collections.OrderedDict = collections.OrderedDict()
-        self._lock = threading.Lock()
-        self._max_size = max_size
-
-    def _key(self, params: dict) -> str:
-        return hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()
-
-    def get(self, params: dict):
-        key = self._key(params)
-        with self._lock:
-            if key in self._cache:
-                self._cache.move_to_end(key)
-                return self._cache[key]
-        return None
-
-    def put(self, params: dict, value: Any) -> None:
-        key = self._key(params)
-        with self._lock:
-            self._cache[key] = value
-            self._cache.move_to_end(key)
-            while len(self._cache) > self._max_size:
-                self._cache.popitem(last=False)
-
-
-_ISOSURFACE_CACHE = _LRUCache(max_size=32)
 
 # ── VTK availability check (R startup) ───────────────────────────────────────
 
@@ -741,11 +706,12 @@ async def isosurface_product(
         entry = _require_dataset(session, request.dataset_id)
         if entry["kind"] != "cube":
             raise HTTPException(422, "Isosurface requires a cube dataset.")
-        cache_params = {"path": entry["path"], "threshold": float(request.threshold)}
-        cached = _ISOSURFACE_CACHE.get(cache_params)
+        iso_cache_params = {"threshold": float(request.threshold)}
+        cache_key, param_hash = PRODUCT_CACHE.make_key(entry["path"], "isosurface", iso_cache_params)
+        cached = PRODUCT_CACHE.get(cache_key)
         if cached is not None:
             logger.debug("[isosurface] cache hit dataset_id=%s threshold=%s", request.dataset_id, request.threshold)
-            return IsosurfaceProductResponse(valid=True, error="", **cached)
+            return IsosurfaceProductResponse(valid=True, error="", **cached.payload)
         result = await _run_with_limit(
             session,
             worker_isosurface,
@@ -755,7 +721,16 @@ async def isosurface_product(
             int(entry["depth"]),
             float(request.threshold),
         )
-        _ISOSURFACE_CACHE.put(cache_params, result)
+        dataset = ScientificFitsDataset(entry["path"])
+        PRODUCT_CACHE.put(
+            key=cache_key,
+            operation="isosurface",
+            dataset_path=entry["path"],
+            parameter_hash=param_hash,
+            payload=dict(result),
+            scientific_metadata={"threshold": float(request.threshold)},
+            provenance_metadata=dataset.provenance_context(),
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -869,10 +844,13 @@ async def create_moment_task(
                 result={"valid": True, "error": "", **result},
                 cache_hit=cache_hit,
             )
+        except asyncio.CancelledError:
+            TASKS.update(task.task_id, status="cancelled", progress=0.0, error="Cancelled by client.")
         except Exception as exc:  # pragma: no cover - exercised at runtime
             TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
 
-    asyncio.create_task(_runner())
+    handle = asyncio.create_task(_runner())
+    TASKS.update(task.task_id, asyncio_handle=handle)
     return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
 
 
@@ -902,10 +880,13 @@ async def create_pv_task(
                 result={"valid": True, "error": "", **result},
                 cache_hit=cache_hit,
             )
+        except asyncio.CancelledError:
+            TASKS.update(task.task_id, status="cancelled", progress=0.0, error="Cancelled by client.")
         except Exception as exc:  # pragma: no cover - exercised at runtime
             TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
 
-    asyncio.create_task(_runner())
+    handle = asyncio.create_task(_runner())
+    TASKS.update(task.task_id, asyncio_handle=handle)
     return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
 
 
@@ -926,6 +907,27 @@ async def task_status(task_id: str, _: None = _auth) -> TaskStatusResponse:
         cache_hit=task.cache_hit,
         result=task.result,
     )
+
+
+@app.delete("/v1/tasks/{task_id}", tags=["tasks"])
+async def cancel_task(task_id: str, _: None = _auth) -> dict:
+    """Request cancellation of a running or pending task.
+
+    Returns 200 with ``{"cancelled": true}`` if the cancellation was accepted,
+    or 404 if the task does not exist, or 409 if the task has already finished.
+    A cancellation request is best-effort: the task may still complete before
+    the asyncio cancellation propagates to the worker future.
+    """
+    task = TASKS.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Unknown task_id '{task_id}'.")
+    if task.status not in ("pending", "running"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Task '{task_id}' is already in terminal state '{task.status}'.",
+        )
+    cancelled = TASKS.cancel(task_id)
+    return {"cancelled": cancelled, "task_id": task_id}
 
 
 @app.post("/v1/image/full", response_model=ImageFullResponse, tags=["image"])
