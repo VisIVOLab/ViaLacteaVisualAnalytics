@@ -97,12 +97,18 @@ set(PROJECT_SOURCES
         src/gui/PvDiagramWidget.h
         src/gui/SettingsDialog.cpp
         src/gui/SettingsDialog.h
+        src/gui/VbtTableLoader.cpp
+        src/gui/VbtTableLoader.h
         src/gui/vtkWindowCatalogue3D.cpp
         src/gui/vtkWindowCatalogue3D.h
         src/gui/vtkWindowCube.cpp
         src/gui/vtkWindowCube.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
+        src/gui/vtkWindowVbt.cpp
+        src/gui/vtkWindowVbt.h
+        src/gui/vtkWindowVbtVolume.cpp
+        src/gui/vtkWindowVbtVolume.h
 )
 
 set(PROJECT_UI

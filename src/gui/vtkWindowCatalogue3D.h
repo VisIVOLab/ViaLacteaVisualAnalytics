@@ -11,13 +11,13 @@
 #include <QMap>
 #include <QPointer>
 #include <QStringList>
+#include <array>
 
 #include <vector>
 
 // VTK forward declarations
 class vtkActor;
 class vtkBillboardTextActor3D;
-class vtkAxesActor;
 class vtkCubeAxesActor;
 class vtkCubeSource;
 class vtkGenericOpenGLRenderWindow;
@@ -35,6 +35,7 @@ class vtkSphereSource;
 class vtkAppendPolyData;
 class QCheckBox;
 class QComboBox;
+class QTextEdit;
 class QTableView;
 class Catalogue3DTableModel;
 QT_BEGIN_NAMESPACE
@@ -98,8 +99,18 @@ private:
     void buildShells();
     void updateGlyphPipeline();
     void updateGlyphScales();
+    void updatePointPositions();
+    void updateColorMapping();
     void ensureCatalogueDock();
     void refreshCatalogueTable();
+    void populateMappingControls();
+    void updateDockSelectionDetails();
+    QStringList numericRawFieldNames() const;
+    bool rawFieldValue(const Catalogue3DEntry &entry, int fieldIndex, double &value) const;
+    double mappedAxisValue(const Catalogue3DEntry &entry, const QString &mappingKey) const;
+    double mappedSizeValue(const Catalogue3DEntry &entry, bool &ok) const;
+    double mappedColorValue(const Catalogue3DEntry &entry, bool &ok) const;
+    QString fallbackDetailsText(const Catalogue3DEntry &entry) const;
 
     // ── Morphology LUT ─────────────────────────────────────────────────────
     void buildMorphologyLut();
@@ -126,6 +137,9 @@ private:
     Ui::vtkWindowCatalogue3D *ui;
     QString filepath;
     std::vector<Catalogue3DEntry> entries;
+    QStringList rawHeaders;
+    std::vector<int> numericRawFieldIndices;
+    std::vector<std::array<double, 3>> mappedPositions;
     // Ordered list of unique morphology names (determines LUT index).
     QStringList morphologyNames;
     // Name → LUT index
@@ -154,6 +168,7 @@ private:
     vtkNew<vtkPolyDataMapper> glyphMapper;
     vtkNew<vtkActor> glyphActor;
     vtkNew<vtkLookupTable> morphologyLut;
+    vtkNew<vtkLookupTable> valueLut;
     vtkNew<vtkPolyDataMapper> pointsMapper;
     vtkNew<vtkActor> pointsActor;
 
@@ -172,12 +187,17 @@ private:
 
     // Orientation axes corner widget
     vtkNew<vtkOrientationMarkerWidget> axesWidget;
-    vtkNew<vtkAxesActor> sceneAxesActor;
     vtkNew<vtkCubeAxesActor> cubeAxesActor;
     std::vector<vtkSmartPointer<vtkActor>> shellActors;
     QPointer<QDockWidget> catalogueDock;
     QPointer<QTableView> catalogueTableView;
     QPointer<Catalogue3DTableModel> catalogueTableModel;
+    QPointer<QTextEdit> catalogueDetailsView;
+    QPointer<QComboBox> comboMapX;
+    QPointer<QComboBox> comboMapY;
+    QPointer<QComboBox> comboMapZ;
+    QPointer<QComboBox> comboMapSize;
+    QPointer<QComboBox> comboMapColor;
     QPointer<QComboBox> comboGeometry;
     QPointer<QComboBox> comboSizeMode;
     QPointer<QComboBox> comboFrame;
@@ -185,12 +205,20 @@ private:
     QPointer<QCheckBox> chkShowBoundingBox;
     QPointer<QCheckBox> chkShowShells;
     bool syncingTableSelection{ false };
+    bool updatingMappingControls{ false };
+    QString mapXKey{ QStringLiteral("computed:x") };
+    QString mapYKey{ QStringLiteral("computed:y") };
+    QString mapZKey{ QStringLiteral("computed:z") };
+    QString mapSizeKey{ QStringLiteral("builtin:fixed") };
+    QString mapColorKey{ QStringLiteral("builtin:morphology") };
 
     // Interaction state
     int hoveredIndex{ -1 };
     int selectedIndex{ -1 };
     // Left-button drag tracking (to distinguish click from camera rotate)
     bool leftButtonDown{ false };
+    bool leftClickCandidate{ false };
+    int pressPickIndex{ -1 };
     int pressX{ 0 };
     int pressY{ 0 };
     static constexpr int clickDragThresholdPx = 5;

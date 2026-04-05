@@ -39,7 +39,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from .auth import verify_token
+from .fits_dataset import ScientificFitsDataset
+from .product_cache import PRODUCT_CACHE
 from .sessions import REGISTRY, Session, get_session
+from .tasks import TASKS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -49,8 +52,12 @@ logger = logging.getLogger("visivo.backend")
 # ── Process pool (R2) ─────────────────────────────────────────────────────────
 
 def _default_worker_count() -> int:
-    """Cap at 4 by default so the backend is safe on shared HPC login nodes.
-    Override with the VISIVO_WORKERS environment variable."""
+    """
+    Keep the backend conservative by default.
+
+    On shared HPC/login nodes an unbounded cpu_count()-sized pool is too aggressive for
+    data-heavy FITS workloads. Users can still override via VISIVO_WORKERS.
+    """
     return max(1, min(os.cpu_count() or 4, 4))
 
 
@@ -63,7 +70,7 @@ def _pool_initializer() -> None:  # pragma: no cover
     _l.getLogger("vtkmodules").setLevel(_l.ERROR)
 
 
-_POOL = ProcessPoolExecutor(max_workers=_WORKERS)
+_POOL = ProcessPoolExecutor(max_workers=_WORKERS, initializer=_pool_initializer)
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
@@ -194,6 +201,11 @@ class OpenDatasetResponse(BaseModel):
     height: int = 0
     depth: int = 0
     degenerate_axes_summary: str = ""
+    wcs_status: str = "ok"
+    wcs_warning_message: str = ""
+    wcs_sanitized_axes: list[int] = []
+    spectral_axis_type: str = ""
+    spectral_axis_unit: str = ""
     spacing: list[float] = [1.0, 1.0, 1.0]
     origin: list[float] = [0.0, 0.0, 0.0]
     ctype: list[str] = ["", "", ""]
@@ -220,11 +232,11 @@ class MomentProductResponse(BaseModel):
     scalar_type: str = ""
     range_min: float = 0.0
     range_max: float = 0.0
-    data_base64: str = ""
-    moment_unit: str = ""
-    bunit: str = ""
     spectral_axis_type: str = ""
     spectral_axis_unit: str = ""
+    moment_unit: str = ""
+    bunit: str = ""
+    data_base64: str = ""
 
 
 class CubePreviewRequest(BaseModel):
@@ -305,6 +317,33 @@ class CubePvResponse(BaseModel):
     vertex_count: int = 0
     total_length: float = 0.0
     valid_samples: int = 0
+    spectral_axis_type: str = ""
+    spectral_axis_unit: str = ""
+    bunit: str = ""
+    beam_major: float | None = None
+    beam_minor: float | None = None
+    beam_pa: float | None = None
+
+
+class TaskCreateResponse(BaseModel):
+    valid: bool
+    error: str
+    task_id: str = ""
+    status: str = ""
+    cache_hit: bool = False
+
+
+class TaskStatusResponse(BaseModel):
+    valid: bool
+    error: str
+    task_id: str = ""
+    operation: str = ""
+    status: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+    progress: float = 0.0
+    cache_hit: bool = False
+    result: dict[str, Any] | None = None
 
 
 class ImageFullRequest(BaseModel):
@@ -387,6 +426,8 @@ async def _run(fn, *args) -> Any:
     return await loop.run_in_executor(_POOL, fn, *args)
 
 
+
+
 async def _run_with_limit(session: Session, fn, *args) -> Any:
     """Like _run(), but enforces per-session concurrent task limit (HTTP 429 on overflow)."""
     if not session.try_acquire_task_slot():
@@ -401,6 +442,86 @@ async def _run_with_limit(session: Session, fn, *args) -> Any:
         return await _run(fn, *args)
     finally:
         session.release_task_slot()
+
+
+async def _moment_product_payload(entry: dict[str, Any], request: MomentProductRequest) -> tuple[dict[str, Any], bool]:
+    from .compute import worker_moment
+
+    dataset = ScientificFitsDataset(entry["path"])
+    cache_params = {
+        "moment_order": request.moment_order,
+        "channel_start": request.channel_start,
+        "channel_end": request.channel_end,
+        "mask_enabled": request.mask_enabled,
+        "threshold_value": request.threshold_value,
+    }
+    cache_key, param_hash = PRODUCT_CACHE.make_key(dataset.path, "moment", cache_params)
+    cached = PRODUCT_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached.payload), True
+
+    result = await _run(
+        worker_moment,
+        dataset.path,
+        request.moment_order,
+        request.channel_start,
+        request.channel_end,
+        request.mask_enabled,
+        request.threshold_value,
+    )
+    PRODUCT_CACHE.put(
+        key=cache_key,
+        operation="moment",
+        dataset_path=dataset.path,
+        parameter_hash=param_hash,
+        payload=dict(result),
+        scientific_metadata={
+            "spectral_axis_type": result.get("spectral_axis_type", ""),
+            "spectral_axis_unit": result.get("spectral_axis_unit", ""),
+            "moment_unit": result.get("moment_unit", ""),
+            "bunit": result.get("bunit", ""),
+        },
+        provenance_metadata=dataset.provenance_context(),
+    )
+    return result, False
+
+
+async def _pv_product_payload(entry: dict[str, Any], request: CubePvRequest) -> tuple[dict[str, Any], bool]:
+    from .compute import worker_pv
+
+    dataset = ScientificFitsDataset(entry["path"])
+    cache_params = {
+        "vertices": request.vertices,
+        "width_pixels": max(1, int(request.width_pixels)),
+    }
+    cache_key, param_hash = PRODUCT_CACHE.make_key(dataset.path, "pv", cache_params)
+    cached = PRODUCT_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached.payload), True
+
+    result = await _run(
+        worker_pv,
+        dataset.path,
+        request.vertices,
+        max(1, int(request.width_pixels)),
+    )
+    PRODUCT_CACHE.put(
+        key=cache_key,
+        operation="pv",
+        dataset_path=dataset.path,
+        parameter_hash=param_hash,
+        payload=dict(result),
+        scientific_metadata={
+            "spectral_axis_type": result.get("spectral_axis_type", ""),
+            "spectral_axis_unit": result.get("spectral_axis_unit", ""),
+            "bunit": result.get("bunit", ""),
+            "beam_major": result.get("beam_major"),
+            "beam_minor": result.get("beam_minor"),
+            "beam_pa": result.get("beam_pa"),
+        },
+        provenance_metadata=dataset.provenance_context(),
+    )
+    return result, False
 
 
 def _require_dataset(session: Session, dataset_id: str) -> dict[str, Any]:
@@ -427,71 +548,9 @@ def _require_cube_path(session: Session, dataset_id: str) -> str:
 
 
 def _fits_metadata(path: Path) -> tuple[str, dict[str, Any]]:
-    """
-    Open the FITS header only (no data materialisation) to detect kind and
-    extract geometry metadata.  Runs synchronously in the main process because
-    it is fast (header-only read, O(KB)).
-    """
-    with fits.open(str(path), memmap=True, mode="readonly") as hdul:
-        header = hdul[0].header.copy()
-        raw_shape = hdul[0].shape  # shape without reading data
-
-    naxis = int(header.get("NAXIS", 0))
-    axis_sizes = [int(header.get(f"NAXIS{i}", 1)) for i in range(1, naxis + 1)]
-    active_axes_idx = [i for i, s in enumerate(axis_sizes, start=1) if s > 1]
-    degenerate_idx  = [i for i, s in enumerate(axis_sizes, start=1) if s == 1]
-    n_active = len(active_axes_idx)
-
-    deg_entries: list[str] = []
-    for ai in degenerate_idx:
-        name = str(header.get(f"CTYPE{ai}", f"AXIS{ai}")).strip()
-        val  = float(header.get(f"CRVAL{ai}", 0.0))
-        unit = str(header.get(f"CUNIT{ai}", "")).strip()
-        label = f"{name}={val:g}"
-        if unit and name.upper() != "STOKES":
-            label += f" {unit}"
-        label += " (1)"
-        deg_entries.append(label)
-
-    def _h(key: str, default=0.0) -> float:
-        return float(header.get(key, default))
-
-    spacing = [_h("CDELT1", 1.0), _h("CDELT2", 1.0), _h("CDELT3", 1.0)]
-    origin  = [
-        _h("CRVAL1") - spacing[0] * (_h("CRPIX1", 1.0) - 1.0),
-        _h("CRVAL2") - spacing[1] * (_h("CRPIX2", 1.0) - 1.0),
-        _h("CRVAL3") - spacing[2] * (_h("CRPIX3", 1.0) - 1.0),
-    ]
-
-    # Derive spatial dimensions from the squeezed active shape.
-    squeezed = [s for s in axis_sizes if s > 1]
-    if n_active == 2:
-        width, height, depth = squeezed[0], squeezed[1], 1
-        kind = "image"
-    elif n_active == 3:
-        width, height, depth = squeezed[0], squeezed[1], squeezed[2]
-        kind = "cube"
-    else:
-        width = squeezed[0] if squeezed else 1
-        height = squeezed[1] if len(squeezed) > 1 else 1
-        depth = 1
-        kind = "image"
-
-    geometry: dict[str, Any] = {
-        "active_axes": n_active,
-        "degenerate_axes_summary": f"Collapsed axes: {', '.join(deg_entries)}" if deg_entries else "",
-        "width": width,
-        "height": height,
-        "depth": depth,
-        "spacing": spacing,
-        "origin": origin,
-        "ctype": [str(header.get(f"CTYPE{i}", "")) for i in range(1, 4)],
-        "cunit": [str(header.get(f"CUNIT{i}", "")) for i in range(1, 4)],
-        "crval": [_h(f"CRVAL{i}") for i in range(1, 4)],
-        "crpix": [_h(f"CRPIX{i}", 1.0) for i in range(1, 4)],
-        "cdelt": spacing,
-    }
-    return kind, geometry
+    dataset = ScientificFitsDataset(path)
+    geometry = dataset.geometry_metadata()
+    return str(geometry["kind"]), geometry
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -503,10 +562,17 @@ _auth = Depends(verify_token)
 
 @app.get("/v1/health", tags=["meta"])
 async def health(_: None = _auth) -> dict:
+    cache_stats = PRODUCT_CACHE.stats()
+    task_stats = TASKS.stats()
     return {
         "ok": True,
         "workers": _WORKERS,
         "active_sessions": REGISTRY.stats()["active_sessions"],
+        "product_cache_entries": cache_stats["entries"],
+        "product_cache_capacity": cache_stats["max_entries"],
+        "task_registry_entries": task_stats["entries"],
+        "task_ttl_enabled": task_stats["ttl_enabled"],
+        "task_ttl_seconds": task_stats["ttl_seconds"],
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
@@ -600,6 +666,11 @@ async def open_dataset(
         height=geometry["height"],
         depth=geometry["depth"],
         degenerate_axes_summary=str(geometry.get("degenerate_axes_summary", "")),
+        wcs_status=str(geometry.get("wcs_status", "ok")),
+        wcs_warning_message=str(geometry.get("wcs_warning_message", "")),
+        wcs_sanitized_axes=list(geometry.get("wcs_sanitized_axes", [])),
+        spectral_axis_type=str(geometry.get("spectral_axis_type", "")),
+        spectral_axis_unit=str(geometry.get("spectral_axis_unit", "")),
         spacing=geometry["spacing"],
         origin=geometry["origin"],
         ctype=geometry["ctype"],
@@ -616,19 +687,11 @@ async def moment_product(
     _: None = _auth,
     session: Session = Depends(get_session),
 ) -> MomentProductResponse:
-    from .compute import worker_moment
     try:
-        path = _require_cube_path(session, request.dataset_id)
-        result = await _run_with_limit(
-            session,
-            worker_moment,
-            path,
-            request.moment_order,
-            request.channel_start,
-            request.channel_end,
-            request.mask_enabled,
-            request.threshold_value,
-        )
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "This endpoint requires a spectral cube dataset.")
+        result, _ = await _moment_product_payload(entry, request)
     except HTTPException:
         raise
     except Exception as exc:
@@ -767,22 +830,102 @@ async def cube_pv(
     _: None = _auth,
     session: Session = Depends(get_session),
 ) -> CubePvResponse:
-    from .compute import worker_pv
     try:
-        path = _require_cube_path(session, request.dataset_id)
-        result = await _run_with_limit(
-            session,
-            worker_pv,
-            path,
-            request.vertices,
-            max(1, int(request.width_pixels)),
-        )
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "This endpoint requires a spectral cube dataset.")
+        result, _ = await _pv_product_payload(entry, request)
     except HTTPException:
         raise
     except Exception as exc:
         logger.warning("[pv] failed dataset_id=%s error=%s", request.dataset_id, exc)
         return CubePvResponse(valid=False, error=str(exc))
     return CubePvResponse(valid=True, error="", **result)
+
+
+@app.post("/v1/tasks/moment", response_model=TaskCreateResponse, tags=["tasks"])
+async def create_moment_task(
+    request: MomentProductRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> TaskCreateResponse:
+    try:
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "Moment tasks require a cube dataset.")
+    except HTTPException:
+        raise
+
+    task = TASKS.create("moment")
+    TASKS.update(task.task_id, status="running", progress=0.05)
+
+    async def _runner() -> None:
+        try:
+            result, cache_hit = await _moment_product_payload(entry, request)
+            TASKS.update(
+                task.task_id,
+                status="completed",
+                progress=1.0,
+                result={"valid": True, "error": "", **result},
+                cache_hit=cache_hit,
+            )
+        except Exception as exc:  # pragma: no cover - exercised at runtime
+            TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
+
+    asyncio.create_task(_runner())
+    return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
+
+
+@app.post("/v1/tasks/pv", response_model=TaskCreateResponse, tags=["tasks"])
+async def create_pv_task(
+    request: CubePvRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> TaskCreateResponse:
+    try:
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "PV tasks require a cube dataset.")
+    except HTTPException:
+        raise
+
+    task = TASKS.create("pv")
+    TASKS.update(task.task_id, status="running", progress=0.05)
+
+    async def _runner() -> None:
+        try:
+            result, cache_hit = await _pv_product_payload(entry, request)
+            TASKS.update(
+                task.task_id,
+                status="completed",
+                progress=1.0,
+                result={"valid": True, "error": "", **result},
+                cache_hit=cache_hit,
+            )
+        except Exception as exc:  # pragma: no cover - exercised at runtime
+            TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
+
+    asyncio.create_task(_runner())
+    return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
+
+
+@app.get("/v1/tasks/{task_id}", response_model=TaskStatusResponse, tags=["tasks"])
+async def task_status(task_id: str, _: None = _auth) -> TaskStatusResponse:
+    task = TASKS.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Unknown task_id '{task_id}'.")
+    return TaskStatusResponse(
+        valid=True,
+        error=task.error,
+        task_id=task.task_id,
+        operation=task.operation,
+        status=task.status,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+        progress=task.progress,
+        cache_hit=task.cache_hit,
+        result=task.result,
+    )
 
 
 @app.post("/v1/image/full", response_model=ImageFullResponse, tags=["image"])

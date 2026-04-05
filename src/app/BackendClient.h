@@ -2,9 +2,12 @@
 #define BackendClient_h
 
 #include <QByteArray>
+#include <QJsonObject>
+#include <QList>
 #include <QNetworkRequest>
 #include <QString>
 #include <QStringList>
+#include <chrono>
 
 #include <array>
 #include <vector>
@@ -23,6 +26,13 @@ struct BackendHealthResult
 {
     bool ok{ false };
     QString error;
+    int workers{ 0 };
+    int activeSessions{ 0 };
+    int productCacheEntries{ 0 };
+    int productCacheCapacity{ 0 };
+    int taskRegistryEntries{ 0 };
+    bool taskTtlEnabled{ false };
+    int taskTtlSeconds{ 0 };
 };
 
 struct BackendListFilesResult
@@ -45,6 +55,11 @@ struct BackendOpenDatasetResult
     int height{ 0 };
     int depth{ 0 };
     QString degenerateAxesSummary;
+    QString wcsStatus{ QStringLiteral("ok") };
+    QString wcsWarningMessage;
+    QList<int> wcsSanitizedAxes;
+    QString spectralAxisType;
+    QString spectralAxisUnit;
     std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
     std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
     std::array<QString, 3> ctype{ QString(), QString(), QString() };
@@ -70,12 +85,37 @@ struct BackendMomentResult
     QString scalarType;
     double rangeMin{ 0. };
     double rangeMax{ 0. };
+    QString spectralAxisType;
+    QString spectralAxisUnit;
+    QString momentUnit;
+    QString bunit;
     QByteArray data;
     // Scientific metadata propagated from the server-side WCS pipeline.
     QString momentUnit;       // e.g. "Jy/beam Hz", "km/s", "km^2/s^2"
     QString bunit;            // raw BUNIT from the FITS header
     QString spectralAxisType; // CTYPE3 value, e.g. "FREQ", "VRAD"
     QString spectralAxisUnit; // CUNIT3 value, e.g. "Hz", "km/s"
+};
+
+struct BackendTaskCreateResult
+{
+    bool valid{ false };
+    QString error;
+    QString taskId;
+    QString status;
+    bool cacheHit{ false };
+};
+
+struct BackendTaskStatusResult
+{
+    bool valid{ false };
+    QString error;
+    QString taskId;
+    QString operation;
+    QString status;
+    double progress{ 0.0 };
+    bool cacheHit{ false };
+    QJsonObject resultObject;
 };
 
 struct BackendCubePreviewResult
@@ -131,6 +171,12 @@ struct BackendCubePvResult
     int vertexCount{ 0 };
     double totalLength{ 0. };
     int validSamples{ 0 };
+    QString spectralAxisType;
+    QString spectralAxisUnit;
+    QString bunit;
+    double beamMajor{ 0.0 };
+    double beamMinor{ 0.0 };
+    double beamPa{ 0.0 };
 };
 
 struct BackendImageResult
@@ -241,6 +287,19 @@ public:
     BackendMomentResult requestMoment(const QString &datasetId, int order, int channelStart,
                                       int channelEnd, bool maskEnabled,
                                       double thresholdValue) const;
+    BackendTaskCreateResult createMomentTask(const QString &datasetId, int order, int channelStart,
+                                             int channelEnd, bool maskEnabled,
+                                             double thresholdValue) const;
+    BackendTaskCreateResult createPvTask(const QString &datasetId,
+                                         const std::vector<std::array<int, 2>> &vertices,
+                                         int widthPixels) const;
+    BackendTaskStatusResult requestTaskStatus(const QString &taskId) const;
+    BackendTaskStatusResult waitForTaskCompletion(const BackendTaskCreateResult &createResult,
+                                                  const QString &logTag,
+                                                  int maxPollAttempts = 120,
+                                                  int pollIntervalMs = 250) const;
+    static BackendMomentResult parseMomentResultObject(const QJsonObject &object);
+    static BackendCubePvResult parsePvResultObject(const QJsonObject &object);
 
 private:
     /** Build a QNetworkRequest with auth + session headers pre-applied. */
@@ -248,6 +307,7 @@ private:
 
     QByteArray performGet(const QUrl &url, QString &error) const;
     QByteArray performPost(const QUrl &url, const QJsonDocument &body, QString &error) const;
+    std::chrono::milliseconds requestTimeoutFor(const QUrl &url) const;
 
     static QByteArray decodePayload(const QJsonObject &object, const QString &base64Field,
                                     const QString &compressionField, QString &error);

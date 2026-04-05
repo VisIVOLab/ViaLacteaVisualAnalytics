@@ -4,6 +4,7 @@
 #include "Catalogue3DParser.h"
 
 #include <QAbstractTableModel>
+#include <QStringList>
 
 #include <vector>
 
@@ -14,7 +15,7 @@ class Catalogue3DTableModel : public QAbstractTableModel
 public:
     explicit Catalogue3DTableModel(QObject *parent = nullptr);
 
-    void setEntries(const std::vector<Catalogue3DEntry> *entries);
+    void setCatalogue(const std::vector<Catalogue3DEntry> *entries, const QStringList *headers);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -22,7 +23,21 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
 private:
+    enum Column
+    {
+        NameColumn = 0,
+        TypeColumn,
+        RaColumn,
+        DecColumn,
+        DistanceColumn,
+        XColumn,
+        YColumn,
+        ZColumn,
+        FixedColumnCount
+    };
+
     const std::vector<Catalogue3DEntry> *entries{ nullptr };
+    const QStringList *headers{ nullptr };
 };
 
 #endif

@@ -227,6 +227,7 @@
      <string>File</string>
     </property>
     <addaction name="actionOpenFile"/>
+    <addaction name="actionOpenVbt"/>
     <addaction name="actionOpenCatalogue3D"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -273,6 +274,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
+  <action name="actionOpenVbt">
+   <property name="text">
+    <string>Open VBT...</string>
    </property>
   </action>
   <action name="actionExit">

@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <initializer_list>
+#include <limits>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,7 @@ struct Catalogue3DEntry
     double sceneX{ 0.0 };
     double sceneY{ 0.0 };
     double sceneZ{ 0.0 };
+    QStringList rawFieldValues;
 };
 
 struct Catalogue3DParseResult
@@ -40,6 +42,7 @@ struct Catalogue3DParseResult
     bool valid{ false };
     QString errorMessage;
     int skippedEntries{ 0 };
+    QStringList headers;
     std::vector<Catalogue3DEntry> entries;
 };
 
@@ -98,6 +101,21 @@ inline double colDouble(const QStringList &cols, int idx, bool *ok = nullptr)
         return 0.0;
     }
     return cols.at(idx).trimmed().toDouble(ok);
+}
+
+inline bool maybeNumeric(const QString &raw, double &value)
+{
+    const QString trimmed = raw.trimmed();
+    if (trimmed.isEmpty()) {
+        return false;
+    }
+    bool ok = false;
+    const double parsed = trimmed.toDouble(&ok);
+    if (!ok || !std::isfinite(parsed)) {
+        return false;
+    }
+    value = parsed;
+    return true;
 }
 
 inline QString colString(const QStringList &cols, int idx)
@@ -243,6 +261,7 @@ inline Catalogue3DParseResult parseFile(const QString &path)
     }
 
     const QStringList headers = detail::splitLine(headerLine);
+    result.headers = headers;
 
     // All aliases are already in normalised form (uppercase, alphanumeric only).
     const int iRA = detail::findCol(headers, {
@@ -346,6 +365,10 @@ inline Catalogue3DParseResult parseFile(const QString &path)
         e.id     = entryId++;
         e.raDeg  = ra;
         e.decDeg = dec;
+        e.rawFieldValues = cols;
+        while (e.rawFieldValues.size() < headers.size()) {
+            e.rawFieldValues.append(QString());
+        }
 
         e.name = detail::colString(cols, iName);
         if (e.name.isEmpty())

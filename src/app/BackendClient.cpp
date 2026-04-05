@@ -11,7 +11,10 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcessEnvironment>
+#include <QDebug>
 #include <QStandardPaths>
+#include <QThread>
+#include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -141,6 +144,13 @@ BackendHealthResult BackendClient::health() const
     }
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
     result.ok = object.value(QStringLiteral("ok")).toBool(false);
+    result.workers = object.value(QStringLiteral("workers")).toInt();
+    result.activeSessions = object.value(QStringLiteral("active_sessions")).toInt();
+    result.productCacheEntries = object.value(QStringLiteral("product_cache_entries")).toInt();
+    result.productCacheCapacity = object.value(QStringLiteral("product_cache_capacity")).toInt();
+    result.taskRegistryEntries = object.value(QStringLiteral("task_registry_entries")).toInt();
+    result.taskTtlEnabled = object.value(QStringLiteral("task_ttl_enabled")).toBool(false);
+    result.taskTtlSeconds = object.value(QStringLiteral("task_ttl_seconds")).toInt();
     if (!result.ok) {
         result.error = QStringLiteral("Backend health check failed.");
     }
@@ -229,6 +239,16 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path)
     result.depth = object.value(QStringLiteral("depth")).toInt();
     result.degenerateAxesSummary =
             object.value(QStringLiteral("degenerate_axes_summary")).toString();
+    result.wcsStatus = object.value(QStringLiteral("wcs_status")).toString(QStringLiteral("ok"));
+    result.wcsWarningMessage = object.value(QStringLiteral("wcs_warning_message")).toString();
+    const QJsonArray wcsSanitizedAxes = object.value(QStringLiteral("wcs_sanitized_axes")).toArray();
+    result.wcsSanitizedAxes.clear();
+    result.wcsSanitizedAxes.reserve(wcsSanitizedAxes.size());
+    for (const QJsonValue &value : wcsSanitizedAxes) {
+        result.wcsSanitizedAxes.push_back(value.toInt());
+    }
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
 
     const QJsonArray spacing = object.value(QStringLiteral("spacing")).toArray();
     const QJsonArray origin = object.value(QStringLiteral("origin")).toArray();
@@ -361,7 +381,6 @@ BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
                                              const std::vector<std::array<int, 2>> &vertices,
                                              int widthPixels) const
 {
-    BackendCubePvResult result;
     QString error;
     QJsonArray vertexArray;
     for (const auto &v : vertices) {
@@ -373,37 +392,11 @@ BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
     const QByteArray payload =
             performPost(QUrl(m_baseUrl + QStringLiteral("/v1/cube/pv")), body, error);
     if (!error.isEmpty()) {
+        BackendCubePvResult result;
         result.error = error;
         return result;
     }
-    const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value(QStringLiteral("valid")).toBool(false);
-    result.error = object.value(QStringLiteral("error")).toString();
-    result.numSamples = object.value(QStringLiteral("num_samples")).toInt();
-    result.depth = object.value(QStringLiteral("depth")).toInt();
-    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
-    result.computedOn = object.value(QStringLiteral("computed_on")).toString();
-    result.widthPixels = object.value(QStringLiteral("width_pixels")).toInt(1);
-    result.vertexCount = object.value(QStringLiteral("vertex_count")).toInt();
-    result.totalLength = object.value(QStringLiteral("total_length")).toDouble();
-    result.validSamples = object.value(QStringLiteral("valid_samples")).toInt();
-    result.positions = decodePayload(object, QStringLiteral("positions_base64"),
-                                     QStringLiteral("compression"), result.error);
-    if (result.error.isEmpty()) {
-        result.data = decodePayload(object, QStringLiteral("data_base64"),
-                                    QStringLiteral("compression"), result.error);
-    }
-    if (!result.error.isEmpty()) {
-        result.valid = false;
-    }
-    // Physical spatial coordinates (added in backend PV refactor).
-    result.positionsArcsec = decodePayload(object, QStringLiteral("positions_arcsec_base64"),
-                                           QStringLiteral("compression"), result.error);
-    result.error.clear(); // missing arcsec positions is non-fatal
-    result.pixelScaleArcsecPerPixel =
-            object.value(QStringLiteral("pixel_scale_arcsec_per_pixel")).toDouble(0.);
-    result.spatialUnit = object.value(QStringLiteral("spatial_unit")).toString(QStringLiteral("pixel"));
-    return result;
+    return parsePvResultObject(QJsonDocument::fromJson(payload).object());
 }
 
 BackendImageResult BackendClient::requestImage(const QString &datasetId) const
@@ -506,7 +499,6 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
                                                  int channelStart, int channelEnd,
                                                  bool maskEnabled, double thresholdValue) const
 {
-    BackendMomentResult result;
     QString error;
     const QJsonDocument body(
             QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
@@ -518,10 +510,175 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     const QByteArray payload =
             performPost(QUrl(m_baseUrl + QStringLiteral("/v1/products/moment")), body, error);
     if (!error.isEmpty()) {
+        BackendMomentResult result;
+        result.error = error;
+        return result;
+    }
+    return parseMomentResultObject(QJsonDocument::fromJson(payload).object());
+}
+
+BackendTaskCreateResult BackendClient::createMomentTask(const QString &datasetId, int order,
+                                                        int channelStart, int channelEnd,
+                                                        bool maskEnabled,
+                                                        double thresholdValue) const
+{
+    BackendTaskCreateResult result;
+    QString error;
+    const QJsonDocument body(
+            QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                         { QStringLiteral("moment_order"), order },
+                         { QStringLiteral("channel_start"), channelStart },
+                         { QStringLiteral("channel_end"), channelEnd },
+                         { QStringLiteral("mask_enabled"), maskEnabled },
+                         { QStringLiteral("threshold_value"), thresholdValue } });
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/tasks/moment")), body, error);
+    if (!error.isEmpty()) {
         result.error = error;
         return result;
     }
     const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.taskId = object.value(QStringLiteral("task_id")).toString();
+    result.status = object.value(QStringLiteral("status")).toString();
+    result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
+    return result;
+}
+
+BackendTaskCreateResult BackendClient::createPvTask(const QString &datasetId,
+                                                    const std::vector<std::array<int, 2>> &vertices,
+                                                    int widthPixels) const
+{
+    BackendTaskCreateResult result;
+    QString error;
+    QJsonArray vertexArray;
+    for (const auto &v : vertices) {
+        vertexArray.append(QJsonArray{ v[0], v[1] });
+    }
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("vertices"), vertexArray },
+                                          { QStringLiteral("width_pixels"), widthPixels } });
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/tasks/pv")), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.taskId = object.value(QStringLiteral("task_id")).toString();
+    result.status = object.value(QStringLiteral("status")).toString();
+    result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
+    return result;
+}
+
+BackendTaskStatusResult BackendClient::requestTaskStatus(const QString &taskId) const
+{
+    BackendTaskStatusResult result;
+    QString error;
+    const QByteArray payload =
+            performGet(QUrl(m_baseUrl + QStringLiteral("/v1/tasks/") + taskId), error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.taskId = object.value(QStringLiteral("task_id")).toString();
+    result.operation = object.value(QStringLiteral("operation")).toString();
+    result.status = object.value(QStringLiteral("status")).toString();
+    result.progress = object.value(QStringLiteral("progress")).toDouble();
+    result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
+    result.resultObject = object.value(QStringLiteral("result")).toObject();
+    return result;
+}
+
+BackendTaskStatusResult BackendClient::waitForTaskCompletion(const BackendTaskCreateResult &createResult,
+                                                             const QString &logTag,
+                                                             int maxPollAttempts,
+                                                             int pollIntervalMs) const
+{
+    BackendTaskStatusResult terminal;
+    terminal.taskId = createResult.taskId;
+    if (!createResult.valid || createResult.taskId.isEmpty()) {
+        terminal.error = createResult.error.isEmpty()
+                ? QStringLiteral("Task creation failed.")
+                : createResult.error;
+        qWarning().noquote()
+                << QStringLiteral("%1 create failed error=%2").arg(logTag, terminal.error);
+        return terminal;
+    }
+
+    qDebug().noquote()
+            << QStringLiteral("%1 created task_id=%2 status=%3 cache_hit=%4")
+                       .arg(logTag, createResult.taskId, createResult.status)
+                       .arg(createResult.cacheHit ? QStringLiteral("true")
+                                                 : QStringLiteral("false"));
+
+    for (int attempt = 0; attempt < maxPollAttempts; ++attempt) {
+        QThread::msleep(pollIntervalMs);
+        const auto taskStatus = this->requestTaskStatus(createResult.taskId);
+        if (!taskStatus.valid && !taskStatus.status.isEmpty()
+            && taskStatus.status != QStringLiteral("failed")) {
+            qWarning().noquote()
+                    << QStringLiteral("%1 polling invalid task_id=%2 error=%3")
+                               .arg(logTag, createResult.taskId, taskStatus.error);
+            return taskStatus;
+        }
+        qDebug().noquote()
+                << QStringLiteral("%1 poll task_id=%2 status=%3 progress=%4")
+                           .arg(logTag, createResult.taskId, taskStatus.status)
+                           .arg(taskStatus.progress, 0, 'f', 2);
+        if (taskStatus.status == QStringLiteral("completed")) {
+            qDebug().noquote()
+                    << QStringLiteral("%1 completed task_id=%2 cache_hit=%3")
+                               .arg(logTag, createResult.taskId)
+                               .arg(taskStatus.cacheHit ? QStringLiteral("true")
+                                                        : QStringLiteral("false"));
+            return taskStatus;
+        }
+        if (taskStatus.status == QStringLiteral("failed")) {
+            qWarning().noquote()
+                    << QStringLiteral("%1 failed task_id=%2 error=%3")
+                               .arg(logTag, createResult.taskId, taskStatus.error);
+            return taskStatus;
+        }
+    }
+
+    terminal.error = QStringLiteral("Task polling timed out.");
+    qWarning().noquote()
+            << QStringLiteral("%1 polling timed out task_id=%2").arg(logTag, createResult.taskId);
+    return terminal;
+}
+
+// ── Low-level HTTP ────────────────────────────────────────────────────────────
+
+std::chrono::milliseconds BackendClient::requestTimeoutFor(const QUrl &url) const
+{
+    const QString path = url.path();
+    if (path.endsWith(QStringLiteral("/health"))
+        || path.endsWith(QStringLiteral("/files/list"))
+        || path.endsWith(QStringLiteral("/files/header"))) {
+        return std::chrono::milliseconds(5000);
+    }
+    if (path.endsWith(QStringLiteral("/datasets/open"))) {
+        return std::chrono::milliseconds(10000);
+    }
+    if (path.endsWith(QStringLiteral("/tasks/moment")) || path.contains(QStringLiteral("/tasks/"))) {
+        return std::chrono::milliseconds(10000);
+    }
+    if (path.endsWith(QStringLiteral("/cube/slice")) || path.endsWith(QStringLiteral("/image/preview"))) {
+        return std::chrono::milliseconds(30000);
+    }
+    return std::chrono::milliseconds(120000);
+}
+
+BackendMomentResult BackendClient::parseMomentResultObject(const QJsonObject &object)
+{
+    BackendMomentResult result;
     result.valid = object.value(QStringLiteral("valid")).toBool(false);
     result.error = object.value(QStringLiteral("error")).toString();
     result.width = object.value(QStringLiteral("width")).toInt();
@@ -529,6 +686,10 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
     result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
     result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
+    result.momentUnit = object.value(QStringLiteral("moment_unit")).toString();
+    result.bunit = object.value(QStringLiteral("bunit")).toString();
     result.data = decodePayload(object, QStringLiteral("data_base64"),
                                 QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
@@ -541,7 +702,42 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     return result;
 }
 
-// ── Low-level HTTP ────────────────────────────────────────────────────────────
+BackendCubePvResult BackendClient::parsePvResultObject(const QJsonObject &object)
+{
+    BackendCubePvResult result;
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.numSamples = object.value(QStringLiteral("num_samples")).toInt();
+    result.depth = object.value(QStringLiteral("depth")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.computedOn = object.value(QStringLiteral("computed_on")).toString();
+    result.widthPixels = object.value(QStringLiteral("width_pixels")).toInt(1);
+    result.vertexCount = object.value(QStringLiteral("vertex_count")).toInt();
+    result.totalLength = object.value(QStringLiteral("total_length")).toDouble();
+    result.validSamples = object.value(QStringLiteral("valid_samples")).toInt();
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
+    result.bunit = object.value(QStringLiteral("bunit")).toString();
+    result.beamMajor = object.value(QStringLiteral("beam_major")).toDouble();
+    result.beamMinor = object.value(QStringLiteral("beam_minor")).toDouble();
+    result.beamPa = object.value(QStringLiteral("beam_pa")).toDouble();
+    result.positionsArcsec = decodePayload(object, QStringLiteral("positions_arcsec_base64"),
+                                           QStringLiteral("compression"), result.error);
+    result.error.clear(); // missing arcsec positions is non-fatal
+    result.pixelScaleArcsecPerPixel =
+            object.value(QStringLiteral("pixel_scale_arcsec_per_pixel")).toDouble(0.);
+    result.spatialUnit = object.value(QStringLiteral("spatial_unit")).toString(QStringLiteral("pixel"));
+    result.positions = decodePayload(object, QStringLiteral("positions_base64"),
+                                     QStringLiteral("compression"), result.error);
+    if (result.error.isEmpty()) {
+        result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                    QStringLiteral("compression"), result.error);
+    }
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
+    return result;
+}
 
 QByteArray BackendClient::performGet(const QUrl &url, QString &error) const
 {
@@ -551,12 +747,24 @@ QByteArray BackendClient::performGet(const QUrl &url, QString &error) const
     QEventLoop loop;
     QNetworkReply *reply = nam.get(request);
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, [&]() {
+        error = QStringLiteral("Backend request timed out after %1 ms: %2")
+                        .arg(this->requestTimeoutFor(url).count())
+                        .arg(url.path());
+        qWarning().noquote() << error;
+        reply->abort();
+        loop.quit();
+    });
+    timeoutTimer.start(static_cast<int>(this->requestTimeoutFor(url).count()));
     loop.exec();
+    timeoutTimer.stop();
 
     const QByteArray data = reply->readAll();
-    if (reply->error() != QNetworkReply::NoError) {
+    if (error.isEmpty() && reply->error() != QNetworkReply::NoError) {
         error = reply->errorString();
-    } else {
+    } else if (error.isEmpty()) {
         const int status =
                 reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 400) {
@@ -576,12 +784,24 @@ QByteArray BackendClient::performPost(const QUrl &url, const QJsonDocument &body
     QEventLoop loop;
     QNetworkReply *reply = nam.post(request, body.toJson(QJsonDocument::Compact));
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, [&]() {
+        error = QStringLiteral("Backend request timed out after %1 ms: %2")
+                        .arg(this->requestTimeoutFor(url).count())
+                        .arg(url.path());
+        qWarning().noquote() << error;
+        reply->abort();
+        loop.quit();
+    });
+    timeoutTimer.start(static_cast<int>(this->requestTimeoutFor(url).count()));
     loop.exec();
+    timeoutTimer.stop();
 
     const QByteArray data = reply->readAll();
-    if (reply->error() != QNetworkReply::NoError) {
+    if (error.isEmpty() && reply->error() != QNetworkReply::NoError) {
         error = reply->errorString();
-    } else {
+    } else if (error.isEmpty()) {
         const int status =
                 reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 400) {

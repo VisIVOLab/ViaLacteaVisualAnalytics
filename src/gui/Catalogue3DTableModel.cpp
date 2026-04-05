@@ -2,10 +2,12 @@
 
 Catalogue3DTableModel::Catalogue3DTableModel(QObject *parent) : QAbstractTableModel(parent) {}
 
-void Catalogue3DTableModel::setEntries(const std::vector<Catalogue3DEntry> *newEntries)
+void Catalogue3DTableModel::setCatalogue(const std::vector<Catalogue3DEntry> *newEntries,
+                                         const QStringList *newHeaders)
 {
     beginResetModel();
     this->entries = newEntries;
+    this->headers = newHeaders;
     endResetModel();
 }
 
@@ -22,7 +24,7 @@ int Catalogue3DTableModel::columnCount(const QModelIndex &parent) const
     if (parent.isValid()) {
         return 0;
     }
-    return 6;
+    return FixedColumnCount + (this->headers ? this->headers->size() : 0);
 }
 
 QVariant Catalogue3DTableModel::data(const QModelIndex &index, int role) const
@@ -34,7 +36,8 @@ QVariant Catalogue3DTableModel::data(const QModelIndex &index, int role) const
 
     const Catalogue3DEntry &entry = this->entries->at(static_cast<std::size_t>(index.row()));
     if (role == Qt::TextAlignmentRole) {
-        return static_cast<int>((index.column() < 2) ? (Qt::AlignLeft | Qt::AlignVCenter)
+        return static_cast<int>((index.column() < 2 || index.column() >= FixedColumnCount)
+                                        ? (Qt::AlignLeft | Qt::AlignVCenter)
                                                     : (Qt::AlignRight | Qt::AlignVCenter));
     }
     if (role != Qt::DisplayRole) {
@@ -42,38 +45,34 @@ QVariant Catalogue3DTableModel::data(const QModelIndex &index, int role) const
     }
 
     switch (index.column()) {
-    case 0:
+    case NameColumn:
         return entry.name;
-    case 1:
+    case TypeColumn:
         return entry.morphology;
-    case 2:
+    case RaColumn:
         return QString::number(entry.raDeg, 'f', 4);
-    case 3:
+    case DecColumn:
         return QString::number(entry.decDeg, 'f', 4);
-    case 4:
-        if (entry.llsMajorKpc > 0.0) {
-            return entry.llsMinorKpc > 0.0
-                    ? QStringLiteral("%1 x %2")
-                              .arg(QString::number(entry.llsMinorKpc, 'f', 1),
-                                   QString::number(entry.llsMajorKpc, 'f', 1))
-                    : QString::number(entry.llsMajorKpc, 'f', 1);
-        }
-        if (entry.majorAxisArcmin > 0.0) {
-            return entry.minorAxisArcmin > 0.0
-                    ? QStringLiteral("%1 x %2")
-                              .arg(QString::number(entry.minorAxisArcmin, 'f', 2),
-                                   QString::number(entry.majorAxisArcmin, 'f', 2))
-                    : QString::number(entry.majorAxisArcmin, 'f', 2);
-        }
-        return {};
-    case 5:
-        if (entry.redshift > 0.0) {
-            return QString::number(entry.redshift, 'f', 4);
-        }
+    case DistanceColumn:
         return QString::number(entry.distanceMpc, 'f', 1);
+    case XColumn:
+        return QString::number(entry.sceneX, 'f', 3);
+    case YColumn:
+        return QString::number(entry.sceneY, 'f', 3);
+    case ZColumn:
+        return QString::number(entry.sceneZ, 'f', 3);
     default:
+        break;
+    }
+
+    const int rawColumn = index.column() - FixedColumnCount;
+    if (!this->headers || rawColumn < 0 || rawColumn >= this->headers->size()) {
         return {};
     }
+    if (rawColumn >= 0 && rawColumn < entry.rawFieldValues.size()) {
+        return entry.rawFieldValues.at(rawColumn);
+    }
+    return {};
 }
 
 QVariant Catalogue3DTableModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -83,19 +82,29 @@ QVariant Catalogue3DTableModel::headerData(int section, Qt::Orientation orientat
     }
 
     switch (section) {
-    case 0:
+    case NameColumn:
         return QStringLiteral("Name");
-    case 1:
+    case TypeColumn:
         return QStringLiteral("Type");
-    case 2:
+    case RaColumn:
         return QStringLiteral("RA");
-    case 3:
+    case DecColumn:
         return QStringLiteral("Dec");
-    case 4:
-        return QStringLiteral("Size");
-    case 5:
-        return QStringLiteral("z / d");
+    case DistanceColumn:
+        return QStringLiteral("Distance");
+    case XColumn:
+        return QStringLiteral("X");
+    case YColumn:
+        return QStringLiteral("Y");
+    case ZColumn:
+        return QStringLiteral("Z");
     default:
-        return {};
+        break;
     }
+
+    const int rawColumn = section - FixedColumnCount;
+    if (this->headers && rawColumn >= 0 && rawColumn < this->headers->size()) {
+        return this->headers->at(rawColumn);
+    }
+    return {};
 }

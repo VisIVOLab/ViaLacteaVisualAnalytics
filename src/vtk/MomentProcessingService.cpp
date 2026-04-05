@@ -3,6 +3,7 @@
 #include "app/BackendClient.h"
 
 #include <QByteArray>
+#include <QDebug>
 
 #include <vtkImageData.h>
 #include <vtkLookupTable.h>
@@ -69,9 +70,32 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
 
     BackendClient client(request.backendUrl, request.backendToken);
     client.setSessionId(request.sessionId);
-    const auto response = client.requestMoment(request.datasetId, request.order, request.channelStart,
-                                              request.channelEnd, request.maskEnabled,
-                                              request.thresholdValue);
+    BackendMomentResult response;
+    const auto taskStatus = client.waitForTaskCompletion(
+            client.createMomentTask(request.datasetId, request.order, request.channelStart,
+                                    request.channelEnd, request.maskEnabled,
+                                    request.thresholdValue),
+            QStringLiteral("[moment][task]"));
+    if (taskStatus.status == QStringLiteral("completed")) {
+        response = BackendClient::parseMomentResultObject(taskStatus.resultObject);
+    }
+
+    if (!response.valid) {
+        if (!taskStatus.taskId.isEmpty()) {
+            qWarning().noquote()
+                    << QStringLiteral("[moment][task] fallback to sync task_id=%1")
+                               .arg(taskStatus.taskId);
+        }
+        response = client.requestMoment(request.datasetId, request.order, request.channelStart,
+                                        request.channelEnd, request.maskEnabled,
+                                        request.thresholdValue);
+        if (!taskStatus.taskId.isEmpty()) {
+            qDebug().noquote() << QStringLiteral("[moment][task] sync fallback completed valid=%1")
+                                          .arg(response.valid ? QStringLiteral("true")
+                                                              : QStringLiteral("false"));
+        }
+    }
+
     if (!response.valid) {
         return { nullptr, { 0., 0. }, false,
                  response.error.isEmpty() ? QStringLiteral("Remote moment request failed.")

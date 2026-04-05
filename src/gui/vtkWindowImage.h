@@ -66,6 +66,8 @@ public:
                    const std::array<double, 3> &remoteCrval,
                    const std::array<double, 3> &remoteCrpix,
                    const std::array<double, 3> &remoteCdelt, const QString &remoteDegenerateAxesSummary,
+                   const QString &remoteWcsStatus = QStringLiteral("ok"),
+                   const QString &remoteWcsWarningMessage = QString(),
                    const QString &remoteSessionId = QString(),
                    const QString &remoteBackendToken = QString(), QWidget *parent = nullptr);
     ~vtkWindowImage();
@@ -122,6 +124,8 @@ private:
     const std::array<double, 3> remoteDatasetCrpix;
     const std::array<double, 3> remoteDatasetCdelt;
     const QString remoteDegenerateAxesSummary;
+    const QString remoteWcsStatus;
+    const QString remoteWcsWarningMessage;
     bool remoteDisplayingPreview{ false };
     std::array<int, 2> remoteFullImageDims{ 0, 0 };
     bool transitioningToFull{ false };
@@ -136,6 +140,7 @@ private:
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
     QPointer<QLabel> sanityLabel;
+    QPointer<QLabel> wcsStatusLabel;
     QPointer<QLabel> catalogueInfoLabel;
     QPointer<QDockWidget> catalogueDock;
     QPointer<QTableView> catalogueTableView;
@@ -264,6 +269,7 @@ private:
     void applyInitialAutoscale(vtkImageData *imageData, vtkLookupTable *lut, const char *context);
     void requestWcsOverlayRender();
     void refreshWcsOverlayImmediately();
+    void updateWcsStatusIndicator();
     void updateDataStatePanel();
     void updateSanityPanel();
     QString currentWcsFrameLabel() const;

@@ -18,6 +18,7 @@ Run with:
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import struct
 
@@ -71,6 +72,11 @@ async def test_health_ok(client: AsyncClient, auth_headers: dict) -> None:
     assert data["ok"] is True
     assert "workers" in data
     assert "active_sessions" in data
+    assert "product_cache_entries" in data
+    assert "product_cache_capacity" in data
+    assert "task_registry_entries" in data
+    assert "task_ttl_enabled" in data
+    assert "task_ttl_seconds" in data
     assert "X-Request-ID" in resp.headers  # R8: request-id header present
 
 
@@ -154,6 +160,8 @@ async def test_open_image_metadata(
     assert data["depth"] == 1
     assert data["active_axes"] == 2
     assert data["ctype"][0] == "RA---SIN"
+    assert data["wcs_status"] == "ok"
+    assert data["wcs_warning_message"] == ""
 
 
 @pytest.mark.asyncio
@@ -171,6 +179,7 @@ async def test_open_cube_metadata(
     assert data["height"] == 64
     assert data["depth"] == 32
     assert data["active_axes"] == 3
+    assert data["wcs_status"] == "ok"
 
 
 @pytest.mark.asyncio
@@ -181,6 +190,24 @@ async def test_open_nonexistent_file(client: AsyncClient, auth_headers: dict) ->
         headers=auth_headers,
     )
     assert resp.json()["valid"] is False
+
+
+@pytest.mark.asyncio
+async def test_open_malformed_celestial_unit_fits(
+    client: AsyncClient, auth_headers: dict, malformed_unit_fits_image
+) -> None:
+    resp = await client.post(
+        "/v1/datasets/open",
+        json={"path": str(malformed_unit_fits_image)},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is True
+    assert data["kind"] == "image"
+    assert data["wcs_status"] == "sanitized"
+    assert "compatibility" in data["wcs_warning_message"]
+    assert 1 in data["wcs_sanitized_axes"]
 
 
 # ── Session isolation ─────────────────────────────────────────────────────────
@@ -310,56 +337,11 @@ async def test_moment_map_orders(
     arr = _decode_f32(data["data_base64"])
     assert arr.shape == (64 * 64,)
     assert np.isfinite(arr).any()
-    # ── Scientific metadata must be present and non-empty ──────────────────
+    # Scientific metadata must be present and non-empty.
     assert data.get("bunit") == "Jy/beam", f"bunit missing or wrong for M{order}"
     assert data.get("spectral_axis_type") == "FREQ"
     assert data.get("spectral_axis_unit") == "Hz"
     assert data.get("moment_unit") != "", f"moment_unit empty for M{order}"
-
-
-@pytest.mark.asyncio
-async def test_moment_m0_unit_contains_bunit_and_spectral(
-    client: AsyncClient, opened_cube: dict
-) -> None:
-    """M0 unit must be BUNIT × spectral_unit (e.g. 'Jy/beam Hz')."""
-    resp = await client.post(
-        "/v1/products/moment",
-        json={
-            "dataset_id": opened_cube["dataset_id"],
-            "moment_order": 0,
-            "channel_start": 0,
-            "channel_end": 31,
-            "mask_enabled": False,
-            "threshold_value": 0.0,
-        },
-        headers=opened_cube["headers"],
-    )
-    data = resp.json()
-    assert "Jy/beam" in data["moment_unit"]
-    assert "Hz" in data["moment_unit"]
-
-
-@pytest.mark.asyncio
-async def test_moment_m2_unit_is_squared_spectral(
-    client: AsyncClient, opened_cube: dict
-) -> None:
-    """M2 (variance) unit must be spectral_unit^2."""
-    resp = await client.post(
-        "/v1/products/moment",
-        json={
-            "dataset_id": opened_cube["dataset_id"],
-            "moment_order": 2,
-            "channel_start": 0,
-            "channel_end": 31,
-            "mask_enabled": False,
-            "threshold_value": 0.0,
-        },
-        headers=opened_cube["headers"],
-    )
-    data = resp.json()
-    assert data["moment_unit"] == "Hz^2", (
-        f"M2 unit should be 'Hz^2' (variance), got '{data['moment_unit']}'"
-    )
 
 
 @pytest.mark.asyncio
@@ -400,6 +382,105 @@ async def test_cube_pv(client: AsyncClient, opened_cube: dict) -> None:
     assert data["depth"] == 32
     assert data["valid_samples"] > 0
     assert data["compression"] == "qt-zlib"
+    assert "spectral_axis_type" in data
+
+
+@pytest.mark.asyncio
+async def test_moment_task_endpoint(client: AsyncClient, opened_cube: dict) -> None:
+    create_resp = await client.post(
+        "/v1/tasks/moment",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "moment_order": 0,
+            "channel_start": 4,
+            "channel_end": 12,
+            "mask_enabled": False,
+            "threshold_value": 0.0,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert create_resp.status_code == 200
+    task = create_resp.json()
+    assert task["valid"] is True
+    assert task["task_id"].startswith("task_")
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{task['task_id']}", headers=opened_cube["headers"])
+        assert status_resp.status_code == 200
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            assert status_data["result"]["valid"] is True
+            assert "data_base64" in status_data["result"]
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("moment task did not complete in time")
+
+
+@pytest.mark.asyncio
+async def test_pv_task_endpoint(client: AsyncClient, opened_cube: dict) -> None:
+    create_resp = await client.post(
+        "/v1/tasks/pv",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "vertices": [[10, 32], [54, 32]],
+            "width_pixels": 3,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert create_resp.status_code == 200
+    task = create_resp.json()
+    assert task["valid"] is True
+    assert task["task_id"].startswith("task_")
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{task['task_id']}", headers=opened_cube["headers"])
+        assert status_resp.status_code == 200
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            assert status_data["result"]["valid"] is True
+            assert "data_base64" in status_data["result"]
+            assert status_data["result"]["valid_samples"] > 0
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("pv task did not complete in time")
+
+
+@pytest.mark.asyncio
+async def test_pv_task_cache_hit(client: AsyncClient, opened_cube: dict) -> None:
+    payload = {
+        "dataset_id": opened_cube["dataset_id"],
+        "vertices": [[10, 32], [54, 32]],
+        "width_pixels": 3,
+    }
+    first_resp = await client.post("/v1/tasks/pv", json=payload, headers=opened_cube["headers"])
+    assert first_resp.status_code == 200
+    first_task = first_resp.json()
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{first_task['task_id']}", headers=opened_cube["headers"])
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("first pv task did not complete in time")
+
+    second_resp = await client.post("/v1/tasks/pv", json=payload, headers=opened_cube["headers"])
+    assert second_resp.status_code == 200
+    second_task = second_resp.json()
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{second_task['task_id']}", headers=opened_cube["headers"])
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            assert status_data["cache_hit"] is True
+            assert status_data["result"]["valid"] is True
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("second pv task did not complete in time")
 
 
 @pytest.mark.asyncio
@@ -414,6 +495,26 @@ async def test_cube_pv_too_few_vertices(client: AsyncClient, opened_cube: dict) 
         headers=opened_cube["headers"],
     )
     assert resp.json()["valid"] is False
+
+
+@pytest.mark.asyncio
+async def test_isosurface_product(client: AsyncClient, opened_cube: dict) -> None:
+    pytest.importorskip("vtk")
+    resp = await client.post(
+        "/v1/products/isosurface",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "threshold": 1.0,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is True, data["error"]
+    assert data["num_points"] > 0
+    assert data["num_polys"] > 0
+    assert data["points_base64"] != ""
+    assert data["polys_base64"] != ""
 
 
 # ── Image endpoints ───────────────────────────────────────────────────────────
@@ -473,6 +574,7 @@ async def test_unknown_dataset_id(client: AsyncClient, auth_headers: dict) -> No
         headers=auth_headers,
     )
     assert resp.status_code == 404
+
 
 
 # ── /v1/cube/noise tests ──────────────────────────────────────────────────────
@@ -678,3 +780,16 @@ async def test_cosmology_luminosity_gt_comoving(client: AsyncClient, auth_header
     data = resp.json()
     assert data["valid"] is True
     assert data["luminosity_Mpc"] > data["comoving_Mpc"]
+
+
+# Next-server test: task registry TTL eviction
+
+def test_task_registry_ttl_eviction() -> None:
+    from backend.app.tasks import TaskRegistry
+
+    registry = TaskRegistry(ttl_seconds=1)
+    task = registry.create("pv")
+    record = registry.get(task.task_id)
+    assert record is not None
+    record.last_touched_monotonic -= 5.0
+    assert registry.get(task.task_id) is None

@@ -91,6 +91,7 @@
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QTableView>
+#include <QThread>
 #include <QtConcurrentRun>
 #include <QVBoxLayout>
 
@@ -1306,7 +1307,27 @@ RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &data
 
     BackendClient client(backendUrl, backendToken);
     client.setSessionId(sessionId);
-    const auto response = client.requestPv(datasetId, vertices, widthPixels);
+    BackendCubePvResult response;
+    const auto taskStatus = client.waitForTaskCompletion(
+            client.createPvTask(datasetId, vertices, widthPixels),
+            QStringLiteral("[pv][task]"));
+    if (taskStatus.status == QStringLiteral("completed")) {
+        response = BackendClient::parsePvResultObject(taskStatus.resultObject);
+    }
+
+    if (!response.valid) {
+        if (!taskStatus.taskId.isEmpty()) {
+            qWarning().noquote()
+                    << QStringLiteral("[pv][task] fallback to sync task_id=%1").arg(taskStatus.taskId);
+        }
+        response = client.requestPv(datasetId, vertices, widthPixels);
+        if (!taskStatus.taskId.isEmpty()) {
+            qDebug().noquote() << QStringLiteral("[pv][task] sync fallback completed valid=%1")
+                                          .arg(response.valid ? QStringLiteral("true")
+                                                              : QStringLiteral("false"));
+        }
+    }
+
     if (!response.valid) {
         result.errorMessage =
                 response.error.isEmpty() ? u"Remote PV request failed."_s : response.error;
@@ -1426,6 +1447,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                     {},
                     {},
                     {},
+                    {},
+                    {},
+                    {},
+                    {},
                     parent)
 {
 }
@@ -1440,6 +1465,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              const std::array<double, 3> &remoteCrpix,
                              const std::array<double, 3> &remoteCdelt,
                              const QString &remoteDegenerateAxesSummary,
+                             const QString &remoteSpectralAxisType,
+                             const QString &remoteSpectralAxisUnit,
+                             const QString &remoteWcsStatus,
+                             const QString &remoteWcsWarningMessage,
                              const QString &remoteSessionId,
                              const QString &remoteBackendToken, QWidget *parent)
     : QMainWindow(parent),
@@ -1461,6 +1490,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
       remoteDatasetCrpix(remoteCrpix),
       remoteDatasetCdelt(remoteCdelt),
       remoteDegenerateAxesSummary(remoteDegenerateAxesSummary),
+      remoteSpectralAxisType(remoteSpectralAxisType),
+      remoteSpectralAxisUnit(remoteSpectralAxisUnit),
+      remoteWcsStatus(remoteWcsStatus),
+      remoteWcsWarningMessage(remoteWcsWarningMessage),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -1497,6 +1530,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->sanityLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
     this->sanityLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->statusBar()->addPermanentWidget(this->sanityLabel);
+    this->wcsStatusLabel = new QLabel(this);
+    this->wcsStatusLabel->setStyleSheet(u"QLabel { padding-left: 8px; font-weight: 600; }"_s);
+    this->wcsStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->wcsStatusLabel);
     this->momentProvenanceLabel = new QLabel(this);
     this->momentProvenanceLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
     this->momentProvenanceLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -1525,6 +1562,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     });
     this->updateDataStatePanel();
     this->updateSanityPanel();
+    this->updateWcsStatusIndicator();
     this->remoteRoiRefinementCheck = new QCheckBox(u"Use Camera ROI"_s, this);
     this->remoteRoiRefinementCheck->setChecked(this->useCameraRoiRefinement);
     this->remoteRoiRefinementCheck->setToolTip(
@@ -5617,6 +5655,26 @@ double vtkWindowCube::remoteSliceCoordinate(int sliceIndex) const
 vtkWindowCube::SpectralAxisDescriptor vtkWindowCube::spectralAxisDescriptor() const
 {
     if (this->isRemoteMode) {
+        const bool hasBackendSpectralMetadata = !this->remoteSpectralAxisType.trimmed().isEmpty()
+                || !this->remoteSpectralAxisUnit.trimmed().isEmpty();
+        if (hasBackendSpectralMetadata) {
+            auto descriptor =
+                    inferSpectralAxisDescriptor(this->remoteSpectralAxisType,
+                                               !this->remoteSpectralAxisUnit.trimmed().isEmpty()
+                                                       ? this->remoteSpectralAxisUnit
+                                                       : this->remoteDatasetCunit[2],
+                                               true);
+            descriptor.trusted = true;
+            descriptor.inferred = false;
+            descriptor.physical = true;
+            descriptor.sourceLabel = this->remoteDatasetCtype[2].trimmed().isEmpty()
+                    ? this->remoteSpectralAxisType.trimmed()
+                    : this->remoteDatasetCtype[2].trimmed();
+            if (descriptor.label.trimmed().isEmpty()) {
+                descriptor.label = u"Spectral"_s;
+            }
+            return descriptor;
+        }
         return inferSpectralAxisDescriptor(this->remoteDatasetCtype[2], this->remoteDatasetCunit[2],
                                            this->remoteHasWcsAxis(2));
     }
@@ -5679,7 +5737,7 @@ QString vtkWindowCube::spectralAxisTitle() const
     if (descriptor.unit.isEmpty() || descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
         return descriptor.label;
     }
-    return u"%1 [%2]"_s.arg(descriptor.label, descriptor.unit);
+    return u"%1 (%2)"_s.arg(descriptor.label, descriptor.unit);
 }
 
 QString vtkWindowCube::spectralAxisTooltip() const
@@ -5688,6 +5746,8 @@ QString vtkWindowCube::spectralAxisTooltip() const
     QString trust;
     if (descriptor.kind == SpectralAxisKind::Channel || !descriptor.physical) {
         trust = u"Fallback to channel index."_s;
+    } else if (this->isRemoteMode && !this->remoteSpectralAxisType.trimmed().isEmpty()) {
+        trust = u"Inferred from backend WCS."_s;
     } else if (descriptor.trusted) {
         trust = u"Trusted from FITS spectral metadata."_s;
     } else if (descriptor.inferred) {
@@ -5703,6 +5763,7 @@ QString vtkWindowCube::spectralAxisTooltip() const
 
 void vtkWindowCube::refreshSpectralAxisUi()
 {
+    const auto descriptor = this->spectralAxisDescriptor();
     const QString title = this->spectralAxisTitle();
     const QString tooltip = this->spectralAxisTooltip();
     ui->groupSlice->setTitle(u"Cutting plane (%1)"_s.arg(title));
@@ -5710,7 +5771,13 @@ void vtkWindowCube::refreshSpectralAxisUi()
     ui->lineSpectral->setToolTip(tooltip);
     ui->lineSpectral->setStatusTip(tooltip);
     qDebug().noquote()
-            << QStringLiteral("[spectral] axis3 title=%1 tooltip=%2").arg(title, tooltip);
+            << QStringLiteral("[spectral] axis3 title=%1 unit=%2 source=%3")
+                       .arg(descriptor.label,
+                            descriptor.unit.isEmpty() ? QStringLiteral("unknown units")
+                                                      : descriptor.unit,
+                            (this->isRemoteMode && !this->remoteSpectralAxisType.trimmed().isEmpty())
+                                    ? QStringLiteral("backend_wcs")
+                                    : descriptor.sourceLabel);
     this->updateDataStatePanel();
     this->updateSanityPanel();
 }
@@ -5912,6 +5979,32 @@ void vtkWindowCube::updateSanityPanel()
                                   cdelt, cubeImage);
     this->sanityLabel->setText(report.summary);
     this->sanityLabel->setToolTip(report.details);
+}
+
+void vtkWindowCube::updateWcsStatusIndicator()
+{
+    if (!this->wcsStatusLabel) {
+        return;
+    }
+    if (!this->isRemoteMode || this->remoteWcsStatus.compare(u"ok"_s, Qt::CaseInsensitive) == 0) {
+        this->wcsStatusLabel->clear();
+        this->wcsStatusLabel->setToolTip({});
+        this->wcsStatusLabel->hide();
+        return;
+    }
+
+    const bool degraded = this->remoteWcsStatus.compare(u"degraded"_s, Qt::CaseInsensitive) == 0;
+    this->wcsStatusLabel->setText(degraded ? u"WCS degraded"_s : u"WCS repaired"_s);
+    this->wcsStatusLabel->setStyleSheet(
+            degraded
+                    ? u"QLabel { padding-left: 8px; font-weight: 700; color: #b54708; }"_s
+                    : u"QLabel { padding-left: 8px; font-weight: 600; color: #9a6700; }"_s);
+    this->wcsStatusLabel->setToolTip(
+            this->remoteWcsWarningMessage.isEmpty()
+                    ? (degraded ? u"Remote cube opened with degraded WCS metadata."_s
+                                : u"Remote cube opened with sanitized WCS metadata."_s)
+                    : this->remoteWcsWarningMessage);
+    this->wcsStatusLabel->show();
 }
 
 bool vtkWindowCube::configureMomentRequest(int defaultOrder, MomentGenerationConfig &config)
