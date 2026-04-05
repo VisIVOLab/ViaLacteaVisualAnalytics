@@ -729,6 +729,39 @@ async def create_moment_task(
     return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
 
 
+@app.post("/v1/tasks/pv", response_model=TaskCreateResponse, tags=["tasks"])
+async def create_pv_task(
+    request: CubePvRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> TaskCreateResponse:
+    try:
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "PV tasks require a cube dataset.")
+    except HTTPException:
+        raise
+
+    task = TASKS.create("pv")
+    TASKS.update(task.task_id, status="running", progress=0.05)
+
+    async def _runner() -> None:
+        try:
+            result, cache_hit = await _pv_product_payload(entry, request)
+            TASKS.update(
+                task.task_id,
+                status="completed",
+                progress=1.0,
+                result={"valid": True, "error": "", **result},
+                cache_hit=cache_hit,
+            )
+        except Exception as exc:  # pragma: no cover - exercised at runtime
+            TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
+
+    asyncio.create_task(_runner())
+    return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
+
+
 @app.get("/v1/tasks/{task_id}", response_model=TaskStatusResponse, tags=["tasks"])
 async def task_status(task_id: str, _: None = _auth) -> TaskStatusResponse:
     task = TASKS.get(task_id)

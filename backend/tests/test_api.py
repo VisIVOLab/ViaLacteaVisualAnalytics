@@ -390,6 +390,72 @@ async def test_moment_task_endpoint(client: AsyncClient, opened_cube: dict) -> N
 
 
 @pytest.mark.asyncio
+async def test_pv_task_endpoint(client: AsyncClient, opened_cube: dict) -> None:
+    create_resp = await client.post(
+        "/v1/tasks/pv",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "vertices": [[10, 32], [54, 32]],
+            "width_pixels": 3,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert create_resp.status_code == 200
+    task = create_resp.json()
+    assert task["valid"] is True
+    assert task["task_id"].startswith("task_")
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{task['task_id']}", headers=opened_cube["headers"])
+        assert status_resp.status_code == 200
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            assert status_data["result"]["valid"] is True
+            assert "data_base64" in status_data["result"]
+            assert status_data["result"]["valid_samples"] > 0
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("pv task did not complete in time")
+
+
+@pytest.mark.asyncio
+async def test_pv_task_cache_hit(client: AsyncClient, opened_cube: dict) -> None:
+    payload = {
+        "dataset_id": opened_cube["dataset_id"],
+        "vertices": [[10, 32], [54, 32]],
+        "width_pixels": 3,
+    }
+    first_resp = await client.post("/v1/tasks/pv", json=payload, headers=opened_cube["headers"])
+    assert first_resp.status_code == 200
+    first_task = first_resp.json()
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{first_task['task_id']}", headers=opened_cube["headers"])
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("first pv task did not complete in time")
+
+    second_resp = await client.post("/v1/tasks/pv", json=payload, headers=opened_cube["headers"])
+    assert second_resp.status_code == 200
+    second_task = second_resp.json()
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{second_task['task_id']}", headers=opened_cube["headers"])
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            assert status_data["cache_hit"] is True
+            assert status_data["result"]["valid"] is True
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("second pv task did not complete in time")
+
+
+@pytest.mark.asyncio
 async def test_cube_pv_too_few_vertices(client: AsyncClient, opened_cube: dict) -> None:
     resp = await client.post(
         "/v1/cube/pv",
@@ -460,3 +526,14 @@ async def test_unknown_dataset_id(client: AsyncClient, auth_headers: dict) -> No
         headers=auth_headers,
     )
     assert resp.status_code == 404
+
+
+def test_task_registry_ttl_eviction() -> None:
+    from backend.app.tasks import TaskRegistry
+
+    registry = TaskRegistry(ttl_seconds=1)
+    task = registry.create("pv")
+    record = registry.get(task.task_id)
+    assert record is not None
+    record.last_touched_monotonic -= 5.0
+    assert registry.get(task.task_id) is None
