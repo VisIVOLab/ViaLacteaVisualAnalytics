@@ -14,11 +14,13 @@
 
 #include <QComboBox>
 #include <QDockWidget>
+#include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QPushButton>
 #include <QSlider>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -113,11 +115,24 @@ void vtkWindowVbtVolume::setupUi()
     for (int field = 0; field < this->table.header.fieldNames.size(); ++field) {
         this->comboScalarField->addItem(this->table.header.fieldNames.at(field), field);
     }
+    this->comboScaleMode = new QComboBox(displayGroup);
+    this->comboScaleMode->addItems({ u"Linear"_s, u"Log"_s });
     this->sliderOpacity = new QSlider(Qt::Horizontal, displayGroup);
     this->sliderOpacity->setRange(1, 100);
-    this->sliderOpacity->setValue(35);
+    this->sliderOpacity->setValue(28);
+    this->spinRangeMin = new QDoubleSpinBox(displayGroup);
+    this->spinRangeMax = new QDoubleSpinBox(displayGroup);
+    this->spinRangeMin->setDecimals(12);
+    this->spinRangeMax->setDecimals(12);
+    this->spinRangeMin->setRange(-1e30, 1e30);
+    this->spinRangeMax->setRange(-1e30, 1e30);
+    this->buttonAutoscale = new QPushButton(u"Autoscale"_s, displayGroup);
     displayLayout->addRow(u"Scalar"_s, this->comboScalarField);
+    displayLayout->addRow(u"Scale"_s, this->comboScaleMode);
+    displayLayout->addRow(u"Range min"_s, this->spinRangeMin);
+    displayLayout->addRow(u"Range max"_s, this->spinRangeMax);
     displayLayout->addRow(u"Opacity"_s, this->sliderOpacity);
+    displayLayout->addRow(this->buttonAutoscale);
     panelLayout->addWidget(displayGroup);
 
     auto *summaryGroup = new QGroupBox(u"Summary"_s, panel);
@@ -147,7 +162,27 @@ void vtkWindowVbtVolume::setupUi()
     QObject::connect(this->comboScalarField, &QComboBox::currentIndexChanged, this,
                      [this](int) { this->rebuildVolumeData(); });
     QObject::connect(this->sliderOpacity, &QSlider::valueChanged, this,
-                     [this](int) { this->rebuildVolumeData(); });
+                     [this](int) { this->updateTransferFunctions(); });
+    QObject::connect(this->comboScaleMode, &QComboBox::currentIndexChanged, this,
+                     [this](int) { this->updateTransferFunctions(); });
+    QObject::connect(this->buttonAutoscale, &QPushButton::clicked, this, [this]() {
+        this->setColorRange(this->dataScalarMin, this->dataScalarMax);
+        this->updateTransferFunctions();
+    });
+    QObject::connect(this->spinRangeMin, &QDoubleSpinBox::valueChanged, this, [this](double) {
+        if (this->updatingRangeControls) {
+            return;
+        }
+        this->setColorRange(this->spinRangeMin->value(), this->spinRangeMax->value());
+        this->updateTransferFunctions();
+    });
+    QObject::connect(this->spinRangeMax, &QDoubleSpinBox::valueChanged, this, [this](double) {
+        if (this->updatingRangeControls) {
+            return;
+        }
+        this->setColorRange(this->spinRangeMin->value(), this->spinRangeMax->value());
+        this->updateTransferFunctions();
+    });
 }
 
 void vtkWindowVbtVolume::setupRenderer()
@@ -232,8 +267,10 @@ void vtkWindowVbtVolume::rebuildVolumeData()
     double maxValue = std::numeric_limits<double>::lowest();
     constexpr std::size_t targetSampleCount = 200000;
     const std::size_t sampleStride = std::max<std::size_t>(1, voxelCount / targetSampleCount);
-    std::vector<double> sampledValues;
-    sampledValues.reserve(std::min<std::size_t>(voxelCount, targetSampleCount));
+    this->cachedSampledValues.clear();
+    this->cachedPositiveSampledValues.clear();
+    this->cachedSampledValues.reserve(std::min<std::size_t>(voxelCount, targetSampleCount));
+    this->cachedPositiveSampledValues.reserve(std::min<std::size_t>(voxelCount, targetSampleCount));
 
     for (std::size_t voxel = 0; voxel < voxelCount; ++voxel) {
         const char *ptr = base + (static_cast<qint64>(voxel) * fieldCount + fieldIndex) * scalarSize;
@@ -244,47 +281,16 @@ void vtkWindowVbtVolume::rebuildVolumeData()
         minValue = std::min(minValue, value);
         maxValue = std::max(maxValue, value);
         if ((voxel % sampleStride) == 0 && std::isfinite(value)) {
-            sampledValues.push_back(value);
+            this->cachedSampledValues.push_back(value);
+            if (value > 0.0) {
+                this->cachedPositiveSampledValues.push_back(value);
+            }
         }
     }
 
     if (!(minValue < maxValue)) {
         maxValue = minValue + 1.0;
     }
-
-    std::sort(sampledValues.begin(), sampledValues.end());
-    double displayMin = minValue;
-    double displayMax = maxValue;
-    if (sampledValues.size() >= 16) {
-        displayMin = percentileFromSortedSample(sampledValues, 0.005);
-        displayMax = percentileFromSortedSample(sampledValues, 0.995);
-    }
-    if (!(displayMin < displayMax) || !std::isfinite(displayMin) || !std::isfinite(displayMax)) {
-        displayMin = minValue;
-        displayMax = maxValue;
-    }
-    if (!(displayMin < displayMax)) {
-        displayMax = displayMin + 1.0;
-    }
-
-    const double range = displayMax - displayMin;
-    const double p10 = displayMin + range * 0.10;
-    const double p30 = displayMin + range * 0.30;
-    const double p60 = displayMin + range * 0.60;
-
-    this->colorTransfer->RemoveAllPoints();
-    this->colorTransfer->AddRGBPoint(displayMin, 0.02, 0.02, 0.04);
-    this->colorTransfer->AddRGBPoint(p30, 0.05, 0.20, 0.65);
-    this->colorTransfer->AddRGBPoint(p60, 0.90, 0.55, 0.10);
-    this->colorTransfer->AddRGBPoint(displayMax, 1.00, 0.98, 0.92);
-
-    const double opacityScale = (this->sliderOpacity ? this->sliderOpacity->value() : 35) / 100.0;
-    this->opacityTransfer->RemoveAllPoints();
-    this->opacityTransfer->AddPoint(displayMin, 0.0);
-    this->opacityTransfer->AddPoint(p10, 0.01 * opacityScale);
-    this->opacityTransfer->AddPoint(p30, 0.05 * opacityScale);
-    this->opacityTransfer->AddPoint(p60, 0.2 * opacityScale);
-    this->opacityTransfer->AddPoint(displayMax, 0.8 * opacityScale);
 
     this->volumeProperty->SetScalarOpacityUnitDistance(
             std::max(1e-6, (this->table.header.spacing[0] + this->table.header.spacing[1]
@@ -293,8 +299,35 @@ void vtkWindowVbtVolume::rebuildVolumeData()
 
     this->volumeMapper->SetInputData(this->currentImageData);
     this->updateBoundsContext();
-    this->updateScalarBar();
-    this->resetView();
+    std::sort(this->cachedSampledValues.begin(), this->cachedSampledValues.end());
+    std::sort(this->cachedPositiveSampledValues.begin(), this->cachedPositiveSampledValues.end());
+    this->dataScalarMin = minValue;
+    this->dataScalarMax = maxValue;
+    this->cachedPositiveFloor = this->positiveFloor();
+    if (this->cachedPositiveSampledValues.size() >= 16) {
+        const double opacityLow = percentileFromSortedSample(this->cachedPositiveSampledValues, 0.92);
+        const double opacityMidLow = percentileFromSortedSample(this->cachedPositiveSampledValues, 0.975);
+        const double opacityMidHigh = percentileFromSortedSample(this->cachedPositiveSampledValues, 0.992);
+        const double opacityHigh = percentileFromSortedSample(this->cachedPositiveSampledValues, 0.999);
+        this->cachedOpacityLow = std::max(this->cachedPositiveFloor, opacityLow);
+        this->cachedOpacityMidLow = std::max(this->cachedOpacityLow, opacityMidLow);
+        this->cachedOpacityMidHigh = std::max(this->cachedOpacityMidLow, opacityMidHigh);
+        this->cachedOpacityHigh = std::max(this->cachedOpacityMidHigh, opacityHigh);
+    } else {
+        const double positiveMax = this->cachedPositiveSampledValues.empty()
+                ? std::max(this->cachedPositiveFloor * 10.0, maxValue)
+                : this->cachedPositiveSampledValues.back();
+        this->cachedOpacityLow = this->cachedPositiveFloor;
+        this->cachedOpacityMidLow = this->cachedPositiveFloor * 10.0;
+        this->cachedOpacityMidHigh = std::sqrt(this->cachedPositiveFloor * positiveMax);
+        this->cachedOpacityHigh = positiveMax;
+    }
+    if (this->cachedSampledValues.size() >= 16) {
+        this->setColorRange(percentileFromSortedSample(this->cachedSampledValues, 0.02),
+                            percentileFromSortedSample(this->cachedSampledValues, 0.999));
+    } else {
+        this->setColorRange(minValue, maxValue);
+    }
 
     double imageRange[2]{ 0.0, 0.0 };
     this->currentImageData->GetScalarRange(imageRange);
@@ -321,15 +354,15 @@ void vtkWindowVbtVolume::rebuildVolumeData()
                        .arg(bounds[4], 0, 'g', 8)
                        .arg(bounds[5], 0, 'g', 8);
     qDebug().noquote()
-            << QStringLiteral("[vbt-volume] mapper=%1 input_dims=%2x%3x%4 property=1 tf_range=%5..%6 opacity_points=%7 color_points=%8")
+            << QStringLiteral("[vbt-volume] mapper=%1 input_dims=%2x%3x%4 property=1 data_range=%5..%6 sampled=%7 positive_sampled=%8")
                        .arg(this->volumeMapper->GetClassName())
                        .arg(this->table.header.dimensions[0])
                        .arg(this->table.header.dimensions[1])
                        .arg(this->table.header.dimensions[2])
-                       .arg(displayMin, 0, 'g', 8)
-                       .arg(displayMax, 0, 'g', 8)
-                       .arg(this->opacityTransfer->GetSize())
-                       .arg(this->colorTransfer->GetSize());
+                       .arg(minValue, 0, 'g', 8)
+                       .arg(maxValue, 0, 'g', 8)
+                       .arg(this->cachedSampledValues.size())
+                       .arg(this->cachedPositiveSampledValues.size());
 
     auto *props = this->renderer->GetViewProps();
     const double *visibleBounds = this->renderer->ComputeVisiblePropBounds();
@@ -363,8 +396,117 @@ void vtkWindowVbtVolume::rebuildVolumeData()
         this->applyKnownGoodVisibleFallback(minValue, maxValue, bounds);
     }
 
+    this->updateTransferFunctions();
+    this->resetView();
     this->renderWindow->Render();
     this->updateSummary();
+}
+
+void vtkWindowVbtVolume::updateTransferFunctions()
+{
+    if (!this->currentImageData) {
+        return;
+    }
+
+    const bool logMode = this->comboScaleMode && this->comboScaleMode->currentIndex() == 1;
+    double colorMin = this->activeColorMin;
+    double colorMax = this->activeColorMax;
+    if (!(colorMin < colorMax)) {
+        colorMin = this->dataScalarMin;
+        colorMax = this->dataScalarMax;
+    }
+
+    const double positiveFloor = this->positiveFloor();
+    if (logMode) {
+        if (this->cachedPositiveSampledValues.empty()) {
+            colorMin = positiveFloor;
+            colorMax = std::max(positiveFloor * 10.0, this->dataScalarMax);
+        } else {
+            colorMin = std::max(colorMin, positiveFloor);
+            colorMax = std::max(colorMax, std::max(colorMin * 1.01, this->cachedPositiveSampledValues.back()));
+        }
+    }
+    if (!(colorMin < colorMax)) {
+        colorMax = colorMin + 1.0;
+    }
+
+    const double opacityScale = (this->sliderOpacity ? this->sliderOpacity->value() : 28) / 100.0;
+    const double opacityLow = logMode ? std::max(positiveFloor, this->cachedOpacityLow)
+                                      : std::max(colorMin, this->cachedOpacityLow);
+    const double opacityMidLow = std::max(opacityLow, this->cachedOpacityMidLow);
+    const double opacityMidHigh = std::max(opacityMidLow, this->cachedOpacityMidHigh);
+    const double opacityHigh = std::max(opacityMidHigh, std::max(colorMax, this->cachedOpacityHigh));
+
+    this->colorTransfer->RemoveAllPoints();
+    this->opacityTransfer->RemoveAllPoints();
+
+    if (logMode) {
+        const double mid1 = std::sqrt(colorMin * std::max(colorMin, colorMax));
+        const double mid2 = std::sqrt(mid1 * std::max(mid1, colorMax));
+        this->colorTransfer->AddRGBPoint(positiveFloor, 0.01, 0.01, 0.02);
+        this->colorTransfer->AddRGBPoint(colorMin, 0.03, 0.05, 0.12);
+        this->colorTransfer->AddRGBPoint(mid1, 0.08, 0.25, 0.70);
+        this->colorTransfer->AddRGBPoint(mid2, 0.90, 0.55, 0.12);
+        this->colorTransfer->AddRGBPoint(colorMax, 1.00, 0.97, 0.88);
+        this->opacityTransfer->AddPoint(positiveFloor, 0.0);
+        this->opacityTransfer->AddPoint(opacityLow, 0.0);
+        this->opacityTransfer->AddPoint(opacityMidLow, 0.015 * opacityScale);
+        this->opacityTransfer->AddPoint(opacityMidHigh, 0.08 * opacityScale);
+        this->opacityTransfer->AddPoint(opacityHigh, 0.35 * opacityScale);
+        this->opacityTransfer->AddPoint(std::max(opacityHigh, colorMax), 0.65 * opacityScale);
+    } else {
+        const double range = colorMax - colorMin;
+        const double mid1 = colorMin + range * 0.55;
+        const double mid2 = colorMin + range * 0.82;
+        this->colorTransfer->AddRGBPoint(colorMin, 0.02, 0.02, 0.04);
+        this->colorTransfer->AddRGBPoint(mid1, 0.08, 0.25, 0.70);
+        this->colorTransfer->AddRGBPoint(mid2, 0.90, 0.55, 0.12);
+        this->colorTransfer->AddRGBPoint(colorMax, 1.00, 0.97, 0.88);
+        this->opacityTransfer->AddPoint(colorMin, 0.0);
+        this->opacityTransfer->AddPoint(opacityLow, 0.0);
+        this->opacityTransfer->AddPoint(opacityMidLow, 0.01 * opacityScale);
+        this->opacityTransfer->AddPoint(opacityMidHigh, 0.05 * opacityScale);
+        this->opacityTransfer->AddPoint(opacityHigh, 0.20 * opacityScale);
+        this->opacityTransfer->AddPoint(std::max(opacityHigh, colorMax), 0.55 * opacityScale);
+    }
+
+    this->scalarBarLut->SetNumberOfTableValues(256);
+    if (logMode) {
+        this->scalarBarLut->SetScaleToLog10();
+        this->scalarBarLut->SetTableRange(std::max(colorMin, positiveFloor),
+                                          std::max(colorMax, colorMin * 1.01));
+    } else {
+        this->scalarBarLut->SetScaleToLinear();
+        this->scalarBarLut->SetTableRange(colorMin, colorMax);
+    }
+    for (int i = 0; i < 256; ++i) {
+        const double t = static_cast<double>(i) / 255.0;
+        double rgb[3]{ 0.0, 0.0, 0.0 };
+        const double value = logMode
+                ? std::exp(std::log(std::max(colorMin, positiveFloor))
+                           + t * (std::log(std::max(colorMax, colorMin * 1.01))
+                                  - std::log(std::max(colorMin, positiveFloor))))
+                : (colorMin + t * (colorMax - colorMin));
+        this->colorTransfer->GetColor(value, rgb);
+        this->scalarBarLut->SetTableValue(i, rgb[0], rgb[1], rgb[2], 1.0);
+    }
+    this->scalarBarLut->Build();
+    this->scalarBar->SetLookupTable(this->scalarBarLut.Get());
+    this->updateScalarBar();
+
+    qDebug().noquote()
+            << QStringLiteral("[vbt-volume] tf mode=%1 image_range=%2..%3 color_range=%4..%5 opacity_points=[%6,%7,%8,%9] positive_floor=%10")
+                       .arg(logMode ? QStringLiteral("log") : QStringLiteral("linear"))
+                       .arg(this->dataScalarMin, 0, 'g', 8)
+                       .arg(this->dataScalarMax, 0, 'g', 8)
+                       .arg(colorMin, 0, 'g', 8)
+                       .arg(colorMax, 0, 'g', 8)
+                       .arg(opacityLow, 0, 'g', 8)
+                       .arg(opacityMidLow, 0, 'g', 8)
+                       .arg(opacityMidHigh, 0, 'g', 8)
+                       .arg(opacityHigh, 0, 'g', 8)
+                       .arg(positiveFloor, 0, 'g', 8);
+    this->renderWindow->Render();
 }
 
 void vtkWindowVbtVolume::updateBoundsContext()
@@ -413,6 +555,43 @@ void vtkWindowVbtVolume::applyKnownGoodVisibleFallback(double minValue, double m
     this->boxActor->SetBounds(bounds);
     this->renderer->ResetCamera(bounds);
     this->renderer->ResetCameraClippingRange(bounds);
+}
+
+void vtkWindowVbtVolume::setColorRange(double minValue, double maxValue)
+{
+    if (!(minValue < maxValue)) {
+        minValue = this->dataScalarMin;
+        maxValue = this->dataScalarMax;
+        if (!(minValue < maxValue)) {
+            maxValue = minValue + 1.0;
+        }
+    }
+    this->activeColorMin = minValue;
+    this->activeColorMax = maxValue;
+    this->updatingRangeControls = true;
+    if (this->spinRangeMin) {
+        this->spinRangeMin->setValue(minValue);
+    }
+    if (this->spinRangeMax) {
+        this->spinRangeMax->setValue(maxValue);
+    }
+    this->updatingRangeControls = false;
+}
+
+double vtkWindowVbtVolume::positiveFloor() const
+{
+    if (!this->cachedPositiveSampledValues.empty()) {
+        const double sampledFloor =
+                percentileFromSortedSample(this->cachedPositiveSampledValues, 0.01);
+        if (std::isfinite(sampledFloor) && sampledFloor > 0.0) {
+            return sampledFloor;
+        }
+        return this->cachedPositiveSampledValues.front();
+    }
+    if (this->dataScalarMax > 0.0) {
+        return std::max(1e-12, this->dataScalarMax * 1e-12);
+    }
+    return 1e-12;
 }
 
 void vtkWindowVbtVolume::updateSummary()
