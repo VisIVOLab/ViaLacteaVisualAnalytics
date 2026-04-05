@@ -5905,7 +5905,7 @@ QString vtkWindowCube::describeMomentOrder(int order) const
     case 1:
         return u"Moment 1"_s;
     case 2:
-        return u"Moment 2"_s;
+        return u"Moment 2 (Variance \u2013 NOT dispersion)"_s;
     case 6:
         return u"Moment 6 (RMS)"_s;
     case 8:
@@ -6026,7 +6026,7 @@ bool vtkWindowCube::configureMomentRequest(int defaultOrder, MomentGenerationCon
     const std::array<std::pair<int, QString>, 6> orders = {
             std::pair{ 0, u"Moment 0: Integrated intensity"_s },
             std::pair{ 1, u"Moment 1: Intensity-weighted coordinate"_s },
-            std::pair{ 2, u"Moment 2: Coordinate dispersion"_s },
+            std::pair{ 2, u"Moment 2: Variance (NOT velocity dispersion)"_s },
             std::pair{ 6, u"Moment 6: RMS"_s },
             std::pair{ 8, u"Moment 8: Maximum"_s },
             std::pair{ 10, u"Moment 10: Minimum"_s },

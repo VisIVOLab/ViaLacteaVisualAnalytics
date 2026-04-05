@@ -690,15 +690,13 @@ BackendMomentResult BackendClient::parseMomentResultObject(const QJsonObject &ob
     result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
     result.momentUnit = object.value(QStringLiteral("moment_unit")).toString();
     result.bunit = object.value(QStringLiteral("bunit")).toString();
+    result.wcsStatus = object.value(QStringLiteral("wcs_status")).toString(QStringLiteral("ok"));
+    result.wcsWarningMessage = object.value(QStringLiteral("wcs_warning_message")).toString();
     result.data = decodePayload(object, QStringLiteral("data_base64"),
                                 QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
-    result.momentUnit = object.value(QStringLiteral("moment_unit")).toString();
-    result.bunit = object.value(QStringLiteral("bunit")).toString();
-    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
-    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
     return result;
 }
 

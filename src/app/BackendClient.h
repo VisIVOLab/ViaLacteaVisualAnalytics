@@ -89,6 +89,8 @@ struct BackendMomentResult
     QString spectralAxisUnit; // CUNIT3 value, e.g. "Hz", "km/s"
     QString momentUnit;       // e.g. "Jy/beam Hz", "km/s", "km^2/s^2"
     QString bunit;            // raw BUNIT from the FITS header
+    QString wcsStatus{ QStringLiteral("ok") }; // "ok", "sanitized", or "degraded"
+    QString wcsWarningMessage;                  // human-readable WCS warning, empty when ok
     QByteArray data;
 };
 

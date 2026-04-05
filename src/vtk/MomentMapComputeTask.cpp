@@ -225,6 +225,8 @@ MomentMapComputeResult computeMomentMap(const MomentMapComputeRequest &request)
         result.bunit = processed.bunit;
         result.spectralAxisType = processed.spectralAxisType;
         result.spectralAxisUnit = processed.spectralAxisUnit;
+        result.wcsStatus = processed.wcsStatus;
+        result.wcsWarningMessage = processed.wcsWarningMessage;
         qDebug().noquote()
                 << QStringLiteral("[perf][moment] worker total: %1 ms").arg(totalTimer.elapsed());
         return result;

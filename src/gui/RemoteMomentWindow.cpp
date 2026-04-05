@@ -145,6 +145,15 @@ RemoteMomentWindow::RemoteMomentWindow(const QString &backendUrl, const QString 
         this->renderer->ResetCamera();
         this->renderWindow->Render();
         this->clearPersistentStatusMessage();
+
+        // Show a non-blocking WCS warning in the status bar when the server had to sanitize
+        // or degrade the WCS (e.g. dropped PC matrix, fell back to CDELT-only).
+        if (result.wcsStatus != u"ok"_s) {
+            const QString warnText = result.wcsWarningMessage.isEmpty()
+                    ? u"WCS: %1"_s.arg(result.wcsStatus)
+                    : u"WCS (%1): %2"_s.arg(result.wcsStatus, result.wcsWarningMessage);
+            this->statusBar()->showMessage(warnText, 8000);
+        }
     });
 
     this->requestMoment(0);

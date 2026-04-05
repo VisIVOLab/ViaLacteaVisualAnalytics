@@ -34,6 +34,8 @@ struct MomentMapComputeResult
     QString bunit;            // raw BUNIT from the FITS header
     QString spectralAxisType; // CTYPE3 value
     QString spectralAxisUnit; // CUNIT3 value
+    QString wcsStatus{ QStringLiteral("ok") }; // "ok", "sanitized", or "degraded"
+    QString wcsWarningMessage;                  // human-readable WCS warning, empty when ok
 };
 
 MomentMapComputeResult computeMomentMap(const MomentMapComputeRequest &request);

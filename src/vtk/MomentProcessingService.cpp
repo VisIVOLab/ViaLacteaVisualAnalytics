@@ -124,6 +124,8 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
     result.bunit = response.bunit;
     result.spectralAxisType = response.spectralAxisType;
     result.spectralAxisUnit = response.spectralAxisUnit;
+    result.wcsStatus = response.wcsStatus;
+    result.wcsWarningMessage = response.wcsWarningMessage;
     return result;
 }
 
