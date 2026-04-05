@@ -835,6 +835,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, QWidget *parent)
                      {},
                      {},
                      {},
+                     {},
+                     {},
                      parent)
 {
 }
@@ -847,6 +849,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
                                const std::array<double, 3> &remoteCrpix,
                                const std::array<double, 3> &remoteCdelt,
                                const QString &remoteDegenerateAxesSummary,
+                               const QString &remoteWcsStatus,
+                               const QString &remoteWcsWarningMessage,
                                const QString &remoteSessionId,
                                const QString &remoteBackendToken, QWidget *parent)
     : QMainWindow(parent),
@@ -863,6 +867,8 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
       remoteDatasetCrpix(remoteCrpix),
       remoteDatasetCdelt(remoteCdelt),
       remoteDegenerateAxesSummary(remoteDegenerateAxesSummary),
+      remoteWcsStatus(remoteWcsStatus),
+      remoteWcsWarningMessage(remoteWcsWarningMessage),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -895,6 +901,10 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->sanityLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
     this->sanityLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->statusBar()->addPermanentWidget(this->sanityLabel);
+    this->wcsStatusLabel = new QLabel(this);
+    this->wcsStatusLabel->setStyleSheet(u"QLabel { padding-left: 8px; font-weight: 600; }"_s);
+    this->wcsStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->wcsStatusLabel);
     this->catalogueInfoLabel = new QLabel(this);
     this->catalogueInfoLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
     this->catalogueInfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -1012,6 +1022,7 @@ vtkWindowImage::vtkWindowImage(const QString &filepath, const QString &backendUr
     this->updateLargeImageMode(this->layers->getImageData(this->layers->getMasterIndex()), "initial");
     this->updateDataStatePanel();
     this->updateSanityPanel();
+    this->updateWcsStatusIndicator();
 
     // Setup Menu File
     QObject::connect(ui->actionAddFITS, &QAction::triggered, this, &vtkWindowImage::addLocalFile);
@@ -3310,6 +3321,32 @@ void vtkWindowImage::updateDataStatePanel()
                     ? u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame."_s
                     : u"Persistent data state: origin, representation, loaded bounds, dataset bounds, current WCS frame.\n%1"_s
                               .arg(degenerateSummary));
+}
+
+void vtkWindowImage::updateWcsStatusIndicator()
+{
+    if (!this->wcsStatusLabel) {
+        return;
+    }
+    if (!this->isRemoteMode || this->remoteWcsStatus.compare(u"ok"_s, Qt::CaseInsensitive) == 0) {
+        this->wcsStatusLabel->clear();
+        this->wcsStatusLabel->setToolTip({});
+        this->wcsStatusLabel->hide();
+        return;
+    }
+
+    const bool degraded = this->remoteWcsStatus.compare(u"degraded"_s, Qt::CaseInsensitive) == 0;
+    this->wcsStatusLabel->setText(degraded ? u"WCS degraded"_s : u"WCS repaired"_s);
+    this->wcsStatusLabel->setStyleSheet(
+            degraded
+                    ? u"QLabel { padding-left: 8px; font-weight: 700; color: #b54708; }"_s
+                    : u"QLabel { padding-left: 8px; font-weight: 600; color: #9a6700; }"_s);
+    this->wcsStatusLabel->setToolTip(
+            this->remoteWcsWarningMessage.isEmpty()
+                    ? (degraded ? u"Remote dataset opened with degraded WCS metadata."_s
+                                : u"Remote dataset opened with sanitized WCS metadata."_s)
+                    : this->remoteWcsWarningMessage);
+    this->wcsStatusLabel->show();
 }
 
 void vtkWindowImage::updateSanityPanel()

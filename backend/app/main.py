@@ -152,6 +152,9 @@ class OpenDatasetResponse(BaseModel):
     height: int = 0
     depth: int = 0
     degenerate_axes_summary: str = ""
+    wcs_status: str = "ok"
+    wcs_warning_message: str = ""
+    wcs_sanitized_axes: list[int] = []
     spacing: list[float] = [1.0, 1.0, 1.0]
     origin: list[float] = [0.0, 0.0, 0.0]
     ctype: list[str] = ["", "", ""]
@@ -564,6 +567,9 @@ async def open_dataset(
         height=geometry["height"],
         depth=geometry["depth"],
         degenerate_axes_summary=str(geometry.get("degenerate_axes_summary", "")),
+        wcs_status=str(geometry.get("wcs_status", "ok")),
+        wcs_warning_message=str(geometry.get("wcs_warning_message", "")),
+        wcs_sanitized_axes=list(geometry.get("wcs_sanitized_axes", [])),
         spacing=geometry["spacing"],
         origin=geometry["origin"],
         ctype=geometry["ctype"],

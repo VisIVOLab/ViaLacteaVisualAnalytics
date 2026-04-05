@@ -46,8 +46,10 @@ class ScientificFitsDataset:
         self.active_axes = [axis for axis, size in enumerate(self.axis_sizes, start=1) if size > 1]
         self.degenerate_axes = [axis for axis, size in enumerate(self.axis_sizes, start=1) if size == 1]
         self.client_axis_to_fits_axis = {idx + 1: axis for idx, axis in enumerate(self.active_axes)}
-        self.sanitized_header = self._sanitize_header_for_wcs(header)
+        self.sanitized_header, self.wcs_sanitized_axes = self._sanitize_header_for_wcs(header)
         self.wcs = self._build_wcs(self.sanitized_header)
+        self.wcs_status = self._determine_wcs_status()
+        self.wcs_warning_message = self._build_wcs_warning_message()
         self.bunit = str(header.get("BUNIT", "")).strip()
         self.beam = BeamMetadata(
             major=float(header["BMAJ"]) if "BMAJ" in header else None,
@@ -76,8 +78,9 @@ class ScientificFitsDataset:
         physical_type = str(parsed.physical_type)
         return physical_type == "angle"
 
-    def _sanitize_header_for_wcs(self, header: fits.Header) -> fits.Header:
+    def _sanitize_header_for_wcs(self, header: fits.Header) -> tuple[fits.Header, list[int]]:
         sanitized = header.copy()
+        sanitized_axes: list[int] = []
         for axis in range(1, self.naxis + 1):
             ctype = str(header.get(f"CTYPE{axis}", "")).strip()
             cunit_key = f"CUNIT{axis}"
@@ -91,7 +94,8 @@ class ScientificFitsDataset:
                     cunit,
                 )
                 sanitized[cunit_key] = "deg"
-        return sanitized
+                sanitized_axes.append(axis)
+        return sanitized, sanitized_axes
 
     def _build_wcs(self, header: fits.Header) -> WCS | None:
         try:
@@ -100,16 +104,42 @@ class ScientificFitsDataset:
             logger.warning("[fits] WCS build failed for path=%s: %s. Falling back to degraded metadata-only mode.", self.path, exc)
             return None
 
+    def _determine_wcs_status(self) -> str:
+        if self.wcs is None:
+            return "degraded"
+        if self.wcs_sanitized_axes:
+            return "sanitized"
+        return "ok"
+
+    def _build_wcs_warning_message(self) -> str:
+        if self.wcs_status == "ok":
+            return ""
+        if self.wcs_status == "sanitized":
+            axes = ", ".join(str(axis) for axis in self.wcs_sanitized_axes)
+            return (
+                f"WCS metadata was repaired for compatibility. "
+                f"Celestial axis units were corrected on FITS axes: {axes}."
+            )
+        if self.wcs_sanitized_axes:
+            axes = ", ".join(str(axis) for axis in self.wcs_sanitized_axes)
+            return (
+                f"WCS metadata was repaired on FITS axes {axes}, but full WCS construction still failed. "
+                f"Using degraded linear axis metadata."
+            )
+        return "WCS construction failed. Using degraded linear axis metadata."
+
     def _log_axis_debug(self) -> None:
         ctype = [str(self.header.get(f"CTYPE{i}", "")).strip() for i in range(1, self.naxis + 1)]
         cunit = [str(self.header.get(f"CUNIT{i}", "")).strip() for i in range(1, self.naxis + 1)]
         logger.info(
-            "[fits] path=%s ctype=%s cunit=%s active_axes=%s client_axis_to_fits_axis=%s",
+            "[fits] path=%s ctype=%s cunit=%s active_axes=%s client_axis_to_fits_axis=%s wcs_status=%s sanitized_axes=%s",
             self.path,
             ctype,
             cunit,
             self.active_axes,
             self.client_axis_to_fits_axis,
+            self.wcs_status,
+            self.wcs_sanitized_axes,
         )
 
     def open_memmap(self):
@@ -166,6 +196,9 @@ class ScientificFitsDataset:
             "kind": kind,
             "active_axes": len(self.active_axes),
             "degenerate_axes_summary": self.degenerate_axes_summary(),
+            "wcs_status": self.wcs_status,
+            "wcs_warning_message": self.wcs_warning_message,
+            "wcs_sanitized_axes": list(self.wcs_sanitized_axes),
             "width": width,
             "height": height,
             "depth": depth,
@@ -294,6 +327,9 @@ class ScientificFitsDataset:
             "beam_pa": self.beam.pa,
             "active_axes": list(self.active_axes),
             "degenerate_axes": list(self.degenerate_axes),
+            "wcs_status": self.wcs_status,
+            "wcs_warning_message": self.wcs_warning_message,
+            "wcs_sanitized_axes": list(self.wcs_sanitized_axes),
             "ctype": [str(self.header.get(f"CTYPE{i}", "")) for i in range(1, 4)],
             "cunit": [str(self.header.get(f"CUNIT{i}", "")) for i in range(1, 4)],
         }

@@ -230,6 +230,14 @@ BackendOpenDatasetResult BackendClient::openDataset(const QString &path)
     result.depth = object.value(QStringLiteral("depth")).toInt();
     result.degenerateAxesSummary =
             object.value(QStringLiteral("degenerate_axes_summary")).toString();
+    result.wcsStatus = object.value(QStringLiteral("wcs_status")).toString(QStringLiteral("ok"));
+    result.wcsWarningMessage = object.value(QStringLiteral("wcs_warning_message")).toString();
+    const QJsonArray wcsSanitizedAxes = object.value(QStringLiteral("wcs_sanitized_axes")).toArray();
+    result.wcsSanitizedAxes.clear();
+    result.wcsSanitizedAxes.reserve(wcsSanitizedAxes.size());
+    for (const QJsonValue &value : wcsSanitizedAxes) {
+        result.wcsSanitizedAxes.push_back(value.toInt());
+    }
 
     const QJsonArray spacing = object.value(QStringLiteral("spacing")).toArray();
     const QJsonArray origin = object.value(QStringLiteral("origin")).toArray();

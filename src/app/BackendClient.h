@@ -2,6 +2,7 @@
 #define BackendClient_h
 
 #include <QByteArray>
+#include <QList>
 #include <QNetworkRequest>
 #include <QString>
 #include <QStringList>
@@ -46,6 +47,9 @@ struct BackendOpenDatasetResult
     int height{ 0 };
     int depth{ 0 };
     QString degenerateAxesSummary;
+    QString wcsStatus{ QStringLiteral("ok") };
+    QString wcsWarningMessage;
+    QList<int> wcsSanitizedAxes;
     std::array<double, 3> spacing{ 1.0, 1.0, 1.0 };
     std::array<double, 3> origin{ 0.0, 0.0, 0.0 };
     std::array<QString, 3> ctype{ QString(), QString(), QString() };

@@ -155,6 +155,8 @@ async def test_open_image_metadata(
     assert data["depth"] == 1
     assert data["active_axes"] == 2
     assert data["ctype"][0] == "RA---SIN"
+    assert data["wcs_status"] == "ok"
+    assert data["wcs_warning_message"] == ""
 
 
 @pytest.mark.asyncio
@@ -172,6 +174,7 @@ async def test_open_cube_metadata(
     assert data["height"] == 64
     assert data["depth"] == 32
     assert data["active_axes"] == 3
+    assert data["wcs_status"] == "ok"
 
 
 @pytest.mark.asyncio
@@ -197,6 +200,9 @@ async def test_open_malformed_celestial_unit_fits(
     data = resp.json()
     assert data["valid"] is True
     assert data["kind"] == "image"
+    assert data["wcs_status"] == "sanitized"
+    assert "compatibility" in data["wcs_warning_message"]
+    assert 1 in data["wcs_sanitized_axes"]
 
 
 # ── Session isolation ─────────────────────────────────────────────────────────

@@ -1410,6 +1410,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                     {},
                     {},
                     {},
+                    {},
+                    {},
                     parent)
 {
 }
@@ -1424,6 +1426,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              const std::array<double, 3> &remoteCrpix,
                              const std::array<double, 3> &remoteCdelt,
                              const QString &remoteDegenerateAxesSummary,
+                             const QString &remoteWcsStatus,
+                             const QString &remoteWcsWarningMessage,
                              const QString &remoteSessionId,
                              const QString &remoteBackendToken, QWidget *parent)
     : QMainWindow(parent),
@@ -1445,6 +1449,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
       remoteDatasetCrpix(remoteCrpix),
       remoteDatasetCdelt(remoteCdelt),
       remoteDegenerateAxesSummary(remoteDegenerateAxesSummary),
+      remoteWcsStatus(remoteWcsStatus),
+      remoteWcsWarningMessage(remoteWcsWarningMessage),
       astro(this->isRemoteMode ? nullptr : std::make_unique<AstroUtils>(filepath.toStdString())),
       lutCustomizer(nullptr),
       profileWidget(nullptr),
@@ -1481,6 +1487,10 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     this->sanityLabel->setStyleSheet(u"QLabel { padding-left: 8px; }"_s);
     this->sanityLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->statusBar()->addPermanentWidget(this->sanityLabel);
+    this->wcsStatusLabel = new QLabel(this);
+    this->wcsStatusLabel->setStyleSheet(u"QLabel { padding-left: 8px; font-weight: 600; }"_s);
+    this->wcsStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    this->statusBar()->addPermanentWidget(this->wcsStatusLabel);
     this->momentProvenanceLabel = new QLabel(this);
     this->momentProvenanceLabel->setStyleSheet(u"QLabel { padding-left: 8px; color: palette(window-text); }"_s);
     this->momentProvenanceLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -1509,6 +1519,7 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
     });
     this->updateDataStatePanel();
     this->updateSanityPanel();
+    this->updateWcsStatusIndicator();
     this->remoteRoiRefinementCheck = new QCheckBox(u"Use Camera ROI"_s, this);
     this->remoteRoiRefinementCheck->setChecked(this->useCameraRoiRefinement);
     this->remoteRoiRefinementCheck->setToolTip(
@@ -5887,6 +5898,32 @@ void vtkWindowCube::updateSanityPanel()
                                   cdelt, cubeImage);
     this->sanityLabel->setText(report.summary);
     this->sanityLabel->setToolTip(report.details);
+}
+
+void vtkWindowCube::updateWcsStatusIndicator()
+{
+    if (!this->wcsStatusLabel) {
+        return;
+    }
+    if (!this->isRemoteMode || this->remoteWcsStatus.compare(u"ok"_s, Qt::CaseInsensitive) == 0) {
+        this->wcsStatusLabel->clear();
+        this->wcsStatusLabel->setToolTip({});
+        this->wcsStatusLabel->hide();
+        return;
+    }
+
+    const bool degraded = this->remoteWcsStatus.compare(u"degraded"_s, Qt::CaseInsensitive) == 0;
+    this->wcsStatusLabel->setText(degraded ? u"WCS degraded"_s : u"WCS repaired"_s);
+    this->wcsStatusLabel->setStyleSheet(
+            degraded
+                    ? u"QLabel { padding-left: 8px; font-weight: 700; color: #b54708; }"_s
+                    : u"QLabel { padding-left: 8px; font-weight: 600; color: #9a6700; }"_s);
+    this->wcsStatusLabel->setToolTip(
+            this->remoteWcsWarningMessage.isEmpty()
+                    ? (degraded ? u"Remote cube opened with degraded WCS metadata."_s
+                                : u"Remote cube opened with sanitized WCS metadata."_s)
+                    : this->remoteWcsWarningMessage);
+    this->wcsStatusLabel->show();
 }
 
 bool vtkWindowCube::configureMomentRequest(int defaultOrder, MomentGenerationConfig &config)

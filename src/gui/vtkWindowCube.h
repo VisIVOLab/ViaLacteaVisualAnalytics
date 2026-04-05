@@ -122,6 +122,8 @@ public:
                   const std::array<double, 3> &remoteCrpix,
                   const std::array<double, 3> &remoteCdelt,
                   const QString &remoteDegenerateAxesSummary,
+                  const QString &remoteWcsStatus = QStringLiteral("ok"),
+                  const QString &remoteWcsWarningMessage = QString(),
                   const QString &remoteSessionId = QString(),
                   const QString &remoteBackendToken = QString(), QWidget *parent = nullptr);
     ~vtkWindowCube() override;
@@ -247,6 +249,8 @@ private:
     const std::array<double, 3> remoteDatasetCrpix;
     const std::array<double, 3> remoteDatasetCdelt;
     const QString remoteDegenerateAxesSummary;
+    const QString remoteWcsStatus;
+    const QString remoteWcsWarningMessage;
     std::unique_ptr<AstroUtils> astro;
 
     QPointer<LUTCustomizerDialog> lutCustomizer;
@@ -257,6 +261,7 @@ private:
     QPointer<QLabel> hoverReadoutLabel;
     QPointer<QLabel> dataStateLabel;
     QPointer<QLabel> sanityLabel;
+    QPointer<QLabel> wcsStatusLabel;
     QPointer<QLabel> momentProvenanceLabel;
     QPointer<QLabel> catalogueInfoLabel;
     QPointer<QDockWidget> catalogueDock;
@@ -443,6 +448,7 @@ private:
     double remoteVoxelToWcs(int axis, double voxelIndex, bool *ok = nullptr) const;
     QString remoteFormatAxisCoordinate(int axis, double voxelIndex) const;
     QString remoteAxisTitle(int axis) const;
+    void updateWcsStatusIndicator();
     int selectedWcsFrame() const;
     int remoteNativeCelestialFrame() const;
     bool remoteHasCelestialAxes() const;
