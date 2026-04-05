@@ -18,6 +18,7 @@ Run with:
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import struct
 
@@ -311,6 +312,8 @@ async def test_moment_map_orders(
     assert arr.shape == (64 * 64,)
     # At least some finite values.
     assert np.isfinite(arr).any()
+    assert "spectral_axis_type" in data
+    assert "moment_unit" in data
 
 
 @pytest.mark.asyncio
@@ -351,6 +354,39 @@ async def test_cube_pv(client: AsyncClient, opened_cube: dict) -> None:
     assert data["depth"] == 32
     assert data["valid_samples"] > 0
     assert data["compression"] == "qt-zlib"
+    assert "spectral_axis_type" in data
+
+
+@pytest.mark.asyncio
+async def test_moment_task_endpoint(client: AsyncClient, opened_cube: dict) -> None:
+    create_resp = await client.post(
+        "/v1/tasks/moment",
+        json={
+            "dataset_id": opened_cube["dataset_id"],
+            "moment_order": 0,
+            "channel_start": 4,
+            "channel_end": 12,
+            "mask_enabled": False,
+            "threshold_value": 0.0,
+        },
+        headers=opened_cube["headers"],
+    )
+    assert create_resp.status_code == 200
+    task = create_resp.json()
+    assert task["valid"] is True
+    assert task["task_id"].startswith("task_")
+
+    for _ in range(20):
+        status_resp = await client.get(f"/v1/tasks/{task['task_id']}", headers=opened_cube["headers"])
+        assert status_resp.status_code == 200
+        status_data = status_resp.json()
+        if status_data["status"] == "completed":
+            assert status_data["result"]["valid"] is True
+            assert "data_base64" in status_data["result"]
+            break
+        await asyncio.sleep(0.05)
+    else:
+        pytest.fail("moment task did not complete in time")
 
 
 @pytest.mark.asyncio

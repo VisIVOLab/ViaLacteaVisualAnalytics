@@ -36,7 +36,9 @@ from pydantic import BaseModel
 
 from .auth import verify_token
 from .fits_dataset import ScientificFitsDataset
+from .product_cache import PRODUCT_CACHE
 from .sessions import REGISTRY, Session, get_session
+from .tasks import TASKS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -266,6 +268,27 @@ class CubePvResponse(BaseModel):
     beam_pa: float | None = None
 
 
+class TaskCreateResponse(BaseModel):
+    valid: bool
+    error: str
+    task_id: str = ""
+    status: str = ""
+    cache_hit: bool = False
+
+
+class TaskStatusResponse(BaseModel):
+    valid: bool
+    error: str
+    task_id: str = ""
+    operation: str = ""
+    status: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+    progress: float = 0.0
+    cache_hit: bool = False
+    result: dict[str, Any] | None = None
+
+
 class ImageFullRequest(BaseModel):
     dataset_id: str
 
@@ -325,6 +348,86 @@ async def _run(fn, *args) -> Any:
     return await loop.run_in_executor(_POOL, fn, *args)
 
 
+async def _moment_product_payload(entry: dict[str, Any], request: MomentProductRequest) -> tuple[dict[str, Any], bool]:
+    from .compute import worker_moment
+
+    dataset = ScientificFitsDataset(entry["path"])
+    cache_params = {
+        "moment_order": request.moment_order,
+        "channel_start": request.channel_start,
+        "channel_end": request.channel_end,
+        "mask_enabled": request.mask_enabled,
+        "threshold_value": request.threshold_value,
+    }
+    cache_key, param_hash = PRODUCT_CACHE.make_key(dataset.path, "moment", cache_params)
+    cached = PRODUCT_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached.payload), True
+
+    result = await _run(
+        worker_moment,
+        dataset.path,
+        request.moment_order,
+        request.channel_start,
+        request.channel_end,
+        request.mask_enabled,
+        request.threshold_value,
+    )
+    PRODUCT_CACHE.put(
+        key=cache_key,
+        operation="moment",
+        dataset_path=dataset.path,
+        parameter_hash=param_hash,
+        payload=dict(result),
+        scientific_metadata={
+            "spectral_axis_type": result.get("spectral_axis_type", ""),
+            "spectral_axis_unit": result.get("spectral_axis_unit", ""),
+            "moment_unit": result.get("moment_unit", ""),
+            "bunit": result.get("bunit", ""),
+        },
+        provenance_metadata=dataset.provenance_context(),
+    )
+    return result, False
+
+
+async def _pv_product_payload(entry: dict[str, Any], request: CubePvRequest) -> tuple[dict[str, Any], bool]:
+    from .compute import worker_pv
+
+    dataset = ScientificFitsDataset(entry["path"])
+    cache_params = {
+        "vertices": request.vertices,
+        "width_pixels": max(1, int(request.width_pixels)),
+    }
+    cache_key, param_hash = PRODUCT_CACHE.make_key(dataset.path, "pv", cache_params)
+    cached = PRODUCT_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached.payload), True
+
+    result = await _run(
+        worker_pv,
+        dataset.path,
+        request.vertices,
+        max(1, int(request.width_pixels)),
+    )
+    PRODUCT_CACHE.put(
+        key=cache_key,
+        operation="pv",
+        dataset_path=dataset.path,
+        parameter_hash=param_hash,
+        payload=dict(result),
+        scientific_metadata={
+            "spectral_axis_type": result.get("spectral_axis_type", ""),
+            "spectral_axis_unit": result.get("spectral_axis_unit", ""),
+            "bunit": result.get("bunit", ""),
+            "beam_major": result.get("beam_major"),
+            "beam_minor": result.get("beam_minor"),
+            "beam_pa": result.get("beam_pa"),
+        },
+        provenance_metadata=dataset.provenance_context(),
+    )
+    return result, False
+
+
 def _require_dataset(session: Session, dataset_id: str) -> dict[str, Any]:
     entry = session.datasets.get(dataset_id)
     if not entry:
@@ -367,6 +470,7 @@ async def health(_: None = _auth) -> dict:
         "ok": True,
         "workers": _WORKERS,
         "active_sessions": REGISTRY.stats()["active_sessions"],
+        "product_cache": PRODUCT_CACHE.stats(),
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
@@ -476,18 +580,10 @@ async def moment_product(
     _: None = _auth,
     session: Session = Depends(get_session),
 ) -> MomentProductResponse:
-    from .compute import worker_moment
     try:
         path = _require_cube_path(session, request.dataset_id)
-        result = await _run(
-            worker_moment,
-            path,
-            request.moment_order,
-            request.channel_start,
-            request.channel_end,
-            request.mask_enabled,
-            request.threshold_value,
-        )
+        entry = _require_dataset(session, request.dataset_id)
+        result, _ = await _moment_product_payload(entry, request)
     except HTTPException:
         raise
     except Exception as exc:
@@ -587,21 +683,69 @@ async def cube_pv(
     _: None = _auth,
     session: Session = Depends(get_session),
 ) -> CubePvResponse:
-    from .compute import worker_pv
     try:
-        path = _require_cube_path(session, request.dataset_id)
-        result = await _run(
-            worker_pv,
-            path,
-            request.vertices,
-            max(1, int(request.width_pixels)),
-        )
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "This endpoint requires a spectral cube dataset.")
+        result, _ = await _pv_product_payload(entry, request)
     except HTTPException:
         raise
     except Exception as exc:
         logger.warning("[pv] failed dataset_id=%s error=%s", request.dataset_id, exc)
         return CubePvResponse(valid=False, error=str(exc))
     return CubePvResponse(valid=True, error="", **result)
+
+
+@app.post("/v1/tasks/moment", response_model=TaskCreateResponse, tags=["tasks"])
+async def create_moment_task(
+    request: MomentProductRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> TaskCreateResponse:
+    try:
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "Moment tasks require a cube dataset.")
+    except HTTPException:
+        raise
+
+    task = TASKS.create("moment")
+    TASKS.update(task.task_id, status="running", progress=0.05)
+
+    async def _runner() -> None:
+        try:
+            result, cache_hit = await _moment_product_payload(entry, request)
+            TASKS.update(
+                task.task_id,
+                status="completed",
+                progress=1.0,
+                result={"valid": True, "error": "", **result},
+                cache_hit=cache_hit,
+            )
+        except Exception as exc:  # pragma: no cover - exercised at runtime
+            TASKS.update(task.task_id, status="failed", progress=1.0, error=str(exc))
+
+    asyncio.create_task(_runner())
+    return TaskCreateResponse(valid=True, error="", task_id=task.task_id, status="running", cache_hit=False)
+
+
+@app.get("/v1/tasks/{task_id}", response_model=TaskStatusResponse, tags=["tasks"])
+async def task_status(task_id: str, _: None = _auth) -> TaskStatusResponse:
+    task = TASKS.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Unknown task_id '{task_id}'.")
+    return TaskStatusResponse(
+        valid=True,
+        error=task.error,
+        task_id=task.task_id,
+        operation=task.operation,
+        status=task.status,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+        progress=task.progress,
+        cache_hit=task.cache_hit,
+        result=task.result,
+    )
 
 
 @app.post("/v1/image/full", response_model=ImageFullResponse, tags=["image"])
