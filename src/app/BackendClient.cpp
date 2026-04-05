@@ -11,7 +11,9 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcessEnvironment>
+#include <QDebug>
 #include <QStandardPaths>
+#include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
@@ -590,6 +592,64 @@ BackendTaskStatusResult BackendClient::requestTaskStatus(const QString &taskId) 
     result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
     result.resultObject = object.value(QStringLiteral("result")).toObject();
     return result;
+}
+
+BackendTaskStatusResult BackendClient::waitForTaskCompletion(const BackendTaskCreateResult &createResult,
+                                                             const QString &logTag,
+                                                             int maxPollAttempts,
+                                                             int pollIntervalMs) const
+{
+    BackendTaskStatusResult terminal;
+    terminal.taskId = createResult.taskId;
+    if (!createResult.valid || createResult.taskId.isEmpty()) {
+        terminal.error = createResult.error.isEmpty()
+                ? QStringLiteral("Task creation failed.")
+                : createResult.error;
+        qWarning().noquote()
+                << QStringLiteral("%1 create failed error=%2").arg(logTag, terminal.error);
+        return terminal;
+    }
+
+    qDebug().noquote()
+            << QStringLiteral("%1 created task_id=%2 status=%3 cache_hit=%4")
+                       .arg(logTag, createResult.taskId, createResult.status)
+                       .arg(createResult.cacheHit ? QStringLiteral("true")
+                                                 : QStringLiteral("false"));
+
+    for (int attempt = 0; attempt < maxPollAttempts; ++attempt) {
+        QThread::msleep(pollIntervalMs);
+        const auto taskStatus = this->requestTaskStatus(createResult.taskId);
+        if (!taskStatus.valid && !taskStatus.status.isEmpty()
+            && taskStatus.status != QStringLiteral("failed")) {
+            qWarning().noquote()
+                    << QStringLiteral("%1 polling invalid task_id=%2 error=%3")
+                               .arg(logTag, createResult.taskId, taskStatus.error);
+            return taskStatus;
+        }
+        qDebug().noquote()
+                << QStringLiteral("%1 poll task_id=%2 status=%3 progress=%4")
+                           .arg(logTag, createResult.taskId, taskStatus.status)
+                           .arg(taskStatus.progress, 0, 'f', 2);
+        if (taskStatus.status == QStringLiteral("completed")) {
+            qDebug().noquote()
+                    << QStringLiteral("%1 completed task_id=%2 cache_hit=%3")
+                               .arg(logTag, createResult.taskId)
+                               .arg(taskStatus.cacheHit ? QStringLiteral("true")
+                                                        : QStringLiteral("false"));
+            return taskStatus;
+        }
+        if (taskStatus.status == QStringLiteral("failed")) {
+            qWarning().noquote()
+                    << QStringLiteral("%1 failed task_id=%2 error=%3")
+                               .arg(logTag, createResult.taskId, taskStatus.error);
+            return taskStatus;
+        }
+    }
+
+    terminal.error = QStringLiteral("Task polling timed out.");
+    qWarning().noquote()
+            << QStringLiteral("%1 polling timed out task_id=%2").arg(logTag, createResult.taskId);
+    return terminal;
 }
 
 // ── Low-level HTTP ────────────────────────────────────────────────────────────

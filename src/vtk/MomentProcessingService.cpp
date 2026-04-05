@@ -4,7 +4,6 @@
 
 #include <QByteArray>
 #include <QDebug>
-#include <QThread>
 
 #include <vtkImageData.h>
 #include <vtkLookupTable.h>
@@ -72,66 +71,25 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
     BackendClient client(request.backendUrl, request.backendToken);
     client.setSessionId(request.sessionId);
     BackendMomentResult response;
-    bool usedTaskPath = false;
-
-    const auto taskCreate = client.createMomentTask(request.datasetId, request.order, request.channelStart,
-                                                    request.channelEnd, request.maskEnabled,
-                                                    request.thresholdValue);
-    if (taskCreate.valid && !taskCreate.taskId.isEmpty()) {
-        usedTaskPath = true;
-        qDebug().noquote()
-                << QStringLiteral("[moment][task] created task_id=%1 status=%2 cache_hit=%3")
-                           .arg(taskCreate.taskId, taskCreate.status)
-                           .arg(taskCreate.cacheHit ? QStringLiteral("true")
-                                                    : QStringLiteral("false"));
-        constexpr int maxPollAttempts = 120;
-        constexpr int pollIntervalMs = 250;
-        for (int attempt = 0; attempt < maxPollAttempts; ++attempt) {
-            QThread::msleep(pollIntervalMs);
-            const auto taskStatus = client.requestTaskStatus(taskCreate.taskId);
-            if (!taskStatus.valid && !taskStatus.status.isEmpty()
-                && taskStatus.status != QStringLiteral("failed")) {
-                qWarning().noquote()
-                        << QStringLiteral("[moment][task] polling invalid task_id=%1 error=%2")
-                                   .arg(taskCreate.taskId, taskStatus.error);
-                break;
-            }
-            qDebug().noquote()
-                    << QStringLiteral("[moment][task] poll task_id=%1 status=%2 progress=%3")
-                               .arg(taskCreate.taskId, taskStatus.status)
-                               .arg(taskStatus.progress, 0, 'f', 2);
-            if (taskStatus.status == QStringLiteral("completed")) {
-                response = BackendClient::parseMomentResultObject(taskStatus.resultObject);
-                qDebug().noquote()
-                        << QStringLiteral("[moment][task] completed task_id=%1 cache_hit=%2")
-                                   .arg(taskCreate.taskId)
-                                   .arg(taskStatus.cacheHit ? QStringLiteral("true")
-                                                            : QStringLiteral("false"));
-                break;
-            }
-            if (taskStatus.status == QStringLiteral("failed")) {
-                qWarning().noquote()
-                        << QStringLiteral("[moment][task] failed task_id=%1 error=%2")
-                                   .arg(taskCreate.taskId, taskStatus.error);
-                break;
-            }
-        }
-        if (!response.valid) {
-            qWarning().noquote()
-                    << QStringLiteral("[moment][task] fallback to sync task_id=%1")
-                               .arg(taskCreate.taskId);
-        }
-    } else {
-        qWarning().noquote()
-                << QStringLiteral("[moment][task] create failed, fallback to sync error=%1")
-                           .arg(taskCreate.error);
+    const auto taskStatus = client.waitForTaskCompletion(
+            client.createMomentTask(request.datasetId, request.order, request.channelStart,
+                                    request.channelEnd, request.maskEnabled,
+                                    request.thresholdValue),
+            QStringLiteral("[moment][task]"));
+    if (taskStatus.status == QStringLiteral("completed")) {
+        response = BackendClient::parseMomentResultObject(taskStatus.resultObject);
     }
 
     if (!response.valid) {
+        if (!taskStatus.taskId.isEmpty()) {
+            qWarning().noquote()
+                    << QStringLiteral("[moment][task] fallback to sync task_id=%1")
+                               .arg(taskStatus.taskId);
+        }
         response = client.requestMoment(request.datasetId, request.order, request.channelStart,
                                         request.channelEnd, request.maskEnabled,
                                         request.thresholdValue);
-        if (usedTaskPath) {
+        if (!taskStatus.taskId.isEmpty()) {
             qDebug().noquote() << QStringLiteral("[moment][task] sync fallback completed valid=%1")
                                           .arg(response.valid ? QStringLiteral("true")
                                                               : QStringLiteral("false"));

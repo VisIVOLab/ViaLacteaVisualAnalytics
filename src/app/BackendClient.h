@@ -284,6 +284,10 @@ public:
                                          const std::vector<std::array<int, 2>> &vertices,
                                          int widthPixels) const;
     BackendTaskStatusResult requestTaskStatus(const QString &taskId) const;
+    BackendTaskStatusResult waitForTaskCompletion(const BackendTaskCreateResult &createResult,
+                                                  const QString &logTag,
+                                                  int maxPollAttempts = 120,
+                                                  int pollIntervalMs = 250) const;
     static BackendMomentResult parseMomentResultObject(const QJsonObject &object);
     static BackendCubePvResult parsePvResultObject(const QJsonObject &object);
 
