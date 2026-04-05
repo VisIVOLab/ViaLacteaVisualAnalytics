@@ -67,7 +67,7 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
         return { nullptr, { 0., 0. }, false, QStringLiteral("Missing remote dataset_id.") };
     }
 
-    BackendClient client(request.backendUrl);
+    BackendClient client(request.backendUrl, request.backendToken);
     client.setSessionId(request.sessionId);
     const auto response = client.requestMoment(request.datasetId, request.order, request.channelStart,
                                               request.channelEnd, request.maskEnabled,
@@ -101,6 +101,6 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
 
 MomentMapResult MomentProcessingService::process(const MomentMapRequest &request) const
 {
-    const auto result = this->computeMoment(MomentRequest { {}, {}, {}, request.momentOrder });
+    const auto result = this->computeMoment(MomentRequest { {}, {}, {}, {}, {}, request.momentOrder });
     return { result.valid, result.imageRange };
 }

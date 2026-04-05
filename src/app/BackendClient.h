@@ -2,6 +2,7 @@
 #define BackendClient_h
 
 #include <QByteArray>
+#include <QNetworkRequest>
 #include <QString>
 #include <QStringList>
 

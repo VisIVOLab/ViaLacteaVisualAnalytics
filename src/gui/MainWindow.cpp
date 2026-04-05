@@ -200,7 +200,7 @@ void MainWindow::openRemoteData()
             auto *win = new vtkWindowImage(remotePath, client.baseUrl(), opened.datasetId,
                                            opened.ctype, opened.cunit, opened.crval, opened.crpix,
                                            opened.cdelt, opened.degenerateAxesSummary,
-                                           client.sessionId(), this);
+                                           client.sessionId(), client.token(), this);
             win->show();
             win->raise();
             win->activateWindow();
@@ -221,7 +221,7 @@ void MainWindow::openRemoteData()
                                   opened.height, opened.depth, opened.spacing, opened.origin,
                                   opened.ctype, opened.cunit, opened.crval, opened.crpix,
                                   opened.cdelt, opened.degenerateAxesSummary,
-                                  client.sessionId(), this);
+                                  client.sessionId(), client.token(), this);
     win->show();
     win->raise();
     win->activateWindow();
