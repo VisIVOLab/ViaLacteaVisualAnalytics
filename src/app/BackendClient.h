@@ -161,6 +161,12 @@ struct BackendCubePvResult
     int vertexCount{ 0 };
     double totalLength{ 0. };
     int validSamples{ 0 };
+    QString spectralAxisType;
+    QString spectralAxisUnit;
+    QString bunit;
+    double beamMajor{ 0.0 };
+    double beamMinor{ 0.0 };
+    double beamPa{ 0.0 };
 };
 
 struct BackendImageResult
@@ -274,8 +280,12 @@ public:
     BackendTaskCreateResult createMomentTask(const QString &datasetId, int order, int channelStart,
                                              int channelEnd, bool maskEnabled,
                                              double thresholdValue) const;
+    BackendTaskCreateResult createPvTask(const QString &datasetId,
+                                         const std::vector<std::array<int, 2>> &vertices,
+                                         int widthPixels) const;
     BackendTaskStatusResult requestTaskStatus(const QString &taskId) const;
     static BackendMomentResult parseMomentResultObject(const QJsonObject &object);
+    static BackendCubePvResult parsePvResultObject(const QJsonObject &object);
 
 private:
     /** Build a QNetworkRequest with auth + session headers pre-applied. */

@@ -91,6 +91,7 @@
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QTableView>
+#include <QThread>
 #include <QtConcurrentRun>
 #include <QVBoxLayout>
 
@@ -1304,7 +1305,68 @@ RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &data
 
     BackendClient client(backendUrl, backendToken);
     client.setSessionId(sessionId);
-    const auto response = client.requestPv(datasetId, vertices, widthPixels);
+    BackendCubePvResult response;
+    bool usedTaskPath = false;
+
+    const auto taskCreate = client.createPvTask(datasetId, vertices, widthPixels);
+    if (taskCreate.valid && !taskCreate.taskId.isEmpty()) {
+        usedTaskPath = true;
+        qDebug().noquote()
+                << QStringLiteral("[pv][task] created task_id=%1 status=%2 cache_hit=%3")
+                           .arg(taskCreate.taskId, taskCreate.status)
+                           .arg(taskCreate.cacheHit ? QStringLiteral("true")
+                                                    : QStringLiteral("false"));
+        constexpr int maxPollAttempts = 120;
+        constexpr int pollIntervalMs = 250;
+        for (int attempt = 0; attempt < maxPollAttempts; ++attempt) {
+            QThread::msleep(pollIntervalMs);
+            const auto taskStatus = client.requestTaskStatus(taskCreate.taskId);
+            if (!taskStatus.valid && !taskStatus.status.isEmpty()
+                && taskStatus.status != QStringLiteral("failed")) {
+                qWarning().noquote()
+                        << QStringLiteral("[pv][task] polling invalid task_id=%1 error=%2")
+                                   .arg(taskCreate.taskId, taskStatus.error);
+                break;
+            }
+            qDebug().noquote()
+                    << QStringLiteral("[pv][task] poll task_id=%1 status=%2 progress=%3")
+                               .arg(taskCreate.taskId, taskStatus.status)
+                               .arg(taskStatus.progress, 0, 'f', 2);
+            if (taskStatus.status == QStringLiteral("completed")) {
+                response = BackendClient::parsePvResultObject(taskStatus.resultObject);
+                qDebug().noquote()
+                        << QStringLiteral("[pv][task] completed task_id=%1 cache_hit=%2")
+                                   .arg(taskCreate.taskId)
+                                   .arg(taskStatus.cacheHit ? QStringLiteral("true")
+                                                            : QStringLiteral("false"));
+                break;
+            }
+            if (taskStatus.status == QStringLiteral("failed")) {
+                qWarning().noquote()
+                        << QStringLiteral("[pv][task] failed task_id=%1 error=%2")
+                                   .arg(taskCreate.taskId, taskStatus.error);
+                break;
+            }
+        }
+        if (!response.valid) {
+            qWarning().noquote()
+                    << QStringLiteral("[pv][task] fallback to sync task_id=%1").arg(taskCreate.taskId);
+        }
+    } else {
+        qWarning().noquote()
+                << QStringLiteral("[pv][task] create failed, fallback to sync error=%1")
+                           .arg(taskCreate.error);
+    }
+
+    if (!response.valid) {
+        response = client.requestPv(datasetId, vertices, widthPixels);
+        if (usedTaskPath) {
+            qDebug().noquote() << QStringLiteral("[pv][task] sync fallback completed valid=%1")
+                                          .arg(response.valid ? QStringLiteral("true")
+                                                              : QStringLiteral("false"));
+        }
+    }
+
     if (!response.valid) {
         result.errorMessage =
                 response.error.isEmpty() ? u"Remote PV request failed."_s : response.error;

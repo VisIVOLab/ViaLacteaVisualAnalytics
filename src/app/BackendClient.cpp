@@ -377,7 +377,6 @@ BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
                                              const std::vector<std::array<int, 2>> &vertices,
                                              int widthPixels) const
 {
-    BackendCubePvResult result;
     QString error;
     QJsonArray vertexArray;
     for (const auto &v : vertices) {
@@ -389,30 +388,11 @@ BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
     const QByteArray payload =
             performPost(QUrl(m_baseUrl + QStringLiteral("/v1/cube/pv")), body, error);
     if (!error.isEmpty()) {
+        BackendCubePvResult result;
         result.error = error;
         return result;
     }
-    const QJsonObject object = QJsonDocument::fromJson(payload).object();
-    result.valid = object.value(QStringLiteral("valid")).toBool(false);
-    result.error = object.value(QStringLiteral("error")).toString();
-    result.numSamples = object.value(QStringLiteral("num_samples")).toInt();
-    result.depth = object.value(QStringLiteral("depth")).toInt();
-    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
-    result.computedOn = object.value(QStringLiteral("computed_on")).toString();
-    result.widthPixels = object.value(QStringLiteral("width_pixels")).toInt(1);
-    result.vertexCount = object.value(QStringLiteral("vertex_count")).toInt();
-    result.totalLength = object.value(QStringLiteral("total_length")).toDouble();
-    result.validSamples = object.value(QStringLiteral("valid_samples")).toInt();
-    result.positions = decodePayload(object, QStringLiteral("positions_base64"),
-                                     QStringLiteral("compression"), result.error);
-    if (result.error.isEmpty()) {
-        result.data = decodePayload(object, QStringLiteral("data_base64"),
-                                    QStringLiteral("compression"), result.error);
-    }
-    if (!result.error.isEmpty()) {
-        result.valid = false;
-    }
-    return result;
+    return parsePvResultObject(QJsonDocument::fromJson(payload).object());
 }
 
 BackendImageResult BackendClient::requestImage(const QString &datasetId) const
@@ -562,6 +542,34 @@ BackendTaskCreateResult BackendClient::createMomentTask(const QString &datasetId
     return result;
 }
 
+BackendTaskCreateResult BackendClient::createPvTask(const QString &datasetId,
+                                                    const std::vector<std::array<int, 2>> &vertices,
+                                                    int widthPixels) const
+{
+    BackendTaskCreateResult result;
+    QString error;
+    QJsonArray vertexArray;
+    for (const auto &v : vertices) {
+        vertexArray.append(QJsonArray{ v[0], v[1] });
+    }
+    const QJsonDocument body(QJsonObject{ { QStringLiteral("dataset_id"), datasetId },
+                                          { QStringLiteral("vertices"), vertexArray },
+                                          { QStringLiteral("width_pixels"), widthPixels } });
+    const QByteArray payload =
+            performPost(QUrl(m_baseUrl + QStringLiteral("/v1/tasks/pv")), body, error);
+    if (!error.isEmpty()) {
+        result.error = error;
+        return result;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(payload).object();
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.taskId = object.value(QStringLiteral("task_id")).toString();
+    result.status = object.value(QStringLiteral("status")).toString();
+    result.cacheHit = object.value(QStringLiteral("cache_hit")).toBool(false);
+    return result;
+}
+
 BackendTaskStatusResult BackendClient::requestTaskStatus(const QString &taskId) const
 {
     BackendTaskStatusResult result;
@@ -622,6 +630,37 @@ BackendMomentResult BackendClient::parseMomentResultObject(const QJsonObject &ob
     result.bunit = object.value(QStringLiteral("bunit")).toString();
     result.data = decodePayload(object, QStringLiteral("data_base64"),
                                 QStringLiteral("compression"), result.error);
+    if (!result.error.isEmpty()) {
+        result.valid = false;
+    }
+    return result;
+}
+
+BackendCubePvResult BackendClient::parsePvResultObject(const QJsonObject &object)
+{
+    BackendCubePvResult result;
+    result.valid = object.value(QStringLiteral("valid")).toBool(false);
+    result.error = object.value(QStringLiteral("error")).toString();
+    result.numSamples = object.value(QStringLiteral("num_samples")).toInt();
+    result.depth = object.value(QStringLiteral("depth")).toInt();
+    result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
+    result.computedOn = object.value(QStringLiteral("computed_on")).toString();
+    result.widthPixels = object.value(QStringLiteral("width_pixels")).toInt(1);
+    result.vertexCount = object.value(QStringLiteral("vertex_count")).toInt();
+    result.totalLength = object.value(QStringLiteral("total_length")).toDouble();
+    result.validSamples = object.value(QStringLiteral("valid_samples")).toInt();
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
+    result.bunit = object.value(QStringLiteral("bunit")).toString();
+    result.beamMajor = object.value(QStringLiteral("beam_major")).toDouble();
+    result.beamMinor = object.value(QStringLiteral("beam_minor")).toDouble();
+    result.beamPa = object.value(QStringLiteral("beam_pa")).toDouble();
+    result.positions = decodePayload(object, QStringLiteral("positions_base64"),
+                                     QStringLiteral("compression"), result.error);
+    if (result.error.isEmpty()) {
+        result.data = decodePayload(object, QStringLiteral("data_base64"),
+                                    QStringLiteral("compression"), result.error);
+    }
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
