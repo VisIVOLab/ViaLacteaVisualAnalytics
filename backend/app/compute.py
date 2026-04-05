@@ -24,6 +24,7 @@ from typing import Any
 
 import numpy as np
 from astropy.io import fits
+from astropy.wcs import WCS
 
 logger = logging.getLogger("visivo.compute")
 
@@ -88,6 +89,131 @@ def _squeeze_to_3d(data: np.ndarray) -> np.ndarray:
     while arr.ndim > 3:
         arr = arr[0]
     return arr
+
+
+def _active_fits_axes(header: fits.Header) -> list[int]:
+    naxis = int(header.get("NAXIS", 0))
+    return [axis for axis in range(1, naxis + 1) if int(header.get(f"NAXIS{axis}", 1)) > 1]
+
+
+def _cube_numpy_spectral_fits_axis(header: fits.Header) -> int:
+    """
+    Map the cube spectral/channel index used by the current client/backend cube path
+    to the corresponding FITS pixel axis.
+
+    The current cube semantics treat numpy axis 0 as the spectral/depth axis.
+    For FITS image cubes this matches the highest-numbered active FITS axis after
+    dropping degenerate axes, which is also how the current 3D data path is opened.
+    """
+    active_axes = _active_fits_axes(header)
+    if len(active_axes) < 3:
+        raise ValueError("Scientific cube helpers require at least three active FITS axes.")
+    return active_axes[-1]
+
+
+def _build_spectral_coordinate_metadata(
+    header: fits.Header, channel_start: int, channel_end: int
+) -> dict[str, Any]:
+    """
+    Compute physical spectral coordinates for the selected channel range using astropy.wcs.WCS.
+
+    This avoids using raw CDELT3/CRVAL3/CRPIX3 directly, which is not scientifically safe
+    for general FITS spectral axes.
+    """
+    spectral_fits_axis = _cube_numpy_spectral_fits_axis(header)
+    wcs = WCS(header)
+    pixel_naxis = int(wcs.pixel_n_dim)
+    world_naxis = int(wcs.world_n_dim)
+    if pixel_naxis <= 0 or world_naxis <= 0:
+        raise ValueError("FITS WCS is not available for spectral-coordinate computation.")
+
+    axis_types = [ptype or "" for ptype in (wcs.world_axis_physical_types or [])]
+    correlation = np.asarray(wcs.axis_correlation_matrix, dtype=bool)
+    spectral_pixel_index = spectral_fits_axis - 1
+
+    spectral_world_index = None
+    preferred_world_indices = [
+        idx
+        for idx, ptype in enumerate(axis_types)
+        if ptype.startswith("em.") or "spect" in ptype or "freq" in ptype or "velo" in ptype
+    ]
+    for world_index in preferred_world_indices:
+        if (
+            world_index < correlation.shape[0]
+            and spectral_pixel_index < correlation.shape[1]
+            and correlation[world_index, spectral_pixel_index]
+        ):
+            spectral_world_index = world_index
+            break
+    if spectral_world_index is None:
+        for world_index in range(min(correlation.shape[0], world_naxis)):
+            if spectral_pixel_index < correlation.shape[1] and correlation[world_index, spectral_pixel_index]:
+                spectral_world_index = world_index
+                break
+    if spectral_world_index is None:
+        spectral_world_index = min(world_naxis - 1, spectral_pixel_index)
+
+    reference_pixels = []
+    for pixel_axis in range(pixel_naxis):
+        crpix = float(header.get(f"CRPIX{pixel_axis + 1}", 1.0))
+        reference_pixels.append(np.full(channel_end - channel_start + 1, crpix - 1.0, dtype=np.float64))
+    reference_pixels[spectral_pixel_index] = np.arange(
+        channel_start, channel_end + 1, dtype=np.float64
+    )
+    world_values = wcs.pixel_to_world_values(*reference_pixels)
+    spectral_coordinates = np.asarray(world_values[spectral_world_index], dtype=np.float64)
+    if spectral_coordinates.ndim != 1 or spectral_coordinates.size != (channel_end - channel_start + 1):
+        spectral_coordinates = np.ravel(spectral_coordinates).astype(np.float64, copy=False)
+
+    axis_type = axis_types[spectral_world_index] if spectral_world_index < len(axis_types) else ""
+    axis_unit = ""
+    if hasattr(wcs, "world_axis_units") and spectral_world_index < len(wcs.world_axis_units):
+        axis_unit = wcs.world_axis_units[spectral_world_index] or ""
+    axis_label = str(header.get(f"CTYPE{spectral_fits_axis}", f"AXIS{spectral_fits_axis}")).strip()
+    logger.info(
+        "[moment] spectral axis fits_axis=%s world_axis=%s type=%s unit=%s channels=%s..%s",
+        spectral_fits_axis,
+        spectral_world_index,
+        axis_type or axis_label,
+        axis_unit or "-",
+        channel_start,
+        channel_end,
+    )
+    return {
+        "coordinates": spectral_coordinates,
+        "axis_type": axis_type or axis_label,
+        "axis_unit": axis_unit,
+        "axis_label": axis_label,
+        "fits_axis": spectral_fits_axis,
+    }
+
+
+def _integrated_spacing(coords: np.ndarray) -> np.ndarray:
+    if coords.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    if coords.size == 1:
+        return np.ones(1, dtype=np.float64)
+    edges = np.empty(coords.size + 1, dtype=np.float64)
+    edges[1:-1] = 0.5 * (coords[:-1] + coords[1:])
+    edges[0] = coords[0] - 0.5 * (coords[1] - coords[0])
+    edges[-1] = coords[-1] + 0.5 * (coords[-1] - coords[-2])
+    return np.abs(np.diff(edges))
+
+
+def _moment_result_unit(order: int, bunit: str, spectral_unit: str) -> str:
+    bunit = (bunit or "").strip()
+    spectral_unit = (spectral_unit or "").strip()
+    if order == 0:
+        if bunit and spectral_unit:
+            return f"{bunit} {spectral_unit}"
+        return bunit or spectral_unit
+    if order == 1:
+        return spectral_unit
+    if order == 2:
+        return f"{spectral_unit}^2" if spectral_unit else ""
+    if order in {6, 8, 10}:
+        return bunit
+    return ""
 
 
 # ── Worker: cube slice (single spectral plane) ────────────────────────────────
@@ -161,47 +287,41 @@ def worker_cube_subvolume(
 
 def _moment_map_from_array(
     cube: np.ndarray,
-    header: fits.Header,
     order: int,
-    z0: int,
-    z1: int,
+    spectral_coordinates: np.ndarray,
     mask_enabled: bool,
     threshold_value: float,
 ) -> np.ndarray:
     """Pure numpy moment-map computation (no VTK dependency)."""
-    spectral_delta = abs(float(header.get("CDELT3", 1.0)))
-    init_spectral = float(header.get("CRVAL3", 0.0)) - float(header.get("CDELT3", 1.0)) * (
-        float(header.get("CRPIX3", 1.0)) - 1.0
-    )
-    spectral_values = init_spectral + float(header.get("CDELT3", 1.0)) * np.arange(
-        z0, z1 + 1, dtype=np.float32
-    )
+    spectral_values = np.asarray(spectral_coordinates, dtype=np.float64)
+    spectral_delta = _integrated_spacing(spectral_values)
 
-    # Materialise only the required spectral range (R4 key optimisation).
-    subset = np.asarray(cube[z0 : z1 + 1, :, :], dtype=np.float32)
+    subset = np.asarray(cube, dtype=np.float32)
     safe = np.where(np.isfinite(subset), subset, np.nan)
     if mask_enabled:
         safe = np.where(safe >= float(threshold_value), safe, np.nan)
 
     if order == 0:
-        return np.nansum(safe * spectral_delta, axis=0, dtype=np.float32)
+        return np.nansum(safe * spectral_delta[:, None, None], axis=0, dtype=np.float32)
 
     if order == 1:
-        m0 = np.nansum(safe * spectral_delta, axis=0, dtype=np.float32)
-        num = np.nansum(safe * spectral_values[:, None, None] * spectral_delta, axis=0, dtype=np.float32)
+        weights = spectral_delta[:, None, None]
+        m0 = np.nansum(safe * weights, axis=0, dtype=np.float32)
+        num = np.nansum(safe * spectral_values[:, None, None] * weights, axis=0, dtype=np.float32)
         out = np.full(m0.shape, np.nan, dtype=np.float32)
         valid = np.isfinite(m0) & (m0 != 0.0)
         out[valid] = num[valid] / m0[valid]
         return out
 
     if order == 2:
-        m0 = np.nansum(safe * spectral_delta, axis=0, dtype=np.float32)
-        m1_num = np.nansum(safe * spectral_values[:, None, None] * spectral_delta, axis=0, dtype=np.float32)
+        weights = spectral_delta[:, None, None]
+        m0 = np.nansum(safe * weights, axis=0, dtype=np.float32)
+        m1_num = np.nansum(safe * spectral_values[:, None, None] * weights, axis=0, dtype=np.float32)
         m1 = np.full(m0.shape, np.nan, dtype=np.float32)
         valid = np.isfinite(m0) & (m0 != 0.0)
         m1[valid] = m1_num[valid] / m0[valid]
         diff = spectral_values[:, None, None] - m1[None, :, :]
-        num = np.nansum(safe * diff * diff * spectral_delta, axis=0, dtype=np.float32)
+        num = np.nansum(safe * diff * diff * weights, axis=0, dtype=np.float32)
         out = np.full(m0.shape, np.nan, dtype=np.float32)
         out[valid] = num[valid] / m0[valid]
         return out
@@ -241,7 +361,17 @@ def worker_moment(
         z1 = max(0, min(int(channel_end), data.shape[0] - 1))
         if z0 > z1:
             raise ValueError("Invalid channel range.")
-        image = _moment_map_from_array(data, header, order, z0, z1, mask_enabled, threshold_value)
+        spectral = _build_spectral_coordinate_metadata(header, z0, z1)
+        subset = np.asarray(data[z0 : z1 + 1, :, :], dtype=np.float32)
+        image = _moment_map_from_array(
+            subset,
+            order,
+            spectral["coordinates"],
+            mask_enabled,
+            threshold_value,
+        )
+        bunit = str(header.get("BUNIT", "")).strip()
+        moment_unit = _moment_result_unit(order, bunit, str(spectral["axis_unit"]))
     finally:
         hdul.close()
 
@@ -255,6 +385,10 @@ def worker_moment(
         "scalar_type": "float32",
         "range_min": range_min,
         "range_max": range_max,
+        "spectral_axis_type": str(spectral["axis_type"]),
+        "spectral_axis_unit": str(spectral["axis_unit"]),
+        "moment_unit": moment_unit,
+        "bunit": bunit,
         "data_base64": _b64f32(image),
     }
 
@@ -363,41 +497,67 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
         data = _squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("PV extraction requires a 3D cube.")
-        # Materialise full cube – PV diagrams require random spatial access.
-        cube = np.asarray(data, dtype=np.float32)
+
+        cleaned = []
+        for v in vertices:
+            if len(v) >= 2:
+                pt = (int(v[0]), int(v[1]))
+                if not cleaned or cleaned[-1] != pt:
+                    cleaned.append(pt)
+        if len(cleaned) < 2:
+            raise ValueError("At least two distinct vertices required for a PV cut.")
+
+        sampled, total_length = _sample_polyline(cleaned)
+        depth, height, width = data.shape
+        half = 0.5 * float(max(1, width_pixels) - 1)
+        x_candidates = [pt[0] for pt in sampled]
+        y_candidates = [pt[1] for pt in sampled]
+        spatial_margin = max(1, int(np.ceil(abs(half))) + 2)
+        slab_x0 = max(0, min(x_candidates) - spatial_margin)
+        slab_x1 = min(width - 1, max(x_candidates) + spatial_margin)
+        slab_y0 = max(0, min(y_candidates) - spatial_margin)
+        slab_y1 = min(height - 1, max(y_candidates) + spatial_margin)
+
+        # Materialise only the spatial slab needed by the PV path. This still reads
+        # the full spectral depth, but avoids eager loading the entire cube volume.
+        cube = np.asarray(data[:, slab_y0 : slab_y1 + 1, slab_x0 : slab_x1 + 1], dtype=np.float32)
+        logger.info(
+            "[pv] slab read full_depth=%s slab_x=%s..%s slab_y=%s..%s width_pixels=%s samples=%s",
+            depth,
+            slab_x0,
+            slab_x1,
+            slab_y0,
+            slab_y1,
+            width_pixels,
+            len(sampled),
+        )
     finally:
         hdul.close()
 
-    cleaned = []
-    for v in vertices:
-        if len(v) >= 2:
-            pt = (int(v[0]), int(v[1]))
-            if not cleaned or cleaned[-1] != pt:
-                cleaned.append(pt)
-    if len(cleaned) < 2:
-        raise ValueError("At least two distinct vertices required for a PV cut.")
-
-    sampled, total_length = _sample_polyline(cleaned)
-    depth, height, width = cube.shape
-    x_samples = len(sampled)
+    sampled_local = [(pt[0] - slab_x0, pt[1] - slab_y0) for pt in sampled]
+    x_samples = len(sampled_local)
     positions = np.zeros(x_samples, dtype=np.float32)
     pv = np.full((depth, x_samples), np.nan, dtype=np.float32)
     valid_samples = 0
-    half = 0.5 * float(max(1, width_pixels) - 1)
 
     for i in range(1, x_samples):
         positions[i] = positions[i - 1] + float(
-            np.hypot(sampled[i][0] - sampled[i - 1][0], sampled[i][1] - sampled[i - 1][1])
+            np.hypot(
+                sampled_local[i][0] - sampled_local[i - 1][0],
+                sampled_local[i][1] - sampled_local[i - 1][1],
+            )
         )
 
-    for si, center in enumerate(sampled):
-        nx, ny = _local_normal(sampled, si)
+    slab_height = cube.shape[1]
+    slab_width = cube.shape[2]
+    for si, center in enumerate(sampled_local):
+        nx, ny = _local_normal(sampled_local, si)
         for z in range(depth):
             vals: list[float] = []
             for off in range(max(1, width_pixels)):
                 cx = int(round(center[0] + (float(off) - half) * nx))
                 cy = int(round(center[1] + (float(off) - half) * ny))
-                if 0 <= cx < width and 0 <= cy < height:
+                if 0 <= cx < slab_width and 0 <= cy < slab_height:
                     v_val = float(cube[z, cy, cx])
                     if np.isfinite(v_val):
                         vals.append(v_val)
@@ -417,7 +577,7 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
         "compression": pos_compression,
         "positions_base64": pos_b64,
         "data_base64": data_b64,
-        "computed_on": "full_dataset",
+        "computed_on": "spatial_slab",
         "width_pixels": width_pixels,
         "vertex_count": len(cleaned),
         "total_length": float(total_length),

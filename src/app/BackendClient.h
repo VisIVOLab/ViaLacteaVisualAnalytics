@@ -5,6 +5,7 @@
 #include <QNetworkRequest>
 #include <QString>
 #include <QStringList>
+#include <chrono>
 
 #include <array>
 #include <vector>
@@ -70,6 +71,10 @@ struct BackendMomentResult
     QString scalarType;
     double rangeMin{ 0. };
     double rangeMax{ 0. };
+    QString spectralAxisType;
+    QString spectralAxisUnit;
+    QString momentUnit;
+    QString bunit;
     QByteArray data;
 };
 
@@ -240,6 +245,7 @@ private:
 
     QByteArray performGet(const QUrl &url, QString &error) const;
     QByteArray performPost(const QUrl &url, const QJsonDocument &body, QString &error) const;
+    std::chrono::milliseconds requestTimeoutFor(const QUrl &url) const;
 
     static QByteArray decodePayload(const QJsonObject &object, const QString &base64Field,
                                     const QString &compressionField, QString &error);

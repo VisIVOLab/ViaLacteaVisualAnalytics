@@ -35,6 +35,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <algorithm>
 #include <limits>
 
 using namespace Qt::StringLiterals;
@@ -72,6 +73,8 @@ void vtkWindowVbt::setupUi()
 
     auto *displayGroup = new QGroupBox(u"Display"_s, panel);
     auto *displayLayout = new QFormLayout(displayGroup);
+    this->comboRenderMode = new QComboBox(displayGroup);
+    this->comboRenderMode->addItems({ u"Points"_s, u"Particle Ray-Casting"_s });
     this->comboColorField = new QComboBox(displayGroup);
     this->comboColorField->addItem(u"Solid color"_s, QString());
     for (int field = 0; field < this->table.header.fieldNames.size(); ++field) {
@@ -93,6 +96,9 @@ void vtkWindowVbt::setupUi()
     this->sliderPointSize = new QSlider(Qt::Horizontal, displayGroup);
     this->sliderPointSize->setRange(1, 12);
     this->sliderPointSize->setValue(3);
+    this->sliderRayIntensity = new QSlider(Qt::Horizontal, displayGroup);
+    this->sliderRayIntensity->setRange(1, 100);
+    this->sliderRayIntensity->setValue(35);
     this->checkShowBox = new QCheckBox(u"Show box"_s, displayGroup);
     this->checkShowBox->setChecked(true);
     this->checkShowLut = new QCheckBox(u"Show LUT"_s, displayGroup);
@@ -107,12 +113,14 @@ void vtkWindowVbt::setupUi()
     this->spinRangeMax->setRange(-1e30, 1e30);
     this->buttonAutoscale = new QPushButton(u"Autoscale"_s, displayGroup);
     this->buttonResetView = new QPushButton(u"Reset View"_s, displayGroup);
+    displayLayout->addRow(u"Mode"_s, this->comboRenderMode);
     displayLayout->addRow(u"Color"_s, this->comboColorField);
     displayLayout->addRow(u"Colormap"_s, this->comboColormap);
     displayLayout->addRow(u"Range min"_s, this->spinRangeMin);
     displayLayout->addRow(u"Range max"_s, this->spinRangeMax);
     displayLayout->addRow(u"Background"_s, this->comboBackground);
     displayLayout->addRow(u"Point size"_s, this->sliderPointSize);
+    displayLayout->addRow(u"Ray intensity"_s, this->sliderRayIntensity);
     displayLayout->addRow(this->checkShowBox);
     displayLayout->addRow(this->checkShowLut);
     displayLayout->addRow(this->checkShowOrientation);
@@ -145,6 +153,8 @@ void vtkWindowVbt::setupUi()
     this->metadataDock->setWidget(dockWidget);
     this->addDockWidget(Qt::BottomDockWidgetArea, this->metadataDock);
 
+    QObject::connect(this->comboRenderMode, &QComboBox::currentIndexChanged, this,
+                     [this](int) { this->updateRenderMode(); });
     QObject::connect(this->comboColorField, &QComboBox::currentIndexChanged, this,
                      [this](int) { this->updateColorMapping(); });
     QObject::connect(this->comboColormap, &QComboBox::currentIndexChanged, this,
@@ -154,9 +164,15 @@ void vtkWindowVbt::setupUi()
     QObject::connect(this->sliderPointSize, &QSlider::valueChanged, this, [this](int value) {
         if (this->actor) {
             this->actor->GetProperty()->SetPointSize(value);
+            if (this->gaussianMapper) {
+                this->gaussianMapper->SetScaleFactor(static_cast<double>(value));
+            }
             this->renderWindow->Render();
             this->updateSummary();
         }
+    });
+    QObject::connect(this->sliderRayIntensity, &QSlider::valueChanged, this, [this](int) {
+        this->updateRenderMode();
     });
     QObject::connect(this->checkShowBox, &QCheckBox::toggled, this, [this](bool checked) {
         this->boxActor->SetVisibility(checked ? 1 : 0);
@@ -231,6 +247,16 @@ void vtkWindowVbt::setupRenderer()
         this->boxActor->GetLabelTextProperty(axis)->SetColor(0.75, 0.75, 0.75);
     }
     this->renderer->AddActor(this->boxActor.Get());
+
+    this->gaussianMapper->SetInputData(this->polyData.Get());
+    this->gaussianMapper->SetScaleArray("VbtScalar");
+    this->gaussianMapper->SetOpacityArray("VbtScalar");
+    this->gaussianMapper->SetScaleFunction(this->gaussianScaleFunction.Get());
+    this->gaussianMapper->SetScalarOpacityFunction(this->gaussianOpacityFunction.Get());
+    this->gaussianMapper->SetScaleFactor(static_cast<double>(this->sliderPointSize->value()));
+    this->gaussianMapper->SetEmissive(true);
+    this->gaussianMapper->SetBoundScale(3.0f);
+    this->gaussianMapper->SetLookupTable(this->scalarLut.Get());
 }
 
 void vtkWindowVbt::buildPointCloud()
@@ -267,7 +293,28 @@ void vtkWindowVbt::buildPointCloud()
     this->actor->GetProperty()->SetColor(0.8, 0.85, 1.0);
     this->renderer->AddActor(this->actor.Get());
     this->updateBoundsContext();
+    this->updateRenderMode();
     this->resetView();
+}
+
+void vtkWindowVbt::updateRenderMode()
+{
+    if (!this->actor) {
+        return;
+    }
+    const bool rayCasting = this->comboRenderMode && this->comboRenderMode->currentIndex() == 1;
+    if (rayCasting) {
+        this->gaussianMapper->SetScaleFactor(static_cast<double>(this->sliderPointSize ? this->sliderPointSize->value() : 3));
+        const double intensity = (this->sliderRayIntensity ? this->sliderRayIntensity->value() : 35) / 100.0;
+        this->actor->SetMapper(this->gaussianMapper.Get());
+        this->actor->GetProperty()->SetOpacity(std::clamp(0.25 + intensity * 0.75, 0.05, 1.0));
+    } else {
+        this->actor->SetMapper(this->mapper.Get());
+        this->actor->GetProperty()->SetOpacity(1.0);
+        this->actor->GetProperty()->SetPointSize(this->sliderPointSize ? this->sliderPointSize->value() : 3);
+    }
+    this->renderWindow->Render();
+    this->updateSummary();
 }
 
 QString vtkWindowVbt::activeColorFieldName() const
@@ -316,8 +363,10 @@ void vtkWindowVbt::updateColorMapping()
     const QVariant data = this->comboColorField->currentData();
     if (!data.isValid() || data.toString().isEmpty()) {
         this->mapper->ScalarVisibilityOff();
+        this->gaussianMapper->ScalarVisibilityOff();
         this->actor->GetProperty()->SetColor(0.8, 0.85, 1.0);
         this->updateScalarBar();
+        this->updateRenderMode();
         this->renderWindow->Render();
         this->updateSummary();
         return;
@@ -327,7 +376,9 @@ void vtkWindowVbt::updateColorMapping()
     const int fieldIndex = data.toInt(&okIndex);
     if (!okIndex || fieldIndex < 0 || fieldIndex >= static_cast<int>(this->table.columns.size())) {
         this->mapper->ScalarVisibilityOff();
+        this->gaussianMapper->ScalarVisibilityOff();
         this->updateScalarBar();
+        this->updateRenderMode();
         this->renderWindow->Render();
         this->updateSummary();
         return;
@@ -359,7 +410,28 @@ void vtkWindowVbt::updateColorMapping()
     this->mapper->SetLookupTable(this->scalarLut.Get());
     this->mapper->SetScalarRange(this->activeScalarMin, this->activeScalarMax);
     this->mapper->ScalarVisibilityOn();
+    this->gaussianMapper->SetLookupTable(this->scalarLut.Get());
+    this->gaussianMapper->SetScalarRange(this->activeScalarMin, this->activeScalarMax);
+    this->gaussianMapper->ScalarVisibilityOn();
+
+    this->gaussianScaleFunction->RemoveAllPoints();
+    this->gaussianOpacityFunction->RemoveAllPoints();
+    const double range = this->activeScalarMax - this->activeScalarMin;
+    const double p20 = this->activeScalarMin + range * 0.20;
+    const double p60 = this->activeScalarMin + range * 0.60;
+    const double p90 = this->activeScalarMin + range * 0.90;
+    const double intensity = (this->sliderRayIntensity ? this->sliderRayIntensity->value() : 35) / 100.0;
+    this->gaussianScaleFunction->AddPoint(this->activeScalarMin, 0.6);
+    this->gaussianScaleFunction->AddPoint(p60, 1.0);
+    this->gaussianScaleFunction->AddPoint(this->activeScalarMax, 1.6);
+    this->gaussianOpacityFunction->AddPoint(this->activeScalarMin, 0.0);
+    this->gaussianOpacityFunction->AddPoint(p20, 0.02 * intensity);
+    this->gaussianOpacityFunction->AddPoint(p60, 0.10 * intensity);
+    this->gaussianOpacityFunction->AddPoint(p90, 0.30 * intensity);
+    this->gaussianOpacityFunction->AddPoint(this->activeScalarMax, 0.65 * intensity);
+
     this->updateScalarBar();
+    this->updateRenderMode();
     this->renderWindow->Render();
     this->updateSummary();
 }
@@ -414,15 +486,17 @@ void vtkWindowVbt::updateSummary()
 {
     if (this->summaryLabel) {
         this->summaryLabel->setText(
-                QStringLiteral("Rows: %1\nFields: %2\nScalar type: %3\nActive color: %4\nColormap: %5\nRange: [%6, %7]\nPoint size: %8")
+                QStringLiteral("Rows: %1\nFields: %2\nScalar type: %3\nMode: %4\nActive color: %5\nColormap: %6\nRange: [%7, %8]\nPoint size: %9\nRay intensity: %10")
                         .arg(this->table.header.rowCount)
                         .arg(this->table.header.fieldCount)
                         .arg(VbtTableLoader::scalarTypeName(this->table.header.scalarType))
+                        .arg(this->comboRenderMode ? this->comboRenderMode->currentText() : QStringLiteral("Points"))
                         .arg(this->activeColorFieldName())
                         .arg(this->activeColormapName())
                         .arg(this->activeScalarMin, 0, 'g', 6)
                         .arg(this->activeScalarMax, 0, 'g', 6)
-                        .arg(this->sliderPointSize ? this->sliderPointSize->value() : 0));
+                        .arg(this->sliderPointSize ? this->sliderPointSize->value() : 0)
+                        .arg(this->sliderRayIntensity ? this->sliderRayIntensity->value() : 0));
     }
     if (this->metadataLabel) {
         this->metadataLabel->setText(

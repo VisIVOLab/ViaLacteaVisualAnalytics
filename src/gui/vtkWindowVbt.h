@@ -11,6 +11,8 @@
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
+#include <vtkPiecewiseFunction.h>
+#include <vtkPointGaussianMapper.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
@@ -47,6 +49,7 @@ private:
     void updateBoundsContext();
     void applyBackground();
     void resetView();
+    void updateRenderMode();
     QString activeColorFieldName() const;
     QString activeColormapName() const;
     void setScalarRange(double minValue, double maxValue);
@@ -54,10 +57,12 @@ private:
     VbtTableData table;
 
     QPointer<QVTKOpenGLNativeWidget> vtkWidget;
+    QPointer<QComboBox> comboRenderMode;
     QPointer<QComboBox> comboColorField;
     QPointer<QComboBox> comboColormap;
     QPointer<QComboBox> comboBackground;
     QPointer<QSlider> sliderPointSize;
+    QPointer<QSlider> sliderRayIntensity;
     QPointer<QCheckBox> checkShowBox;
     QPointer<QCheckBox> checkShowLut;
     QPointer<QCheckBox> checkShowOrientation;
@@ -82,6 +87,9 @@ private:
     vtkNew<vtkDoubleArray> pointScalars;
     vtkNew<vtkLookupTable> scalarLut;
     vtkNew<vtkPolyDataMapper> mapper;
+    vtkNew<vtkPointGaussianMapper> gaussianMapper;
+    vtkNew<vtkPiecewiseFunction> gaussianScaleFunction;
+    vtkNew<vtkPiecewiseFunction> gaussianOpacityFunction;
     vtkNew<vtkActor> actor;
     vtkNew<vtkCubeAxesActor> boxActor;
     vtkNew<vtkScalarBarActor> scalarBar;

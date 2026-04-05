@@ -44,8 +44,17 @@ logger = logging.getLogger("visivo.backend")
 
 # ── Process pool (R2) ─────────────────────────────────────────────────────────
 
-_WORKERS = int(os.environ.get("VISIVO_WORKERS", str(os.cpu_count() or 4)))
-_POOL = ProcessPoolExecutor(max_workers=_WORKERS, initializer=_pool_initializer if False else None)
+def _default_worker_count() -> int:
+    """
+    Keep the backend conservative by default.
+
+    On shared HPC/login nodes an unbounded cpu_count()-sized pool is too aggressive for
+    data-heavy FITS workloads. Users can still override via VISIVO_WORKERS.
+    """
+    return max(1, min(os.cpu_count() or 4, 4))
+
+
+_WORKERS = int(os.environ.get("VISIVO_WORKERS", str(_default_worker_count())))
 
 
 def _pool_initializer() -> None:  # pragma: no cover
@@ -54,7 +63,7 @@ def _pool_initializer() -> None:  # pragma: no cover
     _l.getLogger("vtkmodules").setLevel(_l.ERROR)
 
 
-_POOL = ProcessPoolExecutor(max_workers=_WORKERS)
+_POOL = ProcessPoolExecutor(max_workers=_WORKERS, initializer=_pool_initializer)
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
@@ -166,6 +175,10 @@ class MomentProductResponse(BaseModel):
     scalar_type: str = ""
     range_min: float = 0.0
     range_max: float = 0.0
+    spectral_axis_type: str = ""
+    spectral_axis_unit: str = ""
+    moment_unit: str = ""
+    bunit: str = ""
     data_base64: str = ""
 
 

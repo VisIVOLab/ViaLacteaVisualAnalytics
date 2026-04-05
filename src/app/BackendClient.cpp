@@ -12,6 +12,7 @@
 #include <QNetworkRequest>
 #include <QProcessEnvironment>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -522,6 +523,10 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     result.scalarType = object.value(QStringLiteral("scalar_type")).toString();
     result.rangeMin = object.value(QStringLiteral("range_min")).toDouble();
     result.rangeMax = object.value(QStringLiteral("range_max")).toDouble();
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
+    result.momentUnit = object.value(QStringLiteral("moment_unit")).toString();
+    result.bunit = object.value(QStringLiteral("bunit")).toString();
     result.data = decodePayload(object, QStringLiteral("data_base64"),
                                 QStringLiteral("compression"), result.error);
     if (!result.error.isEmpty()) {
@@ -532,6 +537,23 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
 
 // ── Low-level HTTP ────────────────────────────────────────────────────────────
 
+std::chrono::milliseconds BackendClient::requestTimeoutFor(const QUrl &url) const
+{
+    const QString path = url.path();
+    if (path.endsWith(QStringLiteral("/health"))
+        || path.endsWith(QStringLiteral("/files/list"))
+        || path.endsWith(QStringLiteral("/files/header"))) {
+        return std::chrono::milliseconds(5000);
+    }
+    if (path.endsWith(QStringLiteral("/datasets/open"))) {
+        return std::chrono::milliseconds(10000);
+    }
+    if (path.endsWith(QStringLiteral("/cube/slice")) || path.endsWith(QStringLiteral("/image/preview"))) {
+        return std::chrono::milliseconds(30000);
+    }
+    return std::chrono::milliseconds(120000);
+}
+
 QByteArray BackendClient::performGet(const QUrl &url, QString &error) const
 {
     QNetworkAccessManager nam;
@@ -540,12 +562,24 @@ QByteArray BackendClient::performGet(const QUrl &url, QString &error) const
     QEventLoop loop;
     QNetworkReply *reply = nam.get(request);
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, [&]() {
+        error = QStringLiteral("Backend request timed out after %1 ms: %2")
+                        .arg(this->requestTimeoutFor(url).count())
+                        .arg(url.path());
+        qWarning().noquote() << error;
+        reply->abort();
+        loop.quit();
+    });
+    timeoutTimer.start(static_cast<int>(this->requestTimeoutFor(url).count()));
     loop.exec();
+    timeoutTimer.stop();
 
     const QByteArray data = reply->readAll();
-    if (reply->error() != QNetworkReply::NoError) {
+    if (error.isEmpty() && reply->error() != QNetworkReply::NoError) {
         error = reply->errorString();
-    } else {
+    } else if (error.isEmpty()) {
         const int status =
                 reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 400) {
@@ -565,12 +599,24 @@ QByteArray BackendClient::performPost(const QUrl &url, const QJsonDocument &body
     QEventLoop loop;
     QNetworkReply *reply = nam.post(request, body.toJson(QJsonDocument::Compact));
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, [&]() {
+        error = QStringLiteral("Backend request timed out after %1 ms: %2")
+                        .arg(this->requestTimeoutFor(url).count())
+                        .arg(url.path());
+        qWarning().noquote() << error;
+        reply->abort();
+        loop.quit();
+    });
+    timeoutTimer.start(static_cast<int>(this->requestTimeoutFor(url).count()));
     loop.exec();
+    timeoutTimer.stop();
 
     const QByteArray data = reply->readAll();
-    if (reply->error() != QNetworkReply::NoError) {
+    if (error.isEmpty() && reply->error() != QNetworkReply::NoError) {
         error = reply->errorString();
-    } else {
+    } else if (error.isEmpty()) {
         const int status =
                 reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 400) {
