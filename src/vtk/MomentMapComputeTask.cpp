@@ -221,6 +221,10 @@ MomentMapComputeResult computeMomentMap(const MomentMapComputeRequest &request)
         result.valid = true;
         result.imageRange = processed.imageRange;
         result.imageData = processed.image;
+        result.momentUnit = processed.momentUnit;
+        result.bunit = processed.bunit;
+        result.spectralAxisType = processed.spectralAxisType;
+        result.spectralAxisUnit = processed.spectralAxisUnit;
         qDebug().noquote()
                 << QStringLiteral("[perf][moment] worker total: %1 ms").arg(totalTimer.elapsed());
         return result;

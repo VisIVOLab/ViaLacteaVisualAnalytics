@@ -37,6 +37,11 @@ struct MomentResult
     std::array<double, 2> imageRange{ 0., 0. };
     bool valid{ false };
     QString error;
+    // Scientific metadata from the server-side WCS pipeline.
+    QString momentUnit;       // e.g. "Jy/beam Hz", "km/s", "km^2/s^2"
+    QString bunit;            // raw BUNIT from the FITS header
+    QString spectralAxisType; // CTYPE3 value
+    QString spectralAxisUnit; // CUNIT3 value
 };
 
 struct MomentMapRequest

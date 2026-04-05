@@ -527,6 +527,10 @@ BackendMomentResult BackendClient::requestMoment(const QString &datasetId, int o
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
+    result.momentUnit = object.value(QStringLiteral("moment_unit")).toString();
+    result.bunit = object.value(QStringLiteral("bunit")).toString();
+    result.spectralAxisType = object.value(QStringLiteral("spectral_axis_type")).toString();
+    result.spectralAxisUnit = object.value(QStringLiteral("spectral_axis_unit")).toString();
     return result;
 }
 

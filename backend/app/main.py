@@ -69,6 +69,18 @@ app = FastAPI(
 
 _FITS_SUFFIXES = {".fits", ".fit", ".fts"}
 
+# ── VTK availability check (R startup) ───────────────────────────────────────
+
+_VTK_AVAILABLE = False
+try:
+    import vtk as _vtk  # noqa: F401
+    _VTK_AVAILABLE = True
+except ImportError:
+    logger.warning(
+        "[startup] VTK Python bindings not available – "
+        "/v1/products/isosurface will return 503."
+    )
+
 # ── Middleware: X-Request-ID (R8) ─────────────────────────────────────────────
 
 
@@ -167,6 +179,10 @@ class MomentProductResponse(BaseModel):
     range_min: float = 0.0
     range_max: float = 0.0
     data_base64: str = ""
+    moment_unit: str = ""
+    bunit: str = ""
+    spectral_axis_type: str = ""
+    spectral_axis_unit: str = ""
 
 
 class CubePreviewRequest(BaseModel):
@@ -543,6 +559,11 @@ async def isosurface_product(
     _: None = _auth,
     session: Session = Depends(get_session),
 ) -> IsosurfaceProductResponse:
+    if not _VTK_AVAILABLE:
+        return IsosurfaceProductResponse(
+            valid=False,
+            error="VTK Python bindings are not installed on this server. Isosurface is unavailable.",
+        )
     from .compute import worker_isosurface
     try:
         entry = _require_dataset(session, request.dataset_id)

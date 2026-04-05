@@ -218,6 +218,19 @@ def _moment_map_from_array(
     raise ValueError(f"Unsupported moment order: {order}.")
 
 
+def _moment_unit(order: int, bunit: str, spectral_unit: str) -> str:
+    """Derive the physical unit of a moment map from the FITS header units."""
+    if order == 0:
+        parts = [p for p in (bunit, spectral_unit) if p]
+        return " ".join(parts)
+    if order == 1:
+        return spectral_unit
+    if order == 2:
+        return f"{spectral_unit}^2" if spectral_unit else ""
+    # Orders 6, 8, 10 preserve the intensity unit.
+    return bunit
+
+
 def worker_moment(
     path: str,
     order: int,
@@ -242,6 +255,11 @@ def worker_moment(
         if z0 > z1:
             raise ValueError("Invalid channel range.")
         image = _moment_map_from_array(data, header, order, z0, z1, mask_enabled, threshold_value)
+
+        bunit = str(header.get("BUNIT", "")).strip()
+        spectral_unit = str(header.get("CUNIT3", "")).strip()
+        spectral_axis_type = str(header.get("CTYPE3", "")).strip()
+        moment_unit = _moment_unit(order, bunit, spectral_unit)
     finally:
         hdul.close()
 
@@ -256,6 +274,10 @@ def worker_moment(
         "range_min": range_min,
         "range_max": range_max,
         "data_base64": _b64f32(image),
+        "moment_unit": moment_unit,
+        "bunit": bunit,
+        "spectral_axis_type": spectral_axis_type,
+        "spectral_axis_unit": spectral_unit,
     }
 
 

@@ -96,6 +96,10 @@ MomentResult MomentProcessingService::computeMomentRemote(const MomentRequest &r
     result.image->AllocateScalars(VTK_FLOAT, 1);
     std::memcpy(result.image->GetScalarPointer(), response.data.constData(),
                 static_cast<std::size_t>(expectedBytes));
+    result.momentUnit = response.momentUnit;
+    result.bunit = response.bunit;
+    result.spectralAxisType = response.spectralAxisType;
+    result.spectralAxisUnit = response.spectralAxisUnit;
     return result;
 }
 
