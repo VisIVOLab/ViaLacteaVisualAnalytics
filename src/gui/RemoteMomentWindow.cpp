@@ -39,8 +39,11 @@ vtkSmartPointer<vtkImageData> createPlaceholderImageData()
 }
 
 RemoteMomentWindow::RemoteMomentWindow(const QString &backendUrl, const QString &datasetId,
-                                       const QString &datasetPath, QWidget *parent)
-    : QMainWindow(parent), backendUrl(backendUrl), datasetId(datasetId), datasetPath(datasetPath)
+                                       const QString &datasetPath, const QString &sessionId,
+                                       const QString &backendToken,
+                                       QWidget *parent)
+    : QMainWindow(parent), backendUrl(backendUrl), datasetId(datasetId), datasetPath(datasetPath),
+      sessionId(sessionId), backendToken(backendToken)
 {
     this->setAttribute(Qt::WA_DeleteOnClose);
     this->setWindowTitle(u"%1 [remote moment]"_s.arg(datasetPath));
@@ -151,7 +154,8 @@ void RemoteMomentWindow::requestMoment(int order)
     this->showPersistentStatusMessage(u"Computing moment..."_s);
     this->watcher.setFuture(QtConcurrent::run(
             &computeMomentMap,
-            MomentMapComputeRequest { {}, this->datasetId, this->backendUrl, order }));
+            MomentMapComputeRequest { {}, this->datasetId, this->backendUrl, this->sessionId,
+                                      this->backendToken, order }));
 }
 
 void RemoteMomentWindow::showPersistentStatusMessage(const QString &text, int minDurationMs)

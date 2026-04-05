@@ -121,7 +121,9 @@ public:
                   const std::array<double, 3> &remoteCrval,
                   const std::array<double, 3> &remoteCrpix,
                   const std::array<double, 3> &remoteCdelt,
-                  const QString &remoteDegenerateAxesSummary, QWidget *parent = nullptr);
+                  const QString &remoteDegenerateAxesSummary,
+                  const QString &remoteSessionId = QString(),
+                  const QString &remoteBackendToken = QString(), QWidget *parent = nullptr);
     ~vtkWindowCube() override;
     void closeEvent(QCloseEvent *event) override;
 
@@ -232,6 +234,8 @@ private:
     const bool isRemoteMode;
     const QString remoteBackendUrl;
     const QString remoteDatasetId;
+    const QString remoteSessionId;
+    const QString remoteBackendToken;
     const int remoteDatasetWidth;
     const int remoteDatasetHeight;
     const int remoteDatasetDepth;

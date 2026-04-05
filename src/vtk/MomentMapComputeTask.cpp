@@ -207,6 +207,7 @@ MomentMapComputeResult computeMomentMap(const MomentMapComputeRequest &request)
         computeTimer.start();
         const auto processed = processing.computeMoment(
                 MomentRequest { request.filepath, request.datasetId, request.backendUrl,
+                                request.sessionId, request.backendToken,
                                 request.momentOrder, request.channelStart, request.channelEnd,
                                 request.maskEnabled, request.thresholdValue });
         qDebug().noquote()

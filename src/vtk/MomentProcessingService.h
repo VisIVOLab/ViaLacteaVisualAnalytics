@@ -22,6 +22,8 @@ struct MomentRequest
     QString datasetPath;
     QString datasetId;
     QString backendUrl;
+    QString sessionId;
+    QString backendToken;
     int order;
     int channelStart{ 0 };
     int channelEnd{ 0 };

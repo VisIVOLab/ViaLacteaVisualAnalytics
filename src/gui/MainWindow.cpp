@@ -193,7 +193,7 @@ void MainWindow::openVbt()
 
 void MainWindow::openRemoteData()
 {
-    BackendClient client;
+    BackendClient client(this->settings->getBackendUrl(), this->settings->getBackendToken());
     const auto health = client.health();
     if (!health.ok) {
         QMessageBox::critical(this, u"Backend unavailable"_s,
@@ -229,7 +229,8 @@ void MainWindow::openRemoteData()
                                             : opened.degenerateAxesSummary);
             auto *win = new vtkWindowImage(remotePath, client.baseUrl(), opened.datasetId,
                                            opened.ctype, opened.cunit, opened.crval, opened.crpix,
-                                           opened.cdelt, opened.degenerateAxesSummary, this);
+                                           opened.cdelt, opened.degenerateAxesSummary,
+                                           client.sessionId(), client.token(), this);
             win->show();
             win->raise();
             win->activateWindow();
@@ -249,7 +250,8 @@ void MainWindow::openRemoteData()
     auto *win = new vtkWindowCube(remotePath, client.baseUrl(), opened.datasetId, opened.width,
                                   opened.height, opened.depth, opened.spacing, opened.origin,
                                   opened.ctype, opened.cunit, opened.crval, opened.crpix,
-                                  opened.cdelt, opened.degenerateAxesSummary, this);
+                                  opened.cdelt, opened.degenerateAxesSummary,
+                                  client.sessionId(), client.token(), this);
     win->show();
     win->raise();
     win->activateWindow();

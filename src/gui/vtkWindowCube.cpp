@@ -1194,10 +1194,12 @@ vtkSmartPointer<vtkPolyData> decodeRemoteIsosurface(const QByteArray &pointsData
 }
 
 RemoteCubePreviewResult fetchRemotePreview(const QString &backendUrl, const QString &datasetId,
-                                           int downsample)
+                                           int downsample, const QString &sessionId,
+                                           const QString &backendToken)
 {
     RemoteCubePreviewResult result;
-    BackendClient client(backendUrl);
+    BackendClient client(backendUrl, backendToken);
+    client.setSessionId(sessionId);
     const auto response = client.requestPreview(datasetId, downsample);
     if (!response.valid) {
         result.errorMessage = response.error.isEmpty() ? u"Remote preview request failed."_s
@@ -1224,12 +1226,14 @@ RemoteCubePreviewResult fetchRemotePreview(const QString &backendUrl, const QStr
 }
 
 RemoteCubeSliceResult fetchRemoteSlice(const QString &backendUrl, const QString &datasetId,
-                                       int index)
+                                       int index, const QString &sessionId,
+                                       const QString &backendToken)
 {
     RemoteCubeSliceResult result;
     result.index = index;
 
-    BackendClient client(backendUrl);
+    BackendClient client(backendUrl, backendToken);
+    client.setSessionId(sessionId);
     const auto response = client.requestSlice(datasetId, QStringLiteral("z"), index);
     if (!response.valid) {
         result.errorMessage = response.error.isEmpty() ? u"Remote slice request failed."_s
@@ -1254,11 +1258,13 @@ RemoteCubeSliceResult fetchRemoteSlice(const QString &backendUrl, const QString 
 }
 
 RemoteCubeSubvolumeResult fetchRemoteSubvolume(const QString &backendUrl, const QString &datasetId,
-                                               const std::array<int, 6> &roi)
+                                               const std::array<int, 6> &roi, const QString &sessionId,
+                                               const QString &backendToken)
 {
     RemoteCubeSubvolumeResult result;
 
-    BackendClient client(backendUrl);
+    BackendClient client(backendUrl, backendToken);
+    client.setSessionId(sessionId);
     const auto response = client.requestSubvolume(datasetId, roi[0], roi[1], roi[2], roi[3], roi[4],
                                                   roi[5]);
     if (!response.valid) {
@@ -1291,11 +1297,13 @@ RemoteCubeSubvolumeResult fetchRemoteSubvolume(const QString &backendUrl, const 
 }
 
 RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &datasetId,
-                                  const std::vector<std::array<int, 2>> &vertices, int widthPixels)
+                                  const std::vector<std::array<int, 2>> &vertices, int widthPixels,
+                                  const QString &sessionId, const QString &backendToken)
 {
     RemotePvFetchResult result;
 
-    BackendClient client(backendUrl);
+    BackendClient client(backendUrl, backendToken);
+    client.setSessionId(sessionId);
     const auto response = client.requestPv(datasetId, vertices, widthPixels);
     if (!response.valid) {
         result.errorMessage =
@@ -1345,12 +1353,14 @@ RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &data
 }
 
 AsyncIsosurfaceResult fetchRemoteIsosurface(const QString &backendUrl, const QString &datasetId,
-                                            double isoValue, int requestId)
+                                            double isoValue, int requestId, const QString &sessionId,
+                                            const QString &backendToken)
 {
     AsyncIsosurfaceResult result;
     result.requestId = requestId;
 
-    BackendClient client(backendUrl);
+    BackendClient client(backendUrl, backendToken);
+    client.setSessionId(sessionId);
     const auto response = client.requestIsosurface(datasetId, isoValue);
     qDebug().noquote()
             << QStringLiteral("[remote-iso] response valid=%1 error=%2 num_points=%3 num_polys=%4")
@@ -1398,6 +1408,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, QWidget *parent)
                     { 1.0, 1.0, 1.0 },
                     { 1.0, 1.0, 1.0 },
                     {},
+                    {},
+                    {},
                     parent)
 {
 }
@@ -1411,13 +1423,17 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
                              const std::array<double, 3> &remoteCrval,
                              const std::array<double, 3> &remoteCrpix,
                              const std::array<double, 3> &remoteCdelt,
-                             const QString &remoteDegenerateAxesSummary, QWidget *parent)
+                             const QString &remoteDegenerateAxesSummary,
+                             const QString &remoteSessionId,
+                             const QString &remoteBackendToken, QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::vtkWindowCube),
       filepath(filepath),
       isRemoteMode(!datasetId.isEmpty()),
       remoteBackendUrl(backendUrl),
       remoteDatasetId(datasetId),
+      remoteSessionId(remoteSessionId),
+      remoteBackendToken(remoteBackendToken),
       remoteDatasetWidth(remoteWidth),
       remoteDatasetHeight(remoteHeight),
       remoteDatasetDepth(remoteDepth),
@@ -2055,7 +2071,8 @@ vtkWindowCube::vtkWindowCube(const QString &filepath, const QString &backendUrl,
         this->showPersistentStatusMessage(u"Loading remote preview..."_s);
         this->remotePreviewWatcher.setProperty("requestId", ++this->currentRemotePreviewRequestId);
         this->remotePreviewWatcher.setFuture(
-                QtConcurrent::run(&fetchRemotePreview, this->remoteBackendUrl, this->remoteDatasetId, 4));
+                QtConcurrent::run(&fetchRemotePreview, this->remoteBackendUrl, this->remoteDatasetId,
+                                  4, this->remoteSessionId, this->remoteBackendToken));
     } else if (usingPreview) {
         ui->lineCubeMin->setText(QString::number(preview.cubeRange[0]));
         ui->lineCubeMax->setText(QString::number(preview.cubeRange[1]));
@@ -4633,7 +4650,8 @@ void vtkWindowCube::extractCurrentPvDiagram()
                                       .arg(this->pvPolylineVertices.size())
                                       .arg(this->pvWidthPixels);
         const auto remoteResult = fetchRemotePv(this->remoteBackendUrl, this->remoteDatasetId,
-                                                this->pvPolylineVertices, this->pvWidthPixels);
+                                                this->pvPolylineVertices, this->pvWidthPixels,
+                                                this->remoteSessionId, this->remoteBackendToken);
         if (remoteResult.valid) {
             QVector<double> spectral(remoteResult.depth);
             for (int datasetZ = 0; datasetZ < remoteResult.depth; ++datasetZ) {
@@ -5157,7 +5175,8 @@ bool vtkWindowCube::requestHighResCube()
     this->showPersistentStatusMessage(u"Loading full resolution..."_s);
     this->remoteHighResCubeWatcher.setProperty("requestId", ++this->currentRemoteHighResRequestId);
     this->remoteHighResCubeWatcher.setFuture(
-            QtConcurrent::run(&fetchRemoteSubvolume, this->remoteBackendUrl, this->remoteDatasetId, roi));
+            QtConcurrent::run(&fetchRemoteSubvolume, this->remoteBackendUrl, this->remoteDatasetId,
+                              roi, this->remoteSessionId, this->remoteBackendToken));
     return true;
 }
 
@@ -6568,7 +6587,8 @@ void vtkWindowCube::startRemoteSliceFetch(int sliceIndex, bool isPrefetch, int r
                          }
                      });
     watcher->setFuture(QtConcurrent::run(&fetchRemoteSlice, this->remoteBackendUrl,
-                                         this->remoteDatasetId, sliceIndex));
+                                         this->remoteDatasetId, sliceIndex, this->remoteSessionId,
+                                         this->remoteBackendToken));
 }
 
 void vtkWindowCube::prefetchNeighborRemoteSlices(int sliceIndex)
@@ -6628,6 +6648,9 @@ void vtkWindowCube::setMomentOrder(int order)
             &computeMomentMap, MomentMapComputeRequest { this->filepath,
                                                         this->isRemoteMode ? this->remoteDatasetId : QString {},
                                                         this->isRemoteMode ? this->remoteBackendUrl : QString {},
+                                                        this->isRemoteMode ? this->remoteSessionId : QString {},
+                                                        this->isRemoteMode ? this->remoteBackendToken
+                                                                           : QString {},
                                                         config.order,
                                                         config.channelStart,
                                                         config.channelEnd,
@@ -7309,7 +7332,8 @@ void vtkWindowCube::startAsyncIsosurface(double isoValue)
                              this->clearPersistentStatusMessage();
                          });
         watcher->setFuture(QtConcurrent::run(&fetchRemoteIsosurface, this->remoteBackendUrl,
-                                             this->remoteDatasetId, isoValue, requestId));
+                                             this->remoteDatasetId, isoValue, requestId,
+                                             this->remoteSessionId, this->remoteBackendToken));
         return;
     }
 

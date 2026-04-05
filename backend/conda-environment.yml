@@ -1,0 +1,24 @@
+name: visivo-backend
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.12
+  - pip
+
+  # Core scientific stack (conda-forge provides HPC-optimised builds)
+  - numpy>=2.0
+  - astropy>=6.1
+  - vtk>=9.4                  # R4: no exact pin – allows sysadmin-provided VTK
+
+  # Web framework
+  - pip:
+    - fastapi>=0.115
+    - uvicorn[standard]>=0.30
+
+  # Dev extras (comment out in production)
+  - pip:
+    - pytest>=8.0
+    - pytest-asyncio>=0.23
+    - httpx>=0.27

@@ -4,7 +4,9 @@
 #include "AuthWrapper.h"
 #include "Settings.h"
 
+#include <QClipboard>
 #include <QFileDialog>
+#include <QGuiApplication>
 #include <QIntValidator>
 
 #include <limits>
@@ -38,6 +40,22 @@ SettingsDialog::SettingsDialog(Settings *settings, AuthWrapper *auth, QWidget *p
     ui->lineMaxGlyphs->setText(QString::number(this->settings->getMaxGlyphs()));
     ui->lineMaxGlyphs->setValidator(
             new QIntValidator(0, std::numeric_limits<int>::max(), ui->lineMaxGlyphs));
+
+    // Backend group
+    ui->lineBackendUrl->setText(this->settings->getBackendUrl());
+    ui->lineBackendToken->setText(this->settings->getBackendToken());
+    QObject::connect(ui->btnBackendTokenShow, &QToolButton::toggled, this,
+                     [this](bool checked) {
+                         ui->lineBackendToken->setEchoMode(
+                                 checked ? QLineEdit::EchoMode::Normal
+                                         : QLineEdit::EchoMode::Password);
+                     });
+    QObject::connect(ui->btnBackendTokenCopy, &QToolButton::clicked, this, [this]() {
+        const QString token = ui->lineBackendToken->text().trimmed();
+        if (!token.isEmpty()) {
+            QGuiApplication::clipboard()->setText(token);
+        }
+    });
 
     // VLKB group
     ui->lineVLKBUrl->setText(this->settings->getVLKBUrl());
@@ -75,6 +93,8 @@ void SettingsDialog::accept()
     this->settings->setMaxGlyphs(ui->lineMaxGlyphs->text().toInt());
     this->settings->setVLKBUrl(ui->lineVLKBUrl->text());
     this->settings->setSearchOnImportFlag(ui->checkVLKBSearch->isChecked());
+    this->settings->setBackendUrl(ui->lineBackendUrl->text().trimmed());
+    this->settings->setBackendToken(ui->lineBackendToken->text().trimmed());
     QDialog::accept();
 }
 

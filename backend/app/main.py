@@ -1,23 +1,102 @@
+"""
+main.py – VisIVO Backend v1
+
+Changes vs original (next-server branch):
+  R1  Auth         – every route requires X-Visivo-Token (see auth.py)
+  R2  Concurrency  – CPU-bound work runs in a ProcessPoolExecutor so the
+                     ASGI event-loop is never blocked
+  R3  Sessions     – datasets are stored per-session; the client must echo
+                     the X-Visivo-Session header returned in /v1/datasets/open
+  R4  Lazy I/O     – worker functions open FITS with memmap=True and read
+                     only the required pixels (see compute.py)
+  R8  API quality  – all routes prefixed /v1/, standardised error schema,
+                     X-Request-ID header on every response
+
+The legacy un-versioned paths (/health, /files/*, …) are intentionally
+removed to enforce /v1/ from the start. The Qt client must be updated to
+prepend /v1/ to every request URL (Settings dialog → backend URL field).
+"""
+
 from __future__ import annotations
 
-import base64
-from datetime import datetime, timezone
+import asyncio
 import logging
+import os
 import uuid
+from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-import zlib
 
 import numpy as np
 from astropy.io import fits
-from fastapi import FastAPI, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-app = FastAPI(title="VisIVO Backend MVP")
+from .auth import verify_token
+from .sessions import REGISTRY, Session, get_session
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("visivo.backend")
 
-_DATASETS: dict[str, dict[str, Any]] = {}
+# ── Process pool (R2) ─────────────────────────────────────────────────────────
+
+_WORKERS = int(os.environ.get("VISIVO_WORKERS", str(os.cpu_count() or 4)))
+_POOL = ProcessPoolExecutor(max_workers=_WORKERS, initializer=_pool_initializer if False else None)
+
+
+def _pool_initializer() -> None:  # pragma: no cover
+    """Silence VTK startup noise in worker processes."""
+    import logging as _l
+    _l.getLogger("vtkmodules").setLevel(_l.ERROR)
+
+
+_POOL = ProcessPoolExecutor(max_workers=_WORKERS)
+
+# ── FastAPI app ───────────────────────────────────────────────────────────────
+
+app = FastAPI(
+    title="VisIVO Backend",
+    version="1.0.0",
+    description="Astrophysical data visualization backend for ViaLactea Visual Analytics.",
+    docs_url="/v1/docs",
+    redoc_url="/v1/redoc",
+    openapi_url="/v1/openapi.json",
+)
+
 _FITS_SUFFIXES = {".fits", ".fit", ".fts"}
+
+# ── Middleware: X-Request-ID (R8) ─────────────────────────────────────────────
+
+
+@app.middleware("http")
+async def attach_request_id(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    response: Response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+# ── Standard error schema (R8) ────────────────────────────────────────────────
+
+
+class ErrorDetail(BaseModel):
+    error: str
+    detail: str
+    request_id: str = ""
+
+
+def _error(detail: str, status_code: int = 400, error: str = "BadRequest") -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content=ErrorDetail(error=error, detail=detail).model_dump(),
+    )
+
+
+# ── Pydantic models ───────────────────────────────────────────────────────────
 
 
 class FileEntry(BaseModel):
@@ -54,6 +133,7 @@ class OpenDatasetResponse(BaseModel):
     valid: bool
     error: str
     dataset_id: str = ""
+    session_id: str = ""           # R3: client must echo as X-Visivo-Session
     kind: str = ""
     active_axes: int = 0
     width: int = 0
@@ -206,445 +286,144 @@ class IsosurfaceProductResponse(BaseModel):
     num_polys: int = 0
 
 
-def _normalize_path(raw_path: str) -> Path:
-    if not raw_path:
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+
+def _normalize_path(raw: str) -> Path:
+    if not raw:
         return Path.home()
-    return Path(raw_path).expanduser().resolve()
+    return Path(raw).expanduser().resolve()
 
 
-def _is_fits_file(path: Path) -> bool:
+def _is_fits(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in _FITS_SUFFIXES
 
 
-def _load_dataset_array(path: Path) -> tuple[np.ndarray, fits.Header]:
-    with fits.open(path, memmap=True) as hdul:
-        data = hdul[0].data
+async def _run(fn, *args) -> Any:
+    """Run a CPU-bound function in the process pool without blocking the loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_POOL, fn, *args)
+
+
+def _require_dataset(session: Session, dataset_id: str) -> dict[str, Any]:
+    entry = session.datasets.get(dataset_id)
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown dataset_id '{dataset_id}'. Open the dataset first via /v1/datasets/open.",
+        )
+    return entry
+
+
+def _require_cube_path(session: Session, dataset_id: str) -> str:
+    entry = _require_dataset(session, dataset_id)
+    if entry["kind"] != "cube":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This endpoint requires a spectral cube dataset.",
+        )
+    return entry["path"]
+
+
+# ── FITS metadata (runs in main process – no heavy I/O) ───────────────────────
+
+
+def _fits_metadata(path: Path) -> tuple[str, dict[str, Any]]:
+    """
+    Open the FITS header only (no data materialisation) to detect kind and
+    extract geometry metadata.  Runs synchronously in the main process because
+    it is fast (header-only read, O(KB)).
+    """
+    with fits.open(str(path), memmap=True, mode="readonly") as hdul:
         header = hdul[0].header.copy()
+        raw_shape = hdul[0].shape  # shape without reading data
 
-    if data is None:
-        raise ValueError("FITS file contains no primary image data.")
-
-    array = np.asarray(data, dtype=np.float32)
-    array = np.squeeze(array)
-    while array.ndim > 3:
-        array = array[0]
-
-    return array, header
-
-
-def _axis_name(header: fits.Header, axis_index: int) -> str:
-    value = str(header.get(f"CTYPE{axis_index}", "")).strip()
-    return value or f"AXIS{axis_index}"
-
-
-def _axis_value_label(header: fits.Header, axis_index: int) -> str:
-    value = float(header.get(f"CRVAL{axis_index}", 0.0))
-    axis_name = _axis_name(header, axis_index).upper()
-    if axis_name == "STOKES":
-        mapping = {1: "I", 2: "Q", 3: "U", 4: "V"}
-        rounded = int(round(value))
-        return mapping.get(rounded, f"{value:g}")
-    return f"{value:g}"
-
-
-def _fits_axis_metadata(header: fits.Header) -> dict[str, Any]:
     naxis = int(header.get("NAXIS", 0))
     axis_sizes = [int(header.get(f"NAXIS{i}", 1)) for i in range(1, naxis + 1)]
-    active_axes = [index for index, size in enumerate(axis_sizes, start=1) if size > 1]
-    degenerate_axes = [index for index, size in enumerate(axis_sizes, start=1) if size == 1]
-    entries: list[str] = []
-    for axis_index in degenerate_axes:
-        axis_name = _axis_name(header, axis_index)
-        axis_value = _axis_value_label(header, axis_index)
-        unit = str(header.get(f"CUNIT{axis_index}", "")).strip()
-        entry = f"{axis_name}={axis_value}"
-        if unit and axis_name.upper() != "STOKES":
-            entry += f" {unit}"
-        entry += " (1)"
-        entries.append(entry)
+    active_axes_idx = [i for i, s in enumerate(axis_sizes, start=1) if s > 1]
+    degenerate_idx  = [i for i, s in enumerate(axis_sizes, start=1) if s == 1]
+    n_active = len(active_axes_idx)
 
-    return {
-        "naxis": naxis,
-        "axis_sizes": axis_sizes,
-        "active_axes": len(active_axes),
-        "degenerate_axes_summary": f"Collapsed axes: {', '.join(entries)}" if entries else "",
-    }
+    deg_entries: list[str] = []
+    for ai in degenerate_idx:
+        name = str(header.get(f"CTYPE{ai}", f"AXIS{ai}")).strip()
+        val  = float(header.get(f"CRVAL{ai}", 0.0))
+        unit = str(header.get(f"CUNIT{ai}", "")).strip()
+        label = f"{name}={val:g}"
+        if unit and name.upper() != "STOKES":
+            label += f" {unit}"
+        label += " (1)"
+        deg_entries.append(label)
 
+    def _h(key: str, default=0.0) -> float:
+        return float(header.get(key, default))
 
-def _dataset_geometry(array: np.ndarray, header: fits.Header) -> dict[str, Any]:
-    if array.ndim == 2:
-        width = int(array.shape[1])
-        height = int(array.shape[0])
-        depth = 1
-    elif array.ndim == 3:
-        width = int(array.shape[2])
-        height = int(array.shape[1])
-        depth = int(array.shape[0])
+    spacing = [_h("CDELT1", 1.0), _h("CDELT2", 1.0), _h("CDELT3", 1.0)]
+    origin  = [
+        _h("CRVAL1") - spacing[0] * (_h("CRPIX1", 1.0) - 1.0),
+        _h("CRVAL2") - spacing[1] * (_h("CRPIX2", 1.0) - 1.0),
+        _h("CRVAL3") - spacing[2] * (_h("CRPIX3", 1.0) - 1.0),
+    ]
+
+    # Derive spatial dimensions from the squeezed active shape.
+    squeezed = [s for s in axis_sizes if s > 1]
+    if n_active == 2:
+        width, height, depth = squeezed[0], squeezed[1], 1
+        kind = "image"
+    elif n_active == 3:
+        width, height, depth = squeezed[0], squeezed[1], squeezed[2]
+        kind = "cube"
     else:
-        raise ValueError("Unsupported FITS dimensionality.")
+        width = squeezed[0] if squeezed else 1
+        height = squeezed[1] if len(squeezed) > 1 else 1
+        depth = 1
+        kind = "image"
 
-    spacing = [
-        float(header.get("CDELT1", 1.0)),
-        float(header.get("CDELT2", 1.0)),
-        float(header.get("CDELT3", 1.0)),
-    ]
-    origin = [
-        float(header.get("CRVAL1", 0.0)) - spacing[0] * (float(header.get("CRPIX1", 1.0)) - 1.0),
-        float(header.get("CRVAL2", 0.0)) - spacing[1] * (float(header.get("CRPIX2", 1.0)) - 1.0),
-        float(header.get("CRVAL3", 0.0)) - spacing[2] * (float(header.get("CRPIX3", 1.0)) - 1.0),
-    ]
-
-    return {
+    geometry: dict[str, Any] = {
+        "active_axes": n_active,
+        "degenerate_axes_summary": f"Collapsed axes: {', '.join(deg_entries)}" if deg_entries else "",
         "width": width,
         "height": height,
         "depth": depth,
         "spacing": spacing,
         "origin": origin,
-        "ctype": [str(header.get("CTYPE1", "")), str(header.get("CTYPE2", "")), str(header.get("CTYPE3", ""))],
-        "cunit": [str(header.get("CUNIT1", "")), str(header.get("CUNIT2", "")), str(header.get("CUNIT3", ""))],
-        "crval": [
-            float(header.get("CRVAL1", 0.0)),
-            float(header.get("CRVAL2", 0.0)),
-            float(header.get("CRVAL3", 0.0)),
-        ],
-        "crpix": [
-            float(header.get("CRPIX1", 1.0)),
-            float(header.get("CRPIX2", 1.0)),
-            float(header.get("CRPIX3", 1.0)),
-        ],
+        "ctype": [str(header.get(f"CTYPE{i}", "")) for i in range(1, 4)],
+        "cunit": [str(header.get(f"CUNIT{i}", "")) for i in range(1, 4)],
+        "crval": [_h(f"CRVAL{i}") for i in range(1, 4)],
+        "crpix": [_h(f"CRPIX{i}", 1.0) for i in range(1, 4)],
         "cdelt": spacing,
     }
+    return kind, geometry
 
 
-def _detect_kind(path: Path) -> tuple[str, dict[str, Any]]:
-    array, header = _load_dataset_array(path)
-    axis_meta = _fits_axis_metadata(header)
-    geometry = _dataset_geometry(array, header)
-    active_axes = axis_meta["active_axes"]
-    logger.info(
-        "[fits] active_axes=%s degenerate_axes=%s -> %s",
-        active_axes,
-        max(0, axis_meta["naxis"] - active_axes),
-        "2D image" if active_axes == 2 else ("cube" if active_axes == 3 else "fallback image"),
-    )
-    geometry["active_axes"] = active_axes
-    geometry["degenerate_axes_summary"] = axis_meta["degenerate_axes_summary"]
-    if active_axes == 2:
-        return "image", geometry
-    if active_axes == 3:
-        return "cube", geometry
-    return "image", geometry
+# ── Routes ────────────────────────────────────────────────────────────────────
+# All routes require authentication (global dependency).
+# Heavy routes additionally use `_run()` to avoid blocking the event-loop.
+
+_auth = Depends(verify_token)
 
 
-def _dataset_entry(dataset_id: str) -> dict[str, Any]:
-    entry = _DATASETS.get(dataset_id)
-    if not entry:
-        raise ValueError("Unknown dataset_id.")
-    return entry
-
-
-def _require_cube(dataset_id: str) -> Path:
-    entry = _dataset_entry(dataset_id)
-    if entry["kind"] != "cube":
-        raise ValueError("Cube endpoint requires a cube dataset.")
-    return Path(entry["path"])
-
-
-def _finite_range(array: np.ndarray) -> tuple[float, float]:
-    finite = np.isfinite(array)
-    if not finite.any():
-        return 0.0, 0.0
-    return float(np.nanmin(array)), float(np.nanmax(array))
-
-
-def _encode_array(array: np.ndarray) -> str:
-    return base64.b64encode(np.ascontiguousarray(array, dtype=np.float32).tobytes()).decode("ascii")
-
-
-def _encode_int_array(array: np.ndarray) -> str:
-    return base64.b64encode(np.ascontiguousarray(array, dtype=np.int32).tobytes()).decode("ascii")
-
-
-def _qt_zlib_compress(raw: bytes) -> bytes:
-    return len(raw).to_bytes(4, byteorder="big", signed=False) + zlib.compress(raw)
-
-
-def _encode_array_compressed(array: np.ndarray) -> tuple[str, str]:
-    raw = np.ascontiguousarray(array, dtype=np.float32).tobytes()
-    return "qt-zlib", base64.b64encode(_qt_zlib_compress(raw)).decode("ascii")
-
-
-def _encode_int_array_compressed(array: np.ndarray) -> tuple[str, str]:
-    raw = np.ascontiguousarray(array, dtype=np.int32).tobytes()
-    return "qt-zlib", base64.b64encode(_qt_zlib_compress(raw)).decode("ascii")
-
-
-def _build_image_preview(image: np.ndarray, max_longest_side: int) -> tuple[np.ndarray, float]:
-    if image.ndim != 2:
-        raise ValueError("Preview generation requires a 2D image.")
-
-    height, width = int(image.shape[0]), int(image.shape[1])
-    longest = max(width, height)
-    limit = max(64, int(max_longest_side))
-    if longest <= limit:
-        return np.ascontiguousarray(image, dtype=np.float32), 1.0
-
-    scale = float(limit) / float(longest)
-    preview_width = max(1, int(round(width * scale)))
-    preview_height = max(1, int(round(height * scale)))
-    x_indices = np.clip(
-        np.floor((np.arange(preview_width, dtype=np.float64) + 0.5) * (width / preview_width)).astype(np.int64),
-        0,
-        width - 1,
-    )
-    y_indices = np.clip(
-        np.floor((np.arange(preview_height, dtype=np.float64) + 0.5) * (height / preview_height)).astype(np.int64),
-        0,
-        height - 1,
-    )
-    preview = np.ascontiguousarray(image[np.ix_(y_indices, x_indices)], dtype=np.float32)
-    return preview, float(longest) / float(max(preview.shape[0], preview.shape[1]))
-
-
-def _compute_isosurface_payload(cube: np.ndarray, entry: dict[str, Any], threshold: float) -> dict[str, Any]:
-    try:
-        import vtk
-        from vtk.util.numpy_support import vtk_to_numpy
-    except Exception as exc:
-        raise RuntimeError(f"VTK Python bindings are required for isosurface compute: {exc}") from exc
-
-    image_import = vtk.vtkImageImport()
-    cube_bytes = np.ascontiguousarray(cube, dtype=np.float32).tobytes()
-    image_import.CopyImportVoidPointer(cube_bytes, len(cube_bytes))
-    image_import.SetDataScalarTypeToFloat()
-    image_import.SetNumberOfScalarComponents(1)
-    image_import.SetDataExtent(0, int(entry["width"]) - 1, 0, int(entry["height"]) - 1, 0,
-                               int(entry["depth"]) - 1)
-    image_import.SetWholeExtent(0, int(entry["width"]) - 1, 0, int(entry["height"]) - 1, 0,
-                                int(entry["depth"]) - 1)
-    spacing = [1.0, 1.0, 1.0]
-    origin = [0.0, 0.0, 0.0]
-    image_import.SetDataSpacing(1.0, 1.0, 1.0)
-    image_import.SetDataOrigin(0.0, 0.0, 0.0)
-    image_import.Update()
-    logger.info(
-        "[remote-iso] image dims=%s spacing=%s origin=%s threshold=%s",
-        (int(entry["width"]), int(entry["height"]), int(entry["depth"])),
-        tuple(float(v) for v in spacing),
-        tuple(float(v) for v in origin),
-        float(threshold),
-    )
-
-    contour = vtk.vtkFlyingEdges3D()
-    contour.SetInputConnection(image_import.GetOutputPort())
-    contour.SetValue(0, float(threshold))
-    contour.ComputeNormalsOff()
-    contour.ComputeGradientsOff()
-    contour.Update()
-
-    mesh = contour.GetOutput()
-    num_points = int(mesh.GetNumberOfPoints())
-    num_polys = int(mesh.GetNumberOfPolys())
-    bounds = mesh.GetBounds()
-    logger.info("[remote-iso] mesh points=%s polys=%s", num_points, num_polys)
-    logger.info(
-        "[remote-iso] mesh bounds=%s",
-        tuple(float(v) for v in bounds),
-    )
-    if num_points == 0 or num_polys == 0:
-        raise ValueError(f"Empty isosurface mesh for threshold {threshold}")
-
-    points_data = vtk_to_numpy(mesh.GetPoints().GetData()).astype(np.float32, copy=False).reshape(-1)
-    polys_data = vtk_to_numpy(mesh.GetPolys().GetData()).astype(np.int32, copy=False)
-    points_compression, points_base64 = _encode_array_compressed(points_data)
-    polys_compression, polys_base64 = _encode_int_array_compressed(polys_data)
-    if points_compression != polys_compression:
-        raise ValueError("Inconsistent isosurface payload compression.")
+@app.get("/v1/health", tags=["meta"])
+async def health(_: None = _auth) -> dict:
     return {
-        "compression": points_compression,
-        "points_base64": points_base64,
-        "polys_base64": polys_base64,
-        "num_points": num_points,
-        "num_polys": num_polys,
+        "ok": True,
+        "workers": _WORKERS,
+        "active_sessions": REGISTRY.stats()["active_sessions"],
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 
-def _moment_map(
-    cube: np.ndarray,
-    header: fits.Header,
-    order: int,
-    channel_start: int,
-    channel_end: int,
-    mask_enabled: bool,
-    threshold_value: float,
-) -> np.ndarray:
-    if cube.ndim != 3:
-        raise ValueError("Moment products require a cube dataset.")
-
-    spectral_delta = abs(float(header.get("CDELT3", 1.0)))
-    init_spectral = float(header.get("CRVAL3", 0.0)) - float(header.get("CDELT3", 1.0)) * (
-        float(header.get("CRPIX3", 1.0)) - 1.0
-    )
-    z0 = max(0, min(int(channel_start), cube.shape[0] - 1))
-    z1 = max(0, min(int(channel_end), cube.shape[0] - 1))
-    if z0 > z1:
-        raise ValueError("Invalid channel range.")
-
-    subset = np.asarray(cube[z0 : z1 + 1, :, :], dtype=np.float32)
-    spectral_values = init_spectral + float(header.get("CDELT3", 1.0)) * np.arange(
-        z0, z1 + 1, dtype=np.float32
-    )
-
-    finite = np.isfinite(subset)
-    safe_cube = np.where(finite, subset, np.nan)
-    if mask_enabled:
-        safe_cube = np.where(safe_cube >= float(threshold_value), safe_cube, np.nan)
-
-    if order == 0:
-        return np.nansum(safe_cube * spectral_delta, axis=0, dtype=np.float32)
-
-    if order == 1:
-        moment0 = _moment_map(cube, header, 0, z0, z1, mask_enabled, threshold_value)
-        weighted = safe_cube * spectral_values[:, None, None] * spectral_delta
-        numerator = np.nansum(weighted, axis=0, dtype=np.float32)
-        out = np.full(moment0.shape, np.nan, dtype=np.float32)
-        valid = np.isfinite(moment0) & (moment0 != 0.0)
-        out[valid] = numerator[valid] / moment0[valid]
-        return out
-
-    if order == 2:
-        moment0 = _moment_map(cube, header, 0, z0, z1, mask_enabled, threshold_value)
-        moment1 = _moment_map(cube, header, 1, z0, z1, mask_enabled, threshold_value)
-        diff = spectral_values[:, None, None] - moment1[None, :, :]
-        numerator = np.nansum(safe_cube * diff * diff * spectral_delta, axis=0, dtype=np.float32)
-        out = np.full(moment0.shape, np.nan, dtype=np.float32)
-        valid = np.isfinite(moment0) & (moment0 != 0.0)
-        out[valid] = numerator[valid] / moment0[valid]
-        return out
-
-    if order == 6:
-        return np.sqrt(np.nanmean(safe_cube * safe_cube, axis=0, dtype=np.float32))
-
-    if order == 8:
-        return np.nanmax(safe_cube, axis=0)
-
-    if order == 10:
-        return np.nanmin(safe_cube, axis=0)
-
-    raise ValueError("Unsupported moment order.")
+@app.get("/v1/sessions", tags=["meta"])
+async def session_stats(_: None = _auth) -> dict:
+    """Expose session registry statistics (admin endpoint)."""
+    return REGISTRY.stats()
 
 
-def _sample_polyline_points(vertices: list[tuple[int, int]]) -> tuple[list[tuple[int, int]], float]:
-    sampled_points: list[tuple[int, int]] = []
-    cumulative_distance = 0.0
-    if len(vertices) < 2:
-        return sampled_points, cumulative_distance
-
-    for segment_index in range(1, len(vertices)):
-        start = vertices[segment_index - 1]
-        end = vertices[segment_index]
-        dx = end[0] - start[0]
-        dy = end[1] - start[1]
-        steps = max(abs(dx), abs(dy))
-        if steps <= 0:
-            if not sampled_points or sampled_points[-1] != start:
-                sampled_points.append(start)
-            continue
-
-        for step in range(steps + 1):
-            t = float(step) / float(steps)
-            point = (
-                int(round(float(start[0]) + t * dx)),
-                int(round(float(start[1]) + t * dy)),
-            )
-            if sampled_points and sampled_points[-1] == point:
-                continue
-            if sampled_points:
-                cumulative_distance += float(
-                    np.hypot(point[0] - sampled_points[-1][0], point[1] - sampled_points[-1][1])
-                )
-            sampled_points.append(point)
-
-    return sampled_points, cumulative_distance
-
-
-def _pv_local_normal(sampled_points: list[tuple[int, int]], index: int) -> tuple[float, float]:
-    if not sampled_points:
-        return 0.0, 1.0
-
-    center = sampled_points[index]
-    prev_point = sampled_points[index if index == 0 else index - 1]
-    next_point = sampled_points[index + 1 if index + 1 < len(sampled_points) else index]
-    tx = float(next_point[0] - prev_point[0])
-    ty = float(next_point[1] - prev_point[1])
-    if tx == 0.0 and ty == 0.0:
-        tx, ty = 1.0, 0.0
-        if index > 0:
-            tx = float(center[0] - sampled_points[index - 1][0])
-            ty = float(center[1] - sampled_points[index - 1][1])
-        elif index + 1 < len(sampled_points):
-            tx = float(sampled_points[index + 1][0] - center[0])
-            ty = float(sampled_points[index + 1][1] - center[1])
-
-    length = float(np.hypot(tx, ty))
-    if length <= 0.0:
-        return 0.0, 1.0
-    return -ty / length, tx / length
-
-
-def _compute_pv_matrix(
-    cube: np.ndarray, vertices: list[tuple[int, int]], width_pixels: int
-) -> tuple[np.ndarray, np.ndarray, int, float]:
-    if cube.ndim != 3:
-        raise ValueError("PV extraction requires a cube dataset.")
-
-    sampled_points, total_length = _sample_polyline_points(vertices)
-    if len(sampled_points) < 2:
-        raise ValueError("Define at least two points for PV path.")
-
-    depth, height, width = cube.shape
-    x_samples = len(sampled_points)
-    positions = np.zeros(x_samples, dtype=np.float32)
-    pv = np.full((depth, x_samples), np.nan, dtype=np.float32)
-    valid_samples = 0
-    half_width = 0.5 * float(max(1, width_pixels) - 1)
-
-    for i in range(1, x_samples):
-        positions[i] = positions[i - 1] + float(
-            np.hypot(
-                sampled_points[i][0] - sampled_points[i - 1][0],
-                sampled_points[i][1] - sampled_points[i - 1][1],
-            )
-        )
-
-    for sample_index, center in enumerate(sampled_points):
-        nx, ny = _pv_local_normal(sampled_points, sample_index)
-        for z in range(depth):
-            values: list[float] = []
-            for offset_index in range(max(1, width_pixels)):
-                centered_offset = float(offset_index) - half_width
-                sample_x = int(round(float(center[0]) + centered_offset * nx))
-                sample_y = int(round(float(center[1]) + centered_offset * ny))
-                if sample_x < 0 or sample_x >= width or sample_y < 0 or sample_y >= height:
-                    continue
-                value = float(cube[z, sample_y, sample_x])
-                if not np.isfinite(value):
-                    continue
-                values.append(value)
-            if values:
-                pv[z, sample_index] = float(np.mean(values))
-                valid_samples += 1
-
-    return positions, pv, valid_samples, total_length
-
-
-@app.get("/health")
-def health() -> dict[str, bool]:
-    return {"ok": True}
-
-
-@app.get("/files/list", response_model=FilesListResponse)
-def list_files(path: str = Query("")) -> FilesListResponse:
+@app.get("/v1/files/list", response_model=FilesListResponse, tags=["files"])
+async def list_files(
+    path: str = Query(""),
+    _: None = _auth,
+) -> FilesListResponse:
     try:
         directory = _normalize_path(path)
     except Exception:
@@ -653,80 +432,70 @@ def list_files(path: str = Query("")) -> FilesListResponse:
     if not directory.exists() or not directory.is_dir():
         return FilesListResponse(valid=False, error="Directory not found.", current_path="", entries=[])
 
-    entries: list[FileEntry] = []
     try:
-        children = sorted(directory.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower()))
+        children = sorted(directory.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
     except OSError as exc:
         return FilesListResponse(valid=False, error=str(exc), current_path=str(directory), entries=[])
 
+    entries: list[FileEntry] = []
     for child in children:
         try:
-            stat = child.stat()
-            size = int(stat.st_size)
-            modified_time = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+            st = child.stat()
+            size = int(st.st_size)
+            mtime = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
         except OSError:
-            size = 0
-            modified_time = ""
-
-        if child.is_dir():
-            entries.append(
-                FileEntry(
-                    name=child.name,
-                    path=str(child),
-                    type="directory",
-                    size=size,
-                    modified_time=modified_time,
-                    is_fits=False,
-                )
-            )
-        elif child.is_file():
-            entries.append(
-                FileEntry(
-                    name=child.name,
-                    path=str(child),
-                    type="file",
-                    size=size,
-                    modified_time=modified_time,
-                    is_fits=_is_fits_file(child),
-                )
-            )
+            size, mtime = 0, ""
+        ftype = "directory" if child.is_dir() else "file"
+        entries.append(FileEntry(
+            name=child.name,
+            path=str(child),
+            type=ftype,
+            size=size,
+            modified_time=mtime,
+            is_fits=_is_fits(child) if child.is_file() else False,
+        ))
 
     return FilesListResponse(valid=True, error="", current_path=str(directory), entries=entries)
 
 
-@app.post("/files/header", response_model=FileHeaderResponse)
-def file_header(request: FileHeaderRequest) -> FileHeaderResponse:
+@app.post("/v1/files/header", response_model=FileHeaderResponse, tags=["files"])
+async def file_header(request: FileHeaderRequest, _: None = _auth) -> FileHeaderResponse:
     try:
         path = _normalize_path(request.path)
-        if not _is_fits_file(path):
+        if not _is_fits(path):
             raise ValueError("FITS file not found.")
-
-        with fits.open(path, memmap=True) as hdul:
-            header = hdul[0].header
-            cards = [str(card) for card in header.cards]
+        with fits.open(str(path), memmap=True) as hdul:
+            cards = [str(card) for card in hdul[0].header.cards]
     except Exception as exc:
         return FileHeaderResponse(valid=False, error=str(exc), cards=[])
-
     return FileHeaderResponse(valid=True, error="", cards=cards)
 
 
-@app.post("/datasets/open", response_model=OpenDatasetResponse)
-def open_dataset(request: OpenDatasetRequest) -> OpenDatasetResponse:
+@app.post("/v1/datasets/open", response_model=OpenDatasetResponse, tags=["datasets"])
+async def open_dataset(
+    request: OpenDatasetRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> OpenDatasetResponse:
     path = _normalize_path(request.path)
-    if not _is_fits_file(path):
+    if not _is_fits(path):
         return OpenDatasetResponse(valid=False, error="FITS file not found.")
-
     try:
-        kind, geometry = _detect_kind(path)
+        kind, geometry = _fits_metadata(path)
     except Exception as exc:
         return OpenDatasetResponse(valid=False, error=str(exc))
 
     dataset_id = f"ds_{uuid.uuid4().hex[:12]}"
-    _DATASETS[dataset_id] = {"path": str(path), "kind": kind, **geometry}
+    session.datasets[dataset_id] = {"path": str(path), "kind": kind, **geometry}
+    logger.info(
+        "[open] session=%s dataset_id=%s kind=%s path=%s",
+        session.session_id, dataset_id, kind, path,
+    )
     return OpenDatasetResponse(
         valid=True,
         error="",
         dataset_id=dataset_id,
+        session_id=session.session_id,
         kind=kind,
         active_axes=int(geometry.get("active_axes", 0)),
         width=geometry["width"],
@@ -743,281 +512,173 @@ def open_dataset(request: OpenDatasetRequest) -> OpenDatasetResponse:
     )
 
 
-@app.post("/products/moment", response_model=MomentProductResponse)
-def moment_product(request: MomentProductRequest) -> MomentProductResponse:
+@app.post("/v1/products/moment", response_model=MomentProductResponse, tags=["products"])
+async def moment_product(
+    request: MomentProductRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> MomentProductResponse:
+    from .compute import worker_moment
     try:
-        cube_path = _require_cube(request.dataset_id)
-        cube, header = _load_dataset_array(cube_path)
-        image = np.asarray(
-            _moment_map(
-                cube,
-                header,
-                request.moment_order,
-                request.channel_start,
-                request.channel_end,
-                request.mask_enabled,
-                request.threshold_value,
-            ),
-            dtype=np.float32,
+        path = _require_cube_path(session, request.dataset_id)
+        result = await _run(
+            worker_moment,
+            path,
+            request.moment_order,
+            request.channel_start,
+            request.channel_end,
+            request.mask_enabled,
+            request.threshold_value,
         )
-        if not np.isfinite(image).any():
-            raise ValueError("No valid voxels found for the selected moment parameters.")
+    except HTTPException:
+        raise
     except Exception as exc:
         return MomentProductResponse(valid=False, error=str(exc))
-
-    range_min, range_max = _finite_range(image)
-    return MomentProductResponse(
-        valid=True,
-        error="",
-        width=int(image.shape[1]),
-        height=int(image.shape[0]),
-        scalar_type="float32",
-        range_min=range_min,
-        range_max=range_max,
-        data_base64=_encode_array(image),
-    )
+    return MomentProductResponse(valid=True, error="", **result)
 
 
-@app.post("/products/isosurface", response_model=IsosurfaceProductResponse)
-def isosurface_product(request: IsosurfaceProductRequest) -> IsosurfaceProductResponse:
+@app.post("/v1/products/isosurface", response_model=IsosurfaceProductResponse, tags=["products"])
+async def isosurface_product(
+    request: IsosurfaceProductRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> IsosurfaceProductResponse:
+    from .compute import worker_isosurface
     try:
-        entry = _dataset_entry(request.dataset_id)
-        cube_path = _require_cube(request.dataset_id)
-        logger.info(
-            "[remote-iso] request dataset_id=%s threshold=%s path=%s",
-            request.dataset_id,
+        entry = _require_dataset(session, request.dataset_id)
+        if entry["kind"] != "cube":
+            raise HTTPException(422, "Isosurface requires a cube dataset.")
+        result = await _run(
+            worker_isosurface,
+            entry["path"],
+            int(entry["width"]),
+            int(entry["height"]),
+            int(entry["depth"]),
             float(request.threshold),
-            cube_path,
         )
-        cube, _ = _load_dataset_array(cube_path)
-        payload = _compute_isosurface_payload(cube, entry, request.threshold)
+    except HTTPException:
+        raise
     except Exception as exc:
-        logger.warning("[remote-iso] failed dataset_id=%s error=%s", request.dataset_id, exc)
+        logger.warning("[isosurface] failed dataset_id=%s error=%s", request.dataset_id, exc)
         return IsosurfaceProductResponse(valid=False, error=str(exc))
+    return IsosurfaceProductResponse(valid=True, error="", **result)
 
-    return IsosurfaceProductResponse(valid=True, error="", **payload)
 
-
-@app.post("/cube/preview", response_model=CubePreviewResponse)
-def cube_preview(request: CubePreviewRequest) -> CubePreviewResponse:
+@app.post("/v1/cube/preview", response_model=CubePreviewResponse, tags=["cube"])
+async def cube_preview(
+    request: CubePreviewRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> CubePreviewResponse:
+    from .compute import worker_cube_preview
     try:
-        cube_path = _require_cube(request.dataset_id)
-        cube, _ = _load_dataset_array(cube_path)
-        stride = max(1, int(request.downsample))
-        preview = np.asarray(cube[::stride, ::stride, ::stride], dtype=np.float32)
+        path = _require_cube_path(session, request.dataset_id)
+        result = await _run(worker_cube_preview, path, request.downsample)
+    except HTTPException:
+        raise
     except Exception as exc:
         return CubePreviewResponse(valid=False, error=str(exc))
-
-    range_min, range_max = _finite_range(preview)
-    return CubePreviewResponse(
-        valid=True,
-        error="",
-        width=int(preview.shape[2]),
-        height=int(preview.shape[1]),
-        depth=int(preview.shape[0]),
-        scalar_type="float32",
-        range_min=range_min,
-        range_max=range_max,
-        data_base64=_encode_array(preview),
-    )
+    return CubePreviewResponse(valid=True, error="", **result)
 
 
-@app.post("/cube/slice", response_model=CubeSliceResponse)
-def cube_slice(request: CubeSliceRequest) -> CubeSliceResponse:
+@app.post("/v1/cube/slice", response_model=CubeSliceResponse, tags=["cube"])
+async def cube_slice(
+    request: CubeSliceRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> CubeSliceResponse:
+    from .compute import worker_cube_slice
     try:
-        cube_path = _require_cube(request.dataset_id)
-        cube, _ = _load_dataset_array(cube_path)
-        axis = request.axis.lower()
-        if axis != "z":
-            raise ValueError("Only axis='z' is supported in this step.")
-        if request.index < 0 or request.index >= cube.shape[0]:
-            raise ValueError("Slice index out of range.")
-        image = np.asarray(cube[request.index, :, :], dtype=np.float32)
+        path = _require_cube_path(session, request.dataset_id)
+        if request.axis.lower() != "z":
+            raise HTTPException(422, "Only axis='z' is currently supported.")
+        result = await _run(worker_cube_slice, path, request.index)
+    except HTTPException:
+        raise
     except Exception as exc:
         return CubeSliceResponse(valid=False, error=str(exc))
-
-    range_min, range_max = _finite_range(image)
-    compression, data_base64 = _encode_array_compressed(image)
-    return CubeSliceResponse(
-        valid=True,
-        error="",
-        width=int(image.shape[1]),
-        height=int(image.shape[0]),
-        scalar_type="float32",
-        range_min=range_min,
-        range_max=range_max,
-        compression=compression,
-        data_base64=data_base64,
-    )
+    return CubeSliceResponse(valid=True, error="", **result)
 
 
-@app.post("/cube/subvolume", response_model=CubeSubvolumeResponse)
-def cube_subvolume(request: CubeSubvolumeRequest) -> CubeSubvolumeResponse:
+@app.post("/v1/cube/subvolume", response_model=CubeSubvolumeResponse, tags=["cube"])
+async def cube_subvolume(
+    request: CubeSubvolumeRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> CubeSubvolumeResponse:
+    from .compute import worker_cube_subvolume
     try:
-        cube_path = _require_cube(request.dataset_id)
-        cube, _ = _load_dataset_array(cube_path)
-        if cube.ndim != 3:
-            raise ValueError("Subvolume endpoint requires a cube dataset.")
-
-        depth, height, width = cube.shape
-        x0 = max(0, min(request.x0, width - 1))
-        x1 = max(0, min(request.x1, width - 1))
-        y0 = max(0, min(request.y0, height - 1))
-        y1 = max(0, min(request.y1, height - 1))
-        z0 = max(0, min(request.z0, depth - 1))
-        z1 = max(0, min(request.z1, depth - 1))
-        if x0 > x1 or y0 > y1 or z0 > z1:
-            raise ValueError("Invalid subvolume ROI.")
-
-        subvolume = np.ascontiguousarray(cube[z0 : z1 + 1, y0 : y1 + 1, x0 : x1 + 1], dtype=np.float32)
+        path = _require_cube_path(session, request.dataset_id)
+        result = await _run(
+            worker_cube_subvolume,
+            path,
+            request.x0, request.x1,
+            request.y0, request.y1,
+            request.z0, request.z1,
+        )
+    except HTTPException:
+        raise
     except Exception as exc:
         return CubeSubvolumeResponse(valid=False, error=str(exc))
-
-    return CubeSubvolumeResponse(
-        valid=True,
-        error="",
-        width=int(subvolume.shape[2]),
-        height=int(subvolume.shape[1]),
-        depth=int(subvolume.shape[0]),
-        scalar_type="float32",
-        data_base64=_encode_array(subvolume),
-    )
+    return CubeSubvolumeResponse(valid=True, error="", **result)
 
 
-@app.post("/cube/pv", response_model=CubePvResponse)
-def cube_pv(request: CubePvRequest) -> CubePvResponse:
+@app.post("/v1/cube/pv", response_model=CubePvResponse, tags=["cube"])
+async def cube_pv(
+    request: CubePvRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> CubePvResponse:
+    from .compute import worker_pv
     try:
-        cube_path = _require_cube(request.dataset_id)
-        cube, _ = _load_dataset_array(cube_path)
-        if cube.ndim != 3:
-            raise ValueError("PV endpoint requires a cube dataset.")
-
-        cleaned_vertices: list[tuple[int, int]] = []
-        for vertex in request.vertices:
-            if len(vertex) < 2:
-                continue
-            point = (int(vertex[0]), int(vertex[1]))
-            if not cleaned_vertices or cleaned_vertices[-1] != point:
-                cleaned_vertices.append(point)
-
-        if len(cleaned_vertices) < 2:
-            raise ValueError("Define at least two points for PV path.")
-
-        width_pixels = max(1, int(request.width_pixels))
-        positions, pv, valid_samples, total_length = _compute_pv_matrix(
-            cube, cleaned_vertices, width_pixels
+        path = _require_cube_path(session, request.dataset_id)
+        result = await _run(
+            worker_pv,
+            path,
+            request.vertices,
+            max(1, int(request.width_pixels)),
         )
-        if valid_samples <= 0:
-            raise ValueError("No valid data found along PV cut in the full remote dataset.")
+    except HTTPException:
+        raise
     except Exception as exc:
-        logger.warning("[remote-pv] failed dataset_id=%s error=%s", request.dataset_id, exc)
+        logger.warning("[pv] failed dataset_id=%s error=%s", request.dataset_id, exc)
         return CubePvResponse(valid=False, error=str(exc))
-
-    compression, positions_base64 = _encode_array_compressed(positions)
-    data_compression, data_base64 = _encode_array_compressed(pv.reshape(-1))
-    if compression != data_compression:
-        return CubePvResponse(valid=False, error="Inconsistent PV payload compression.")
-    logger.info(
-        "[remote-pv] dataset_id=%s vertices=%s width=%s samples=%s depth=%s valid=%s total_length=%s",
-        request.dataset_id,
-        len(cleaned_vertices),
-        width_pixels,
-        int(positions.shape[0]),
-        int(pv.shape[0]),
-        valid_samples,
-        float(total_length),
-    )
-    return CubePvResponse(
-        valid=True,
-        error="",
-        num_samples=int(positions.shape[0]),
-        depth=int(pv.shape[0]),
-        scalar_type="float32",
-        compression=compression,
-        positions_base64=positions_base64,
-        data_base64=data_base64,
-        computed_on="full_dataset",
-        width_pixels=width_pixels,
-        vertex_count=len(cleaned_vertices),
-        total_length=float(total_length),
-        valid_samples=valid_samples,
-    )
+    return CubePvResponse(valid=True, error="", **result)
 
 
-@app.post("/image/full", response_model=ImageFullResponse)
-def image_full(request: ImageFullRequest) -> ImageFullResponse:
+@app.post("/v1/image/full", response_model=ImageFullResponse, tags=["image"])
+async def image_full(
+    request: ImageFullRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> ImageFullResponse:
+    from .compute import worker_image_full
     try:
-        entry = _dataset_entry(request.dataset_id)
+        entry = _require_dataset(session, request.dataset_id)
         if entry["kind"] != "image":
-            raise ValueError("Image endpoint requires an image dataset.")
-        image_path = Path(entry["path"])
-        image, _ = _load_dataset_array(image_path)
-        if image.ndim != 2:
-            raise ValueError("Remote image endpoint requires 2D FITS data.")
-        image = np.ascontiguousarray(image, dtype=np.float32)
-        logger.info("[remote-image] full request dataset_id=%s dims=%sx%s", request.dataset_id, image.shape[1], image.shape[0])
+            return ImageFullResponse(valid=False, error="Image endpoint requires an image dataset.")
+        result = await _run(worker_image_full, entry["path"])
+    except HTTPException:
+        raise
     except Exception as exc:
         return ImageFullResponse(valid=False, error=str(exc))
-
-    range_min, range_max = _finite_range(image)
-    compression, data_base64 = _encode_array_compressed(image)
-    return ImageFullResponse(
-        valid=True,
-        error="",
-        width=int(image.shape[1]),
-        height=int(image.shape[0]),
-        full_width=int(image.shape[1]),
-        full_height=int(image.shape[0]),
-        scalar_type="float32",
-        range_min=range_min,
-        range_max=range_max,
-        is_preview=False,
-        preview_scale_factor=1.0,
-        compression=compression,
-        data_base64=data_base64,
-    )
+    return ImageFullResponse(valid=True, error="", **result)
 
 
-@app.post("/image/preview", response_model=ImageFullResponse)
-def image_preview(request: ImagePreviewRequest) -> ImageFullResponse:
+@app.post("/v1/image/preview", response_model=ImageFullResponse, tags=["image"])
+async def image_preview(
+    request: ImagePreviewRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> ImageFullResponse:
+    from .compute import worker_image_preview
     try:
-        entry = _dataset_entry(request.dataset_id)
+        entry = _require_dataset(session, request.dataset_id)
         if entry["kind"] != "image":
-            raise ValueError("Image preview endpoint requires an image dataset.")
-        image_path = Path(entry["path"])
-        image, _ = _load_dataset_array(image_path)
-        if image.ndim != 2:
-            raise ValueError("Remote image preview endpoint requires 2D FITS data.")
-        full_width = int(image.shape[1])
-        full_height = int(image.shape[0])
-        preview, scale_factor = _build_image_preview(image, request.max_longest_side)
-        is_preview = preview.shape != image.shape
-        logger.info(
-            "[remote-image] preview request dataset_id=%s original=%sx%s preview=%sx%s scale=%s",
-            request.dataset_id,
-            full_width,
-            full_height,
-            int(preview.shape[1]),
-            int(preview.shape[0]),
-            scale_factor,
-        )
+            raise HTTPException(422, "Image preview endpoint requires an image dataset.")
+        result = await _run(worker_image_preview, entry["path"], request.max_longest_side)
+    except HTTPException:
+        raise
     except Exception as exc:
         return ImageFullResponse(valid=False, error=str(exc))
-
-    range_min, range_max = _finite_range(preview)
-    compression, data_base64 = _encode_array_compressed(preview)
-    return ImageFullResponse(
-        valid=True,
-        error="",
-        width=int(preview.shape[1]),
-        height=int(preview.shape[0]),
-        full_width=full_width,
-        full_height=full_height,
-        scalar_type="float32",
-        range_min=range_min,
-        range_max=range_max,
-        is_preview=is_preview,
-        preview_scale_factor=scale_factor,
-        compression=compression,
-        data_base64=data_base64,
-    )
+    return ImageFullResponse(valid=True, error="", **result)
