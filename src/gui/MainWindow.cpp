@@ -20,6 +20,7 @@
 #include <QDir>
 #include <QDoubleValidator>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QWebChannel>
@@ -124,8 +125,23 @@ void MainWindow::openLocalData()
     }
 
     const QString filepath = QFileDialog::getOpenFileName(
-            this, u"Open local FITS file"_s, QString(), u"FITS files (*.fits *.fit)"_s);
+            this, u"Open local FITS file"_s, QString(),
+            u"FITS files (*.fits *.fit *.fts);;All files (*)"_s);
     if (filepath.isEmpty()) {
+        return;
+    }
+
+    const QFileInfo fi(filepath);
+    const QString suffix = fi.suffix().toLower();
+    if (suffix != u"fits"_s && suffix != u"fit"_s && suffix != u"fts"_s) {
+        QMessageBox::information(
+                this, u"Unsupported file format"_s,
+                u"VisIVO Visual Analytics natively supports FITS files only.\n\n"
+                "To visualise HDF5, Gadget, VOTable, or simulation data, "
+                "first convert it with VisIVOServer:\n"
+                "  https://visivo.oact.inaf.it/visivo-server\n\n"
+                "VisIVOServer can convert most astrophysical formats to the VBT "
+                "binary table format that VisIVO VA can open directly."_s);
         return;
     }
 
@@ -137,7 +153,12 @@ void MainWindow::openLocalData()
 
     QWidget *win = this->datasetWindowFactory->createWindow(dataset, this);
     if (!win) {
-        QMessageBox::critical(this, u"Could not open file"_s, u"Unknown file format."_s);
+        QMessageBox::critical(this, u"Could not open file"_s,
+                              u"The file could not be opened as a FITS image or cube.\n\n"
+                              "If this is a FITS binary table or catalogue, use "
+                              "File → Open 3D Catalogue instead.\n"
+                              "For other formats, see VisIVOServer: "
+                              "https://visivo.oact.inaf.it/visivo-server"_s);
         return;
     }
 

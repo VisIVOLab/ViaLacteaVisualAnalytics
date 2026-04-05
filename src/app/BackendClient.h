@@ -121,7 +121,10 @@ struct BackendCubePvResult
     int numSamples{ 0 };
     int depth{ 0 };
     QString scalarType;
-    QByteArray positions;
+    QByteArray positions;        // pixel-distance offset along path (float32[N])
+    QByteArray positionsArcsec;  // angular offset in arcseconds (float32[N])
+    double pixelScaleArcsecPerPixel{ 0. };
+    QString spatialUnit;         // "arcsec" when physical coords are available
     QByteArray data;
     QString computedOn;
     int widthPixels{ 1 };

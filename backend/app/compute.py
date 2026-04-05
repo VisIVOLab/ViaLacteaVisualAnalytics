@@ -382,11 +382,18 @@ def _local_normal(pts: list[tuple[int, int]], i: int) -> tuple[float, float]:
 def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[str, Any]:
     hdul, raw = _open_fits_memmap(path)
     try:
+        header = hdul[0].header.copy()
         data = _squeeze_to_3d(raw)
         if data.ndim != 3:
             raise ValueError("PV extraction requires a 3D cube.")
         # Materialise full cube – PV diagrams require random spatial access.
         cube = np.asarray(data, dtype=np.float32)
+
+        # Compute the pixel scale (arcsec/pixel) from WCS keywords.
+        # Use the geometric mean of |CDELT1| and |CDELT2| (both in degrees).
+        cdelt1_deg = abs(float(header.get("CDELT1", 1.0 / 3600.0)))
+        cdelt2_deg = abs(float(header.get("CDELT2", 1.0 / 3600.0)))
+        pixel_scale_arcsec = float(np.sqrt(cdelt1_deg * cdelt2_deg) * 3600.0)
     finally:
         hdul.close()
 
@@ -430,7 +437,9 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
     if valid_samples <= 0:
         raise ValueError("No valid data found along the PV cut.")
 
+    positions_arcsec = positions * pixel_scale_arcsec
     pos_compression, pos_b64 = _b64f32_compressed(positions)
+    pos_arcsec_compression, pos_arcsec_b64 = _b64f32_compressed(positions_arcsec)
     data_compression, data_b64 = _b64f32_compressed(pv.reshape(-1))
     return {
         "num_samples": x_samples,
@@ -438,12 +447,75 @@ def worker_pv(path: str, vertices: list[list[int]], width_pixels: int) -> dict[s
         "scalar_type": "float32",
         "compression": pos_compression,
         "positions_base64": pos_b64,
+        "positions_arcsec_base64": pos_arcsec_b64,
+        "pixel_scale_arcsec_per_pixel": pixel_scale_arcsec,
+        "spatial_unit": "arcsec",
         "data_base64": data_b64,
         "computed_on": "full_dataset",
         "width_pixels": width_pixels,
         "vertex_count": len(cleaned),
         "total_length": float(total_length),
         "valid_samples": valid_samples,
+    }
+
+
+# ── Worker: per-channel noise (MAD → σ) ──────────────────────────────────────
+
+
+def worker_noise_estimate(
+    path: str,
+    x0: int, x1: int,
+    y0: int, y1: int,
+    channel_start: int,
+    channel_end: int,
+) -> dict[str, Any]:
+    """
+    Estimate per-channel noise in a user-specified emission-free spatial region.
+
+    Returns the per-channel median absolute deviation (MAD) and the derived
+    Gaussian sigma (MAD × 1.4826).  The spatial region [x0:x1, y0:y1] should
+    be an area of the cube that contains only noise (no astronomical emission).
+    """
+    hdul, raw = _open_fits_memmap(path)
+    try:
+        data = _squeeze_to_3d(raw)
+        if data.ndim != 3:
+            raise ValueError("Noise estimation requires a 3D cube.")
+        depth = data.shape[0]
+        height = data.shape[1]
+        width = data.shape[2]
+        x0c, x1c = max(0, x0), min(x1, width - 1)
+        y0c, y1c = max(0, y0), min(y1, height - 1)
+        z0 = max(0, min(channel_start, depth - 1))
+        z1 = max(0, min(channel_end,   depth - 1))
+        if x0c > x1c or y0c > y1c or z0 > z1:
+            raise ValueError("Invalid spatial or spectral region for noise estimation.")
+        # Materialise only the requested region.
+        region = np.asarray(data[z0 : z1 + 1, y0c : y1c + 1, x0c : x1c + 1], dtype=np.float32)
+    finally:
+        hdul.close()
+
+    mad_values: list[float] = []
+    sigma_values: list[float] = []
+    for z in range(region.shape[0]):
+        plane = region[z].ravel()
+        finite = plane[np.isfinite(plane)]
+        if len(finite) < 2:
+            mad_values.append(float("nan"))
+            sigma_values.append(float("nan"))
+        else:
+            median = float(np.median(finite))
+            mad = float(np.median(np.abs(finite - median)))
+            mad_values.append(mad)
+            sigma_values.append(mad * 1.4826)  # MAD → σ for Gaussian noise
+
+    return {
+        "channel_start": z0,
+        "channel_end": z1,
+        "num_channels": z1 - z0 + 1,
+        "mad": mad_values,
+        "sigma": sigma_values,
+        "region": {"x0": x0c, "x1": x1c, "y0": y0c, "y1": y1c},
     }
 
 

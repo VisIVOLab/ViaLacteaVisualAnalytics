@@ -20,8 +20,12 @@ prepend /v1/ to every request URL (Settings dialog → backend URL field).
 from __future__ import annotations
 
 import asyncio
+import collections
+import hashlib
+import json
 import logging
 import os
+import threading
 import uuid
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
@@ -44,8 +48,13 @@ logger = logging.getLogger("visivo.backend")
 
 # ── Process pool (R2) ─────────────────────────────────────────────────────────
 
-_WORKERS = int(os.environ.get("VISIVO_WORKERS", str(os.cpu_count() or 4)))
-_POOL = ProcessPoolExecutor(max_workers=_WORKERS, initializer=_pool_initializer if False else None)
+def _default_worker_count() -> int:
+    """Cap at 4 by default so the backend is safe on shared HPC login nodes.
+    Override with the VISIVO_WORKERS environment variable."""
+    return max(1, min(os.cpu_count() or 4, 4))
+
+
+_WORKERS = int(os.environ.get("VISIVO_WORKERS", str(_default_worker_count())))
 
 
 def _pool_initializer() -> None:  # pragma: no cover
@@ -68,6 +77,39 @@ app = FastAPI(
 )
 
 _FITS_SUFFIXES = {".fits", ".fit", ".fts"}
+
+# ── Isosurface LRU cache ─────────────────────────────────────────────────────
+
+
+class _LRUCache:
+    """Thread-safe LRU cache keyed by SHA-256 hash of JSON-serialised params."""
+
+    def __init__(self, max_size: int = 32) -> None:
+        self._cache: collections.OrderedDict = collections.OrderedDict()
+        self._lock = threading.Lock()
+        self._max_size = max_size
+
+    def _key(self, params: dict) -> str:
+        return hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()
+
+    def get(self, params: dict):
+        key = self._key(params)
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+                return self._cache[key]
+        return None
+
+    def put(self, params: dict, value: Any) -> None:
+        key = self._key(params)
+        with self._lock:
+            self._cache[key] = value
+            self._cache.move_to_end(key)
+            while len(self._cache) > self._max_size:
+                self._cache.popitem(last=False)
+
+
+_ISOSURFACE_CACHE = _LRUCache(max_size=32)
 
 # ── VTK availability check (R startup) ───────────────────────────────────────
 
@@ -254,6 +296,9 @@ class CubePvResponse(BaseModel):
     scalar_type: str = ""
     compression: str = ""
     positions_base64: str = ""
+    positions_arcsec_base64: str = ""
+    pixel_scale_arcsec_per_pixel: float = 0.0
+    spatial_unit: str = "pixel"
     data_base64: str = ""
     computed_on: str = ""
     width_pixels: int = 1
@@ -285,6 +330,27 @@ class ImageFullResponse(BaseModel):
     preview_scale_factor: float = 1.0
     compression: str = ""
     data_base64: str = ""
+
+
+class CubeNoiseRequest(BaseModel):
+    dataset_id: str
+    x0: int
+    x1: int
+    y0: int
+    y1: int
+    channel_start: int = 0
+    channel_end: int = 0
+
+
+class CubeNoiseResponse(BaseModel):
+    valid: bool
+    error: str
+    channel_start: int = 0
+    channel_end: int = 0
+    num_channels: int = 0
+    mad: list[float] = []
+    sigma: list[float] = []
+    region: dict = {}
 
 
 class IsosurfaceProductRequest(BaseModel):
@@ -553,6 +619,31 @@ async def moment_product(
     return MomentProductResponse(valid=True, error="", **result)
 
 
+@app.post("/v1/cube/noise", response_model=CubeNoiseResponse, tags=["cube"])
+async def cube_noise(
+    request: CubeNoiseRequest,
+    _: None = _auth,
+    session: Session = Depends(get_session),
+) -> CubeNoiseResponse:
+    """Estimate per-channel noise (MAD and Gaussian sigma) in an emission-free region."""
+    from .compute import worker_noise_estimate
+    try:
+        path = _require_cube_path(session, request.dataset_id)
+        result = await _run(
+            worker_noise_estimate,
+            path,
+            request.x0, request.x1,
+            request.y0, request.y1,
+            request.channel_start,
+            request.channel_end,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        return CubeNoiseResponse(valid=False, error=str(exc))
+    return CubeNoiseResponse(valid=True, error="", **result)
+
+
 @app.post("/v1/products/isosurface", response_model=IsosurfaceProductResponse, tags=["products"])
 async def isosurface_product(
     request: IsosurfaceProductRequest,
@@ -569,6 +660,11 @@ async def isosurface_product(
         entry = _require_dataset(session, request.dataset_id)
         if entry["kind"] != "cube":
             raise HTTPException(422, "Isosurface requires a cube dataset.")
+        cache_params = {"path": entry["path"], "threshold": float(request.threshold)}
+        cached = _ISOSURFACE_CACHE.get(cache_params)
+        if cached is not None:
+            logger.debug("[isosurface] cache hit dataset_id=%s threshold=%s", request.dataset_id, request.threshold)
+            return IsosurfaceProductResponse(valid=True, error="", **cached)
         result = await _run(
             worker_isosurface,
             entry["path"],
@@ -577,6 +673,7 @@ async def isosurface_product(
             int(entry["depth"]),
             float(request.threshold),
         )
+        _ISOSURFACE_CACHE.put(cache_params, result)
     except HTTPException:
         raise
     except Exception as exc:

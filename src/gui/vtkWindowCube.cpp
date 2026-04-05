@@ -164,7 +164,8 @@ struct RemotePvFetchResult
 {
     bool valid{ false };
     QString errorMessage;
-    QVector<double> positions;
+    QVector<double> positions;       // pixel-distance offset along path
+    QVector<double> positionsArcsec; // angular offset in arcseconds (empty if unavailable)
     QVector<double> values;
     int numSamples{ 0 };
     int depth{ 0 };
@@ -173,6 +174,7 @@ struct RemotePvFetchResult
     int vertexCount{ 0 };
     double totalLength{ 0. };
     int validSamples{ 0 };
+    QString spatialUnit; // "arcsec" when physical coords are available
 };
 
 enum class SanityLevel
@@ -1333,6 +1335,20 @@ RemotePvFetchResult fetchRemotePv(const QString &backendUrl, const QString &data
     result.positions.resize(response.numSamples);
     for (int i = 0; i < response.numSamples; ++i) {
         result.positions[i] = static_cast<double>(rawPositions[i]);
+    }
+
+    // Populate physical arcsecond positions when the backend returns them.
+    const qsizetype expectedPositionsBytes =
+            static_cast<qsizetype>(response.numSamples) * static_cast<qsizetype>(sizeof(float));
+    if (!response.positionsArcsec.isEmpty()
+        && response.positionsArcsec.size() == expectedPositionsBytes) {
+        const auto *rawArcsec =
+                reinterpret_cast<const float *>(response.positionsArcsec.constData());
+        result.positionsArcsec.resize(response.numSamples);
+        for (int i = 0; i < response.numSamples; ++i) {
+            result.positionsArcsec[i] = static_cast<double>(rawArcsec[i]);
+        }
+        result.spatialUnit = response.spatialUnit;
     }
 
     const auto *rawValues = reinterpret_cast<const float *>(response.data.constData());
@@ -4506,11 +4522,19 @@ void vtkWindowCube::extractCurrentPvDiagram()
     const auto showPvDiagram = [this, &ensurePvWidget](const QVector<double> &positions,
                                                        const QVector<double> &spectral,
                                                        const QVector<double> &values, int xSamples,
-                                                       int zCount, const QString &details) {
+                                                       int zCount, const QString &details,
+                                                       const QVector<double> &arcsecPositions = {},
+                                                       const QString &spatialUnit = {}) {
         ensurePvWidget();
         qDebug().noquote() << QStringLiteral("[pv] updating widget and requesting show/raise");
-        this->pvDiagramWidget->setPvData(positions, spectral, values, xSamples, zCount,
-                                         u"Offset Along Path (pixels)"_s, this->spectralAxisTitle(),
+        const bool hasArcsec = !arcsecPositions.isEmpty()
+                && arcsecPositions.size() == positions.size();
+        const QVector<double> &pvPositions = hasArcsec ? arcsecPositions : positions;
+        const QString xLabel = hasArcsec
+                ? u"Offset Along Path (%1)"_s.arg(spatialUnit.isEmpty() ? u"arcsec"_s : spatialUnit)
+                : u"Offset Along Path (pixels)"_s;
+        this->pvDiagramWidget->setPvData(pvPositions, spectral, values, xSamples, zCount,
+                                         xLabel, this->spectralAxisTitle(),
                                          u"PV Diagram (Polyline)"_s, details);
     };
 
@@ -4670,7 +4694,8 @@ void vtkWindowCube::extractCurrentPvDiagram()
                             .arg(remoteResult.widthPixels > 0 ? remoteResult.widthPixels : this->pvWidthPixels)
                             .arg(remoteResult.totalLength, 0, 'f', 2);
             showPvDiagram(remoteResult.positions, spectral, remoteResult.values, remoteResult.numSamples,
-                          remoteResult.depth, details);
+                          remoteResult.depth, details,
+                          remoteResult.positionsArcsec, remoteResult.spatialUnit);
             return;
         }
 

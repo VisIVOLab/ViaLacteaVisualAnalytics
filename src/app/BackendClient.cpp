@@ -396,6 +396,13 @@ BackendCubePvResult BackendClient::requestPv(const QString &datasetId,
     if (!result.error.isEmpty()) {
         result.valid = false;
     }
+    // Physical spatial coordinates (added in backend PV refactor).
+    result.positionsArcsec = decodePayload(object, QStringLiteral("positions_arcsec_base64"),
+                                           QStringLiteral("compression"), result.error);
+    result.error.clear(); // missing arcsec positions is non-fatal
+    result.pixelScaleArcsecPerPixel =
+            object.value(QStringLiteral("pixel_scale_arcsec_per_pixel")).toDouble(0.);
+    result.spatialUnit = object.value(QStringLiteral("spatial_unit")).toString(QStringLiteral("pixel"));
     return result;
 }
 
