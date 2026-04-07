@@ -15,10 +15,10 @@
 
 using namespace Qt::StringLiterals;
 
-std::string logFile{ };
-QtMessageHandler originalHandler{ };
+static std::string logFile{ };
+static QtMessageHandler originalHandler{ };
 
-void logToFile(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+static void logToFile(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     static FILE *f = fopen(logFile.c_str(), "a");
     fprintf(f, "%s\n", qPrintable(qFormatLogMessage(type, context, msg)));
@@ -29,7 +29,7 @@ void logToFile(QtMsgType type, const QMessageLogContext &context, const QString 
     }
 }
 
-void vtkLogCallback(void *vtkNotUsed(user_data), const vtkLogger::Message &message)
+static void vtkLogCallback(void *vtkNotUsed(user_data), const vtkLogger::Message &message)
 {
     switch (message.verbosity) {
     case vtkLogger::VERBOSITY_ERROR:
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     const QDir appDir = QDir::home().absoluteFilePath(qApp->applicationName());
     if (appDir.mkpath(u"logs"_s)) {
         const QString timestamp = QDateTime::currentDateTime().toString(u"yyyy-MM-dd_hh.mm.ss"_s);
-        logFile = appDir.absoluteFilePath("logs/"_L1 + timestamp + ".log"_L1).toStdString();
+        logFile = appDir.absoluteFilePath(u"logs/"_s + timestamp + u".log"_s).toStdString();
         originalHandler = qInstallMessageHandler(logToFile);
     }
 
