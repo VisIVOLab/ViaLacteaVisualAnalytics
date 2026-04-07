@@ -24,7 +24,8 @@ endforeach ()
 find_package(Qt6 6.11.0 CONFIG REQUIRED COMPONENTS ${qt_components})
 message(STATUS "Using Qt v${Qt6_VERSION}")
 
-find_package(VTK 9.6.0 CONFIG REQUIRED COMPONENTS
+set(vtk_modules
+        CommonCore
         CommonColor
         FiltersModeling
         FiltersStatistics
@@ -34,6 +35,8 @@ find_package(VTK 9.6.0 CONFIG REQUIRED COMPONENTS
         RenderingImage
         RenderingVolumeOpenGL2
 )
+
+find_package(VTK 9.6.0 CONFIG REQUIRED COMPONENTS ${vtk_modules})
 message(STATUS "Using VTK v${VTK_VERSION}")
 
 find_package(cfitsio CONFIG REQUIRED)

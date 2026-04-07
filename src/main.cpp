@@ -4,15 +4,29 @@
 #include <QVTKOpenGLNativeWidget.h>
 
 #include <QApplication>
+#include <QDir>
 #include <QIcon>
 #include <QLocale>
 #include <QSurfaceFormat>
 #include <QWebEngineUrlScheme>
 
 #include <clocale>
-#include <vtkWindow.h>
 
 using namespace Qt::StringLiterals;
+
+std::string logFile{ };
+QtMessageHandler originalHandler{ };
+
+void logToFile(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    static FILE *f = fopen(logFile.c_str(), "a");
+    fprintf(f, "%s\n", qPrintable(qFormatLogMessage(type, context, msg)));
+    fflush(f);
+
+    if (originalHandler) {
+        originalHandler(type, context, msg);
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -33,26 +47,35 @@ int main(int argc, char *argv[])
 
     // Set locale to C.UTF-8
     std::setlocale(LC_NUMERIC, "C.UTF-8");
-    QLocale::setDefault(QLocale::c());
+    QLocale::setDefault(QLocale::C);
 
     // Set application info
     QApplication::setApplicationName(u"VisIVO Visual Analytics"_s);
     QApplication::setApplicationVersion(QStringLiteral(VISIVO_VERSION_STR));
-    QApplication::setWindowIcon(QIcon(":/icons/VisIVO_512.png"));
+    QApplication::setWindowIcon(QIcon(u":/icons/VisIVO_512.png"_s));
     QApplication::setOrganizationName(u"Osservatorio Astrofisico di Catania"_s);
     QApplication::setOrganizationDomain(u"it.inaf.oact"_s);
 
     // Customize QDebug message format
-    qSetMessagePattern("%{time} "
-                       "%{if-debug}D %{endif}"
-                       "%{if-info}I %{endif}"
-                       "%{if-warning}W %{endif}"
-                       "%{if-critical}C %{endif}"
-                       "%{if-fatal}F %{endif}"
+    qSetMessagePattern("[%{time yyyy-MM-dd hh:mm:ss}"
+                       "%{if-debug} DEBG%{endif}"
+                       "%{if-info} INFO%{endif}"
+                       "%{if-warning} WARN%{endif}"
+                       "%{if-critical} CRIT%{endif}"
+                       "%{if-fatal} FATL%{endif}"
 #ifndef NDEBUG
-                       "%{file} %{function}:%{line} "
+                       " %{function}:%{line}"
 #endif
-                       "%{if-category}%{category} %{endif}%{message}");
+                       "%{if-category} %{category}%{endif}"
+                       "] %{message}");
+
+    // Setup logging to file
+    const QDir appDir = QDir::home().absoluteFilePath(qApp->applicationName());
+    if (appDir.mkpath(u"logs"_s)) {
+        const QString timestamp = QDateTime::currentDateTime().toString(u"yyyy-MM-dd_hh.mm.ss"_s);
+        logFile = appDir.absoluteFilePath("logs/"_L1 + timestamp + ".log"_L1).toStdString();
+        originalHandler = qInstallMessageHandler(logToFile);
+    }
 
     MainWindow w;
     w.show();
