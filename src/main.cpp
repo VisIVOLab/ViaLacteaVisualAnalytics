@@ -2,6 +2,7 @@
 #include "Version.h"
 
 #include <QVTKOpenGLNativeWidget.h>
+#include <vtkLogger.h>
 
 #include <QApplication>
 #include <QDir>
@@ -25,6 +26,24 @@ void logToFile(QtMsgType type, const QMessageLogContext &context, const QString 
 
     if (originalHandler) {
         originalHandler(type, context, msg);
+    }
+}
+
+void vtkLogCallback(void *vtkNotUsed(user_data), const vtkLogger::Message &message)
+{
+    switch (message.verbosity) {
+    case vtkLogger::VERBOSITY_ERROR:
+        qCritical() << message.message;
+        break;
+    case vtkLogger::VERBOSITY_WARNING:
+        qWarning() << message.message;
+        break;
+    case vtkLogger::VERBOSITY_INFO:
+        qInfo() << message.message;
+        break;
+    default:
+        qDebug() << message.message;
+        break;
     }
 }
 
@@ -76,6 +95,10 @@ int main(int argc, char *argv[])
         logFile = appDir.absoluteFilePath("logs/"_L1 + timestamp + ".log"_L1).toStdString();
         originalHandler = qInstallMessageHandler(logToFile);
     }
+
+    // Print VTK logs via QDebug
+    vtkLogger::AddCallback("vtk", vtkLogCallback, nullptr, vtkLogger::VERBOSITY_INFO);
+    vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_OFF);
 
     MainWindow w;
     w.show();
