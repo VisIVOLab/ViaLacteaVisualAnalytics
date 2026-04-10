@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(u"Osservatorio Astrofisico di Catania"_s);
     QApplication::setOrganizationDomain(u"it.inaf.oact"_s);
 
- // No need to set it on macOS
+    // No need to set it on macOS
 #ifndef Q_OS_APPLE
     QApplication::setWindowIcon(QIcon(u":/icons/VisIVO_512.png"_s));
 #endif

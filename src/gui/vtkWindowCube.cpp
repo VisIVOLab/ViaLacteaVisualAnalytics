@@ -16,6 +16,7 @@
 #include <vtkCamera.h>
 #include <vtkColorTransferFunction.h>
 #include <vtkCoordinate.h>
+#include <vtkCubeAxesActor.h>
 #include <vtkExtractVOI.h>
 #include <vtkFlyingEdges2D.h>
 #include <vtkFlyingEdges3D.h>
@@ -31,7 +32,6 @@
 #include <vtkInteractorStyleImage.h>
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
-#include <vtkOutlineFilter.h>
 #include <vtkPiecewiseFunction.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
@@ -244,15 +244,6 @@ void vtkWindowCube::setupCubeRenderer()
     this->volume->SetProperty(volumeProperty);
     // By default, we show the isosurface
 
-    // Outline
-    vtkNew<vtkOutlineFilter> outline;
-    outline->SetInputConnection(this->reader->GetOutputPort());
-    vtkNew<vtkPolyDataMapper> outlineMapper;
-    outlineMapper->SetInputConnection(outline->GetOutputPort());
-    vtkNew<vtkActor> outlineActor;
-    outlineActor->SetMapper(outlineMapper);
-    ren->AddViewProp(outlineActor);
-
     // Slice
     int extent[6];
     this->reader->GetDataExtent(extent);
@@ -272,6 +263,14 @@ void vtkWindowCube::setupCubeRenderer()
     sliceActor->SetMapper(sliceMapper);
     sliceActor->GetProperty()->SetInterpolationTypeToNearest();
     ren->AddViewProp(sliceActor);
+
+    // Outline
+    vtkNew<vtkCubeAxesActor> outline;
+    outline->SetBounds(this->reader->GetOutput()->GetBounds());
+    outline->SetUseTextActor3D(true);
+    outline->SetCamera(ren->GetActiveCamera());
+    outline->SetFlyModeToStaticEdges();
+    ren->AddViewProp(outline);
 
     // Axes
     vtkNew<vtkAxesActor> axes;
