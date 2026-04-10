@@ -72,9 +72,13 @@ int main(int argc, char *argv[])
     // Set application info
     QApplication::setApplicationName(u"VisIVO Visual Analytics"_s);
     QApplication::setApplicationVersion(QStringLiteral(VISIVO_VERSION_STR));
-    QApplication::setWindowIcon(QIcon(u":/icons/VisIVO_512.png"_s));
     QApplication::setOrganizationName(u"Osservatorio Astrofisico di Catania"_s);
     QApplication::setOrganizationDomain(u"it.inaf.oact"_s);
+
+ // No need to set it on macOS
+#ifndef Q_OS_APPLE
+    QApplication::setWindowIcon(QIcon(u":/icons/VisIVO_512.png"_s));
+#endif
 
     // Customize QDebug message format
     qSetMessagePattern("[%{time yyyy-MM-dd hh:mm:ss}"
