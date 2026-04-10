@@ -52,6 +52,7 @@ set(PROJECT_SOURCES
         src/AstroUtils.cpp
         src/LayerListModel.cpp
         src/LayerListModel.h
+        src/Logging.h
         src/main.cpp
         src/Settings.cpp
         src/Settings.h

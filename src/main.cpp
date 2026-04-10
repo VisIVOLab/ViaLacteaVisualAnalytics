@@ -1,3 +1,4 @@
+#include "Logging.h"
 #include "MainWindow.h"
 #include "Version.h"
 
@@ -33,16 +34,16 @@ static void vtkLogCallback(void *vtkNotUsed(user_data), const vtkLogger::Message
 {
     switch (message.verbosity) {
     case vtkLogger::VERBOSITY_ERROR:
-        qCritical() << message.message;
+        qCCritical(logVtk) << message.message;
         break;
     case vtkLogger::VERBOSITY_WARNING:
-        qWarning() << message.message;
+        qCWarning(logVtk) << message.message;
         break;
     case vtkLogger::VERBOSITY_INFO:
-        qInfo() << message.message;
+        qCInfo(logVtk) << message.message;
         break;
     default:
-        qDebug() << message.message;
+        qCDebug(logVtk) << message.message;
         break;
     }
 }

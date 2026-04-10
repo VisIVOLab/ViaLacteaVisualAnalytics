@@ -1,5 +1,7 @@
 #include "Settings.h"
 
+#include "Logging.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
@@ -18,7 +20,8 @@ Settings::Settings(const QString &workDir, QObject *parent) : QObject(parent), w
     this->setPythonLocation();
 
     if (!QFileInfo::exists(settingsPath)) {
-        qWarning() << settingsPath << "does not exist. Creating one with default settings...";
+        qCWarning(logSettings) << settingsPath
+                               << "does not exist. Creating one with default settings...";
         this->resetDefaults();
     }
 }

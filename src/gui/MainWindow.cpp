@@ -4,6 +4,7 @@
 #include "AboutDialog.h"
 #include "AstroUtils.h"
 #include "AuthWrapper.h"
+#include "Logging.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "WebViewProcess.h"
@@ -13,12 +14,11 @@
 #include <QButtonGroup>
 #include <QCloseEvent>
 #include <QDebug>
-#include <QDir>
 #include <QDoubleValidator>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QStyleHints>
 #include <QWebChannel>
-#include <qstylehints.h>
 
 using namespace Qt::StringLiterals;
 
@@ -26,10 +26,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 {
     ui->setupUi(this);
 
-    qInfo().noquote() << qApp->applicationName() << qApp->applicationVersion();
+    qCInfo(logApp).noquote() << qApp->applicationName() << qApp->applicationVersion();
 
     const QString workDir = QDir::home().absoluteFilePath(qApp->applicationName());
-    qInfo() << "Working directory:" << workDir;
+    qCInfo(logApp) << "Working directory:" << workDir;
 
     // Create core objects
     this->settings = new Settings(workDir, this);

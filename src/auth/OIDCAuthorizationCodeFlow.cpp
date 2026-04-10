@@ -1,6 +1,7 @@
 #include "OIDCAuthorizationCodeFlow.h"
 
 #include "HttpServerReplyHandler.h"
+#include "Logging.h"
 #include "VisIVOUrlSchemeHandler.h"
 
 #include <QDebug>
@@ -120,7 +121,7 @@ void OIDCAuthorizationCodeFlow::authorizationCallbackReceived(const QVariantMap 
         reply->deleteLater();
 
         if (reply->error()) {
-            qCritical() << "Could not get user's tokens:" << reply->errorString();
+            qCCritical(logApp) << "Could not get user's tokens:" << reply->errorString();
             QMessageBox::critical(nullptr, u"Error"_s, reply->errorString());
             return;
         }
@@ -145,8 +146,8 @@ void OIDCAuthorizationCodeFlow::tokensReceived(const QByteArray &data)
 void OIDCAuthorizationCodeFlow::refreshTokens()
 {
     if (!this->hasTokens()) {
-        qWarning() << "Trying to refresh user's tokens but the user is no longer "
-                      "logged in. Stopping the timer...";
+        qCWarning(logApp) << "Trying to refresh user's tokens but the user is no longer "
+                             "logged in. Stopping the timer...";
         this->refreshTimer->stop();
         return;
     }
@@ -174,7 +175,7 @@ void OIDCAuthorizationCodeFlow::refreshTokens()
 
         if (reply->error()) {
             this->logout();
-            qCritical() << "Could not refresh user's tokens:" << reply->errorString();
+            qCCritical(logApp) << "Could not refresh user's tokens:" << reply->errorString();
             QMessageBox::critical(nullptr, u"Error"_s, reply->errorString());
             return;
         }
