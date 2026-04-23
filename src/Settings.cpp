@@ -12,9 +12,9 @@
 
 using namespace Qt::StringLiterals;
 
-Settings::Settings(const QString &workDir, QObject *parent) : QObject(parent), workDir(workDir)
+Settings::Settings(const QString &appDir, QObject *parent) : QObject(parent), appDir(appDir)
 {
-    const QString settingsPath = QDir(workDir).absoluteFilePath(u"Settings.ini"_s);
+    const QString settingsPath = QDir(appDir).absoluteFilePath(u"Settings.ini"_s);
     this->settings = new QSettings(settingsPath, QSettings::IniFormat, this);
 
     this->setPythonLocation();
@@ -28,9 +28,9 @@ Settings::Settings(const QString &workDir, QObject *parent) : QObject(parent), w
 
 Settings::~Settings() = default;
 
-QString Settings::getWorkingPath() const
+QString Settings::getApplicationDir() const
 {
-    return this->workDir;
+    return this->appDir;
 }
 
 void Settings::reload()

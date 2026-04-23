@@ -94,10 +94,11 @@ int main(int argc, char *argv[])
                        "] %{message}");
 
     // Setup logging to file
-    const QDir appDir = QDir::home().absoluteFilePath(qApp->applicationName());
-    if (appDir.mkpath(u"logs"_s)) {
-        const QString timestamp = QDateTime::currentDateTime().toString(u"yyyy-MM-dd_hh.mm.ss"_s);
-        logFile = appDir.absoluteFilePath(u"logs/"_s + timestamp + u".log"_s).toStdString();
+    QDir logDir = QDir::home().absoluteFilePath(qApp->applicationName());
+    const QString timestamp = QDateTime::currentDateTime().toString(u"yyyy-MM-dd_hh.mm.ss"_s);
+    if (logDir.mkpath(timestamp) && logDir.cd(timestamp)) {
+        app.setProperty("sessionFolder", logDir.absolutePath());
+        logFile = logDir.absoluteFilePath(u"visivo.log"_s).toStdString();
         originalHandler = qInstallMessageHandler(logToFile);
     }
 

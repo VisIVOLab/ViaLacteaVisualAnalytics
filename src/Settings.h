@@ -17,15 +17,15 @@ class Settings : public QObject
 public:
     /**
    * Application-level Settings class
-   * @param workDir Absolute directory path to store settings
+   * @param appDir Absolute directory path to store settings
    */
-    explicit Settings(const QString &workDir, QObject *parent = nullptr);
+    explicit Settings(const QString &appDir, QObject *parent = nullptr);
     ~Settings() override;
 
     /**
    * @return Absolute directory path where settings are stored
    */
-    QString getWorkingPath() const;
+    QString getApplicationDir() const;
 
     /**
    * @return The application color scheme
@@ -112,7 +112,7 @@ signals:
     void updated();
 
 private:
-    const QString workDir;
+    const QString appDir;
     QPointer<QSettings> settings;
 
     // Platform dependent

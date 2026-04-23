@@ -27,12 +27,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
 
     qCInfo(logApp).noquote() << qApp->applicationName() << qApp->applicationVersion();
-
-    const QString workDir = QDir::home().absoluteFilePath(qApp->applicationName());
-    qCInfo(logApp) << "Working directory:" << workDir;
+    qCInfo(logApp) << "Session directory:" << qApp->property("sessionFolder").toString();
 
     // Create core objects
-    this->settings = new Settings(workDir, this);
+    this->settings = new Settings(QDir::home().absoluteFilePath(qApp->applicationName()), this);
     this->auth = new AuthWrapper(this);
     QObject::connect(this->settings, &Settings::updated, this, &MainWindow::setApplicationTheme);
     QObject::connect(this->settings, &Settings::updated, this, &MainWindow::loadPanoramicView);
