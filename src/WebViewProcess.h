@@ -12,6 +12,9 @@ class WebViewProcess : public QObject
 public:
     explicit WebViewProcess(QObject *parent = nullptr);
 
+    static const QString ActivatePointSelection;
+    static const QString ActivateRectangularSelection;
+
 public slots:
     /**
    * From Panoramic View
@@ -23,10 +26,10 @@ public slots:
 
 signals:
     /**
-           * Signal to notify VisIVO of the selection
-           * @param point Comma-separated World Coordinates
-           * @param area Comma-separated rectangular size, or empty string for Point
-           */
+      * Signal to notify VisIVO of the selection
+      * @param point Comma-separated World Coordinates
+      * @param area Comma-separated rectangular size, or empty string for Point
+     */
     void processJavascript(const QString &point, const QString &area);
 };
 

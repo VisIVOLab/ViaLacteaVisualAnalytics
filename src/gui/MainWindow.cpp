@@ -41,15 +41,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Setup Menu Edit
     QObject::connect(ui->actionSettings, &QAction::triggered, this,
-                     &MainWindow::openSettingsDialog);
+                     &MainWindow::showSettingsDialog);
 
     // Setup Menu About
-    QObject::connect(ui->actionAbout, &QAction::triggered, this, &MainWindow::openAboutDialog);
+    QObject::connect(ui->actionAbout, &QAction::triggered, this, &MainWindow::showAboutDialog);
 
     // Setup Panoramic View
     this->loadPanoramicView();
-    auto webobj = new WebViewProcess(ui->view);
-    auto webChannel = new QWebChannel(ui->view);
+    auto *webobj = new WebViewProcess(ui->view);
+    auto *webChannel = new QWebChannel(ui->view);
     webChannel->registerObject(u"webobj"_s, webobj);
     ui->view->page()->setWebChannel(webChannel);
     QObject::connect(webobj, &WebViewProcess::processJavascript, this,
@@ -60,11 +60,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QObject::connect(ui->btnLoadData, &QPushButton::clicked, this, &MainWindow::openLocalData);
 
     // Setup selection modes
-    auto groupSelection = new QButtonGroup(this);
-    groupSelection->addButton(ui->radioSelNone);
-    groupSelection->addButton(ui->radioSelPoint);
-    groupSelection->addButton(ui->radioSelRect);
-    QObject::connect(groupSelection, &QButtonGroup::buttonToggled, this,
+    auto *groupSelection = new QButtonGroup(this);
+    groupSelection->addButton(ui->radioSelNone, static_cast<int>(ViewSelectionMode::None));
+    groupSelection->addButton(ui->radioSelPoint, static_cast<int>(ViewSelectionMode::Point));
+    groupSelection->addButton(ui->radioSelRect, static_cast<int>(ViewSelectionMode::Rectangle));
+    QObject::connect(groupSelection, &QButtonGroup::idToggled, this,
                      &MainWindow::changeViewSelectionMode);
 
     // Setup Line Edits
@@ -85,11 +85,14 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    auto res = QMessageBox::question(this, u"Exit"_s, u"Do you  want to exit?"_s,
+    auto res = QMessageBox::question(this, u"Exit"_s, u"Do you want to exit?"_s,
                                      QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (res == QMessageBox::No) {
         event->ignore();
+        return;
     }
+
+    event->accept();
 }
 
 void MainWindow::setApplicationTheme()
@@ -116,6 +119,7 @@ void MainWindow::openLocalData()
     } else {
         // Unknown
         QMessageBox::critical(this, u"Could not open file"_s, u"Unknown file format."_s);
+        qCCritical(logApp) << "Could not open file" << filepath << "Unknown file format!";
         return;
     }
 
@@ -124,13 +128,13 @@ void MainWindow::openLocalData()
     win->activateWindow();
 }
 
-void MainWindow::openSettingsDialog()
+void MainWindow::showSettingsDialog()
 {
     SettingsDialog dialog(this->settings, this->auth, this);
     dialog.exec();
 }
 
-void MainWindow::openAboutDialog()
+void MainWindow::showAboutDialog()
 {
     AboutDialog about(this);
     about.exec();
@@ -141,26 +145,32 @@ void MainWindow::loadPanoramicView()
     ui->view->load(QUrl::fromUserInput(this->settings->getPanoramicView()));
 }
 
-void MainWindow::changeViewSelectionMode()
+void MainWindow::changeViewSelectionMode(int id)
 {
-    if (ui->radioSelNone->isChecked()) {
-        ui->view->page()->runJavaScript(u"activatePointSelection(false)"_s);
-        ui->view->page()->runJavaScript(u"activateRectangularSelection(false)"_s);
-        return;
-    }
+    switch (static_cast<ViewSelectionMode>(id)) {
+    case ViewSelectionMode::None:
+        ui->view->page()->runJavaScript(WebViewProcess::ActivatePointSelection.arg(false));
+        ui->view->page()->runJavaScript(WebViewProcess::ActivateRectangularSelection.arg(false));
+        break;
 
-    if (ui->radioSelPoint->isChecked()) {
-        ui->view->page()->runJavaScript(u"activatePointSelection(true)"_s);
-        return;
-    }
+    case ViewSelectionMode::Point:
+        ui->view->page()->runJavaScript(WebViewProcess::ActivatePointSelection.arg(true));
+        break;
 
-    // ui->radioSelRect->isChecked
-    ui->view->page()->runJavaScript(u"activateRectangularSelection(true)"_s);
+    case ViewSelectionMode::Rectangle:
+        ui->view->page()->runJavaScript(WebViewProcess::ActivateRectangularSelection.arg(true));
+        break;
+    }
 }
 
 void MainWindow::skyRegionSelected(const QString &point, const QString &area)
 {
     ui->radioSelNone->setChecked(true);
+
+    if (point.isEmpty()) {
+        // User clicked outside the map, do nothing
+        return;
+    }
 
     // Get coords
     const QStringList coordsStr = point.split(',');
@@ -169,12 +179,9 @@ void MainWindow::skyRegionSelected(const QString &point, const QString &area)
     ui->lineLon->setText(QString::number(coords[0]));
     ui->lineLat->setText(QString::number(coords[1]));
 
-    // Get Area
     if (area.isEmpty()) {
         // Point
-        if (ui->lineRadius->text().isEmpty()) {
-            ui->lineRadius->setText(QString::number(0.1));
-        }
+        ui->lineRadius->setText(QString::number(0.1));
         ui->lineDLon->clear();
         ui->lineDLat->clear();
     } else {

@@ -2,7 +2,6 @@
 #define MainWindow_h
 
 #include <QMainWindow>
-#include <QPointer>
 
 class AuthWrapper;
 class Settings;
@@ -19,7 +18,7 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    ~MainWindow() override;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -38,12 +37,12 @@ private slots:
     /**
    * Show the Settings Dialog
    */
-    void openSettingsDialog();
+    void showSettingsDialog();
 
     /**
    * Show the About Dialog
    */
-    void openAboutDialog();
+    void showAboutDialog();
 
     /**
    * Reload the Panoramic View
@@ -51,9 +50,10 @@ private slots:
     void loadPanoramicView();
 
     /**
-   * Change the selection mode for the Panoramic View
-   */
-    void changeViewSelectionMode();
+     * Change the selection mode for the Panoramic View
+     * @param id Selected mode.
+     */
+    void changeViewSelectionMode(int id);
 
     /**
    * Update the coordinates and the region for the search request
@@ -65,8 +65,10 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QPointer<Settings> settings;
-    QPointer<AuthWrapper> auth;
+    Settings *settings;
+    AuthWrapper *auth;
+
+    enum class ViewSelectionMode { None, Point, Rectangle };
 };
 
 #endif
