@@ -34,7 +34,7 @@ void FitsHeaderWidget::showHeader(const QString &filepath)
     for (int i = 1; i <= nKeys; ++i) {
         fits_read_record(fptr, i, headerBuffer, &status);
 
-        const QString card(headerBuffer);
+        const auto card = QString::fromUtf8(headerBuffer).leftJustified(FLEN_CARD);
         if (!card.isEmpty()) {
             header.append(highlightKeyword(card));
         }
