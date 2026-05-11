@@ -4,6 +4,7 @@
 #include "AboutDialog.h"
 #include "AstroUtils.h"
 #include "AuthWrapper.h"
+#include "FitsHeaderWidget.h"
 #include "Logging.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
@@ -102,12 +103,23 @@ void MainWindow::setApplicationTheme()
 
 void MainWindow::openLocalData()
 {
-    const QString filepath = QFileDialog::getOpenFileName(
-            this, u"Open local FITS file"_s, QString(), u"FITS files (*.fits *.fit)"_s);
-    if (filepath.isEmpty()) {
+    QFileDialog dialog(this, u"Open local FITS file"_s, QString(), u"FITS files (*.fits *.fit)"_s);
+    dialog.setOptions(QFileDialog::DontUseNativeDialog | QFileDialog::ReadOnly);
+    dialog.setFileMode(QFileDialog::ExistingFile);
+    dialog.setMinimumSize(800, 500);
+
+    auto *headerWidget = new FitsHeaderWidget(&dialog);
+    QObject::connect(&dialog, &QFileDialog::currentChanged, headerWidget,
+                     &FitsHeaderWidget::showHeader);
+
+    auto *layout = qobject_cast<QGridLayout *>(dialog.layout());
+    layout->addWidget(headerWidget, 1, layout->columnCount());
+
+    if (!dialog.exec()) {
         return;
     }
 
+    const QString filepath = dialog.selectedFiles().first();
     const AstroUtils astro(filepath.toStdString());
     QWidget *win;
     if (astro.isImage()) {

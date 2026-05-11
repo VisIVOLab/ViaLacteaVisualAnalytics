@@ -69,6 +69,8 @@ set(PROJECT_SOURCES
         src/auth/VisIVOUrlSchemeHandler.h
         src/gui/AboutDialog.cpp
         src/gui/AboutDialog.h
+        src/gui/FitsHeaderWidget.cpp
+        src/gui/FitsHeaderWidget.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
@@ -99,6 +101,7 @@ set(PROJECT_SOURCES
 
 set(PROJECT_UI
         ui/AboutDialog.ui
+        ui/FitsHeaderWidget.ui
         ui/LUTCustomizerDialog.ui
         ui/MainWindow.ui
         ui/ProfileWidget.ui
