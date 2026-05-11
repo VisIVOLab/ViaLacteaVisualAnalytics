@@ -20,7 +20,7 @@ void FitsHeaderWidget::showHeader(const QString &filepath)
     fitsfile *fptr;
     int status = 0;
 
-    if (fits_open_file(&fptr, filepath.toStdString().c_str(), READONLY, &status)) {
+    if (fits_open_image(&fptr, filepath.toStdString().c_str(), READONLY, &status)) {
         ui->textHeader->clear();
         return;
     }
