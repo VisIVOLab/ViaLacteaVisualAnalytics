@@ -71,6 +71,8 @@ set(PROJECT_SOURCES
         src/gui/AboutDialog.h
         src/gui/FitsHeaderWidget.cpp
         src/gui/FitsHeaderWidget.h
+        src/gui/InventoryWidget.cpp
+        src/gui/InventoryWidget.h
         src/gui/LUTCustomizerDialog.cpp
         src/gui/LUTCustomizerDialog.h
         src/gui/MainWindow.cpp
@@ -83,6 +85,9 @@ set(PROJECT_SOURCES
         src/gui/vtkWindowCube.h
         src/gui/vtkWindowImage.cpp
         src/gui/vtkWindowImage.h
+        src/vlkb/VOTable.h
+        src/vlkb/VOTableParser.cpp
+        src/vlkb/VOTableParser.h
         src/vtk/ColorMaps.cpp
         src/vtk/ColorMaps.h
         src/vtk/ImageLayer.cpp
@@ -102,6 +107,7 @@ set(PROJECT_SOURCES
 set(PROJECT_UI
         ui/AboutDialog.ui
         ui/FitsHeaderWidget.ui
+        ui/InventoryWidget.ui
         ui/LUTCustomizerDialog.ui
         ui/MainWindow.ui
         ui/ProfileWidget.ui
@@ -164,6 +170,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/auth"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/gui"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/vlkb"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/vtk"
 )
 
