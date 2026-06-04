@@ -3,7 +3,6 @@
 
 #include <QMainWindow>
 
-class AuthWrapper;
 class Settings;
 
 QT_BEGIN_NAMESPACE
@@ -66,7 +65,6 @@ private slots:
 private:
     Ui::MainWindow *ui;
     Settings *settings;
-    AuthWrapper *auth;
 
     enum class ViewSelectionMode { None, Point, Rectangle };
 };

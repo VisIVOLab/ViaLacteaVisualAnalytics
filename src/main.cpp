@@ -50,13 +50,6 @@ static void vtkLogCallback(void *vtkNotUsed(user_data), const vtkLogger::Message
 
 int main(int argc, char *argv[])
 {
-    // Register custom URL scheme needed for authentication
-    QWebEngineUrlScheme scheme("vlva"_ba);
-    scheme.setSyntax(QWebEngineUrlScheme::Syntax::Path);
-    scheme.setDefaultPort(QWebEngineUrlScheme::PortUnspecified);
-    scheme.setFlags(QWebEngineUrlScheme::SecureScheme);
-    QWebEngineUrlScheme::registerScheme(scheme);
-
     // Enable OpenGL shared contexts
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 

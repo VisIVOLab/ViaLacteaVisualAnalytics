@@ -58,15 +58,6 @@ set(PROJECT_SOURCES
         src/Settings.h
         src/WebViewProcess.cpp
         src/WebViewProcess.h
-        src/auth/AuthKeys.h
-        src/auth/AuthWrapper.cpp
-        src/auth/AuthWrapper.h
-        src/auth/HttpServerReplyHandler.cpp
-        src/auth/HttpServerReplyHandler.h
-        src/auth/OIDCAuthorizationCodeFlow.cpp
-        src/auth/OIDCAuthorizationCodeFlow.h
-        src/auth/VisIVOUrlSchemeHandler.cpp
-        src/auth/VisIVOUrlSchemeHandler.h
         src/gui/AboutDialog.cpp
         src/gui/AboutDialog.h
         src/gui/FitsHeaderWidget.cpp

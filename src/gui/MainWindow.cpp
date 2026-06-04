@@ -3,7 +3,6 @@
 
 #include "AboutDialog.h"
 #include "AstroUtils.h"
-#include "AuthWrapper.h"
 #include "FitsHeaderWidget.h"
 #include "Logging.h"
 #include "Settings.h"
@@ -32,7 +31,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Create core objects
     this->settings = new Settings(QDir::home().absoluteFilePath(qApp->applicationName()), this);
-    this->auth = new AuthWrapper(this);
     QObject::connect(this->settings, &Settings::updated, this, &MainWindow::setApplicationTheme);
     QObject::connect(this->settings, &Settings::updated, this, &MainWindow::loadPanoramicView);
 
@@ -142,7 +140,7 @@ void MainWindow::openLocalData()
 
 void MainWindow::showSettingsDialog()
 {
-    SettingsDialog dialog(this->settings, this->auth, this);
+    SettingsDialog dialog(this->settings, this);
     dialog.exec();
 }
 

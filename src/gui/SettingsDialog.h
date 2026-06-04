@@ -4,10 +4,7 @@
 #include <QDialog>
 #include <QPointer>
 
-class AuthWrapper;
 class Settings;
-
-enum class AuthService;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -20,7 +17,7 @@ class SettingsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit SettingsDialog(Settings *settings, AuthWrapper *auth, QWidget *parent = nullptr);
+    explicit SettingsDialog(Settings *settings, QWidget *parent = nullptr);
     ~SettingsDialog() override;
 
 public slots:
@@ -29,14 +26,13 @@ public slots:
 private slots:
     void selectPythonLocation();
     void selectPanoramicView();
-    void updateAuthStatus(AuthService service);
+    // void updateAuthStatus(AuthService service);
     void VLKBAuthTriggered();
     void restoreDefaults();
 
 private:
     Ui::SettingsDialog *ui;
     QPointer<Settings> settings;
-    QPointer<AuthWrapper> auth;
 
     void setVLKBAuthStatus();
 };

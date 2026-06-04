@@ -1,7 +1,6 @@
 #include "SettingsDialog.h"
 #include "ui_SettingsDialog.h"
 
-#include "AuthWrapper.h"
 #include "Settings.h"
 
 #include <QFileDialog>
@@ -11,8 +10,8 @@
 
 using namespace Qt::StringLiterals;
 
-SettingsDialog::SettingsDialog(Settings *settings, AuthWrapper *auth, QWidget *parent)
-    : QDialog(parent), ui(new Ui::SettingsDialog), settings(settings), auth(auth)
+SettingsDialog::SettingsDialog(Settings *settings, QWidget *parent)
+    : QDialog(parent), ui(new Ui::SettingsDialog), settings(settings)
 {
     ui->setupUi(this);
 
@@ -55,8 +54,8 @@ SettingsDialog::SettingsDialog(Settings *settings, AuthWrapper *auth, QWidget *p
                      });
 
     // Update labels when user's authentication status changes
-    QObject::connect(this->auth, &AuthWrapper::granted, this, &SettingsDialog::updateAuthStatus);
-    QObject::connect(this->auth, &AuthWrapper::loggedOut, this, &SettingsDialog::updateAuthStatus);
+    // QObject::connect(this->auth, &AuthWrapper::granted, this, &SettingsDialog::updateAuthStatus);
+    // QObject::connect(this->auth, &AuthWrapper::loggedOut, this, &SettingsDialog::updateAuthStatus);
 
     // Signal-to-signal connection to notify other classes they need to reload
     // their settings
@@ -103,29 +102,29 @@ void SettingsDialog::selectPanoramicView()
     }
 }
 
-void SettingsDialog::updateAuthStatus(AuthService service)
-{
-    if (service == AuthService::VLKB) {
-        this->setVLKBAuthStatus();
-    }
-}
+// void SettingsDialog::updateAuthStatus(AuthService service)
+// {
+//      if (service == AuthService::VLKB) {
+//          this->setVLKBAuthStatus();
+//      }
+// }
 
 void SettingsDialog::VLKBAuthTriggered()
 {
-    if (this->auth->hasTokens(AuthService::VLKB)) {
-        this->auth->logout(AuthService::VLKB);
-    } else {
-        this->auth->grant(AuthService::VLKB);
-    }
+    // if (this->auth->hasTokens(AuthService::VLKB)) {
+    //     this->auth->logout(AuthService::VLKB);
+    // } else {
+    //     this->auth->grant(AuthService::VLKB);
+    // }
 }
 
 void SettingsDialog::setVLKBAuthStatus()
 {
-    if (this->auth->hasTokens(AuthService::VLKB)) {
-        ui->labelVLKBAuth->setText(u"Authenticated"_s);
-        ui->btnVLKBAuth->setText(u"Sign out"_s);
-    } else {
-        ui->labelVLKBAuth->setText(u"Not authenticated"_s);
-        ui->btnVLKBAuth->setText(u"Sign in"_s);
-    }
+    // if (this->auth->hasTokens(AuthService::VLKB)) {
+    //     ui->labelVLKBAuth->setText(u"Authenticated"_s);
+    //     ui->btnVLKBAuth->setText(u"Sign out"_s);
+    // } else {
+    //     ui->labelVLKBAuth->setText(u"Not authenticated"_s);
+    //     ui->btnVLKBAuth->setText(u"Sign in"_s);
+    // }
 }
