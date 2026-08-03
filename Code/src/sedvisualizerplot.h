@@ -56,6 +56,7 @@ protected:
 private:
     Ui::SEDVisualizerPlot *ui;
     QString pythonExe;
+    QString vlkbUrl;
     QHash<QString, SEDPlotPointCustom *> visualnode_hash;
     double minFlux, maxFlux, minWavelen, maxWavelen;
     vtkwindow_new *vtkwin;

@@ -31,6 +31,7 @@ SEDVisualizerPlot::SEDVisualizerPlot(QList<SED *> s, vtkwindow_new *v, QWidget *
     QString m_sSettingsFile = QDir::homePath().append("/VisIVODesktopTemp/setting.ini");
     QSettings settings(m_sSettingsFile, QSettings::IniFormat);
     this->pythonExe = settings.value("python.exe").toString();
+    this->vlkbUrl = settings.value("vlkburl").toString();
 
     ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
                                     | QCP::iSelectPlottables | QCP::iMultiSelect
@@ -1935,7 +1936,7 @@ void SEDVisualizerPlot::on_TheoreticalRemoteFit_triggered()
                            .arg(sedFitInputW)
                            .arg(ui->delta_chi2_lineEdit->text());
 
-    QString urlEncoded = "http://vlkb.ia2.inaf.it/searchd/?" + QUrl::toPercentEncoding(args);
+    QString urlEncoded = this->vlkbUrl + "/searchd/?" + QUrl::toPercentEncoding(args);
     QNetworkRequest req(urlEncoded);
     req.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
 
