@@ -935,7 +935,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, VisPoint *vis)
     stringDictWidget = &Singleton<VialacteaStringDictWidget>::Instance();
     ui->actionSave_session->setEnabled(false);
     ui->menuMoment->menuAction()->setVisible(false);
-    ui->ElementListWidget->hide();
     ui->tableWidget->hide();
     ui->listWidget->hide();
     ui->toolsGroupBox->hide();
@@ -1081,8 +1080,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->filterGroupBox->hide();
         ui->bubbleGroupBox->hide();
         ui->isocontourVtkWin->hide();
-        ui->ElementListWidget->installEventFilter(this);
-        ui->ElementListWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
         ui->listWidget->addAction(ui->actionFilterImage);
@@ -1213,7 +1210,6 @@ vtkwindow_new::vtkwindow_new(QWidget *parent, vtkSmartPointer<vtkFitsReader> vis
         ui->actionSave_session->setEnabled(false);
         ui->cameraControlgroupBox->hide();
         ui->splitter->hide();
-        ui->ElementListWidget->hide();
         ui->tableWidget->hide();
         ui->listWidget->hide();
         ui->compactSourcesGroupBox->hide();
@@ -3286,13 +3282,6 @@ void vtkwindow_new::on_rectangularSelectionCS_clicked()
 
 void vtkwindow_new::addLayer(vtkfitstoolwidgetobject *o, bool enabled)
 {
-    QList<QTableWidgetItem *> elements = ui->ElementListWidget->selectedItems();
-    if (elements.size() > 3 && o->getSurvey().compare("") == 0) {
-        o->setSurvey(elements.at(0)->text());
-        o->setSpecies(elements.at(1)->text());
-        o->setTransition(elements.at(2)->text());
-    }
-
     if (o->getType() == 0) {
         addImageToList(o);
     } else if (o->getType() == 1) {
@@ -3470,56 +3459,6 @@ void vtkwindow_new::on_fil_rectPushButton_clicked()
     ui->qVTK1->setCursor(Qt::CrossCursor);
 }
 
-void vtkwindow_new::setDbElements(QList<QMap<QString, QString>> elementsOnDb)
-{
-    classElementsOnDb = elementsOnDb;
-    int i = 0;
-    while (!elementsOnDb.isEmpty()) {
-        QMap<QString, QString> datacube = elementsOnDb.takeFirst();
-        ui->ElementListWidget->insertRow(i);
-        QTableWidgetItem *item_0 = new QTableWidgetItem();
-        item_0->setFlags(item_0->flags() ^ Qt::ItemIsEditable);
-        item_0->setText(datacube["Survey"] + "\n" + datacube["Species"]);
-        ui->ElementListWidget->setItem(i, 0, item_0);
-
-        QTableWidgetItem *item_1 = new QTableWidgetItem();
-        item_1->setFlags(item_1->flags() ^ Qt::ItemIsEditable);
-        QString codeString = "";
-        switch (datacube["code"].toInt()) {
-        case 2:
-            codeString = "The Region is completely inside the input";
-            break;
-        case 3:
-            codeString = "Full Overlap";
-            break;
-        case 4:
-            codeString = "Partial Overlap";
-            break;
-        case 5:
-            codeString = "The Regions are identical ";
-            break;
-        default:
-            codeString = "Merge";
-            break;
-        }
-
-        item_1->setText(datacube["Transition"] + "\n" + codeString);
-        ui->ElementListWidget->setItem(i, 1, item_1);
-        if (datacube["code"].toDouble() == 3) {
-            ui->ElementListWidget->item(i, 0)->setBackground(Qt::green);
-            ui->ElementListWidget->item(i, 1)->setBackground(Qt::green);
-        }
-        item_0->setToolTip(datacube["Description"]);
-        item_1->setToolTip(datacube["Description"]);
-        i++;
-    }
-
-    ui->ElementListWidget->setWordWrap(true);
-    ui->ElementListWidget->setTextElideMode(Qt::ElideMiddle);
-    ui->ElementListWidget->resizeColumnsToContents();
-    ui->ElementListWidget->resizeRowsToContents();
-}
-
 void vtkwindow_new::addLayerImage(vtkSmartPointer<vtkFitsReader> vis, QString survey,
                                   QString species, QString transition)
 {
@@ -3635,17 +3574,6 @@ void vtkwindow_new::downloadStartingLayers(QList<QPair<QString, QString>> select
     }
 }
 
-void vtkwindow_new::handleButton(int i)
-{
-    QMap<QString, QString> datacube = classElementsOnDb[i];
-    QString url_string = datacube["URL"];
-    QUrl url(url_string);
-    VialacteaInitialQuery *vq = new VialacteaInitialQuery();
-    vq->setCallingVtkWindow(this);
-    vq->cutoutRequest(url_string, classElementsOnDb, i);
-    this->activateWindow();
-}
-
 void vtkwindow_new::on_lutComboBox_activated(const QString &arg1)
 {
     changeFitsScale(ui->lutComboBox->currentText().toStdString().c_str(),
@@ -3690,11 +3618,6 @@ void vtkwindow_new::on_tdRectPushButton_clicked()
     style->setIs3dSelections();
     ui->qVTK1->renderWindow()->GetInteractor()->SetInteractorStyle(style);
     ui->qVTK1->setCursor(Qt::CrossCursor);
-}
-
-void vtkwindow_new::on_ElementListWidget_doubleClicked(const QModelIndex &index)
-{
-    handleButton(index.row());
 }
 
 void vtkwindow_new::on_thresholdValueLineEdit_editingFinished()
@@ -4079,68 +4002,6 @@ void vtkwindow_new::on_glyphScalingLineEdit_editingFinished()
 {
     ui->glyphShapeComboBox->activated(ui->glyphShapeComboBox->currentIndex());
     ui->qVTK1->renderWindow()->GetInteractor()->Render();
-}
-
-void vtkwindow_new::on_ElementListWidget_clicked(const QModelIndex &index)
-{
-    int row = index.row();
-    QMap<QString, QString> datacube = classElementsOnDb[row];
-    double points[8];
-    double longFrom, longTo, latFrom, latTo;
-    longFrom = datacube["longitudeFrom"].toDouble();
-    if (longFrom > 180)
-        longFrom = longFrom - 360;
-    else if (longFrom < -180)
-        longFrom = longFrom + 360;
-    longTo = datacube["longitudeTo"].toDouble();
-    if (longTo > 180)
-        longTo = longTo - 360;
-    else if (longTo < -180)
-        longTo = longTo + 360;
-
-    latFrom = datacube["latitudeFrom"].toDouble();
-    latTo = datacube["latitudeTo"].toDouble();
-    double deltal, deltab;
-
-    if (called_dl != "" && called_db != "") {
-        deltal = called_dl.toDouble() / 2;
-        deltab = called_db.toDouble() / 2;
-    } else {
-        deltal = called_r.toDouble();
-        deltab = called_r.toDouble();
-    }
-
-    if (longFrom < (called_l.toDouble() - deltal)) {
-        longFrom = called_l.toDouble() - deltal;
-    }
-
-    if (longTo > (called_l.toDouble() + deltal)) {
-        longTo = called_l.toDouble() + deltal;
-    }
-    if (latFrom < (called_b.toDouble() - deltab)) {
-        latFrom = called_b.toDouble() - deltab;
-    }
-    if (latTo > (called_b.toDouble() + deltab)) {
-        latTo = called_b.toDouble() + deltab;
-    }
-
-    points[0] = datacube["longitudeP1"].toDouble();
-    points[1] = datacube["latitudeP1"].toDouble();
-    points[2] = datacube["longitudeP2"].toDouble();
-    points[3] = datacube["latitudeP2"].toDouble();
-    points[4] = datacube["longitudeP3"].toDouble();
-    points[5] = datacube["latitudeP3"].toDouble();
-    points[6] = datacube["longitudeP4"].toDouble();
-    points[7] = datacube["latitudeP4"].toDouble();
-    double *coord = new double[3];
-    double xypoints[8];
-
-    for (int i = 0; i < 8; i = i + 2) {
-        AstroUtils().sky2xy(myfits->GetFileName(), points[i], points[i + 1], coord);
-        xypoints[i] = coord[0];
-        xypoints[i + 1] = coord[1];
-    }
-    drawRectangleFootprint(xypoints);
 }
 
 void vtkwindow_new::drawRectangleFootprint(double skyPoints[8])

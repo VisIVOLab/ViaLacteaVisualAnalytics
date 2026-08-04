@@ -23,7 +23,7 @@
     <item>
      <widget class="QSplitter" name="splitter_2">
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
       <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -384,7 +384,7 @@
                   <number>99</number>
                  </property>
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                 </widget>
                </item>
@@ -859,10 +859,10 @@
              <item>
               <widget class="QSlider" name="horizontalSlider_threshold">
                <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+                <enum>Qt::Orientation::Horizontal</enum>
                </property>
                <property name="tickPosition">
-                <enum>QSlider::TicksAbove</enum>
+                <enum>QSlider::TickPosition::TicksAbove</enum>
                </property>
                <property name="tickInterval">
                 <number>0</number>
@@ -874,7 +874,7 @@
                <item>
                 <spacer name="horizontalSpacer_3">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -906,7 +906,7 @@
                <item>
                 <spacer name="horizontalSpacer_4">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -942,10 +942,10 @@
              <item>
               <widget class="QSlider" name="cuttingPlane_Slider">
                <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+                <enum>Qt::Orientation::Horizontal</enum>
                </property>
                <property name="tickPosition">
-                <enum>QSlider::TicksAbove</enum>
+                <enum>QSlider::TickPosition::TicksAbove</enum>
                </property>
                <property name="tickInterval">
                 <number>0</number>
@@ -957,7 +957,7 @@
                <item>
                 <spacer name="horizontalSpacer">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -1005,7 +1005,7 @@
                <item>
                 <spacer name="horizontalSpacer_2">
                  <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -1424,38 +1424,8 @@
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="orientation">
-       <enum>Qt::Vertical</enum>
+       <enum>Qt::Orientation::Vertical</enum>
       </property>
-      <widget class="QTableWidget" name="ElementListWidget">
-       <property name="maximumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="columnCount">
-        <number>2</number>
-       </property>
-       <attribute name="horizontalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="horizontalHeaderStretchLastSection">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string>Survey</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Species</string>
-        </property>
-       </column>
-      </widget>
       <widget class="QTableWidget" name="tableWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -1497,7 +1467,7 @@
       </widget>
       <widget class="QListWidget" name="listWidget">
        <property name="contextMenuPolicy">
-        <enum>Qt::ActionsContextMenu</enum>
+        <enum>Qt::ContextMenuPolicy::ActionsContextMenu</enum>
        </property>
        <property name="alternatingRowColors">
         <bool>true</bool>
@@ -1513,7 +1483,7 @@
      <x>0</x>
      <y>0</y>
      <width>4064</width>
-     <height>24</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1646,7 +1616,7 @@
     <string>Spatial Filters</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>

@@ -37,7 +37,7 @@
 #include <QIcon>
 #include <QThread>
 #include <QTreeView>
-//#include "vosamp.h"
+// #include "vosamp.h"
 
 #include "vtkwindow_new.h"
 
@@ -576,7 +576,7 @@ void MainWindow::itemSelected(QList<QMap<QString, QString>> elementsOnDb, bool l
                     new vtkwindow_new(this, m_VisIVOTreeModel->getFITSIMG(selectedItemIndex));
 
             if (elementsOnDb.size() > 0) {
-                m_OldRenderingWindow->setDbElements(elementsOnDb);
+                // m_OldRenderingWindow->setDbElements(elementsOnDb);
                 m_OldRenderingWindow->setCallingL(class_l);
                 m_OldRenderingWindow->setCallingB(class_b);
                 m_OldRenderingWindow->setCallingR(class_r);
@@ -711,10 +711,7 @@ void MainWindow::on_actionOperation_queue_triggered()
     queue->show();
 }
 
-void MainWindow::on_actionHi_Gal_triggered()
-{
-
-}
+void MainWindow::on_actionHi_Gal_triggered() { }
 
 void MainWindow::on_actionVialactea_triggered()
 {

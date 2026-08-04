@@ -344,7 +344,6 @@ public slots:
     void setSpecies(QString q);
     void setTransition(QString q);
 
-    void setDbElements(QList<QMap<QString, QString>> elementsOnDb);
     void setSelectedCubeVelocityUnit(QString v) { selectedCubeVelocityUnit = v; }
     // void setCuttingPlane(int value);
     void downloadStartingLayers(QList<QPair<QString, QString>> selectedSurvey);
@@ -381,7 +380,6 @@ private slots:
     void on_freehandPushButton_clicked();
     void on_cuttingPlane_Slider_valueChanged(int value);
     void on_spinBox_cuttingPlane_valueChanged(int arg1);
-    void handleButton(int i);
 
     // void on_cuttingPlane_Slider_sliderMoved(int position);
     //  void on_horizontalSlider_threshold_sliderMoved(int position);
@@ -408,7 +406,6 @@ private slots:
 
     void on_logRadioButton_toggled(bool checked);
     void on_tdRectPushButton_clicked();
-    void on_ElementListWidget_doubleClicked(const QModelIndex &index);
     void on_thresholdValueLineEdit_editingFinished();
     void on_upperBoundLineEdit_editingFinished();
     void on_lowerBoundLineEdit_editingFinished();
@@ -426,7 +423,6 @@ private slots:
     void on_horizontalSlider_valueChanged(int value);
     void on_glyphScalarComboBox_activated(const QString &arg1);
     void on_glyphScalingLineEdit_editingFinished();
-    void on_ElementListWidget_clicked(const QModelIndex &index);
     bool eventFilter(QObject *object, QEvent *event);
     void on_listWidget_clicked(const QModelIndex &index);
     void on_listWidget_itemChanged(QListWidgetItem *item);

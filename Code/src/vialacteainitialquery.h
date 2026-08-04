@@ -1,14 +1,13 @@
 #ifndef VIALACTEAINITIALQUERY_H
 #define VIALACTEAINITIALQUERY_H
 
-#include "loadingwidget.h"
-#include "VLKBInventoryTree.h"
-#include "vtkwindow_new.h"
-#include "xmlparser.h"
-
-#include <QAuthenticator>
-#include <QNetworkReply>
 #include <QWidget>
+
+#include "VLKBInventoryTree.h"
+
+class QDir;
+class vtkwindow_new;
+class xmlparser;
 
 namespace Ui {
 class VialacteaInitialQuery;
@@ -57,12 +56,8 @@ signals:
 private slots:
     void on_pushButton_clicked();
     void on_pointRadioButton_toggled(bool checked);
-    void finishedSlot(QNetworkReply *reply);
-    void onDownloadCompleted();
 
 public slots:
-    void on_queryPushButton_clicked();
-    void cutoutRequest(QString url, QList<QMap<QString, QString>> el, int pos);
     void selectedStartingLayersRequest(QUrl url);
 
 private:
@@ -75,7 +70,6 @@ private:
     QString currentPath;
     QString outputFile;
     QString descriptionFromDB;
-    QList<QMap<QString, QString>> elementsOnDb;
     QString species, transition, velfrom, velto;
     QMap<QString, QString> transitions;
     QList<QPair<QString, QString>> selectedSurvey;
