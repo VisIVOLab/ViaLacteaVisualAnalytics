@@ -35,7 +35,6 @@ public:
     static QString posCutoutString(double l1, double l2, double b1, double b2);
     void cutoutRequest(const QString &id, const QDir &dir, const QString &pos,
                        const Cutout &src = Cutout());
-
     // POS=RANGE
     void searchRequest(double l, double b, double dl, double db);
     void cutoutRequest(const QString &id, const QDir &dir, double l1, double l2, double b1,
@@ -79,6 +78,7 @@ private:
     QString velocityUnit;
     vtkwindow_new *myCallingVtkWindow;
     bool isRadius;
+    static int counter;
 
     void searchRequest(const QString &url);
 };

@@ -10,6 +10,8 @@
 #include "vtkwindowcube.h"
 #include "xmlparser.h"
 
+int VialacteaInitialQuery::counter = 0;
+
 VialacteaInitialQuery::VialacteaInitialQuery(QString fn, QWidget *parent)
     : QWidget(parent), ui(new Ui::VialacteaInitialQuery)
 {
@@ -268,9 +270,18 @@ void VialacteaInitialQuery::cutoutRequest(const QString &url, const QDir &dir, c
         nam->deleteLater();
 
         if (reply->error() == QNetworkReply::NoError) {
-            QString filepath =
-                    dir.absoluteFilePath(QUuid::createUuid().toString(QUuid::WithoutBraces))
-                            .append(".fits");
+            QString filename;
+            if (src.survey.isEmpty() && src.species.isEmpty() && src.transition.isEmpty()) {
+                filename = QUuid::createUuid().toString(QUuid::WithoutBraces).append(".fits");
+            } else {
+                filename = QString("%1_%2_%3_%4")
+                                   .arg(QString::number(counter), src.survey, src.species,
+                                        src.transition)
+                                   .append(".fits");
+                ++counter;
+            }
+
+            const QString filepath = dir.absoluteFilePath(filename);
 
             QFile f(filepath);
             f.open(QIODevice::WriteOnly);
