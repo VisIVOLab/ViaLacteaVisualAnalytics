@@ -483,19 +483,30 @@ void vtkWindowCube::updateVelocityText()
     double value = initSlice + cdelt3 * currentSlice;
 
     QString cunit3 = fitsHeader.value("CUNIT3");
-    cunit3.replace("'", QString());
-    cunit3.replace("\"", QString());
-    cunit3 = cunit3.simplified();
+    cunit3.remove("'");
+    cunit3.remove("\"");
+    cunit3 = cunit3.trimmed().toLower();
 
-    if (cunit3.startsWith("m")) {
-        // Return value in km/s
-        value /= 1000;
-    } else if (cunit3.startsWith("Hz")) {
-        // Convert to velocity
+    if (cunit3 == "m/s" || cunit3 == "m s-1") {
+        value /= 1000.0; // m/s -> km/s
+    } else if (cunit3 == "hz") {
         double restfrq = fitsHeader.value("RESTFRQ").toDouble();
-        double c = 299792.458;
-        value = (restfrq - value) / restfrq * c;
+
+        if (restfrq > 0) {
+            const double c = 299792.458; // km/s
+
+            QString ctype3 = fitsHeader.value("CTYPE3").toUpper();
+
+            if (ctype3.contains("VRAD")) {
+                value = (restfrq - value) / restfrq * c;
+            } else if (ctype3.contains("VOPT")) {
+                value = (restfrq - value) / value * c;
+            }
+        }
+    } else if (cunit3 == "km/s" || cunit3 == "km s-1") {
+        // nothing to do
     }
+
     ui->velocityText->setText(QString::number(value).append(" Km/s"));
 }
 
