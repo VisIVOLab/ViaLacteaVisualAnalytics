@@ -8,7 +8,6 @@
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QStandardItem>
-#include <QStandardItemModel>
 #include <QUuid>
 #include <QXmlStreamReader>
 
@@ -121,15 +120,15 @@ void VLKBInventoryTree::setupWavelengthGroups()
      * Visible (l < 1 um)
      * Near-IR / Mid-IR (1 um <= l <= 25 um)
      * Far-IR (25 um < l <= 500 um)
-     * Submm (500 um < l <= 3 mm)
-     * Radio (l > 3 mm)
+     * Submm / mm (500 um < l <= 5 mm)
+     * Radio (l > 5 mm)
      */
 
     this->groups << WavelengthGroup { "Visible", 0., 1.e-6 };
     this->groups << WavelengthGroup { "Near-IR / Mid-IR", 1.e-6, 2.5e-5 };
     this->groups << WavelengthGroup { "Far-IR", 2.5e-5, 5.e-4 };
-    this->groups << WavelengthGroup { "Submm", 5.e-4, 3.e-3 };
-    this->groups << WavelengthGroup { "Radio", 3.e-3, std::numeric_limits<double>::max() };
+    this->groups << WavelengthGroup { "Submm / mm", 5.e-4, 5.e-3 };
+    this->groups << WavelengthGroup { "Radio", 5.e-3, std::numeric_limits<double>::max() };
 }
 
 void VLKBInventoryTree::setupTopLevels()
@@ -139,7 +138,7 @@ void VLKBInventoryTree::setupTopLevels()
      *    |-Cutouts
      *  |-Near-IR / Mid-IR
      *  |-Far-IR
-     *  |-Submm
+     *  |-Submm / mm
      *  |-Radio
      * Spectroscopy
      *  |-Visible
@@ -147,7 +146,7 @@ void VLKBInventoryTree::setupTopLevels()
      *      |-Cutouts
      *  |-Near-IR / Mid-IR
      *  |-Far-IR
-     *  |-Submm
+     *  |-Submm / mm
      *  |-Radio
      */
 
@@ -170,7 +169,6 @@ void VLKBInventoryTree::parseVOTable(const QByteArray &votable)
 {
     int idx = 0;
     int idxType = -1;
-    int idxCollection = -1;
     int idxSurvey = -1;
     int idxSubSurvey = -1;
     int idxPubDID = -1;
@@ -282,7 +280,7 @@ void VLKBInventoryTree::parseVOTable(const QByteArray &votable)
             this->cutouts.insert(id, c);
 
             // Put in tree
-            int idx = this->groupIndexOf(c.spectrum_min);
+            int idxRow = this->groupIndexOf(c.spectrum_min);
             QString label = c.survey + ' ' + c.transition;
             auto row = new QStandardItem(label);
             row->setToolTip(c.pubDID);
@@ -293,12 +291,12 @@ void VLKBInventoryTree::parseVOTable(const QByteArray &votable)
 
             auto model = qobject_cast<QStandardItemModel *>(ui->treeView->model());
             if (c.type == "image") {
-                auto item = model->item(0)->child(idx);
+                auto item = model->item(0)->child(idxRow);
                 item->appendRow(row);
             }
 
             if (c.type == "cube") {
-                auto item = model->item(1)->child(idx);
+                auto item = model->item(1)->child(idxRow);
                 QStandardItem *subItem = nullptr;
                 for (int r = 0; r < item->rowCount() && !subItem; ++r) {
                     if (item->child(r)->text() == c.species) {
