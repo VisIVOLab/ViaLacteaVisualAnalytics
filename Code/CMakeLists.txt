@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
         ViaLacteaVisualAnalytics
-        VERSION 1.7.3
+        VERSION 1.7.4
         LANGUAGES CXX C)
 
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
