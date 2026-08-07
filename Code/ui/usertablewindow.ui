@@ -249,7 +249,7 @@
               <x>0</x>
               <y>0</y>
               <width>198</width>
-              <height>614</height>
+              <height>28</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -321,7 +321,7 @@
               <x>0</x>
               <y>0</y>
               <width>178</width>
-              <height>614</height>
+              <height>28</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -372,7 +372,7 @@
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Select sources and surveys for the multi-cutout request, then click on the 'Send request' button.</string>
+          <string>Select sources and surveys for the multi-cutout request, then click on the 'Send request' button. You must be logged in to perform this action.</string>
          </property>
         </widget>
        </item>
