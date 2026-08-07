@@ -20,7 +20,7 @@ class MCutoutSummary : public QWidget
 public:
     explicit MCutoutSummary(QWidget *parent, const QList<Cutout> &cutouts);
     explicit MCutoutSummary(QWidget *parent, const QString &pendingFile);
-    ~MCutoutSummary();
+    ~MCutoutSummary() override;
 
 signals:
     void jobSubmitted(const QString &jobId);
@@ -31,7 +31,7 @@ private slots:
     void pollJob(const QString &jobId);
     void getJobReport(const QString &jobId);
 
-    void on_tableSummary_itemClicked(QTableWidgetItem *item);
+    void on_tableSummary_currentItemChanged(QTableWidgetItem *current, QTableWidgetItem *previous);
     void on_btnSendRequest_clicked();
 
     void saveStatus(const QString &jobId);
@@ -52,7 +52,7 @@ private:
     QUrl downloadUrl;
     QString pendingFile;
 
-    void createRequestBody(const QList<Cutout> &cutouts);
+    void createRequestBody();
     void initSummaryTable();
     void submitJob();
     void downloadArchive(const QString &absolutePath);

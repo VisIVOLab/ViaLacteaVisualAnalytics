@@ -80,11 +80,11 @@ class UserTableWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit UserTableWindow(const QString &filepath, const QString &settingsFile,
-                             QWidget *parent = nullptr);
-    ~UserTableWindow();
+    explicit UserTableWindow(const QString &settingsFile, QWidget *parent = nullptr);
+    ~UserTableWindow() override;
 
 private slots:
+    void on_btnOpenFile_clicked();
     void on_queryButton_clicked();
     void on_selectionComboBox_activated(const QString &arg1);
     void on_tabWidget_currentChanged(int index);
@@ -92,7 +92,6 @@ private slots:
 
 private:
     Ui::UserTableWindow *ui;
-    QString filepath;
     QSettings settings;
 
     QMap<QString, Survey *> surveys2d;
@@ -109,7 +108,6 @@ private:
     void buildUI(const QMap<QString, Survey *> &surveys,
                  QMultiMap<QString, QPair<QString, QString>> &selectedSurveys, QTableWidget *table,
                  QWidget *scrollArea);
-    void readFile();
     void loadSourceTable(const QStringList &columns);
     void changeSelectionMode(const QString &selectionMode);
     void query(int index = 0);

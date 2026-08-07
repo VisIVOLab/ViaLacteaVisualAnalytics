@@ -6,19 +6,16 @@
 
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QHttpMultiPart>
 #include <QHttpPart>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMap>
 #include <QMessageBox>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
-#include <QXmlStreamReader>
 
 MCutoutSummary::MCutoutSummary(QWidget *parent)
     : QWidget(parent, Qt::Window),
@@ -44,7 +41,7 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QList<Cutout> &cutouts)
     this->cutouts = cutouts;
     this->pendingFile = QDir::homePath().append("/VisIVODesktopTemp/pending_mcutouts.dat");
 
-    createRequestBody(cutouts);
+    createRequestBody();
     initSummaryTable();
 }
 
@@ -68,7 +65,7 @@ MCutoutSummary::MCutoutSummary(QWidget *parent, const QString &pendingFile) : MC
     stream >> jobId >> cutouts;
     file.close();
 
-    createRequestBody(cutouts);
+    createRequestBody();
     initSummaryTable();
     pollJob(jobId);
 }
@@ -169,9 +166,9 @@ void MCutoutSummary::getJobReport(const QString &jobId)
     });
 }
 
-void MCutoutSummary::createRequestBody(const QList<Cutout> &cutouts)
+void MCutoutSummary::createRequestBody()
 {
-    foreach (const auto &c, cutouts) {
+    foreach (const auto &c, this->cutouts) {
         QJsonObject pos;
         auto tokens = c.pos_cutout.simplified().split(' ');
         if (tokens[0].startsWith("CIRCLE")) {
@@ -194,7 +191,7 @@ void MCutoutSummary::createRequestBody(const QList<Cutout> &cutouts)
         obj["possys"] = "GALACTIC";
         obj["pos"] = pos;
 
-        requestBody.append(obj);
+        this->requestBody.append(obj);
     }
 }
 
@@ -304,18 +301,20 @@ void MCutoutSummary::parseJobReport(QNetworkReply *body)
     ui->btnSendRequest->setEnabled(true);
 }
 
-void MCutoutSummary::on_tableSummary_itemClicked(QTableWidgetItem *item)
+void MCutoutSummary::on_tableSummary_currentItemChanged(QTableWidgetItem *current,
+                                                        QTableWidgetItem *previous)
 {
-    int row = ui->tableSummary->row(item);
-    auto obj = requestBody.at(row).toObject();
-    auto coord = obj["coord"].toObject();
+    Q_UNUSED(previous);
 
-    ui->textID->setText(obj["ID"].toString());
-    // ui->textLon->setText(QString::number(coord["l"].toDouble(), 'f', 4));
-    // ui->textLat->setText(QString::number(coord["b"].toDouble(), 'f', 4));
-    // ui->textRadius->setText(QString::number(coord["r"].toDouble(), 'f', 4));
-    // ui->textDLon->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
-    // ui->textDLat->setText(QString::number(coord["dl"].toDouble(), 'f', 4));
+    if (!current) {
+        return;
+    }
+
+    const int row = ui->tableSummary->row(current);
+    const Cutout &cutout = this->cutouts.at(row);
+
+    ui->textID->setText(cutout.ivoID);
+    ui->textPosition->setText(cutout.pos_cutout);
     ui->textStatus->setText(ui->tableSummary->item(row, 1)->text());
 }
 

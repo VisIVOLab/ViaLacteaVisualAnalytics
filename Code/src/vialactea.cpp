@@ -607,7 +607,7 @@ void ViaLactea::on_actionLoad_session_triggered()
 void ViaLactea::on_loadTableButton_clicked()
 {
     // Check if a job was already being polled
-    QString pendingFile(QDir::homePath().append("/VisIVODesktopTemp/pending_mcutouts.dat"));
+    const QString pendingFile(QDir::homePath().append("/VisIVODesktopTemp/pending_mcutouts.dat"));
     if (QFileInfo::exists(pendingFile)) {
         auto res = QMessageBox::question(this, "MCutout",
                                          "A pending job has been found.\nWould you like to check "
@@ -619,17 +619,14 @@ void ViaLactea::on_loadTableButton_clicked()
             mcutoutWin->activateWindow();
             mcutoutWin->raise();
             return;
-        } else {
-            QFile::remove(pendingFile);
         }
+
+        // User chose to discard the pending job, so we can delete the file
+        QFile::remove(pendingFile);
     }
 
-    QString fn = QFileDialog::getOpenFileName(this, "Load user table", QDir::homePath());
-    if (fn.isEmpty())
-        return;
-
-    auto win = new UserTableWindow(fn, settingsFile, this);
-    win->showMaximized();
+    auto win = new UserTableWindow(settingsFile, this);
+    win->show();
     win->activateWindow();
     win->raise();
 

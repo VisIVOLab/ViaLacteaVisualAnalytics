@@ -553,7 +553,7 @@
         <item>
          <widget class="QPushButton" name="loadTableButton">
           <property name="text">
-           <string>Request mcutouts</string>
+           <string>Request multiple datasets for a list of positions</string>
           </property>
          </widget>
         </item>
@@ -569,7 +569,7 @@
      <x>0</x>
      <y>0</y>
      <width>1266</width>
-     <height>24</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

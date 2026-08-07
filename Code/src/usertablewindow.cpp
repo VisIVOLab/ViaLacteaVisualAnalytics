@@ -7,7 +7,6 @@
 #include "VLKBInventoryTree.h"
 
 #include <QCheckBox>
-#include <QDebug>
 #include <QFile>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -16,12 +15,8 @@
 #include <QTextStream>
 #include <QUrlQuery>
 
-UserTableWindow::UserTableWindow(const QString &filepath, const QString &settingsFile,
-                                 QWidget *parent)
-    : QMainWindow(parent),
-      ui(new Ui::UserTableWindow),
-      filepath(filepath),
-      settings(settingsFile, QSettings::IniFormat)
+UserTableWindow::UserTableWindow(const QString &settingsFile, QWidget *parent)
+    : QMainWindow(parent), ui(new Ui::UserTableWindow), settings(settingsFile, QSettings::IniFormat)
 {
     ui->setupUi(this);
     ui->btnDownload->hide();
@@ -35,7 +30,6 @@ UserTableWindow::UserTableWindow(const QString &filepath, const QString &setting
     ui->cubesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     changeSelectionMode(ui->selectionComboBox->currentText());
 
-    readFile();
     getSurveysData();
 }
 
@@ -154,8 +148,14 @@ void UserTableWindow::buildUI(const QMap<QString, Survey *> &surveys,
     }
 }
 
-void UserTableWindow::readFile()
+void UserTableWindow::on_btnOpenFile_clicked()
 {
+    const QString filepath =
+            QFileDialog::getOpenFileName(this, "Load user table", QDir::homePath());
+    if (filepath.isEmpty()) {
+        return;
+    }
+
     QFile file(filepath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::critical(this, "Error", file.errorString());
@@ -165,6 +165,7 @@ void UserTableWindow::readFile()
     QTextStream in(&file);
     QStringList columns = in.readLine().split('\t');
 
+    sources.clear();
     while (!in.atEnd()) {
         QStringList line = in.readLine().split('\t');
         QMap<QString, QString> map;
@@ -176,9 +177,15 @@ void UserTableWindow::readFile()
 
     file.close();
 
+    ui->idBox->clear();
+    ui->glonBox->clear();
+    ui->glatBox->clear();
+
     ui->idBox->addItems(columns);
     ui->glonBox->addItems(columns);
     ui->glatBox->addItems(columns);
+
+    this->setWindowTitle(filepath);
     loadSourceTable(columns);
 }
 

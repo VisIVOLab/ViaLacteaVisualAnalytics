@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>900</width>
+    <width>1080</width>
     <height>812</height>
    </rect>
   </property>
@@ -28,23 +28,94 @@
         <item>
          <widget class="QSplitter" name="splitter">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="childrenCollapsible">
            <bool>false</bool>
           </property>
           <widget class="QWidget" name="settingsContainer" native="true">
-           <layout class="QVBoxLayout" name="verticalLayout_3">
-            <item alignment="Qt::AlignTop">
+           <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,1">
+            <item>
+             <widget class="QGroupBox" name="inputFileContainer">
+              <property name="title">
+               <string>File selection</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_5">
+               <item>
+                <widget class="QLabel" name="label_5">
+                 <property name="text">
+                  <string>Open a file in TSV format, then select the columns for the search and click the &quot;Query&quot; button.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                 <property name="buddy">
+                  <cstring>btnOpenFile</cstring>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="btnOpenFile">
+                 <property name="text">
+                  <string>Open file...</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item alignment="Qt::AlignmentFlag::AlignTop">
              <widget class="QGroupBox" name="searchSettingContainer">
               <property name="title">
                <string>Search settings</string>
               </property>
-              <layout class="QFormLayout" name="formLayout_2">
+              <layout class="QGridLayout" name="gridLayout">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label">
+                 <property name="text">
+                  <string>ID</string>
+                 </property>
+                 <property name="buddy">
+                  <cstring>idBox</cstring>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QComboBox" name="idBox"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_2">
+                 <property name="text">
+                  <string>Longitude</string>
+                 </property>
+                 <property name="buddy">
+                  <cstring>glonBox</cstring>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QComboBox" name="glonBox"/>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="label_3">
+                 <property name="text">
+                  <string>Latitude</string>
+                 </property>
+                 <property name="buddy">
+                  <cstring>glatBox</cstring>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QComboBox" name="glatBox"/>
+               </item>
                <item row="3" column="0">
                 <widget class="QLabel" name="selectionLabel">
                  <property name="text">
                   <string>Selection</string>
+                 </property>
+                 <property name="buddy">
+                  <cstring>selectionComboBox</cstring>
                  </property>
                 </widget>
                </item>
@@ -67,6 +138,9 @@
                  <property name="text">
                   <string>Radius</string>
                  </property>
+                 <property name="buddy">
+                  <cstring>radiusLineEdit</cstring>
+                 </property>
                 </widget>
                </item>
                <item row="4" column="1">
@@ -81,6 +155,9 @@
                  <property name="text">
                   <string>dl</string>
                  </property>
+                 <property name="buddy">
+                  <cstring>dlLineEdit</cstring>
+                 </property>
                 </widget>
                </item>
                <item row="5" column="1">
@@ -94,6 +171,9 @@
                 <widget class="QLabel" name="dbLabel">
                  <property name="text">
                   <string>db</string>
+                 </property>
+                 <property name="buddy">
+                  <cstring>dbLineEdit</cstring>
                  </property>
                 </widget>
                </item>
@@ -114,36 +194,6 @@
                  </property>
                 </widget>
                </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label">
-                 <property name="text">
-                  <string>Designation</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QComboBox" name="idBox"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_2">
-                 <property name="text">
-                  <string>Longitude</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QComboBox" name="glonBox"/>
-               </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="label_3">
-                 <property name="text">
-                  <string>Latitude</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QComboBox" name="glatBox"/>
-               </item>
               </layout>
              </widget>
             </item>
@@ -157,13 +207,13 @@
             </sizepolicy>
            </property>
            <property name="editTriggers">
-            <set>QAbstractItemView::NoEditTriggers</set>
+            <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::SingleSelection</enum>
+            <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
            </property>
            <property name="selectionBehavior">
-            <enum>QAbstractItemView::SelectRows</enum>
+            <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
           </widget>
          </widget>
@@ -178,7 +228,7 @@
         <item>
          <widget class="QSplitter" name="splitter_2">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="childrenCollapsible">
            <bool>false</bool>
@@ -199,7 +249,7 @@
               <x>0</x>
               <y>0</y>
               <width>198</width>
-              <height>620</height>
+              <height>614</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -207,10 +257,10 @@
           </widget>
           <widget class="QTableWidget" name="imagesTable">
            <property name="editTriggers">
-            <set>QAbstractItemView::NoEditTriggers</set>
+            <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::NoSelection</enum>
+            <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
            </property>
            <column>
             <property name="text">
@@ -250,7 +300,7 @@
         <item>
          <widget class="QSplitter" name="splitter_3">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="childrenCollapsible">
            <bool>false</bool>
@@ -271,7 +321,7 @@
               <x>0</x>
               <y>0</y>
               <width>178</width>
-              <height>620</height>
+              <height>614</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -279,10 +329,10 @@
           </widget>
           <widget class="QTableWidget" name="cubesTable">
            <property name="editTriggers">
-            <set>QAbstractItemView::NoEditTriggers</set>
+            <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::NoSelection</enum>
+            <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
            </property>
            <column>
             <property name="text">
@@ -326,7 +376,7 @@
          </property>
         </widget>
        </item>
-       <item alignment="Qt::AlignRight">
+       <item alignment="Qt::AlignmentFlag::AlignRight">
         <widget class="QPushButton" name="btnSendRequest">
          <property name="text">
           <string>Send request</string>
@@ -343,8 +393,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>900</width>
-     <height>24</height>
+     <width>1080</width>
+     <height>30</height>
     </rect>
    </property>
   </widget>
@@ -352,6 +402,7 @@
  </widget>
  <tabstops>
   <tabstop>tabWidget</tabstop>
+  <tabstop>btnOpenFile</tabstop>
   <tabstop>idBox</tabstop>
   <tabstop>glonBox</tabstop>
   <tabstop>glatBox</tabstop>
@@ -365,6 +416,7 @@
   <tabstop>imagesTable</tabstop>
   <tabstop>cubesScrollArea</tabstop>
   <tabstop>cubesTable</tabstop>
+  <tabstop>btnSendRequest</tabstop>
  </tabstops>
  <resources/>
  <connections/>
